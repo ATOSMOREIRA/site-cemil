@@ -702,7 +702,21 @@ class HomeController extends Controller
         return $result;
     }
 
-    protected function getAdminUsers(array $departments, array $functions): array
+    protected function getAdminUserTypes(): array
+    {
+        try {
+            $model = new AdminCatalogModel();
+            return $model->listUserTypes();
+        } catch (Throwable) {
+            return [
+                ['id' => 0, 'chave' => 'admin', 'nome' => 'Administrador', 'protegido' => true],
+                ['id' => 0, 'chave' => 'servidor', 'nome' => 'Servidor', 'protegido' => true],
+                ['id' => 0, 'chave' => 'aluno', 'nome' => 'Aluno', 'protegido' => true],
+            ];
+        }
+    }
+
+    protected function getAdminUsers(array $departments, array $functions, array $userTypes = []): array
     {
         $hasCargaHorariaColumn = $this->hasUsuariosColumn('cargaHoraria');
 
@@ -726,6 +740,19 @@ class HomeController extends Controller
             $functionMap[(int) ($function['id'] ?? 0)] = (string) ($function['nome'] ?? '');
         }
 
+        $userTypeMap = [];
+        foreach ($userTypes as $userType) {
+            if (!is_array($userType)) {
+                continue;
+            }
+
+            $key = $this->normalizePermissionToken((string) ($userType['chave'] ?? ''));
+            $name = trim((string) ($userType['nome'] ?? ''));
+            if ($key !== '' && $name !== '') {
+                $userTypeMap[$key] = $name;
+            }
+        }
+
         $users = [];
 
         foreach ($rows as $row) {
@@ -735,10 +762,12 @@ class HomeController extends Controller
 
             $departmentId = (int) ($row['departamento'] ?? 0);
             $functionId = (int) ($row['funcao'] ?? 0);
+            $userTypeKey = $this->normalizePermissionToken((string) ($row['tipo'] ?? 'aluno'));
 
             $users[] = [
                 'id' => (int) ($row['id'] ?? 0),
-                'tipo' => $this->normalizePermissionToken((string) ($row['tipo'] ?? 'aluno')),
+                'tipo' => $userTypeKey,
+                'tipo_nome' => $userTypeMap[$userTypeKey] ?? ucfirst($userTypeKey),
                 'departamento_id' => $departmentId,
                 'departamento_nome' => $departmentMap[$departmentId] ?? 'Não informado',
                 'funcao_id' => $functionId,

@@ -5782,7 +5782,7 @@ class InstitucionalController extends HomeController
 		$model->ensureTableStructure();
 		$today   = date('Y-m-d');
 		$resumo  = $model->resumoHoje($today);
-		$ultimas = $model->ultimasEntradasHoje($today, 20);
+		$ultimas = $model->ultimasEntradasHoje($today, 10);
 
 		$this->respondJson([
 			'ok'               => true,
@@ -5951,7 +5951,12 @@ class InstitucionalController extends HomeController
 				$tipoId > 0 ? $tipoId : null,
 				$turmaId !== '' ? $turmaId : null
 			);
-			$totais    = $model->totalPorTipoNoPeriodo($dataInicio, $dataFim);
+			$totais    = $model->totalPorTipoNoPeriodo(
+				$dataInicio,
+				$dataFim,
+				$tipoId > 0 ? $tipoId : null,
+				$turmaId !== '' ? $turmaId : null
+			);
 		} catch (Throwable $e) {
 			$this->respondJson(['ok' => false, 'message' => $e->getMessage()], 500);
 		}

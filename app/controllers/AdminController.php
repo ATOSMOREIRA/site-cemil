@@ -195,19 +195,33 @@ class AdminController extends HomeController
 
             $departments = $this->getAdminDepartments();
             $functions = $this->getAdminFunctions();
+            $userTypes = $this->getAdminUserTypes();
             $servicesData = $this->getAdminServicesAndSubservices();
 
             $this->renderAdminModalFile($filePath, [
                 'csrfToken' => $csrfToken,
                 'adminUsersSuccess' => $adminUsersSuccess,
                 'adminUsersError' => $adminUsersError,
-                'adminUsers' => $this->getAdminUsers($departments, $functions),
+                'adminUsers' => $this->getAdminUsers($departments, $functions, $userTypes),
                 'adminUsersHasCargaHoraria' => $hasUserCargaHorariaColumn,
                 'adminDepartments' => $departments,
                 'adminFunctions' => $functions,
-                'adminUserTypes' => ['admin', 'servidor', 'aluno'],
+                'adminUserTypes' => $userTypes,
                 'adminServiceOptions' => $servicesData['services'],
                 'adminSubserviceOptions' => $servicesData['subservices'],
+            ]);
+            exit;
+        }
+
+        if ($viewKey === 'ferramentas_administrativas') {
+            $csrfToken = $this->ensureCsrfToken();
+            $catalogModel = new AdminCatalogModel();
+
+            $this->renderAdminModalFile($filePath, [
+                'csrfToken' => $csrfToken,
+                'adminCatalogUserTypes' => $catalogModel->listUserTypes(),
+                'adminCatalogDepartments' => $catalogModel->listDepartments(),
+                'adminCatalogFunctions' => $catalogModel->listFunctions(),
             ]);
             exit;
         }
@@ -273,6 +287,132 @@ class AdminController extends HomeController
         exit;
     }
 
+    public function painelAdministrativoFerramentasSalvar(): void
+    {
+        $authType = $this->normalizePermissionToken((string) ($_SESSION['auth']['tipo'] ?? ''));
+        $isAjax = $this->isAjaxRequest();
+
+        if ($authType !== 'admin' || (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST')) {
+            if ($isAjax) {
+                $this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+            }
+
+            $this->redirect('/404');
+        }
+
+        $csrfToken = (string) ($_POST['csrf_token'] ?? '');
+        $sessionToken = (string) ($_SESSION['csrf_token'] ?? '');
+        if ($csrfToken === '' || $sessionToken === '' || !hash_equals($sessionToken, $csrfToken)) {
+            if ($isAjax) {
+                $this->respondJson(['ok' => false, 'message' => 'Sessão inválida. Atualize a página e tente novamente.'], 419);
+            }
+
+            $this->redirect('/paineladministrativo');
+        }
+
+        $entity = $this->normalizePermissionToken((string) ($_POST['entity'] ?? ''));
+        $id = (int) ($_POST['id'] ?? 0);
+        $nome = trim((string) ($_POST['nome'] ?? ''));
+        $catalogModel = new AdminCatalogModel();
+
+        try {
+            switch ($entity) {
+                case 'tipo_usuario':
+                    $chave = trim((string) ($_POST['chave'] ?? ''));
+                    $catalogModel->saveUserType($id, $chave, $nome);
+                    $message = $id > 0 ? 'Tipo de usuário atualizado com sucesso.' : 'Tipo de usuário cadastrado com sucesso.';
+                    break;
+
+                case 'departamento':
+                    $catalogModel->saveDepartment($id, $nome);
+                    $message = $id > 0 ? 'Departamento atualizado com sucesso.' : 'Departamento cadastrado com sucesso.';
+                    break;
+
+                case 'funcao':
+                    $catalogModel->saveFunction($id, $nome);
+                    $message = $id > 0 ? 'Função atualizada com sucesso.' : 'Função cadastrada com sucesso.';
+                    break;
+
+                default:
+                    throw new InvalidArgumentException('Cadastro administrativo inválido.');
+            }
+        } catch (Throwable $error) {
+            if ($isAjax) {
+                $this->respondJson(['ok' => false, 'message' => $error->getMessage()], 422);
+            }
+
+            $this->redirect('/paineladministrativo');
+        }
+
+        if ($isAjax) {
+            $this->respondJson(['ok' => true, 'message' => $message]);
+        }
+
+        $this->redirect('/paineladministrativo');
+    }
+
+    public function painelAdministrativoFerramentasExcluir(): void
+    {
+        $authType = $this->normalizePermissionToken((string) ($_SESSION['auth']['tipo'] ?? ''));
+        $isAjax = $this->isAjaxRequest();
+
+        if ($authType !== 'admin' || (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST')) {
+            if ($isAjax) {
+                $this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+            }
+
+            $this->redirect('/404');
+        }
+
+        $csrfToken = (string) ($_POST['csrf_token'] ?? '');
+        $sessionToken = (string) ($_SESSION['csrf_token'] ?? '');
+        if ($csrfToken === '' || $sessionToken === '' || !hash_equals($sessionToken, $csrfToken)) {
+            if ($isAjax) {
+                $this->respondJson(['ok' => false, 'message' => 'Sessão inválida. Atualize a página e tente novamente.'], 419);
+            }
+
+            $this->redirect('/paineladministrativo');
+        }
+
+        $entity = $this->normalizePermissionToken((string) ($_POST['entity'] ?? ''));
+        $id = (int) ($_POST['id'] ?? 0);
+        $catalogModel = new AdminCatalogModel();
+
+        try {
+            switch ($entity) {
+                case 'tipo_usuario':
+                    $catalogModel->deleteUserType($id);
+                    $message = 'Tipo de usuário excluído com sucesso.';
+                    break;
+
+                case 'departamento':
+                    $catalogModel->deleteDepartment($id);
+                    $message = 'Departamento excluído com sucesso.';
+                    break;
+
+                case 'funcao':
+                    $catalogModel->deleteFunction($id);
+                    $message = 'Função excluída com sucesso.';
+                    break;
+
+                default:
+                    throw new InvalidArgumentException('Cadastro administrativo inválido.');
+            }
+        } catch (Throwable $error) {
+            if ($isAjax) {
+                $this->respondJson(['ok' => false, 'message' => $error->getMessage()], 422);
+            }
+
+            $this->redirect('/paineladministrativo');
+        }
+
+        if ($isAjax) {
+            $this->respondJson(['ok' => true, 'message' => $message]);
+        }
+
+        $this->redirect('/paineladministrativo');
+    }
+
     public function painelAdministrativoUsuariosSalvar(): void
     {
         $authType = $this->normalizePermissionToken((string) ($_SESSION['auth']['tipo'] ?? ''));
@@ -311,7 +451,11 @@ class AdminController extends HomeController
         $rawServicesPayload = (string) ($_POST['servicos'] ?? '');
         $hasCargaHorariaColumn = $this->hasUsuariosColumn('cargaHoraria');
 
-        $allowedTypes = ['admin', 'servidor', 'aluno'];
+        $allowedTypes = array_map(
+            fn (array $item): string => $this->normalizePermissionToken((string) ($item['chave'] ?? '')),
+            $this->getAdminUserTypes()
+        );
+        $allowedTypes = array_values(array_filter($allowedTypes, static fn (string $value): bool => $value !== ''));
         $finalServicos = '';
 
         $existingUser = null;

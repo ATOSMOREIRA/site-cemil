@@ -82,6 +82,8 @@ return [
     '/paineladministrativo/usuarios/excluir' => ['AdminController', 'painelAdministrativoUsuariosExcluir'],
     '/paineladministrativo/servicos-subservicos/salvar' => ['AdminController', 'painelAdministrativoServicosSubservicosSalvar'],
     '/paineladministrativo/servicos-subservicos/excluir' => ['AdminController', 'painelAdministrativoServicosSubservicosExcluir'],
+    '/paineladministrativo/ferramentas-administrativas/salvar' => ['AdminController', 'painelAdministrativoFerramentasSalvar'],
+    '/paineladministrativo/ferramentas-administrativas/excluir' => ['AdminController', 'painelAdministrativoFerramentasExcluir'],
     '/paineladministrativo/informacoes/salvar' => ['AdminController', 'painelAdministrativoInformacoesSalvar'],
     '/paineladministrativo/informacoes/excluir' => ['AdminController', 'painelAdministrativoInformacoesExcluir'],
     '/paineladministrativo/avaliacoes/salvar' => ['AdminController', 'painelAdministrativoAvaliacoesSalvar'],

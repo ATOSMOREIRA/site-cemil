@@ -302,21 +302,36 @@ class RefeitorioModel
         return $stmt->fetchAll();
     }
 
-    public function totalPorTipoNoPeriodo(string $dataInicio, string $dataFim): array
+    public function totalPorTipoNoPeriodo(string $dataInicio, string $dataFim, ?int $tipoId = null, ?string $turmaId = null): array
     {
-        $pdo  = Database::connection();
-        $stmt = $pdo->prepare(
-            'SELECT t.id, t.nome, t.cor,
-                    COUNT(r.id) AS total
-               FROM refeitorio_tipos_refeicao t
-               LEFT JOIN refeitorio_registros r
-                      ON r.tipo_refeicao_id = t.id
-                     AND r.data BETWEEN :ini AND :fim
-              WHERE t.ativo = 1
-              GROUP BY t.id, t.nome, t.cor
-              ORDER BY t.horario_ini, t.nome'
-        );
-        $stmt->execute(['ini' => $dataInicio, 'fim' => $dataFim]);
+        $pdo    = Database::connection();
+        $params = ['ini' => $dataInicio, 'fim' => $dataFim];
+        $where  = ['t.ativo = 1'];
+        $countExpr = 'SUM(CASE WHEN r.id IS NOT NULL THEN 1 ELSE 0 END)';
+
+        if ($tipoId !== null && $tipoId > 0) {
+            $where[] = 't.id = :tipo';
+            $params['tipo'] = $tipoId;
+        }
+
+        if ($turmaId !== null && $turmaId !== '') {
+            $countExpr = 'SUM(CASE WHEN r.id IS NOT NULL AND a.turma_id = :turma THEN 1 ELSE 0 END)';
+            $params['turma'] = (int) $turmaId;
+        }
+
+        $sql = 'SELECT t.id, t.nome, t.cor,
+                       COALESCE(' . $countExpr . ', 0) AS total
+                  FROM refeitorio_tipos_refeicao t
+                  LEFT JOIN refeitorio_registros r
+                         ON r.tipo_refeicao_id = t.id
+                        AND r.data BETWEEN :ini AND :fim
+                  LEFT JOIN alunos a ON a.id = r.aluno_id
+                 WHERE ' . implode(' AND ', $where) . '
+                 GROUP BY t.id, t.nome, t.cor
+                 ORDER BY t.horario_ini, t.nome';
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
         return $stmt->fetchAll();
     }
 
@@ -324,7 +339,7 @@ class RefeitorioModel
     // Últimas entradas do dia (para polling)
     // ------------------------------------------------------------------
 
-    public function ultimasEntradasHoje(string $data, int $limit = 20): array
+    public function ultimasEntradasHoje(string $data, int $limit = 10): array
     {
         $pdo  = Database::connection();
         $stmt = $pdo->prepare(

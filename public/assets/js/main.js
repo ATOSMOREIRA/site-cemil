@@ -321,6 +321,25 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
 
+    if (data.type === 'cemil:print-blob') {
+      /* Abrir o tab de impressão a partir da janela de nível superior evita que
+         o window.print() do novo tab bloqueie o processo do iframe. */
+      var htmlStr = typeof data.html === 'string' ? data.html : '';
+      if (htmlStr !== '') {
+        try {
+          var printBlob = new Blob([htmlStr], { type: 'text/html; charset=utf-8' });
+          var printUrl = URL.createObjectURL(printBlob);
+          var printTab = window.open(printUrl, '_blank');
+          if (printTab) {
+            printTab.addEventListener('unload', function () { URL.revokeObjectURL(printUrl); });
+          } else {
+            URL.revokeObjectURL(printUrl);
+          }
+        } catch (err) {}
+      }
+      return;
+    }
+
     if (data.type !== 'cemil:iframe-modal-state') {
       return;
     }
@@ -328,6 +347,7 @@ document.addEventListener('DOMContentLoaded', function () {
     setIframeModalState(iframe, Boolean(data.isOpen));
   });
 
+  ensureIframeModalGlobalBackdrop();
   startIframeModalMonitor();
 
   function normalizeSearchValue(value) {
@@ -587,6 +607,7 @@ document.addEventListener('DOMContentLoaded', function () {
         adminPanelModalBodyElement.innerHTML = html;
         bindAdminUsersModalContent();
         bindAdminServicesSubservicesModalContent();
+        bindAdminFerramentasAdministrativasModalContent();
         bindAdminInformacoesModalContent();
         bindAdminAvaliacoesModalContent();
         bindAdminInstitutionalFramesModalContent();
@@ -1408,6 +1429,251 @@ document.addEventListener('DOMContentLoaded', function () {
         hydrateServicesSelectorsFromInput();
       });
     }
+  }
+
+  function bindAdminFerramentasAdministrativasModalContent() {
+    var root = document.getElementById('adminCatalogManagerRoot');
+    if (!root) {
+      return;
+    }
+
+    var configs = {
+      tipo_usuario: {
+        form: document.getElementById('adminCatalogUserTypeForm'),
+        idInput: document.getElementById('adminCatalogUserTypeId'),
+        nameInput: document.getElementById('adminCatalogUserTypeNome'),
+        keyInput: document.getElementById('adminCatalogUserTypeChave'),
+        submitButton: document.getElementById('adminCatalogUserTypeSubmitButton'),
+        resetButton: document.getElementById('adminCatalogUserTypeResetButton'),
+        createLabel: '<i class="las la-save me-1"></i>Salvar tipo',
+        updateLabel: '<i class="las la-save me-1"></i>Salvar alterações',
+      },
+      departamento: {
+        form: document.getElementById('adminCatalogDepartmentForm'),
+        idInput: document.getElementById('adminCatalogDepartmentId'),
+        nameInput: document.getElementById('adminCatalogDepartmentNome'),
+        submitButton: document.getElementById('adminCatalogDepartmentSubmitButton'),
+        resetButton: document.getElementById('adminCatalogDepartmentResetButton'),
+        createLabel: '<i class="las la-save me-1"></i>Salvar departamento',
+        updateLabel: '<i class="las la-save me-1"></i>Salvar alterações',
+      },
+      funcao: {
+        form: document.getElementById('adminCatalogFunctionForm'),
+        idInput: document.getElementById('adminCatalogFunctionId'),
+        nameInput: document.getElementById('adminCatalogFunctionNome'),
+        submitButton: document.getElementById('adminCatalogFunctionSubmitButton'),
+        resetButton: document.getElementById('adminCatalogFunctionResetButton'),
+        createLabel: '<i class="las la-save me-1"></i>Salvar função',
+        updateLabel: '<i class="las la-save me-1"></i>Salvar alterações',
+      },
+    };
+
+    function normalizeCatalogKey(value) {
+      return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9_]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+    }
+
+    function getConfig(entity) {
+      return Object.prototype.hasOwnProperty.call(configs, entity) ? configs[entity] : null;
+    }
+
+    function resetForm(entity) {
+      var config = getConfig(entity);
+      if (!config || !config.form || !config.idInput || !config.nameInput) {
+        return;
+      }
+
+      config.form.reset();
+      config.idInput.value = '0';
+      config.nameInput.value = '';
+
+      if (config.keyInput) {
+        config.keyInput.value = '';
+        config.keyInput.disabled = false;
+        config.keyInput.dataset.manual = '0';
+      }
+
+      if (config.submitButton) {
+        config.submitButton.innerHTML = config.createLabel;
+        config.submitButton.disabled = false;
+      }
+    }
+
+    function focusForm(config) {
+      if (!config || !config.nameInput) {
+        return;
+      }
+
+      config.nameInput.focus();
+      if (typeof config.nameInput.scrollIntoView === 'function') {
+        config.nameInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
+    function fillFormFromButton(button) {
+      var entity = String(button.getAttribute('data-entity') || '').trim();
+      var config = getConfig(entity);
+      if (!config || !config.form || !config.idInput || !config.nameInput) {
+        return;
+      }
+
+      var id = String(button.getAttribute('data-id') || '0').trim();
+      var name = String(button.getAttribute('data-nome') || '').trim();
+      var key = String(button.getAttribute('data-chave') || '').trim();
+      var isProtected = String(button.getAttribute('data-protegido') || '') === '1';
+
+      config.idInput.value = id !== '' ? id : '0';
+      config.nameInput.value = name;
+
+      if (config.keyInput) {
+        config.keyInput.value = key;
+        config.keyInput.disabled = isProtected;
+        config.keyInput.dataset.manual = key !== '' ? '1' : '0';
+      }
+
+      if (config.submitButton) {
+        config.submitButton.innerHTML = config.updateLabel;
+      }
+
+      focusForm(config);
+    }
+
+    function submitForm(entity) {
+      var config = getConfig(entity);
+      if (!config || !config.form) {
+        return;
+      }
+
+      var submitButton = config.submitButton;
+      if (submitButton) {
+        submitButton.disabled = true;
+      }
+
+      fetch(config.form.action, {
+        method: 'POST',
+        body: new FormData(config.form),
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      })
+        .then(function (response) {
+          return response.json()
+            .catch(function () { return { ok: false, message: 'Resposta inválida do servidor.' }; })
+            .then(function (payload) {
+              if (!response.ok || !payload.ok) {
+                throw new Error(payload.message || 'Falha ao salvar registro.');
+              }
+
+              return payload;
+            });
+        })
+        .then(function (payload) {
+          showGlobalStatus(payload.message || 'Registro salvo com sucesso.', false);
+          return loadAdminPanelModalContent('ferramentas_administrativas', 'Ferramentas Administrativas');
+        })
+        .catch(function (error) {
+          showGlobalStatus(error && error.message ? error.message : 'Erro ao salvar registro.', true);
+        })
+        .finally(function () {
+          if (submitButton) {
+            submitButton.disabled = false;
+          }
+        });
+    }
+
+    function executeDelete(form) {
+      if (!form) {
+        return;
+      }
+
+      fetch(form.action, {
+        method: 'POST',
+        body: new FormData(form),
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      })
+        .then(function (response) {
+          return response.json()
+            .catch(function () { return { ok: false, message: 'Resposta inválida do servidor.' }; })
+            .then(function (payload) {
+              if (!response.ok || !payload.ok) {
+                throw new Error(payload.message || 'Falha ao excluir registro.');
+              }
+
+              return payload;
+            });
+        })
+        .then(function (payload) {
+          showGlobalStatus(payload.message || 'Registro excluído com sucesso.', false);
+          return loadAdminPanelModalContent('ferramentas_administrativas', 'Ferramentas Administrativas');
+        })
+        .catch(function (error) {
+          showGlobalStatus(error && error.message ? error.message : 'Erro ao excluir registro.', true);
+        });
+    }
+
+    Object.keys(configs).forEach(function (entity) {
+      var config = configs[entity];
+      if (!config || !config.form) {
+        return;
+      }
+
+      if (config.keyInput) {
+        config.nameInput.addEventListener('input', function () {
+          var isManual = config.keyInput.dataset.manual === '1';
+          var currentId = String(config.idInput.value || '0');
+          if (isManual || currentId !== '0') {
+            return;
+          }
+
+          config.keyInput.value = normalizeCatalogKey(config.nameInput.value);
+        });
+
+        config.keyInput.addEventListener('input', function () {
+          config.keyInput.dataset.manual = String(config.keyInput.value || '').trim() !== '' ? '1' : '0';
+        });
+      }
+
+      config.form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        submitForm(entity);
+      });
+
+      if (config.resetButton) {
+        config.resetButton.addEventListener('click', function () {
+          resetForm(entity);
+        });
+      }
+
+      resetForm(entity);
+    });
+
+    root.querySelectorAll('.js-admin-catalog-edit').forEach(function (button) {
+      button.addEventListener('click', function () {
+        fillFormFromButton(button);
+      });
+    });
+
+    root.querySelectorAll('.js-admin-catalog-delete-trigger').forEach(function (button) {
+      button.addEventListener('click', function () {
+        var form = button.closest('.js-admin-catalog-delete-form');
+        if (!form) {
+          return;
+        }
+
+        var label = String(button.getAttribute('data-label') || 'este registro').trim();
+        if (!window.confirm('Deseja realmente excluir ' + label + '?')) {
+          return;
+        }
+
+        executeDelete(form);
+      });
+    });
   }
 
   function bindAdminServicesSubservicesModalContent() {
