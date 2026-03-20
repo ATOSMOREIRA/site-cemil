@@ -1,0 +1,1148 @@
+	<style>
+		.institutional-page-root {
+			background: transparent;
+			color: #212529;
+			font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+			margin: 0;
+			padding: 0;
+			height: 100vh;
+			display: flex;
+			flex-direction: column;
+			overflow: hidden;
+		}
+
+		.container-fluid.px-0 {
+			flex: 1 1 auto;
+			height: 100%;
+			min-height: 0;
+			display: flex;
+			flex-direction: column;
+			overflow: hidden;
+			width: 90%;
+			max-width: 90%;
+			margin: 0 auto;
+		}
+
+		.container-fluid.px-0 > .p-2.p-md-3 {
+			flex: 1 1 auto;
+			min-height: 0;
+			display: flex;
+			flex-direction: column;
+			overflow: hidden;
+		}
+
+		.table td,
+		.table th {
+			vertical-align: middle;
+		}
+
+		.muted-empty {
+			text-align: center;
+			color: #6c757d;
+			padding: 1rem;
+		}
+
+		.top-status {
+			position: fixed;
+			top: 12px;
+			left: 50%;
+			transform: translateX(-50%);
+			z-index: 2000;
+			min-width: 280px;
+			max-width: 92vw;
+			border-radius: .5rem;
+			padding: .5rem .85rem;
+			box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+			font-size: .9rem;
+			font-weight: 500;
+		}
+
+		.top-status.is-success {
+			background: #d1e7dd;
+			color: #0f5132;
+			border: 1px solid #badbcc;
+		}
+
+		.top-status.is-error {
+			background: #f8d7da;
+			color: #842029;
+			border: 1px solid #f5c2c7;
+		}
+
+		.hb-table-scroll {
+			flex: 0 1 auto;
+			min-height: auto;
+			width: 100%;
+			max-height: calc(100vh - 280px);
+			overflow-y: auto;
+			overflow-x: auto;
+		}
+
+		.hb-table-scroll thead th {
+			position: sticky;
+			top: 0;
+			z-index: 2;
+			background: #fff;
+		}
+
+		.institutional-page-root.is-embedded-iframe .modal-backdrop {
+			display: none !important;
+		}
+
+		.institutional-page-root.is-embedded-iframe {
+			height: 100%;
+			min-height: 0;
+			overflow: hidden;
+			width: 100%;
+			max-width: 100%;
+		}
+
+		.institutional-page-root.is-embedded-iframe > .p-2.p-md-3,
+		.institutional-page-root.is-embedded-iframe .container-fluid.px-0 > .p-2.p-md-3 {
+			flex: 1 1 auto;
+			min-height: 0;
+			overflow: hidden;
+		}
+
+		.institutional-page-root.is-embedded-iframe .hb-table-scroll {
+			flex: 1 1 auto;
+			min-height: 0;
+			max-height: none;
+			overflow-y: auto;
+		}
+
+		.modal {
+			position: fixed;
+			inset: 0;
+		}
+
+		.hb-filter-row {
+			display: flex;
+			flex-wrap: wrap;
+			align-items: center;
+			gap: .5rem;
+		}
+
+		.hb-filter-row .form-control-sm,
+		.hb-filter-row .form-select-sm {
+			font-size: .82rem;
+		}
+
+		.hb-search-wrap {
+			max-width: 360px;
+			flex: 1 1 240px;
+		}
+
+		.hb-desc-cell {
+			max-width: 260px;
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+
+		.hb-view-field {
+			margin-bottom: .65rem;
+		}
+
+		.hb-view-label {
+			font-size: .78rem;
+			font-weight: 600;
+			color: #6c757d;
+			margin-bottom: .1rem;
+		}
+
+		.hb-filter-checklist {
+			max-height: 150px;
+			overflow-y: auto;
+			border: 1px solid #dee2e6;
+			border-radius: .375rem;
+			padding: .5rem .75rem;
+		}
+		.hb-filter-checklist .form-check {
+			margin-bottom: .25rem;
+		}
+		.hb-filter-checklist .form-check:last-child {
+			margin-bottom: 0;
+		}
+	</style>
+
+	<div id="hbStatusBar" class="top-status d-none" role="alert" aria-live="polite"></div>
+
+	<div class="container-fluid px-0 institutional-page-root">
+		<div class="p-2 p-md-3">
+			<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+				<h1 class="h4 fw-bold mb-0">Cadastro de Habilidades</h1>
+				<div class="d-flex gap-2 align-items-center">
+					<button id="hbNewBtn" class="btn btn-danger btn-sm" type="button"><i class="las la-plus me-1"></i>Nova habilidade</button>
+					<button id="hbImportBtn" class="btn btn-outline-primary btn-sm" type="button"><i class="las la-file-import me-1"></i>Importar CSV</button>
+					<button id="hbDeleteSelectedBtn" class="btn btn-outline-danger btn-sm" type="button" disabled><i class="las la-trash-alt me-1"></i>Excluir selecionadas</button>
+					<a id="hbBackBtn" href="#" target="_top" class="btn btn-outline-secondary btn-sm"><i class="las la-arrow-left me-1"></i>Voltar</a>
+				</div>
+			</div>
+
+			<div class="hb-filter-row mb-3">
+				<div class="hb-search-wrap">
+					<input type="search" class="form-control form-control-sm" id="hbSearch" placeholder="Buscar por código, descrição, disciplina..." autocomplete="off">
+				</div>
+				<button type="button" class="btn btn-outline-secondary btn-sm" id="hbFilterBtn">
+					<i class="las la-filter me-1"></i>Filtros
+					<span class="badge rounded-pill bg-danger ms-1 d-none" id="hbFilterBadge">0</span>
+				</button>
+			</div>
+
+			<div class="table-responsive hb-table-scroll border rounded bg-white">
+				<table class="table table-sm mb-0">
+					<thead>
+						<tr>
+							<th class="institutional-select-col" style="width:36px"><input type="checkbox" id="hbSelectAll" aria-label="Selecionar todas"></th>
+							<th style="min-width:110px">Código</th>
+							<th style="min-width:100px">Documento</th>
+							<th style="min-width:120px">Disciplina</th>
+							<th style="min-width:80px">Ano</th>
+							<th style="min-width:220px">Descrição</th>
+							<th style="min-width:70px">Status</th>
+							<th class="text-end" style="min-width:170px">Ações</th>
+						</tr>
+					</thead>
+					<tbody id="hbTableBody">
+						<tr><td colspan="8" class="muted-empty">Carregando...</td></tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+
+	<!-- Modal: Nova / Editar Habilidade -->
+	<div class="modal fade" id="hbFormModal" tabindex="-1" aria-hidden="true">
+		<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+			<div class="modal-content site-modal-content">
+				<div class="modal-header">
+					<h2 class="modal-title fs-5" id="hbFormModalLabel">Nova habilidade</h2>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+				</div>
+				<form id="hbForm" novalidate>
+					<div class="modal-body">
+						<input type="hidden" id="hbFormId" value="0">
+						<div class="row g-3">
+							<div class="col-md-4">
+								<label class="form-label" for="hbFormCodigo">Código <span class="text-danger">*</span></label>
+								<input type="text" class="form-control" id="hbFormCodigo" maxlength="30" required placeholder="Ex: EF09LP01">
+							</div>
+							<div class="col-md-4">
+								<label class="form-label" for="hbFormDocumento">Documento</label>
+								<select class="form-select" id="hbFormDocumento">
+									<option value="BNCC">BNCC</option>
+									<option value="DCT">DCT</option>
+									<option value="Matriz">Matriz</option>
+								</select>
+							</div>
+							<div class="col-md-4">
+								<label class="form-label" for="hbFormTipo">Tipo</label>
+								<select class="form-select" id="hbFormTipo">
+									<option value="Habilidade">Habilidade</option>
+									<option value="Competência">Competência</option>
+									<option value="Objetivo">Objetivo</option>
+								</select>
+							</div>
+							<div class="col-md-6">
+								<label class="form-label" for="hbFormDisciplina">Disciplina <span class="text-danger">*</span></label>
+								<select class="form-select" id="hbFormDisciplina" required>
+									<option value="">Selecione</option>
+								</select>
+							</div>
+							<div class="col-md-3">
+							<label class="form-label">Ano escolar <span class="text-danger">*</span></label>
+							<div class="dropdown" id="hbFormAnoDropdown">
+								<button class="btn btn-outline-secondary btn-sm w-100 text-start d-flex justify-content-between align-items-center" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" id="hbFormAnoToggle">
+									<span id="hbFormAnoLabel">Selecione</span>
+									<i class="las la-angle-down"></i>
+								</button>
+								<div class="dropdown-menu p-2" style="min-width:180px">
+									<div class="d-flex gap-2 mb-2">
+										<button type="button" class="btn btn-outline-primary btn-sm flex-fill" id="hbFormAnoSelectAll">Todos</button>
+										<button type="button" class="btn btn-outline-secondary btn-sm flex-fill" id="hbFormAnoClear">Limpar</button>
+									</div>
+									<div id="hbFormAnoList"></div>
+								</div>
+							</div>
+							<input type="hidden" id="hbFormAno" value="">
+							</div>
+							<div class="col-md-3">
+								<label class="form-label" for="hbFormEtapa">Etapa de ensino</label>
+								<input type="text" class="form-control" id="hbFormEtapa" maxlength="60" value="Ensino Fundamental">
+							</div>
+							<div class="col-12">
+								<label class="form-label" for="hbFormDescricao">Descrição <span class="text-danger">*</span></label>
+								<textarea class="form-control" id="hbFormDescricao" rows="3" maxlength="2000" required placeholder="Descreva a habilidade"></textarea>
+							</div>
+							<div class="col-md-6">
+								<label class="form-label" for="hbFormUnidade">Unidade temática</label>
+								<input type="text" class="form-control" id="hbFormUnidade" maxlength="255">
+							</div>
+							<div class="col-md-6">
+								<label class="form-label" for="hbFormObjeto">Objeto de conhecimento</label>
+								<input type="text" class="form-control" id="hbFormObjeto" maxlength="255">
+							</div>
+							<div class="col-md-6">
+								<label class="form-label" for="hbFormComplementar">Habilidade complementar</label>
+								<input type="text" class="form-control" id="hbFormComplementar" maxlength="255">
+							</div>
+								<div class="col-12">
+								<div class="form-check">
+									<input class="form-check-input" type="checkbox" id="hbFormAtivo" checked>
+									<label class="form-check-label" for="hbFormAtivo">Habilidade ativa</label>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="modal-footer">
+						<button type="submit" class="btn btn-danger btn-sm" id="hbFormSubmitBtn"><i class="las la-save me-1"></i>Salvar habilidade</button>
+						<button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	</div>
+
+	<!-- Modal: Visualizar detalhes -->
+	<div class="modal fade" id="hbViewModal" tabindex="-1" aria-hidden="true">
+		<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+			<div class="modal-content site-modal-content">
+				<div class="modal-header">
+					<h2 class="modal-title fs-5" id="hbViewModalTitle">Detalhes da habilidade</h2>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+				</div>
+				<div class="modal-body" id="hbViewModalBody"></div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Modal: Confirmar exclusão -->
+	<div class="modal fade" id="hbDeleteConfirmModal" tabindex="-1" aria-hidden="true">
+		<div class="modal-dialog modal-dialog-centered">
+			<div class="modal-content site-modal-content">
+				<div class="modal-header">
+					<h2 class="modal-title fs-5">Confirmar exclusão</h2>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+				</div>
+				<div class="modal-body">
+					<p class="mb-0" id="hbDeleteConfirmText">Deseja realmente excluir esta habilidade?</p>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-danger btn-sm" id="hbDeleteConfirmBtn">Excluir</button>
+					<button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Modal: Importar CSV -->
+	<div class="modal fade" id="hbImportModal" tabindex="-1" aria-hidden="true">
+		<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+			<div class="modal-content site-modal-content">
+				<div class="modal-header">
+					<div>
+						<h2 class="modal-title fs-5 mb-1">Importar habilidades via CSV</h2>
+						<div class="small text-secondary">Colunas esperadas: <strong>codigo, descricao, disciplina_nome, ano_escolar</strong>. Opcionais: tipo, documento, etapa_ensino, unidade_tematica, objeto_conhecimento, habilidade_complementar, ativo.</div>
+					</div>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+				</div>
+				<div class="modal-body">
+					<div class="mb-3">
+						<label class="form-label" for="hbImportFile">Selecionar arquivo CSV</label>
+						<input type="file" class="form-control form-control-sm" id="hbImportFile" accept=".csv,text/csv">
+					</div>
+					<div class="mb-3">
+						<label class="form-label" for="hbImportText">Ou cole o conteúdo CSV</label>
+						<textarea class="form-control" id="hbImportText" rows="8" placeholder="codigo;descricao;disciplina_nome;ano_escolar&#10;EF09LP01;Descrição...;Língua Portuguesa;9º ano"></textarea>
+					</div>
+					<div class="small text-secondary" id="hbImportPreviewStatus"></div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+					<button type="button" class="btn btn-danger btn-sm" id="hbImportSubmitBtn" disabled><i class="las la-file-import me-1"></i>Importar</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Modal: Filtros -->
+	<div class="modal fade" id="hbFilterModal" tabindex="-1" aria-hidden="true">
+		<div class="modal-dialog modal-dialog-centered" style="max-width:400px">
+			<div class="modal-content site-modal-content">
+				<div class="modal-header">
+					<h2 class="modal-title fs-5">Filtros</h2>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+				</div>
+				<div class="modal-body">
+					<div class="mb-3">
+						<label class="form-label fw-semibold">Documento</label>
+						<div id="hbFilterDocList" class="hb-filter-checklist">
+							<div class="form-check">
+								<input class="form-check-input" type="checkbox" value="BNCC" id="hbFDoc_BNCC">
+								<label class="form-check-label" for="hbFDoc_BNCC">BNCC</label>
+							</div>
+							<div class="form-check">
+								<input class="form-check-input" type="checkbox" value="DCT" id="hbFDoc_DCT">
+								<label class="form-check-label" for="hbFDoc_DCT">DCT</label>
+							</div>
+							<div class="form-check">
+								<input class="form-check-input" type="checkbox" value="Matriz" id="hbFDoc_Matriz">
+								<label class="form-check-label" for="hbFDoc_Matriz">Matriz</label>
+							</div>
+						</div>
+					</div>
+					<div class="mb-3">
+						<label class="form-label fw-semibold">Disciplina</label>
+						<div id="hbFilterDiscList" class="hb-filter-checklist">
+							<div class="small text-secondary">Carregando...</div>
+						</div>
+					</div>
+					<div class="mb-3">
+						<label class="form-label fw-semibold">Ano escolar</label>
+						<div id="hbFilterAnoList" class="hb-filter-checklist">
+							<div class="small text-secondary">Carregando...</div>
+						</div>
+					</div>
+					<div class="mb-0">
+						<label class="form-label fw-semibold">Status</label>
+						<div id="hbFilterAtivoList" class="hb-filter-checklist">
+							<div class="form-check">
+								<input class="form-check-input" type="checkbox" value="1" id="hbFAtivo_1">
+								<label class="form-check-label" for="hbFAtivo_1">Ativo</label>
+							</div>
+							<div class="form-check">
+								<input class="form-check-input" type="checkbox" value="0" id="hbFAtivo_0">
+								<label class="form-check-label" for="hbFAtivo_0">Inativo</label>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-outline-danger btn-sm" id="hbFilterClearBtn"><i class="las la-times me-1"></i>Limpar filtros</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<script>
+		(function () {
+			'use strict';
+
+			function startPage() {
+			var isEmbeddedIframe = window.parent !== window;
+			var pageRoot = document.querySelector('.institutional-page-root');
+			if (isEmbeddedIframe && pageRoot) {
+				pageRoot.classList.add('is-embedded-iframe');
+			}
+
+			/* ── helpers ─────────────────────────────────────── */
+
+			function resolveBasePath() {
+				var pathname = String(window.location.pathname || '');
+				var idx = pathname.indexOf('/index.php/');
+				return idx >= 0 ? pathname.slice(0, idx) : '';
+			}
+
+			function buildEndpoint(path) {
+				var base = resolveBasePath();
+				var pathname = String(window.location.pathname || '');
+				if (pathname.indexOf('/index.php/') >= 0) return base + '/index.php' + path;
+				return base + path;
+			}
+
+			function esc(str) {
+				var d = document.createElement('div');
+				d.textContent = String(str || '');
+				return d.innerHTML;
+			}
+
+			function norm(value) {
+				return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+			}
+
+			/* ── DOM refs ───────────────────────────────────── */
+
+			var formModalEl     = document.getElementById('hbFormModal');
+			var viewModalEl     = document.getElementById('hbViewModal');
+			var deleteModalEl   = document.getElementById('hbDeleteConfirmModal');
+			var importModalEl   = document.getElementById('hbImportModal');
+				var filterModalEl   = document.getElementById('hbFilterModal');
+
+				var formModal       = formModalEl   ? new bootstrap.Modal(formModalEl)   : null;
+				var viewModal       = viewModalEl   ? new bootstrap.Modal(viewModalEl)   : null;
+				var deleteModal     = deleteModalEl ? new bootstrap.Modal(deleteModalEl) : null;
+				var importModal     = importModalEl ? new bootstrap.Modal(importModalEl) : null;
+				var filterModal     = filterModalEl ? new bootstrap.Modal(filterModalEl) : null;
+			var searchInput     = document.getElementById('hbSearch');
+			var filterDocList   = document.getElementById('hbFilterDocList');
+			var filterDiscList  = document.getElementById('hbFilterDiscList');
+			var filterAnoList   = document.getElementById('hbFilterAnoList');
+			var filterAtivoList = document.getElementById('hbFilterAtivoList');
+			var selectAll       = document.getElementById('hbSelectAll');
+			var deleteSelBtn    = document.getElementById('hbDeleteSelectedBtn');
+			var newBtn          = document.getElementById('hbNewBtn');
+			var importBtn       = document.getElementById('hbImportBtn');
+			var filterBtn       = document.getElementById('hbFilterBtn');
+			var filterBadge     = document.getElementById('hbFilterBadge');
+			var backBtn         = document.getElementById('hbBackBtn');
+			var tableBody       = document.getElementById('hbTableBody');
+			var statusBar       = document.getElementById('hbStatusBar');
+
+			var formLabel       = document.getElementById('hbFormModalLabel');
+			var form            = document.getElementById('hbForm');
+			var formId          = document.getElementById('hbFormId');
+			var formCodigo      = document.getElementById('hbFormCodigo');
+			var formDocumento   = document.getElementById('hbFormDocumento');
+			var formTipo        = document.getElementById('hbFormTipo');
+			var formDisciplina  = document.getElementById('hbFormDisciplina');
+			var formAno         = document.getElementById('hbFormAno');
+			var formAnoLabel    = document.getElementById('hbFormAnoLabel');
+			var formAnoList     = document.getElementById('hbFormAnoList');
+			var formAnoSelectAll = document.getElementById('hbFormAnoSelectAll');
+			var formAnoClear    = document.getElementById('hbFormAnoClear');
+			var formEtapa       = document.getElementById('hbFormEtapa');
+			var formDescricao   = document.getElementById('hbFormDescricao');
+			var formUnidade     = document.getElementById('hbFormUnidade');
+			var formObjeto      = document.getElementById('hbFormObjeto');
+			var formComplementar = document.getElementById('hbFormComplementar');
+			var formAtivo       = document.getElementById('hbFormAtivo');
+			var formSubmitBtn   = document.getElementById('hbFormSubmitBtn');
+
+			var viewTitle       = document.getElementById('hbViewModalTitle');
+			var viewBody        = document.getElementById('hbViewModalBody');
+
+			var deleteText      = document.getElementById('hbDeleteConfirmText');
+			var deleteConfBtn   = document.getElementById('hbDeleteConfirmBtn');
+
+			var importFile      = document.getElementById('hbImportFile');
+			var importText      = document.getElementById('hbImportText');
+			var importPreview   = document.getElementById('hbImportPreviewStatus');
+			var importSubmitBtn = document.getElementById('hbImportSubmitBtn');
+
+			/* ── state ──────────────────────────────────────── */
+
+			var allHabilidades = [];
+			var disciplinasMap = {};
+			var disciplinasList = [];
+			var pendingDeleteIds = [];
+			var saving = false;
+			var statusTimer = null;
+			var parsedImportRows = [];
+
+			/* ── ano escolar checkboxes (form) ─────────────── */
+
+			function initAnoCheckboxes() {
+				if (!formAnoList) return;
+				var html = '';
+				for (var i = 1; i <= 9; i++) {
+					html += '<div class="form-check">'
+						+ '<input class="form-check-input js-hb-ano-cb" type="checkbox" value="' + i + '" id="hbAnoCb' + i + '">'
+						+ '<label class="form-check-label" for="hbAnoCb' + i + '">' + i + 'º ano</label>'
+						+ '</div>';
+				}
+				formAnoList.innerHTML = html;
+			}
+
+			function updateAnoHidden() {
+				var cbs = formAnoList ? formAnoList.querySelectorAll('.js-hb-ano-cb:checked') : [];
+				var vals = [];
+				cbs.forEach(function (cb) { vals.push(cb.value); });
+				vals.sort(function (a, b) { return a - b; });
+				if (formAno) formAno.value = vals.join(',');
+				if (formAnoLabel) {
+					formAnoLabel.textContent = vals.length > 0
+						? vals.map(function (v) { return v + 'º'; }).join(', ')
+						: 'Selecione';
+				}
+			}
+
+			function setAnoCheckboxes(valueStr) {
+				var selected = String(valueStr || '').split(',').map(function (v) { return v.trim(); });
+				var cbs = formAnoList ? formAnoList.querySelectorAll('.js-hb-ano-cb') : [];
+				cbs.forEach(function (cb) {
+					cb.checked = selected.indexOf(cb.value) >= 0;
+				});
+				updateAnoHidden();
+			}
+
+			initAnoCheckboxes();
+
+			if (formAnoList) {
+				formAnoList.addEventListener('change', function () { updateAnoHidden(); });
+			}
+			if (formAnoSelectAll) {
+				formAnoSelectAll.addEventListener('click', function () {
+					var cbs = formAnoList.querySelectorAll('.js-hb-ano-cb');
+					cbs.forEach(function (cb) { cb.checked = true; });
+					updateAnoHidden();
+				});
+			}
+			if (formAnoClear) {
+				formAnoClear.addEventListener('click', function () {
+					var cbs = formAnoList.querySelectorAll('.js-hb-ano-cb');
+					cbs.forEach(function (cb) { cb.checked = false; });
+					updateAnoHidden();
+				});
+			}
+
+			/* ── back button ────────────────────────────────── */
+
+			if (backBtn) {
+				backBtn.href = buildEndpoint('/institucional');
+				backBtn.addEventListener('click', function (e) {
+					e.preventDefault();
+					window.top.location.href = buildEndpoint('/institucional');
+				});
+			}
+
+			/* ── filter badge ─────────────────────────────────── */
+
+			function getCheckedValues(containerEl) {
+				if (!containerEl) return [];
+				var vals = [];
+				containerEl.querySelectorAll('input[type="checkbox"]:checked').forEach(function (cb) { vals.push(cb.value); });
+				return vals;
+			}
+
+			function updateFilterBadge() {
+				var count = getCheckedValues(filterDocList).length
+					+ getCheckedValues(filterDiscList).length
+					+ getCheckedValues(filterAnoList).length
+					+ getCheckedValues(filterAtivoList).length;
+				if (filterBadge) {
+					filterBadge.textContent = count;
+					filterBadge.classList.toggle('d-none', count === 0);
+				}
+				if (filterBtn) {
+					filterBtn.classList.toggle('btn-outline-secondary', count === 0);
+					filterBtn.classList.toggle('btn-danger', count > 0);
+				}
+			}
+
+			/* ── status ─────────────────────────────────────── */
+
+			function showStatus(message, isError) {
+				if (!statusBar) return;
+				if (statusTimer) { clearTimeout(statusTimer); statusTimer = null; }
+				statusBar.textContent = message;
+				statusBar.className = 'top-status ' + (isError ? 'is-error' : 'is-success');
+				statusBar.classList.remove('d-none');
+				statusTimer = setTimeout(function () { statusBar.classList.add('d-none'); }, 4000);
+			}
+
+			/* ── data loading ───────────────────────────────── */
+
+			function loadData() {
+				tableBody.innerHTML = '<tr><td colspan="8" class="muted-empty">Carregando...</td></tr>';
+
+				fetch(buildEndpoint('/institucional/habilidades/listar'), {
+					method: 'GET',
+					credentials: 'same-origin',
+					headers: { 'Accept': 'application/json' }
+				})
+				.then(function (r) { return r.json(); })
+				.then(function (data) {
+					if (!data || !data.ok) {
+						tableBody.innerHTML = '<tr><td colspan="8" class="muted-empty text-danger">Erro ao carregar dados.</td></tr>';
+						return;
+					}
+
+					allHabilidades = Array.isArray(data.habilidades) ? data.habilidades : [];
+					var disciplinas = Array.isArray(data.disciplinas) ? data.disciplinas : [];
+					disciplinasMap = {};
+					disciplinasList = disciplinas;
+
+					disciplinas.forEach(function (d) {
+						disciplinasMap[String(d.id)] = d.nome || '';
+					});
+
+					populateDisciplinaSelects(disciplinas);
+					populateAnoFilter();
+					renderTable();
+				})
+				.catch(function () {
+					tableBody.innerHTML = '<tr><td colspan="8" class="muted-empty text-danger">Falha na conexão.</td></tr>';
+				});
+			}
+
+			function populateDisciplinaSelects(disciplinas) {
+				var formOpts = '<option value="">Selecione</option>';
+				var filterHtml = '';
+
+				disciplinas.forEach(function (d) {
+					var id = String(d.id);
+					var nome = esc(d.nome || '');
+					formOpts += '<option value="' + id + '">' + nome + '</option>';
+					filterHtml += '<div class="form-check"><input class="form-check-input" type="checkbox" value="' + id + '" id="hbFDisc_' + id + '"><label class="form-check-label" for="hbFDisc_' + id + '">' + nome + '</label></div>';
+				});
+
+				if (filterDiscList) filterDiscList.innerHTML = filterHtml || '<div class="small text-secondary">Nenhuma disciplina.</div>';
+				if (formDisciplina) formDisciplina.innerHTML = formOpts;
+			}
+
+			function populateAnoFilter() {
+				var html = '';
+				for (var i = 1; i <= 9; i++) {
+					html += '<div class="form-check"><input class="form-check-input" type="checkbox" value="' + i + '" id="hbFAno_' + i + '"><label class="form-check-label" for="hbFAno_' + i + '">' + i + 'º ano</label></div>';
+				}
+				if (filterAnoList) filterAnoList.innerHTML = html;
+			}
+
+			/* ── filtering & rendering ──────────────────────── */
+
+			function getFilteredData() {
+				var searchVal  = norm(searchInput ? searchInput.value : '');
+				var selDocs    = getCheckedValues(filterDocList);
+				var selDiscs   = getCheckedValues(filterDiscList);
+				var selAnos    = getCheckedValues(filterAnoList);
+				var selAtivos  = getCheckedValues(filterAtivoList);
+
+				return allHabilidades.filter(function (h) {
+					if (selDocs.length  && selDocs.indexOf(String(h.documento || ''))      < 0) return false;
+					if (selDiscs.length && selDiscs.indexOf(String(h.disciplina_id || '')) < 0) return false;
+					if (selAnos.length) {
+						var hAnos = String(h.ano_escolar || '').split(',').map(function (v) { return v.trim(); });
+						if (!selAnos.some(function (a) { return hAnos.indexOf(a) >= 0; })) return false;
+					}
+					if (selAtivos.length && selAtivos.indexOf(String(h.ativo)) < 0) return false;
+
+					if (searchVal) {
+						var text = norm([
+							h.codigo, h.descricao, h.documento, h.tipo,
+							disciplinasMap[String(h.disciplina_id)] || '',
+							h.ano_escolar, h.etapa_ensino, h.unidade_tematica, h.objeto_conhecimento
+						].join(' '));
+						if (text.indexOf(searchVal) < 0) return false;
+					}
+					return true;
+				});
+			}
+
+			function renderTable() {
+				var filtered = getFilteredData();
+
+				if (filtered.length === 0) {
+					tableBody.innerHTML = '<tr><td colspan="8" class="muted-empty">Nenhuma habilidade encontrada.</td></tr>';
+					updateSelectState();
+					return;
+				}
+
+				var html = '';
+				filtered.forEach(function (h) {
+					var id = parseInt(h.id, 10) || 0;
+					var codigo    = esc(h.codigo || '');
+					var documento = esc(h.documento || '');
+					var discNome  = esc(disciplinasMap[String(h.disciplina_id)] || '-');
+					var anoRaw    = String(h.ano_escolar || '');
+					var ano       = anoRaw ? esc(anoRaw.split(',').map(function(v){ return v.trim() + 'º'; }).join(', ')) : '-';
+					var desc      = String(h.descricao || '');
+					var descShort = desc.length > 80 ? esc(desc.substring(0, 80)) + '&hellip;' : esc(desc);
+					var ativo     = parseInt(h.ativo, 10);
+					var badge     = ativo
+						? '<span class="badge text-bg-success">Ativo</span>'
+						: '<span class="badge text-bg-secondary">Inativo</span>';
+
+					html += '<tr data-hb-id="' + id + '">'
+						+ '<td><input type="checkbox" class="form-check-input js-hb-select" data-id="' + id + '" aria-label="Selecionar"></td>'
+						+ '<td><strong>' + codigo + '</strong></td>'
+						+ '<td>' + documento + '</td>'
+						+ '<td>' + discNome + '</td>'
+						+ '<td>' + ano + '</td>'
+						+ '<td class="small hb-desc-cell" title="' + esc(desc) + '">' + descShort + '</td>'
+						+ '<td>' + badge + '</td>'
+						+ '<td class="text-end">'
+						+   '<button type="button" class="btn btn-outline-info btn-sm js-hb-view" data-id="' + id + '"><i class="las la-eye me-1"></i>Ver</button> '
+						+   '<button type="button" class="btn btn-outline-primary btn-sm js-hb-edit" data-id="' + id + '"><i class="las la-pen me-1"></i>Editar</button> '
+						+   '<button type="button" class="btn btn-outline-danger btn-sm js-hb-delete" data-id="' + id + '"><i class="las la-trash-alt me-1"></i>Excluir</button>'
+						+ '</td></tr>';
+				});
+
+				tableBody.innerHTML = html;
+				updateSelectState();
+			}
+
+			/* ── checkbox state ─────────────────────────────── */
+
+			function updateSelectState() {
+				var checks = tableBody ? tableBody.querySelectorAll('.js-hb-select') : [];
+				var checked = 0;
+				checks.forEach(function (c) { if (c.checked) checked++; });
+				if (selectAll) selectAll.checked = checks.length > 0 && checked === checks.length;
+				if (deleteSelBtn) deleteSelBtn.disabled = checked === 0;
+			}
+
+			if (selectAll) {
+				selectAll.addEventListener('change', function () {
+					var checks = tableBody ? tableBody.querySelectorAll('.js-hb-select') : [];
+					checks.forEach(function (c) { c.checked = selectAll.checked; });
+					updateSelectState();
+				});
+			}
+
+			if (tableBody) {
+				tableBody.addEventListener('change', function (e) {
+					if (e.target && e.target.classList.contains('js-hb-select')) updateSelectState();
+				});
+			}
+
+			/* ── filter events ──────────────────────────────── */
+
+			if (searchInput) {
+				searchInput.addEventListener('input', function () { renderTable(); updateFilterBadge(); });
+			}
+			[filterDocList, filterDiscList, filterAnoList, filterAtivoList].forEach(function (list) {
+				if (!list) return;
+				list.addEventListener('change', function () { renderTable(); updateFilterBadge(); });
+			});
+
+				if (filterBtn) {
+					filterBtn.addEventListener('click', function () { if (filterModal) filterModal.show(); });
+				}
+
+				var filterClearBtn = document.getElementById('hbFilterClearBtn');
+				if (filterClearBtn) {
+					filterClearBtn.addEventListener('click', function () {
+						[filterDocList, filterDiscList, filterAnoList, filterAtivoList].forEach(function (list) {
+							if (!list) return;
+							list.querySelectorAll('input[type="checkbox"]').forEach(function (cb) { cb.checked = false; });
+						});
+						renderTable();
+						updateFilterBadge();
+					});
+				}
+				tableBody.addEventListener('click', function (e) {
+					var btn = e.target.closest('button');
+					if (!btn) return;
+					var id = parseInt(btn.dataset.id, 10) || 0;
+					if (!id) return;
+
+					if (btn.classList.contains('js-hb-view'))   openView(id);
+					if (btn.classList.contains('js-hb-edit'))   openEdit(id);
+					if (btn.classList.contains('js-hb-delete')) openDeleteConfirm([id]);
+				});
+
+			/* ── find by id ─────────────────────────────────── */
+
+			function findById(id) {
+				for (var i = 0; i < allHabilidades.length; i++) {
+					if (parseInt(allHabilidades[i].id, 10) === id) return allHabilidades[i];
+				}
+				return null;
+			}
+
+			/* ── view modal ─────────────────────────────────── */
+
+			function openView(id) {
+				var h = findById(id);
+				if (!h) return;
+
+				if (viewTitle) viewTitle.textContent = 'Detalhes — ' + (h.codigo || 'Habilidade');
+
+				var discNome = disciplinasMap[String(h.disciplina_id)] || '-';
+				var html = '<div class="row g-2">'
+					+ viewField('Código', h.codigo)
+					+ viewField('Documento', h.documento)
+					+ viewField('Tipo', h.tipo)
+					+ viewField('Disciplina', discNome)
+					+ viewField('Ano escolar', (h.ano_escolar || '').split(',').map(function(v){ return v.trim() + 'º'; }).join(', '))
+					+ viewField('Etapa de ensino', h.etapa_ensino)
+					+ '</div>'
+					+ '<div class="hb-view-field mt-3"><div class="hb-view-label">Descrição</div><div style="white-space:pre-line;">' + esc(h.descricao || '-') + '</div></div>';
+
+				if (h.unidade_tematica)        html += viewDetail('Unidade temática', h.unidade_tematica);
+				if (h.objeto_conhecimento)     html += viewDetail('Objeto de conhecimento', h.objeto_conhecimento);
+				if (h.habilidade_complementar) html += viewDetail('Habilidade complementar', h.habilidade_complementar);
+				html += '<div class="hb-view-field mt-3"><div class="hb-view-label">Status</div><div>'
+					+ (parseInt(h.ativo, 10) ? '<span class="badge text-bg-success">Ativo</span>' : '<span class="badge text-bg-secondary">Inativo</span>')
+					+ '</div></div>';
+
+				if (viewBody) viewBody.innerHTML = html;
+				if (viewModal) viewModal.show();
+			}
+
+			function viewField(label, value) {
+				return '<div class="col-md-4 col-6 hb-view-field"><div class="hb-view-label">' + esc(label) + '</div><div>' + esc(value || '-') + '</div></div>';
+			}
+
+			function viewDetail(label, value) {
+				return '<div class="hb-view-field mt-2"><div class="hb-view-label">' + esc(label) + '</div><div>' + esc(value) + '</div></div>';
+			}
+
+			/* ── form: new / edit ───────────────────────────── */
+
+			function resetForm() {
+				if (form) form.reset();
+				if (formId)        formId.value = '0';
+				if (formEtapa)     formEtapa.value = 'Ensino Fundamental';
+				if (formAtivo)     formAtivo.checked = true;
+				if (formDocumento) formDocumento.value = 'BNCC';
+				if (formTipo)      formTipo.value = 'Habilidade';
+				if (formDisciplina) formDisciplina.value = '';
+				setAnoCheckboxes('');
+			}
+
+			if (newBtn) {
+				newBtn.addEventListener('click', function () {
+					resetForm();
+					if (formLabel)     formLabel.textContent = 'Nova habilidade';
+					if (formSubmitBtn) formSubmitBtn.innerHTML = '<i class="las la-save me-1"></i>Salvar habilidade';
+					if (formModal)     formModal.show();
+				});
+			}
+
+			function openEdit(id) {
+				var h = findById(id);
+				if (!h) return;
+				resetForm();
+
+				if (formId)          formId.value = String(h.id);
+				if (formCodigo)      formCodigo.value = h.codigo || '';
+				if (formDocumento)   formDocumento.value = h.documento || 'BNCC';
+				if (formTipo)        formTipo.value = h.tipo || 'Habilidade';
+				if (formDisciplina)  formDisciplina.value = String(h.disciplina_id || '');
+				setAnoCheckboxes(h.ano_escolar || '');
+				if (formEtapa)       formEtapa.value = h.etapa_ensino || 'Ensino Fundamental';
+				if (formDescricao)   formDescricao.value = h.descricao || '';
+				if (formUnidade)     formUnidade.value = h.unidade_tematica || '';
+				if (formObjeto)      formObjeto.value = h.objeto_conhecimento || '';
+				if (formComplementar) formComplementar.value = h.habilidade_complementar || '';
+				if (formAtivo)       formAtivo.checked = parseInt(h.ativo, 10) === 1;
+
+				if (formLabel)       formLabel.textContent = 'Editar habilidade — ' + (h.codigo || '');
+				if (formSubmitBtn)   formSubmitBtn.innerHTML = '<i class="las la-save me-1"></i>Atualizar habilidade';
+				if (formModal)       formModal.show();
+			}
+
+			if (form) {
+				form.addEventListener('submit', function (e) {
+					e.preventDefault();
+					if (saving) return;
+					saving = true;
+					if (formSubmitBtn) formSubmitBtn.disabled = true;
+
+					var payload = {
+						id:                      parseInt(formId ? formId.value : '0', 10) || 0,
+						codigo:                  (formCodigo ? formCodigo.value : '').trim(),
+						descricao:               (formDescricao ? formDescricao.value : '').trim(),
+						tipo:                    formTipo ? formTipo.value : 'Habilidade',
+						documento:               formDocumento ? formDocumento.value : 'BNCC',
+						disciplina_id:           parseInt(formDisciplina ? formDisciplina.value : '0', 10) || 0,
+						ano_escolar:             (formAno ? formAno.value : '').trim(),
+						etapa_ensino:            (formEtapa ? formEtapa.value : 'Ensino Fundamental').trim(),
+						unidade_tematica:        (formUnidade ? formUnidade.value : '').trim(),
+						objeto_conhecimento:     (formObjeto ? formObjeto.value : '').trim(),
+						habilidade_complementar: (formComplementar ? formComplementar.value : '').trim(),
+						ativo:                   formAtivo && formAtivo.checked ? 1 : 0
+					};
+
+					fetch(buildEndpoint('/institucional/habilidades/salvar'), {
+						method: 'POST',
+						credentials: 'same-origin',
+						headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+						body: JSON.stringify(payload)
+					})
+					.then(function (r) { return r.json(); })
+					.then(function (data) {
+						saving = false;
+						if (formSubmitBtn) formSubmitBtn.disabled = false;
+
+						if (!data || !data.ok) {
+							showStatus(data && data.message ? data.message : 'Erro ao salvar.', true);
+							return;
+						}
+
+						showStatus(data.message || 'Habilidade salva com sucesso.');
+						if (formModal) formModal.hide();
+						loadData();
+					})
+					.catch(function () {
+						saving = false;
+						if (formSubmitBtn) formSubmitBtn.disabled = false;
+						showStatus('Falha na conexão ao salvar.', true);
+					});
+				});
+			}
+
+			/* ── delete ─────────────────────────────────────── */
+
+			function openDeleteConfirm(ids) {
+				pendingDeleteIds = ids;
+				if (ids.length === 1) {
+					var h = findById(ids[0]);
+					if (deleteText) deleteText.textContent = 'Deseja realmente excluir a habilidade "' + (h ? h.codigo : '') + '"?';
+				} else {
+					if (deleteText) deleteText.textContent = 'Deseja realmente excluir ' + ids.length + ' habilidades selecionadas?';
+				}
+				if (deleteModal) deleteModal.show();
+			}
+
+			if (deleteConfBtn) {
+				deleteConfBtn.addEventListener('click', function () {
+					if (!pendingDeleteIds.length) return;
+					var remaining = pendingDeleteIds.slice();
+					var errors = [];
+
+					function deleteNext() {
+						if (remaining.length === 0) {
+							if (deleteModal) deleteModal.hide();
+							if (errors.length > 0) {
+								showStatus('Erro ao excluir ' + errors.length + ' habilidade(s).', true);
+							} else {
+								showStatus('Habilidade(s) excluída(s) com sucesso.');
+							}
+							loadData();
+							return;
+						}
+
+						var id = remaining.shift();
+						fetch(buildEndpoint('/institucional/habilidades/excluir'), {
+							method: 'POST',
+							credentials: 'same-origin',
+							headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+							body: JSON.stringify({ id: id })
+						})
+						.then(function (r) { return r.json(); })
+						.then(function (data) {
+							if (!data || !data.ok) errors.push(id);
+							deleteNext();
+						})
+						.catch(function () { errors.push(id); deleteNext(); });
+					}
+
+					deleteNext();
+				});
+			}
+
+			if (deleteSelBtn) {
+				deleteSelBtn.addEventListener('click', function () {
+					var checks = tableBody ? tableBody.querySelectorAll('.js-hb-select:checked') : [];
+					var ids = [];
+					checks.forEach(function (c) {
+						var id = parseInt(c.dataset.id, 10);
+						if (id > 0) ids.push(id);
+					});
+					if (ids.length === 0) return;
+					openDeleteConfirm(ids);
+				});
+			}
+
+			/* ── import CSV ─────────────────────────────────── */
+
+			function parseCSV(text) {
+				var lines = String(text || '').split(/\r?\n/).filter(function (l) { return l.trim() !== ''; });
+				if (lines.length < 2) return [];
+
+				var sep = lines[0].indexOf(';') >= 0 ? ';' : ',';
+				var headers = lines[0].split(sep).map(function (h) { return h.trim().toLowerCase().replace(/['"]/g, ''); });
+
+				var rows = [];
+				for (var i = 1; i < lines.length; i++) {
+					var cols = lines[i].split(sep);
+					var obj = {};
+					headers.forEach(function (key, idx) {
+						obj[key] = (cols[idx] || '').trim().replace(/^["']|["']$/g, '');
+					});
+					if (obj.codigo && obj.descricao) rows.push(obj);
+				}
+				return rows;
+			}
+
+			function updateImportPreview() {
+				var text = importText ? importText.value : '';
+				parsedImportRows = parseCSV(text);
+				if (importPreview) {
+					importPreview.textContent = parsedImportRows.length > 0
+						? parsedImportRows.length + ' linha(s) válida(s) detectada(s).'
+						: text.trim() ? 'Nenhuma linha válida detectada. Verifique o formato.' : '';
+				}
+				if (importSubmitBtn) importSubmitBtn.disabled = parsedImportRows.length === 0;
+			}
+
+			if (importFile) {
+				importFile.addEventListener('change', function () {
+					var file = importFile.files && importFile.files[0];
+					if (!file) return;
+					var reader = new FileReader();
+					reader.onload = function () {
+						if (importText) importText.value = reader.result || '';
+						updateImportPreview();
+					};
+					reader.readAsText(file, 'UTF-8');
+				});
+			}
+
+			if (importText) {
+				importText.addEventListener('input', function () { updateImportPreview(); });
+			}
+
+			if (importBtn) {
+				importBtn.addEventListener('click', function () {
+					if (importText) importText.value = '';
+					if (importFile) importFile.value = '';
+					parsedImportRows = [];
+					if (importPreview) importPreview.textContent = '';
+					if (importSubmitBtn) importSubmitBtn.disabled = true;
+					if (importModal) importModal.show();
+				});
+			}
+
+			if (importSubmitBtn) {
+				importSubmitBtn.addEventListener('click', function () {
+					if (parsedImportRows.length === 0) return;
+					importSubmitBtn.disabled = true;
+
+					fetch(buildEndpoint('/institucional/habilidades/importar'), {
+						method: 'POST',
+						credentials: 'same-origin',
+						headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+						body: JSON.stringify({ linhas: parsedImportRows })
+					})
+					.then(function (r) { return r.json(); })
+					.then(function (data) {
+						importSubmitBtn.disabled = false;
+						if (!data || !data.ok) {
+							showStatus(data && data.message ? data.message : 'Erro na importação.', true);
+							return;
+						}
+						showStatus((data.message || 'Importação concluída.') + (data.total ? ' (' + data.total + ' registros)' : ''));
+						if (importModal) importModal.hide();
+						loadData();
+					})
+					.catch(function () {
+						importSubmitBtn.disabled = false;
+						showStatus('Falha na conexão ao importar.', true);
+					});
+				});
+			}
+
+			/* ── init ───────────────────────────────────────── */
+
+			loadData();
+			}
+
+			if (window.bootstrap && window.bootstrap.Modal) {
+				startPage();
+				return;
+			}
+
+			var bootstrapWaitAttempts = 0;
+			var bootstrapWaitTimer = window.setInterval(function () {
+				bootstrapWaitAttempts += 1;
+
+				if (window.bootstrap && window.bootstrap.Modal) {
+					window.clearInterval(bootstrapWaitTimer);
+					startPage();
+					return;
+				}
+
+				if (bootstrapWaitAttempts >= 200) {
+					window.clearInterval(bootstrapWaitTimer);
+					console.error('Bootstrap nao ficou disponivel para inicializar Cadastro de Habilidades.');
+				}
+			}, 25);
+		})();
+	</script>

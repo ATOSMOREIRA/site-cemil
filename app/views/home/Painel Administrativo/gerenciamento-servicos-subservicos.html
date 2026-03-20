@@ -1,0 +1,205 @@
+<?php
+$csrfToken = (string) ($csrfToken ?? '');
+$adminServices = is_array($adminServices ?? null) ? $adminServices : [];
+$adminSubservices = is_array($adminSubservices ?? null) ? $adminSubservices : [];
+$adminServiceOptions = is_array($adminServiceOptions ?? null) ? $adminServiceOptions : [];
+$baseUrl = rtrim(BASE_URL, '/');
+?>
+
+<section>
+    <p class="text-secondary mb-3">Área para cadastro, edição e exclusão de serviços e subserviços institucionais.</p>
+
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        <button type="button" class="btn btn-danger btn-sm js-admin-service-new">
+            <i class="las la-plus-circle me-1"></i>Novo serviço
+        </button>
+        <button type="button" class="btn btn-outline-danger btn-sm js-admin-subservice-new">
+            <i class="las la-plus-square me-1"></i>Novo subserviço
+        </button>
+        <div class="ms-md-auto w-100 w-md-auto admin-search-wrap">
+            <input type="search" class="form-control form-control-sm" id="adminServicesTableSearch" placeholder="Buscar serviços e subserviços" autocomplete="off">
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-12 col-lg-6">
+            <div class="border rounded h-100">
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Serviço</th>
+                                <th class="text-end">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if ($adminServices === []): ?>
+                            <tr>
+                                <td colspan="2" class="text-center text-secondary py-3">Nenhum serviço cadastrado.</td>
+                            </tr>
+                            <?php endif; ?>
+                            <?php foreach ($adminServices as $service): ?>
+                            <?php $serviceSearch = (string) ($service['nome'] ?? ''); ?>
+                            <tr class="js-admin-services-row" data-search-text="<?= htmlspecialchars($serviceSearch, ENT_QUOTES, 'UTF-8'); ?>">
+                                <td><?= htmlspecialchars((string) ($service['nome'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                                <td class="text-end">
+                                    <button
+                                        type="button"
+                                        class="btn btn-outline-primary btn-sm js-admin-service-edit"
+                                        data-id="<?= (int) ($service['id'] ?? 0); ?>"
+                                        data-nome="<?= htmlspecialchars((string) ($service['nome'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                    >
+                                        Editar
+                                    </button>
+                                    <form method="post" action="<?= $baseUrl; ?>/paineladministrativo/servicos-subservicos/excluir" class="d-inline js-admin-services-delete-form">
+                                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                        <input type="hidden" name="entity" value="servico">
+                                        <input type="hidden" name="id" value="<?= (int) ($service['id'] ?? 0); ?>">
+                                        <button type="button" class="btn btn-outline-danger btn-sm js-admin-services-delete-trigger" data-item-name="<?= htmlspecialchars((string) ($service['nome'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" data-item-type="serviço">Excluir</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="adminServicesTableEmpty" class="alert alert-light border mt-2 mb-0 d-none" role="alert">
+                Nenhum serviço encontrado para a busca.
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-6">
+            <div class="border rounded h-100">
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Subserviço</th>
+                                <th>Serviço</th>
+                                <th class="text-end">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if ($adminSubservices === []): ?>
+                            <tr>
+                                <td colspan="3" class="text-center text-secondary py-3">Nenhum subserviço cadastrado.</td>
+                            </tr>
+                            <?php endif; ?>
+                            <?php foreach ($adminSubservices as $subservice): ?>
+                            <?php $subserviceSearch = implode(' ', [(string) ($subservice['nome'] ?? ''), (string) ($subservice['servico_nome'] ?? '')]); ?>
+                            <tr class="js-admin-subservices-row" data-search-text="<?= htmlspecialchars($subserviceSearch, ENT_QUOTES, 'UTF-8'); ?>">
+                                <td><?= htmlspecialchars((string) ($subservice['nome'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                                <td><?= htmlspecialchars((string) ($subservice['servico_nome'] ?? 'Serviço não encontrado'), ENT_QUOTES, 'UTF-8'); ?></td>
+                                <td class="text-end">
+                                    <button
+                                        type="button"
+                                        class="btn btn-outline-primary btn-sm js-admin-subservice-edit"
+                                        data-table="<?= htmlspecialchars((string) ($subservice['table'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                        data-nome="<?= htmlspecialchars((string) ($subservice['nome'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                        data-servico="<?= (int) ($subservice['servico_id'] ?? 0); ?>"
+                                    >
+                                        Editar
+                                    </button>
+                                    <form method="post" action="<?= $baseUrl; ?>/paineladministrativo/servicos-subservicos/excluir" class="d-inline js-admin-services-delete-form">
+                                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                        <input type="hidden" name="entity" value="subservico">
+                                        <input type="hidden" name="table" value="<?= htmlspecialchars((string) ($subservice['table'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                                        <button type="button" class="btn btn-outline-danger btn-sm js-admin-services-delete-trigger" data-item-name="<?= htmlspecialchars((string) ($subservice['nome'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" data-item-type="subserviço">Excluir</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="adminSubservicesTableEmpty" class="alert alert-light border mt-2 mb-0 d-none" role="alert">
+                Nenhum subserviço encontrado para a busca.
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade admin-user-form-modal" id="adminServiceFormModal" tabindex="-1" data-bs-backdrop="static" aria-labelledby="adminServiceFormModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content site-modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="adminServiceFormModalLabel">Novo serviço</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="adminServiceForm" method="post" action="<?= $baseUrl; ?>/paineladministrativo/servicos-subservicos/salvar">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                        <input type="hidden" name="entity" value="servico">
+                        <input type="hidden" name="id" id="adminServiceId" value="0">
+
+                        <div class="mb-3">
+                            <label class="form-label" for="adminServiceNome">Nome do serviço</label>
+                            <input type="text" class="form-control" id="adminServiceNome" name="nome" required>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-danger btn-sm" id="adminServiceSubmitButton"><i class="las la-save me-1"></i>Salvar serviço</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="adminServiceResetButton"><i class="las la-undo me-1"></i>Limpar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade admin-user-form-modal" id="adminSubserviceFormModal" tabindex="-1" data-bs-backdrop="static" aria-labelledby="adminSubserviceFormModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content site-modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="adminSubserviceFormModalLabel">Novo subserviço</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="adminSubserviceForm" method="post" action="<?= $baseUrl; ?>/paineladministrativo/servicos-subservicos/salvar">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                        <input type="hidden" name="entity" value="subservico">
+                        <input type="hidden" name="table" id="adminSubserviceTable" value="">
+
+                        <div class="mb-2">
+                            <label class="form-label" for="adminSubserviceNome">Nome do subserviço</label>
+                            <input type="text" class="form-control" id="adminSubserviceNome" name="nome" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="adminSubserviceServico">Serviço vinculado</label>
+                            <select class="form-select" id="adminSubserviceServico" name="servico" required>
+                                <option value="">Selecione</option>
+                                <?php foreach ($adminServiceOptions as $serviceOption): ?>
+                                <option value="<?= (int) ($serviceOption['id'] ?? 0); ?>"><?= htmlspecialchars((string) ($serviceOption['nome'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-danger btn-sm" id="adminSubserviceSubmitButton"><i class="las la-save me-1"></i>Salvar subserviço</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="adminSubserviceResetButton"><i class="las la-undo me-1"></i>Limpar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade admin-user-confirm-modal" id="adminServiceSubserviceDeleteConfirmModal" tabindex="-1" data-bs-backdrop="static" aria-labelledby="adminServiceSubserviceDeleteConfirmModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-sm modal-dialog-centered">
+            <div class="modal-content site-modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="adminServiceSubserviceDeleteConfirmModalLabel">Confirmar exclusão</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0" id="adminServiceSubserviceDeleteConfirmText">Deseja realmente excluir este registro?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger btn-sm" id="adminServiceSubserviceDeleteConfirmButton">Excluir</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

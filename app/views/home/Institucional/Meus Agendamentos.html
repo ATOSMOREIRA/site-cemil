@@ -1,0 +1,2478 @@
+<style>
+    .institutional-page-root {
+      background: transparent;
+      color: #212529;
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+    }
+
+    body.modal-open {
+      padding-right: 0 !important;
+      overflow: hidden !important;
+    }
+
+    .shell {
+      flex: 1 1 auto;
+      min-height: 0;
+      width: 90%;
+      max-width: 90%;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: .75rem;
+      padding: .75rem;
+    }
+
+    .meus-page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: .5rem;
+      padding: .2rem 0 .1rem;
+    }
+
+    .meus-header-actions {
+      display: flex;
+      gap: .5rem;
+      flex-wrap: wrap;
+    }
+
+    .institutional-page-root.is-embedded-iframe .meus-agendamentos-title,
+    .institutional-page-root.is-embedded-iframe #btnVoltarMeusAgendamentos {
+      display: none !important;
+    }
+
+    .top-status {
+      position: fixed;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2100;
+      min-width: 280px;
+      max-width: 92vw;
+      border-radius: .5rem;
+      padding: .5rem .85rem;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, .15);
+      font-size: .9rem;
+      font-weight: 500;
+    }
+
+    .top-status.is-success { background: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
+    .top-status.is-error { background: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: .6rem;
+      max-height: 42vh;
+      overflow: auto;
+      padding-right: .1rem;
+    }
+
+    .item-card {
+      border: 1px solid #e9ecef;
+      border-radius: .7rem;
+      background: #fff;
+      padding: .55rem;
+      display: grid;
+      grid-template-columns: 82px minmax(0, 1fr);
+      gap: .5rem;
+      min-height: 104px;
+    }
+
+    .item-card-media {
+      width: 82px;
+      height: 82px;
+      border: 1px solid #e6e9ed;
+      border-radius: .55rem;
+      background: #f8f9fa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .item-card-media img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .item-card-media .las {
+      color: #adb5bd;
+      font-size: 1.1rem;
+    }
+
+    .item-card-content {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: .3rem;
+    }
+
+    .table-wrap {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: auto;
+    }
+
+    #tabsMinhasReservas {
+      flex-wrap: wrap;
+      overflow: visible;
+      scrollbar-width: none;
+    }
+
+    #tabsMinhasReservas .nav-item {
+      flex: 0 0 auto;
+    }
+
+    .disponibilidade-box {
+      border: 1px solid #e9ecef;
+      border-radius: .6rem;
+      background: #fff;
+      padding: .6rem .7rem;
+    }
+
+    .disponibilidade-title {
+      font-size: .78rem;
+      font-weight: 700;
+      color: #495057;
+      margin-bottom: .35rem;
+    }
+
+    .disponibilidade-list {
+      max-height: 140px;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: .25rem;
+    }
+
+    .disponibilidade-item {
+      border: 1px solid #edf0f2;
+      border-radius: .45rem;
+      padding: .28rem .4rem;
+      font-size: .78rem;
+      background: #f8f9fa;
+    }
+
+    .disponibilidade-empty {
+      font-size: .78rem;
+      color: #198754;
+      font-weight: 600;
+    }
+
+    .disponibilidade-loading {
+      font-size: .78rem;
+      color: #6c757d;
+    }
+
+    .modal-minha-reserva .modal-dialog {
+      width: calc(100vw - 1rem);
+      max-width: min(1180px, calc(100vw - 1rem));
+      margin: .5rem auto;
+      height: calc(100vh - 1rem);
+    }
+
+    .modal-minha-reserva .modal-content {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .modal-minha-reserva #formMinhaReserva {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .modal-minha-reserva .modal-header,
+    .modal-minha-reserva .modal-footer {
+      flex: 0 0 auto;
+      background: linear-gradient(180deg, rgba(247, 247, 247, 0.96) 0%, rgba(255, 255, 255, 0.96) 100%);
+      z-index: 2;
+    }
+
+    .modal-minha-reserva .modal-body {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: auto;
+      overflow-x: hidden;
+      padding: .65rem;
+      background: transparent;
+    }
+
+    .scheduler-layout {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      gap: .75rem;
+      align-items: start;
+    }
+
+    .scheduler-side {
+      border: 1px solid #e9ecef;
+      border-radius: .75rem;
+      background: #fff;
+      padding: .6rem;
+    }
+
+    .scheduler-month-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .35rem;
+      margin-bottom: .55rem;
+      font-weight: 600;
+      font-size: .88rem;
+    }
+
+    #schedulerMonthLabel {
+      flex: 1 1 auto;
+      min-width: 0;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-transform: lowercase;
+      line-height: 1.2;
+    }
+
+    #schedulerPrevMonth,
+    #schedulerNextMonth {
+      flex: 0 0 30px;
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: .45rem;
+    }
+
+    .scheduler-mini-weekdays,
+    .scheduler-mini-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: .25rem;
+    }
+
+    .scheduler-mini-weekdays {
+      margin-bottom: .3rem;
+      color: #6c757d;
+      font-size: .7rem;
+      text-align: center;
+      font-weight: 600;
+    }
+
+    .scheduler-mini-day {
+      border: 0;
+      background: #fff;
+      border-radius: 999px;
+      width: 28px;
+      height: 28px;
+      margin: 0 auto;
+      font-size: .74rem;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #212529;
+      cursor: pointer;
+    }
+
+    .scheduler-mini-day:hover {
+      background: #eef2ff;
+    }
+
+    .scheduler-mini-day.is-selected {
+      background: #0d6efd;
+      color: #fff;
+    }
+
+    .scheduler-mini-day.is-outside {
+      color: #adb5bd;
+    }
+
+    .scheduler-mini-day.is-past {
+      color: #adb5bd;
+      text-decoration: line-through;
+      cursor: not-allowed;
+    }
+
+    .scheduler-main {
+      border: 1px solid #e9ecef;
+      border-radius: .75rem;
+      background: #fff;
+      padding: .6rem;
+      min-height: 350px;
+    }
+
+    .scheduler-main-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .5rem;
+      margin-bottom: .4rem;
+    }
+
+    .scheduler-title {
+      font-size: .92rem;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .scheduler-timezone {
+      font-size: .7rem;
+      color: #6c757d;
+    }
+
+    .scheduler-week-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: .35rem;
+      overflow-x: hidden;
+      padding-bottom: .2rem;
+    }
+
+    .scheduler-day-col {
+      min-width: 0;
+    }
+
+    .scheduler-day-head {
+      text-align: center;
+      margin-bottom: .35rem;
+    }
+
+    .scheduler-day-head.is-unavailable {
+      opacity: .7;
+    }
+
+    .scheduler-day-weekday {
+      font-size: .7rem;
+      color: #6c757d;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .02em;
+    }
+
+    .scheduler-day-weekday.is-unavailable {
+      text-decoration: line-through;
+    }
+
+    .scheduler-day-date {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #212529;
+      line-height: 1.1;
+    }
+
+    .scheduler-day-date.is-past {
+      color: #adb5bd;
+      text-decoration: line-through;
+    }
+
+    .scheduler-slot-list {
+      display: flex;
+      flex-direction: column;
+      gap: .3rem;
+    }
+
+    .scheduler-slot-btn {
+      border-radius: 999px;
+      width: 100%;
+      font-size: .78rem;
+      line-height: 1.15;
+      padding: .24rem .25rem;
+      min-height: 30px;
+    }
+
+    .scheduler-slot-btn.is-unavailable {
+      text-decoration: line-through;
+    }
+
+    .scheduler-slot-btn.is-occupied {
+      color: #dc3545;
+      border-color: #dc3545;
+      background: #fff;
+      opacity: .75;
+    }
+
+    .scheduler-slot-btn.is-multi-selected {
+      background: #0d6efd;
+      border-color: #0d6efd;
+      color: #fff;
+    }
+
+    .scheduler-slot-empty {
+      color: #adb5bd;
+      text-align: center;
+      padding: .35rem 0;
+      font-weight: 700;
+    }
+
+    .scheduler-slot-empty.is-unavailable {
+      text-decoration: line-through;
+    }
+
+    .manual-fields {
+      display: none;
+    }
+
+    @media (max-width: 992px) {
+      .modal-minha-reserva .modal-dialog {
+        width: calc(100vw - .75rem);
+        max-width: calc(100vw - .75rem);
+        margin: .375rem auto;
+        height: calc(100vh - .75rem);
+      }
+
+      .scheduler-layout {
+        grid-template-columns: 1fr;
+      }
+
+      #schedulerMonthLabel {
+        font-size: .9rem;
+      }
+
+      .scheduler-main {
+        min-height: 0;
+      }
+
+      .scheduler-week-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 1200px) {
+      .cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 768px) {
+      .institutional-page-root {
+        height: auto;
+        min-height: 100vh;
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
+
+      .shell {
+        width: 100%;
+        max-width: 100%;
+        padding: .5rem;
+        gap: .5rem;
+      }
+
+      .meus-page-header {
+        align-items: stretch;
+      }
+
+      .meus-page-header h1 {
+        width: 100%;
+        font-size: 1.05rem;
+      }
+
+      .meus-header-actions {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        position: sticky;
+        top: calc(var(--header-height, 64px) + .35rem);
+        z-index: 15;
+        background: rgba(255, 255, 255, 0.98);
+        padding: .2rem 0 .35rem;
+      }
+
+      .meus-header-actions .btn {
+        width: 100%;
+      }
+
+      .institutional-page-root.is-embedded-iframe .meus-header-actions {
+        top: 0;
+      }
+
+      .cards-grid { grid-template-columns: 1fr; }
+      .item-card {
+        grid-template-columns: 88px minmax(0, 1fr);
+        grid-template-areas:
+          "media content"
+          "media action";
+        align-items: stretch;
+        text-align: left;
+        min-height: 104px;
+        padding: .4rem;
+      }
+      .item-card-media {
+        grid-area: media;
+        width: 88px;
+        height: auto;
+        min-height: 100%;
+        align-self: stretch;
+      }
+      .item-card-content {
+        grid-area: content;
+        width: 100%;
+        align-items: flex-start;
+        justify-content: center;
+        text-align: left;
+      }
+      .item-card-content .mt-auto {
+        grid-area: action;
+        margin-top: .45rem !important;
+        width: 100%;
+        text-align: center;
+        align-self: end;
+      }
+
+      #tabsMinhasReservas {
+        flex-wrap: wrap;
+        overflow: visible;
+      }
+
+      .table-wrap {
+        overflow-y: visible !important;
+        overflow-x: hidden !important;
+        max-height: none;
+      }
+
+      #tabelaMinhasReservas thead {
+        display: none;
+      }
+
+      #tabelaMinhasReservas,
+      #tabelaMinhasReservas tbody,
+      #tabelaMinhasReservas tr,
+      #tabelaMinhasReservas td {
+        display: block;
+        width: 100%;
+      }
+
+      #tabelaMinhasReservas tr {
+        border: 1px solid #e9ecef;
+        border-radius: .6rem;
+        background: #fff;
+        padding: .45rem .55rem;
+        margin-bottom: .45rem;
+      }
+
+      #tabelaMinhasReservas td {
+        border: 0;
+        border-bottom: 1px dashed #eef1f4;
+        padding: .35rem 0;
+      }
+
+      #tabelaMinhasReservas td:last-child {
+        border-bottom: 0;
+        padding-bottom: 0;
+      }
+
+      #tabelaMinhasReservas td::before {
+        content: attr(data-label);
+        display: block;
+        font-size: .72rem;
+        color: #6c757d;
+        font-weight: 700;
+        margin-bottom: .12rem;
+      }
+
+      #tabelaMinhasReservas td[colspan] {
+        text-align: center;
+        padding: .55rem 0;
+      }
+
+      #tabelaMinhasReservas td[colspan]::before {
+        content: none;
+      }
+
+      #tabelaMinhasReservas td.text-end {
+        text-align: left !important;
+      }
+
+      #tabelaMinhasReservas td.text-end .btn {
+        min-width: 34px;
+      }
+
+      .scheduler-week-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: .3rem;
+      }
+
+      .scheduler-day-weekday {
+        font-size: .66rem;
+      }
+
+      .scheduler-day-date {
+        font-size: .92rem;
+      }
+
+      .scheduler-slot-btn {
+        font-size: .74rem;
+        min-height: 28px;
+        border-radius: 14px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .scheduler-week-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+  </style>
+  <div id="statusMeusAgendamentos" class="top-status d-none" role="alert" aria-live="polite"></div>
+
+  <div class="shell institutional-page-root">
+    <div class="meus-page-header">
+      <h1 class="h5 fw-bold mb-0 meus-agendamentos-title">Meus Agendamentos</h1>
+      <div class="meus-header-actions">
+        <button type="button" class="btn btn-danger btn-sm" id="btnNovoAgendamento"><i class="las la-calendar-plus me-1"></i>Novo agendamento</button>
+        <a id="btnVoltarMeusAgendamentos" href="#" class="btn btn-outline-secondary btn-sm"><i class="las la-arrow-left me-1"></i>Voltar</a>
+      </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white d-flex align-items-center justify-content-between gap-2 flex-wrap">
+        <strong>Itens disponíveis</strong>
+      </div>
+      <div class="card-body">
+        <div id="itensCards" class="cards-grid"></div>
+      </div>
+    </div>
+
+    <div class="card border-0 shadow-sm d-flex flex-column flex-grow-1 min-vh-0">
+      <div class="card-header bg-white">
+        <ul class="nav nav-tabs card-header-tabs" id="tabsMinhasReservas" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tabMinhasReservasAtivas" type="button" role="tab" data-scope="ativas">Vigentes e futuros</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tabMinhasReservasHistorico" type="button" role="tab" data-scope="historico">Histórico</button>
+          </li>
+        </ul>
+      </div>
+      <div class="card-body p-2 table-wrap">
+        <table class="table table-sm mb-0" id="tabelaMinhasReservas">
+          <thead>
+            <tr>
+              <th>Período</th>
+              <th>Item</th>
+              <th>Responsável</th>
+              <th>Observação</th>
+              <th class="text-end">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="minhasReservasBody">
+            <tr><td colspan="5" class="text-center text-secondary py-3">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade modal-minha-reserva" id="modalMinhaReserva" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content site-modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title fs-5" id="modalMinhaReservaTitulo">Novo agendamento</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <form id="formMinhaReserva" novalidate>
+          <div class="modal-body">
+            <input type="hidden" id="minhaReservaId" value="0">
+            <div class="mb-3">
+              <label class="form-label" for="minhaReservaItem">Item</label>
+              <select id="minhaReservaItem" class="form-select" required></select>
+            </div>
+
+            <div class="scheduler-layout mb-3" id="schedulerLayoutMinhaReserva">
+              <aside class="scheduler-side">
+                <div class="scheduler-month-head">
+                  <button type="button" class="btn btn-light btn-sm" id="schedulerPrevMonth" aria-label="Mês anterior"><i class="las la-angle-left"></i></button>
+                  <span id="schedulerMonthLabel">Mês</span>
+                  <button type="button" class="btn btn-light btn-sm" id="schedulerNextMonth" aria-label="Próximo mês"><i class="las la-angle-right"></i></button>
+                </div>
+                <div class="scheduler-mini-weekdays">
+                  <span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span>
+                </div>
+                <div id="schedulerMiniCalendar" class="scheduler-mini-grid"></div>
+              </aside>
+
+              <section class="scheduler-main">
+                <div class="scheduler-main-head">
+                  <div>
+                    <p class="scheduler-title">Selecione um horário</p>
+                    <div class="small text-secondary" id="schedulerSelectedInfo"></div>
+                  </div>
+                  <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-light btn-sm" id="schedulerPrevWeek" aria-label="Semana anterior"><i class="las la-angle-left"></i></button>
+                    <button type="button" class="btn btn-light btn-sm" id="schedulerNextWeek" aria-label="Próxima semana"><i class="las la-angle-right"></i></button>
+                  </div>
+                </div>
+                <div class="scheduler-timezone">(GMT-03:00) Horário Padrão de Brasília - São Paulo</div>
+                <div id="schedulerWeekGrid" class="scheduler-week-grid mt-2"></div>
+              </section>
+            </div>
+
+            <div class="row g-2 mb-3 manual-fields">
+              <div class="col-6">
+                <label class="form-label" for="minhaReservaData">Data</label>
+                <input type="date" class="form-control" id="minhaReservaData" required>
+              </div>
+              <div class="col-6">
+                <label class="form-label" for="minhaReservaDataFim">Data fim</label>
+                <input type="date" class="form-control" id="minhaReservaDataFim">
+              </div>
+              <div class="col-6">
+                <label class="form-label" for="minhaReservaHoraInicio">Início</label>
+                <input type="time" class="form-control" id="minhaReservaHoraInicio" required>
+              </div>
+              <div class="col-6">
+                <label class="form-label" for="minhaReservaHoraFim">Fim</label>
+                <input type="time" class="form-control" id="minhaReservaHoraFim">
+              </div>
+            </div>
+            <div class="mb-3 disponibilidade-box">
+              <div class="disponibilidade-title">Horários ocupados do item no período</div>
+              <div id="minhaReservaDisponibilidade" class="disponibilidade-loading">Selecione item e data para ver disponibilidade.</div>
+            </div>
+            <div class="form-text mb-3 d-none" id="minhaReservaRestricaoAviso">Nesta edição você pode alterar apenas a observação ou excluir a reserva.</div>
+            <div>
+              <label class="form-label" for="minhaReservaObservacao">Observação</label>
+              <input type="text" class="form-control" id="minhaReservaObservacao" maxlength="500">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-danger btn-sm" id="btnSalvarMinhaReserva">Salvar</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modalConfirmarExclusaoMinhaReserva" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content site-modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title fs-5">Confirmar exclusão</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          Deseja realmente excluir esta reserva?
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger btn-sm" id="btnConfirmarExclusaoMinhaReserva">Excluir</button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      function startPage() {
+      var isEmbeddedIframe = window.parent !== window;
+      var pageRoot = document.querySelector('.institutional-page-root');
+      if (isEmbeddedIframe) {
+        if (pageRoot) {
+          pageRoot.classList.add('is-embedded-iframe');
+        }
+      }
+
+      var statusEl = document.getElementById('statusMeusAgendamentos');
+      var itensCards = document.getElementById('itensCards');
+      var minhasReservasBody = document.getElementById('minhasReservasBody');
+      var tabsMinhasReservas = document.getElementById('tabsMinhasReservas');
+      var btnNovoAgendamento = document.getElementById('btnNovoAgendamento');
+      var btnVoltar = document.getElementById('btnVoltarMeusAgendamentos');
+
+      var modalElement = document.getElementById('modalMinhaReserva');
+      var modalMinhaReserva = new bootstrap.Modal(modalElement);
+      var modalConfirmarExclusaoElement = document.getElementById('modalConfirmarExclusaoMinhaReserva');
+      var modalConfirmarExclusao = modalConfirmarExclusaoElement ? new bootstrap.Modal(modalConfirmarExclusaoElement) : null;
+      var formMinhaReserva = document.getElementById('formMinhaReserva');
+      var minhaReservaIdInput = document.getElementById('minhaReservaId');
+      var minhaReservaItemInput = document.getElementById('minhaReservaItem');
+      var minhaReservaDataInput = document.getElementById('minhaReservaData');
+      var minhaReservaDataFimInput = document.getElementById('minhaReservaDataFim');
+      var minhaReservaHoraInicioInput = document.getElementById('minhaReservaHoraInicio');
+      var minhaReservaHoraFimInput = document.getElementById('minhaReservaHoraFim');
+      var minhaReservaObservacaoInput = document.getElementById('minhaReservaObservacao');
+      var minhaReservaRestricaoAviso = document.getElementById('minhaReservaRestricaoAviso');
+      var minhaReservaDisponibilidade = document.getElementById('minhaReservaDisponibilidade');
+      var modalMinhaReservaTitulo = document.getElementById('modalMinhaReservaTitulo');
+      var btnSalvarMinhaReserva = document.getElementById('btnSalvarMinhaReserva');
+      var btnConfirmarExclusaoMinhaReserva = document.getElementById('btnConfirmarExclusaoMinhaReserva');
+      var schedulerLayoutMinhaReserva = document.getElementById('schedulerLayoutMinhaReserva');
+      var schedulerPrevMonthBtn = document.getElementById('schedulerPrevMonth');
+      var schedulerNextMonthBtn = document.getElementById('schedulerNextMonth');
+      var schedulerMonthLabel = document.getElementById('schedulerMonthLabel');
+      var schedulerMiniCalendar = document.getElementById('schedulerMiniCalendar');
+      var schedulerSelectedInfo = document.getElementById('schedulerSelectedInfo');
+      var schedulerPrevWeekBtn = document.getElementById('schedulerPrevWeek');
+      var schedulerNextWeekBtn = document.getElementById('schedulerNextWeek');
+      var schedulerWeekGrid = document.getElementById('schedulerWeekGrid');
+
+      var state = {
+        itens: [],
+        reservas: [],
+        escopo: 'ativas',
+        disponibilidadeReservas: [],
+        tempSelectionOwnerToken: '',
+        schedulerMonth: '',
+        schedulerSelectedDate: '',
+        schedulerViewStartDate: '',
+        schedulerSelectedTime: '',
+        schedulerSelectedSlots: [],
+      };
+
+      var editOnlyObservationMode = false;
+      var pendingDeleteReservaId = 0;
+
+      var openModalCount = 0;
+      var lockSyncInFlight = false;
+      var lockSyncQueued = false;
+      var realtimeAvailabilityTimer = null;
+
+      function notifyParentModalState(isOpen) {
+        if (!isEmbeddedIframe) {
+          return;
+        }
+
+        try {
+          window.parent.postMessage({ type: 'cemil:iframe-modal-state', isOpen: Boolean(isOpen) }, '*');
+        } catch (error) {
+        }
+      }
+
+      function bindParentModalNotifier(modalNode) {
+        if (!(modalNode instanceof HTMLElement)) {
+          return;
+        }
+
+        modalNode.addEventListener('hide.bs.modal', function () {
+          var activeElement = document.activeElement;
+          if (activeElement instanceof HTMLElement && modalNode.contains(activeElement)) {
+            activeElement.blur();
+          }
+        });
+
+        modalNode.addEventListener('show.bs.modal', function () {
+          openModalCount += 1;
+          if (openModalCount === 1) {
+            notifyParentModalState(true);
+          }
+        });
+
+        modalNode.addEventListener('hidden.bs.modal', function () {
+          openModalCount = Math.max(0, openModalCount - 1);
+          if (openModalCount === 0) {
+            notifyParentModalState(false);
+          }
+        });
+      }
+
+      bindParentModalNotifier(modalElement);
+      bindParentModalNotifier(modalConfirmarExclusaoElement);
+
+      window.addEventListener('beforeunload', function () {
+        if (openModalCount > 0) {
+          notifyParentModalState(false);
+        }
+
+        releaseCurrentTemporarySelection({ preferBeacon: true });
+      });
+
+      function resolveBasePath() {
+        var pathname = String(window.location.pathname || '');
+        var indexPos = pathname.indexOf('/index.php/');
+        if (indexPos >= 0) {
+          return pathname.slice(0, indexPos) + '/index.php';
+        }
+
+        return '';
+      }
+
+      function endpoint(path) {
+        return resolveBasePath() + String(path || '');
+      }
+
+      function absoluteAssetUrl(relativePath) {
+        var normalized = String(relativePath || '').trim().replace(/\\/g, '/').replace(/^\/+/, '');
+        if (normalized === '') {
+          return '';
+        }
+
+        var base = resolveBasePath();
+        if (base === '') {
+          return '/' + normalized;
+        }
+
+        var indexPos = base.lastIndexOf('/index.php');
+        if (indexPos >= 0) {
+          return base.slice(0, indexPos + 1) + normalized;
+        }
+
+        return base.replace(/\/$/, '') + '/' + normalized;
+      }
+
+      function escapeHtml(value) {
+        return String(value || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+
+      function createTemporarySelectionOwnerToken() {
+        var storageKey = 'cemil:meus-agendamentos:owner-token';
+
+        try {
+          var existingToken = window.sessionStorage ? String(window.sessionStorage.getItem(storageKey) || '').trim() : '';
+          if (existingToken !== '') {
+            return existingToken;
+          }
+        } catch (error) {
+        }
+
+        var token = '';
+        if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+          token = 'tmp:' + window.crypto.randomUUID();
+        } else {
+          token = 'tmp:' + String(Date.now()) + ':' + String(Math.random()).slice(2);
+        }
+
+        token = token.replace(/[^a-zA-Z0-9:_-]/g, '').slice(0, 96);
+
+        try {
+          if (window.sessionStorage) {
+            window.sessionStorage.setItem(storageKey, token);
+          }
+        } catch (error) {
+        }
+
+        return token;
+      }
+
+      function isMinhaReservaModalOpen() {
+        return modalElement instanceof HTMLElement && modalElement.classList.contains('show');
+      }
+
+      function stopRealtimeAvailabilityLoop() {
+        if (realtimeAvailabilityTimer !== null) {
+          window.clearInterval(realtimeAvailabilityTimer);
+          realtimeAvailabilityTimer = null;
+        }
+      }
+
+      function buildSelectedTemporaryLockPayload() {
+        if (editOnlyObservationMode) {
+          return [];
+        }
+
+        return getSortedSelectedSlots().map(function (slot) {
+          var startDate = buildDateTimeFromIsoAndTime(slot.date, slot.time);
+          if (!(startDate instanceof Date) || Number.isNaN(startDate.getTime())) {
+            return null;
+          }
+
+          var endDate = new Date(startDate.getTime() + (60 * 60 * 1000));
+          return {
+            inicio: slot.date + ' ' + slot.time + ':00',
+            fim: isoFromDate(endDate) + ' ' + String(endDate.getHours()).padStart(2, '0') + ':' + String(endDate.getMinutes()).padStart(2, '0') + ':00'
+          };
+        }).filter(function (slot) {
+          return slot !== null;
+        });
+      }
+
+      function removeRejectedTemporarySlots(rejectedSlots) {
+        if (!Array.isArray(rejectedSlots) || !rejectedSlots.length) {
+          return 0;
+        }
+
+        var rejectedMap = {};
+        rejectedSlots.forEach(function (slot) {
+          var inicio = String(slot && slot.inicio ? slot.inicio : '').trim();
+          if (inicio.length >= 16) {
+            rejectedMap[inicio.slice(0, 16)] = true;
+          }
+        });
+
+        var before = Array.isArray(state.schedulerSelectedSlots) ? state.schedulerSelectedSlots.length : 0;
+        state.schedulerSelectedSlots = (Array.isArray(state.schedulerSelectedSlots) ? state.schedulerSelectedSlots : []).filter(function (slot) {
+          return !rejectedMap[String(slot.date || '') + ' ' + String(slot.time || '')];
+        });
+
+        var removed = before - state.schedulerSelectedSlots.length;
+        if (removed > 0) {
+          if (state.schedulerSelectedSlots.length > 0) {
+            state.schedulerSelectedDate = state.schedulerSelectedSlots[0].date;
+            state.schedulerSelectedTime = state.schedulerSelectedSlots[0].time;
+          }
+          setFormFromSelectedSlots();
+        }
+
+        return removed;
+      }
+
+      function releaseCurrentTemporarySelection(options) {
+        options = options || {};
+        if (!state.tempSelectionOwnerToken) {
+          return Promise.resolve();
+        }
+
+        var formData = new FormData();
+        formData.append('owner_token', state.tempSelectionOwnerToken);
+
+        if (options.preferBeacon && navigator.sendBeacon) {
+          try {
+            navigator.sendBeacon(endpoint('/institucional/meus-agendamentos/locks/release'), formData);
+            return Promise.resolve();
+          } catch (error) {
+          }
+        }
+
+        return fetch(endpoint('/institucional/meus-agendamentos/locks/release'), {
+          method: 'POST',
+          body: formData,
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        }).catch(function () {
+          return null;
+        });
+      }
+
+      function syncTemporarySelectionLocks(options) {
+        options = options || {};
+
+        if (!state.tempSelectionOwnerToken) {
+          return Promise.resolve(null);
+        }
+
+        if (lockSyncInFlight) {
+          lockSyncQueued = true;
+          return Promise.resolve(null);
+        }
+
+        lockSyncInFlight = true;
+
+        var formData = new FormData();
+        formData.append('owner_token', state.tempSelectionOwnerToken);
+        formData.append('item_id', String(Number(minhaReservaItemInput.value || 0)));
+        formData.append('ignore_id', String(Number(minhaReservaIdInput.value || 0)));
+        formData.append('slots_json', JSON.stringify(buildSelectedTemporaryLockPayload()));
+
+        return fetch(endpoint('/institucional/meus-agendamentos/locks/sync'), {
+          method: 'POST',
+          body: formData,
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+          .then(function (response) {
+            return response.json().catch(function () { return { ok: false, message: 'Resposta inválida do servidor.' }; })
+              .then(function (payload) {
+                if (!response.ok || !payload.ok) {
+                  throw new Error(payload.message || 'Erro ao sincronizar seleção temporária.');
+                }
+                return payload;
+              });
+          })
+          .then(function (payload) {
+            var rejectedSlots = Array.isArray(payload.data && payload.data.rejected_slots) ? payload.data.rejected_slots : [];
+            var removed = removeRejectedTemporarySlots(rejectedSlots);
+            if (removed > 0) {
+              renderMiniCalendar();
+              renderSchedulerWeek();
+              if (!options.silent) {
+                showStatus(removed + ' horário(s) não puderam ser mantidos porque outro usuário os selecionou ou reservou.', true);
+              }
+            }
+
+            return payload;
+          })
+          .catch(function (error) {
+            if (!options.silent) {
+              showStatus(error && error.message ? error.message : 'Não foi possível sincronizar a seleção temporária.', true);
+            }
+            return null;
+          })
+          .finally(function () {
+            lockSyncInFlight = false;
+            if (lockSyncQueued) {
+              lockSyncQueued = false;
+              syncTemporarySelectionLocks({ silent: true });
+            }
+          });
+      }
+
+      function runRealtimeAvailabilityTick() {
+        if (!isMinhaReservaModalOpen()) {
+          return;
+        }
+
+        syncTemporarySelectionLocks({ silent: true }).finally(function () {
+          refreshDisponibilidade(true);
+        });
+      }
+
+      function startRealtimeAvailabilityLoop() {
+        stopRealtimeAvailabilityLoop();
+        runRealtimeAvailabilityTick();
+        realtimeAvailabilityTimer = window.setInterval(runRealtimeAvailabilityTick, 4000);
+      }
+
+      state.tempSelectionOwnerToken = createTemporarySelectionOwnerToken();
+
+      function todayIso() {
+        var now = new Date();
+        var month = String(now.getMonth() + 1).padStart(2, '0');
+        var day = String(now.getDate()).padStart(2, '0');
+        return now.getFullYear() + '-' + month + '-' + day;
+      }
+
+      var schedulerTimes = ['07:20', '08:20', '09:20', '10:20', '11:20', '12:20', '13:20', '14:20', '15:20', '16:20'];
+      var schedulerWeekdaysShort = ['DOM.', 'SEG.', 'TER.', 'QUA.', 'QUI.', 'SEX.', 'SÁB.'];
+
+      function parseIsoDate(isoDate) {
+        var value = String(isoDate || '').trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+          return null;
+        }
+
+        var date = new Date(value + 'T00:00:00');
+        return Number.isNaN(date.getTime()) ? null : date;
+      }
+
+      function isoFromDate(date) {
+        if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+          return '';
+        }
+
+        return date.getFullYear()
+          + '-' + String(date.getMonth() + 1).padStart(2, '0')
+          + '-' + String(date.getDate()).padStart(2, '0');
+      }
+
+      function addDaysIso(isoDate, days) {
+        var base = parseIsoDate(isoDate);
+        if (base === null) {
+          base = parseIsoDate(todayIso());
+        }
+        if (base === null) {
+          return todayIso();
+        }
+
+        var next = new Date(base.getFullYear(), base.getMonth(), base.getDate() + Number(days || 0));
+        return isoFromDate(next);
+      }
+
+      function monthKeyFromIso(isoDate) {
+        var date = parseIsoDate(isoDate);
+        if (date === null) {
+          date = new Date();
+        }
+
+        return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
+      }
+
+      function firstDayFromMonthKey(monthKey) {
+        var value = String(monthKey || '').trim();
+        if (!/^\d{4}-\d{2}$/.test(value)) {
+          return parseIsoDate(todayIso());
+        }
+
+        var date = new Date(value + '-01T00:00:00');
+        return Number.isNaN(date.getTime()) ? parseIsoDate(todayIso()) : date;
+      }
+
+      function formatMonthLabel(monthKey) {
+        var date = firstDayFromMonthKey(monthKey);
+        if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+          return '';
+        }
+
+        return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+      }
+
+      function isWeekendIso(isoDate) {
+        var date = parseIsoDate(isoDate);
+        if (date === null) {
+          return false;
+        }
+
+        var day = date.getDay();
+        return day === 0;
+      }
+
+      function isPastIsoDate(isoDate) {
+        var normalized = String(isoDate || '').trim();
+        if (parseIsoDate(normalized) === null) {
+          return false;
+        }
+
+        return normalized < todayIso();
+      }
+
+      function isPastSlot(dateIso, timeValue) {
+        var slotDateTime = buildDateTimeFromIsoAndTime(dateIso, timeValue);
+        if (!(slotDateTime instanceof Date) || Number.isNaN(slotDateTime.getTime())) {
+          return false;
+        }
+
+        return slotDateTime.getTime() <= Date.now();
+      }
+
+      function slotKey(dateIso, timeValue) {
+        return String(dateIso || '').trim() + ' ' + String(timeValue || '').trim();
+      }
+
+      function slotFromKey(key) {
+        var parts = String(key || '').split(' ');
+        if (parts.length !== 2) {
+          return null;
+        }
+
+        return {
+          date: parts[0],
+          time: parts[1],
+        };
+      }
+
+      function toDateTimeFromSlot(slot) {
+        if (!slot || typeof slot !== 'object') {
+          return null;
+        }
+
+        return buildDateTimeFromIsoAndTime(slot.date, slot.time);
+      }
+
+      function getSortedSelectedSlots() {
+        var slots = Array.isArray(state.schedulerSelectedSlots) ? state.schedulerSelectedSlots.slice() : [];
+        slots.sort(function (left, right) {
+          var leftDate = toDateTimeFromSlot(left);
+          var rightDate = toDateTimeFromSlot(right);
+          var leftTime = leftDate instanceof Date ? leftDate.getTime() : 0;
+          var rightTime = rightDate instanceof Date ? rightDate.getTime() : 0;
+          return leftTime - rightTime;
+        });
+        return slots;
+      }
+
+      function setFormFromSelectedSlots() {
+        var sorted = getSortedSelectedSlots();
+        if (!sorted.length) {
+          minhaReservaHoraInicioInput.value = '';
+          minhaReservaHoraFimInput.value = '';
+          return;
+        }
+
+        var first = sorted[0];
+        var firstDateTime = toDateTimeFromSlot(first);
+        if (!(firstDateTime instanceof Date) || Number.isNaN(firstDateTime.getTime())) {
+          return;
+        }
+
+        var endDateTime = new Date(firstDateTime.getTime() + (60 * 60 * 1000));
+
+        minhaReservaDataInput.value = first.date;
+        minhaReservaDataFimInput.value = first.date;
+        minhaReservaHoraInicioInput.value = first.time;
+        minhaReservaHoraFimInput.value = String(endDateTime.getHours()).padStart(2, '0') + ':' + String(endDateTime.getMinutes()).padStart(2, '0');
+      }
+
+      function pruneUnavailableSelectedSlots() {
+        if (editOnlyObservationMode) {
+          return 0;
+        }
+
+        var currentSlots = Array.isArray(state.schedulerSelectedSlots) ? state.schedulerSelectedSlots.slice() : [];
+        if (!currentSlots.length) {
+          return 0;
+        }
+
+        var keptSlots = [];
+        var removedCount = 0;
+
+        for (var i = 0; i < currentSlots.length; i += 1) {
+          var slot = currentSlots[i];
+          var slotDate = String(slot && slot.date ? slot.date : '').trim();
+          var slotTime = String(slot && slot.time ? slot.time : '').trim();
+          if (slotDate === '' || slotTime === '') {
+            continue;
+          }
+
+          var isUnavailable = getOccupiedReservaForSlot(slotDate, slotTime) !== null;
+          if (isUnavailable) {
+            removedCount += 1;
+            continue;
+          }
+
+          keptSlots.push({ date: slotDate, time: slotTime });
+        }
+
+        if (removedCount > 0) {
+          state.schedulerSelectedSlots = keptSlots;
+          if (keptSlots.length > 0) {
+            state.schedulerSelectedDate = keptSlots[0].date;
+            state.schedulerSelectedTime = keptSlots[0].time;
+          }
+          setFormFromSelectedSlots();
+        }
+
+        return removedCount;
+      }
+
+      function hasSelectedSlot(dateIso, timeValue) {
+        var key = slotKey(dateIso, timeValue);
+        var slots = Array.isArray(state.schedulerSelectedSlots) ? state.schedulerSelectedSlots : [];
+        for (var i = 0; i < slots.length; i += 1) {
+          if (slotKey(slots[i].date, slots[i].time) === key) {
+            return true;
+          }
+        }
+
+        return false;
+      }
+
+      function toggleSchedulerSlot(dateIso, timeValue) {
+        var normalizedDate = String(dateIso || '').trim();
+        var normalizedTime = String(timeValue || '').trim();
+        if (parseIsoDate(normalizedDate) === null || !/^\d{2}:\d{2}$/.test(normalizedTime)) {
+          return;
+        }
+
+        if (isPastIsoDate(normalizedDate)) {
+          showStatus('Não é permitido agendar datas no passado.', true);
+          return;
+        }
+
+        if (isPastSlot(normalizedDate, normalizedTime)) {
+          showStatus('Não é permitido agendar horários passados.', true);
+          return;
+        }
+
+        var occupiedReserva = getOccupiedReservaForSlot(normalizedDate, normalizedTime);
+        if (occupiedReserva !== null) {
+          showStatus('Esse horário já está ocupado.', true);
+          return;
+        }
+
+        var currentSlots = Array.isArray(state.schedulerSelectedSlots) ? state.schedulerSelectedSlots.slice() : [];
+        var targetKey = slotKey(normalizedDate, normalizedTime);
+        var nextSlots = [];
+        var removed = false;
+
+        for (var i = 0; i < currentSlots.length; i += 1) {
+          var current = currentSlots[i];
+          var currentKey = slotKey(current.date, current.time);
+          if (currentKey === targetKey) {
+            removed = true;
+            continue;
+          }
+          nextSlots.push(current);
+        }
+
+        if (!removed) {
+          nextSlots.push({ date: normalizedDate, time: normalizedTime });
+        }
+
+        state.schedulerSelectedDate = normalizedDate;
+        state.schedulerSelectedSlots = nextSlots;
+        state.schedulerSelectedTime = normalizedTime;
+        setFormFromSelectedSlots();
+        renderMiniCalendar();
+        renderSchedulerWeek();
+      }
+
+      function setSchedulerSelectedDate(dateIso, shouldRefresh) {
+        var normalized = String(dateIso || '').trim();
+        if (parseIsoDate(normalized) === null) {
+          normalized = todayIso();
+        }
+
+        if (isPastIsoDate(normalized)) {
+          showStatus('Não é permitido agendar datas no passado.', true);
+          return;
+        }
+
+        state.schedulerSelectedDate = normalized;
+        state.schedulerMonth = monthKeyFromIso(normalized);
+        minhaReservaDataInput.value = normalized;
+        minhaReservaDataFimInput.value = normalized;
+
+        if (shouldRefresh !== false) {
+          refreshDisponibilidade();
+        }
+
+        renderMiniCalendar();
+        renderSchedulerWeek();
+      }
+
+      function setSchedulerSelectedSlot(dateIso, timeValue) {
+        toggleSchedulerSlot(dateIso, timeValue);
+      }
+
+      function syncSchedulerFromInputs() {
+        var inputDate = String(minhaReservaDataInput.value || '').trim();
+        var inputTime = String(minhaReservaHoraInicioInput.value || '').trim();
+
+        if (parseIsoDate(inputDate) === null) {
+          inputDate = todayIso();
+          minhaReservaDataInput.value = inputDate;
+        }
+
+        if (!/^\d{2}:\d{2}$/.test(inputTime)) {
+          inputTime = schedulerTimes[0];
+          minhaReservaHoraInicioInput.value = inputTime;
+        }
+
+        state.schedulerSelectedDate = inputDate;
+        state.schedulerMonth = monthKeyFromIso(inputDate);
+        if (parseIsoDate(state.schedulerViewStartDate) === null) {
+          state.schedulerViewStartDate = todayIso();
+        }
+        state.schedulerSelectedTime = inputTime;
+        if (editOnlyObservationMode) {
+          state.schedulerSelectedSlots = [{ date: inputDate, time: inputTime }];
+        } else if (!Array.isArray(state.schedulerSelectedSlots)) {
+          state.schedulerSelectedSlots = [];
+        }
+
+        renderMiniCalendar();
+        renderSchedulerWeek();
+      }
+
+      function renderMiniCalendar() {
+        if (!(schedulerMiniCalendar instanceof HTMLElement)) {
+          return;
+        }
+
+        var monthDate = firstDayFromMonthKey(state.schedulerMonth || monthKeyFromIso(state.schedulerSelectedDate || todayIso()));
+        if (!(monthDate instanceof Date) || Number.isNaN(monthDate.getTime())) {
+          return;
+        }
+
+        state.schedulerMonth = monthDate.getFullYear() + '-' + String(monthDate.getMonth() + 1).padStart(2, '0');
+        if (schedulerMonthLabel) {
+          schedulerMonthLabel.textContent = formatMonthLabel(state.schedulerMonth);
+        }
+
+        var firstWeekday = monthDate.getDay();
+        var daysInMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
+        var prevMonthDays = new Date(monthDate.getFullYear(), monthDate.getMonth(), 0).getDate();
+        var cells = [];
+
+        for (var i = firstWeekday - 1; i >= 0; i -= 1) {
+          var prevDate = new Date(monthDate.getFullYear(), monthDate.getMonth() - 1, prevMonthDays - i);
+          var prevIso = isoFromDate(prevDate);
+          var prevPastClass = isPastIsoDate(prevIso) ? ' is-past' : '';
+          var prevDisabled = isPastIsoDate(prevIso) ? ' disabled' : '';
+          cells.push('<button type="button" class="scheduler-mini-day is-outside' + prevPastClass + '" data-date="' + prevIso + '"' + prevDisabled + '>' + String(prevDate.getDate()) + '</button>');
+        }
+
+        for (var day = 1; day <= daysInMonth; day += 1) {
+          var currentDate = new Date(monthDate.getFullYear(), monthDate.getMonth(), day);
+          var currentIso = isoFromDate(currentDate);
+          var selectedClass = currentIso === state.schedulerSelectedDate ? ' is-selected' : '';
+          var isUnavailableDay = isUnavailableSchedulerDay(currentIso);
+          var pastClass = isUnavailableDay ? ' is-past' : '';
+          var disabled = isUnavailableDay ? ' disabled' : '';
+          cells.push('<button type="button" class="scheduler-mini-day' + selectedClass + pastClass + '" data-date="' + currentIso + '"' + disabled + '>' + String(day) + '</button>');
+        }
+
+        while (cells.length % 7 !== 0 || cells.length < 42) {
+          var offset = cells.length - (firstWeekday + daysInMonth) + 1;
+          var nextDate = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, offset);
+          var nextIso = isoFromDate(nextDate);
+          var nextPastClass = isPastIsoDate(nextIso) ? ' is-past' : '';
+          var nextDisabled = isPastIsoDate(nextIso) ? ' disabled' : '';
+          cells.push('<button type="button" class="scheduler-mini-day is-outside' + nextPastClass + '" data-date="' + nextIso + '"' + nextDisabled + '>' + String(nextDate.getDate()) + '</button>');
+        }
+
+        schedulerMiniCalendar.innerHTML = cells.join('');
+      }
+
+      function renderSchedulerWeek() {
+        if (!(schedulerWeekGrid instanceof HTMLElement)) {
+          return;
+        }
+
+        var startIso = state.schedulerViewStartDate || todayIso();
+        if (parseIsoDate(startIso) === null) {
+          startIso = todayIso();
+          state.schedulerViewStartDate = startIso;
+        }
+        var content = [];
+
+        for (var i = 0; i < 7; i += 1) {
+          var dateIso = addDaysIso(startIso, i);
+          var dateObj = parseIsoDate(dateIso);
+          var weekdayIndex = dateObj instanceof Date ? dateObj.getDay() : 0;
+          var weekday = schedulerWeekdaysShort[weekdayIndex] || '';
+          var dayNumber = dateObj instanceof Date ? String(dateObj.getDate()) : '-';
+          var isWeekend = isWeekendIso(dateIso);
+          var isPastDate = isPastIsoDate(dateIso);
+          var isUnavailableDay = isUnavailableSchedulerDay(dateIso);
+          var slotItems = [];
+
+          if (isWeekend) {
+            for (var j = 0; j < schedulerTimes.length; j += 1) {
+              slotItems.push('<div class="scheduler-slot-empty is-unavailable">—</div>');
+            }
+          } else {
+            for (var timeIndex = 0; timeIndex < schedulerTimes.length; timeIndex += 1) {
+              var slotTime = schedulerTimes[timeIndex];
+              var occupiedReserva = getOccupiedReservaForSlot(dateIso, slotTime);
+              var isOccupied = occupiedReserva !== null;
+              var isPastTimeSlot = isPastSlot(dateIso, slotTime);
+              var isSelectedSlot = hasSelectedSlot(dateIso, slotTime);
+              var slotClass = isSelectedSlot ? 'btn-primary text-white border-0' : 'btn-outline-secondary';
+              if (isSelectedSlot) {
+                slotClass = 'is-multi-selected';
+              }
+              if (isOccupied && !isSelectedSlot) {
+                slotClass = 'btn-outline-danger is-occupied';
+              }
+              if (!isSelectedSlot && (isOccupied || isPastTimeSlot || isPastDate)) {
+                slotClass += ' is-unavailable';
+              }
+              var disabledAttr = (editOnlyObservationMode || isOccupied || isPastDate || isPastTimeSlot) ? ' disabled' : '';
+              var titleAttr = '';
+              if (isOccupied) {
+                var ocupante = escapeHtml(String(occupiedReserva.responsavel_nome || 'Outro responsável'));
+                titleAttr = ' title="Horário ocupado por ' + ocupante + '"';
+              } else if (isPastTimeSlot) {
+                titleAttr = ' title="Não é permitido agendar horários passados."';
+              } else if (isPastDate) {
+                titleAttr = ' title="Não é permitido agendar datas no passado."';
+              }
+              slotItems.push('<button type="button" class="btn btn-sm scheduler-slot-btn ' + slotClass + '" data-slot-date="' + dateIso + '" data-slot-time="' + slotTime + '"' + disabledAttr + titleAttr + '>' + slotTime + '</button>');
+            }
+          }
+
+          content.push(''
+            + '<div class="scheduler-day-col">'
+            +   '<div class="scheduler-day-head' + (isUnavailableDay ? ' is-unavailable' : '') + '">'
+            +     '<div class="scheduler-day-weekday' + (isUnavailableDay ? ' is-unavailable' : '') + '">' + escapeHtml(weekday) + '</div>'
+            +     '<div class="scheduler-day-date' + (isUnavailableDay ? ' is-past' : '') + '">' + escapeHtml(dayNumber) + '</div>'
+            +   '</div>'
+            +   '<div class="scheduler-slot-list">' + slotItems.join('') + '</div>'
+            + '</div>');
+        }
+
+        schedulerWeekGrid.innerHTML = content.join('');
+
+        if (schedulerSelectedInfo) {
+          var displayDate = (state.schedulerSelectedDate || '').split('-');
+          var displayText = 'Data base: ' + (displayDate.length === 3 ? (displayDate[2] + '/' + displayDate[1] + '/' + displayDate[0]) : state.schedulerSelectedDate);
+          displayText += ' • Horários selecionados: ' + String((Array.isArray(state.schedulerSelectedSlots) ? state.schedulerSelectedSlots.length : 0));
+          schedulerSelectedInfo.textContent = displayText;
+        }
+      }
+
+      function toDisplayTime(datetimeString) {
+        var value = String(datetimeString || '').trim();
+        if (value.length < 16) {
+          return '-';
+        }
+
+        return value.slice(11, 16);
+      }
+
+      function toDisplayDate(datetimeString) {
+        var value = String(datetimeString || '').trim();
+        if (value.length < 10) {
+          return '-';
+        }
+
+        var parts = value.slice(0, 10).split('-');
+        if (parts.length !== 3) {
+          return value.slice(0, 10);
+        }
+
+        return parts[2] + '/' + parts[1];
+      }
+
+      function toDisplayPeriodo(inicioString, fimString) {
+        var startValue = String(inicioString || '').trim();
+        var endValue = String(fimString || '').trim();
+        if (startValue.length < 16 || endValue.length < 16) {
+          return '-';
+        }
+
+        var startDate = startValue.slice(0, 10);
+        var endDate = endValue.slice(0, 10);
+        var startTime = toDisplayTime(startValue);
+        var endTime = toDisplayTime(endValue);
+
+        if (startDate === endDate) {
+          return startTime + ' - ' + endTime;
+        }
+
+        return toDisplayDate(startValue) + ' ' + startTime + ' → ' + toDisplayDate(endValue) + ' ' + endTime;
+      }
+
+      function toDisplayPeriodoComData(inicioString, fimString) {
+        var startValue = String(inicioString || '').trim();
+        var endValue = String(fimString || '').trim();
+        if (startValue.length < 16 || endValue.length < 16) {
+          return '-';
+        }
+
+        var startDate = toDisplayDate(startValue);
+        var endDate = toDisplayDate(endValue);
+        var startTime = toDisplayTime(startValue);
+        var endTime = toDisplayTime(endValue);
+
+        if (startDate === endDate) {
+          return startDate + ' ' + startTime + ' - ' + endTime;
+        }
+
+        return startDate + ' ' + startTime + ' → ' + endDate + ' ' + endTime;
+      }
+
+      function parseDateTime(datetimeString) {
+        var value = String(datetimeString || '').trim();
+        if (value.length < 16) {
+          return null;
+        }
+
+        var normalized = value.slice(0, 19).replace(' ', 'T');
+        var date = new Date(normalized);
+        return Number.isNaN(date.getTime()) ? null : date;
+      }
+
+      function buildDateTimeFromIsoAndTime(dateIso, timeValue) {
+        var normalizedDate = String(dateIso || '').trim();
+        var normalizedTime = String(timeValue || '').trim();
+        if (parseIsoDate(normalizedDate) === null || !/^\d{2}:\d{2}$/.test(normalizedTime)) {
+          return null;
+        }
+
+        var date = new Date(normalizedDate + 'T' + normalizedTime + ':00');
+        return Number.isNaN(date.getTime()) ? null : date;
+      }
+
+      function isUnavailableSchedulerDay(dateIso) {
+        var normalizedDate = String(dateIso || '').trim();
+        if (parseIsoDate(normalizedDate) === null) {
+          return false;
+        }
+
+        if (isWeekendIso(normalizedDate) || isPastIsoDate(normalizedDate)) {
+          return true;
+        }
+
+        for (var index = 0; index < schedulerTimes.length; index += 1) {
+          var slotTime = schedulerTimes[index];
+          if (!isPastSlot(normalizedDate, slotTime) && getOccupiedReservaForSlot(normalizedDate, slotTime) === null) {
+            return false;
+          }
+        }
+
+        return true;
+      }
+
+      function getOccupiedReservaForSlot(dateIso, timeValue) {
+        var slotStart = buildDateTimeFromIsoAndTime(dateIso, timeValue);
+        if (slotStart === null) {
+          return null;
+        }
+
+        var slotEnd = new Date(slotStart.getTime() + (60 * 60 * 1000));
+        var reservas = Array.isArray(state.disponibilidadeReservas) ? state.disponibilidadeReservas : [];
+
+        for (var index = 0; index < reservas.length; index += 1) {
+          var reserva = reservas[index];
+          var reservaInicio = parseDateTime(reserva && reserva.inicio ? reserva.inicio : '');
+          var reservaFim = parseDateTime(reserva && reserva.fim ? reserva.fim : '');
+          if (reservaInicio === null || reservaFim === null) {
+            continue;
+          }
+
+          if (slotStart < reservaFim && slotEnd > reservaInicio) {
+            return reserva;
+          }
+        }
+
+        return null;
+      }
+
+      function getReservaStatus(inicioString, fimString) {
+        var inicioDate = parseDateTime(inicioString);
+        var fimDate = parseDateTime(fimString);
+        var now = new Date();
+
+        if (inicioDate === null || fimDate === null) {
+          return {
+            key: 'historico',
+            label: 'Histórico',
+            badgeClass: 'text-bg-secondary'
+          };
+        }
+
+        if (fimDate <= now) {
+          return {
+            key: 'historico',
+            label: 'Histórico',
+            badgeClass: 'text-bg-secondary'
+          };
+        }
+
+        if (inicioDate > now) {
+          return {
+            key: 'futuro',
+            label: 'Futuro',
+            badgeClass: 'text-bg-primary'
+          };
+        }
+
+        return {
+          key: 'vigente',
+          label: 'Vigente',
+          badgeClass: 'text-bg-success'
+        };
+      }
+
+      function isFutureDateReserva(inicioString) {
+        var value = String(inicioString || '').trim();
+        if (value.length < 10) {
+          return false;
+        }
+
+        var reservaDate = value.slice(0, 10);
+        var today = todayIso();
+        return reservaDate > today;
+      }
+
+      function showStatus(message, isError) {
+        var text = String(message || '').trim();
+        if (text === '') {
+          return;
+        }
+
+        statusEl.textContent = text;
+        statusEl.classList.remove('d-none', 'is-success', 'is-error');
+        statusEl.classList.add(isError ? 'is-error' : 'is-success');
+
+        window.clearTimeout(showStatus._timer);
+        showStatus._timer = window.setTimeout(function () {
+          statusEl.classList.add('d-none');
+          statusEl.classList.remove('is-success', 'is-error');
+          statusEl.textContent = '';
+        }, 2400);
+      }
+
+      function refreshItemSelect(selectedId) {
+        var options = state.itens.map(function (item) {
+          var id = Number(item.id || 0);
+          return '<option value="' + id + '">' + escapeHtml(item.nome || '') + '</option>';
+        });
+
+        minhaReservaItemInput.innerHTML = options.length ? options.join('') : '<option value="">Sem itens disponíveis</option>';
+
+        if (selectedId && options.length) {
+          minhaReservaItemInput.value = String(Number(selectedId));
+        }
+      }
+
+      function resetForm(itemId) {
+        minhaReservaIdInput.value = '0';
+        refreshItemSelect(itemId || 0);
+        minhaReservaDataInput.value = todayIso();
+        minhaReservaDataFimInput.value = minhaReservaDataInput.value;
+        minhaReservaHoraInicioInput.value = '08:20';
+        minhaReservaHoraFimInput.value = '09:20';
+        minhaReservaObservacaoInput.value = '';
+        state.schedulerSelectedDate = minhaReservaDataInput.value;
+        state.schedulerViewStartDate = todayIso();
+        state.schedulerMonth = monthKeyFromIso(minhaReservaDataInput.value);
+        state.schedulerSelectedTime = minhaReservaHoraInicioInput.value;
+        state.schedulerSelectedSlots = [];
+        setEditOnlyObservationMode(false);
+        syncSchedulerFromInputs();
+        refreshDisponibilidade();
+      }
+
+      function setEditOnlyObservationMode(value) {
+        editOnlyObservationMode = Boolean(value);
+
+        if (editOnlyObservationMode) {
+          releaseCurrentTemporarySelection({ silent: true });
+        }
+
+        if (modalMinhaReservaTitulo) {
+          modalMinhaReservaTitulo.textContent = editOnlyObservationMode ? 'Editar observação' : 'Novo agendamento';
+        }
+
+        if (btnSalvarMinhaReserva) {
+          btnSalvarMinhaReserva.textContent = editOnlyObservationMode ? 'Salvar observação' : 'Salvar';
+        }
+
+        if (minhaReservaRestricaoAviso) {
+          minhaReservaRestricaoAviso.classList.toggle('d-none', !editOnlyObservationMode);
+        }
+
+        minhaReservaItemInput.disabled = editOnlyObservationMode;
+        minhaReservaDataInput.disabled = editOnlyObservationMode;
+        minhaReservaDataFimInput.disabled = editOnlyObservationMode;
+        minhaReservaHoraInicioInput.disabled = editOnlyObservationMode;
+        minhaReservaHoraFimInput.disabled = editOnlyObservationMode;
+
+        if (schedulerLayoutMinhaReserva) {
+          schedulerLayoutMinhaReserva.classList.toggle('opacity-50', editOnlyObservationMode);
+        }
+
+        renderSchedulerWeek();
+        refreshDisponibilidade();
+      }
+
+      function renderDisponibilidade(reservas) {
+        if (!minhaReservaDisponibilidade) {
+          return;
+        }
+
+        if (!Array.isArray(reservas) || reservas.length === 0) {
+          minhaReservaDisponibilidade.innerHTML = '<div class="disponibilidade-empty">Sem bloqueios no período selecionado. Item disponível.</div>';
+          return;
+        }
+
+        var rows = reservas.map(function (reserva) {
+          var periodo = escapeHtml(toDisplayPeriodoComData(reserva.inicio, reserva.fim));
+          var responsavel = escapeHtml(String(reserva.responsavel_nome || '-'));
+          var temporaryLabel = Number(reserva && reserva.is_temporary_lock ? reserva.is_temporary_lock : 0) === 1
+            ? ' • seleção temporária em andamento'
+            : '';
+          return '<div class="disponibilidade-item"><strong>' + periodo + '</strong> • ' + responsavel + temporaryLabel + '</div>';
+        }).join('');
+
+        minhaReservaDisponibilidade.innerHTML = '<div class="disponibilidade-list">' + rows + '</div>';
+      }
+
+      function refreshDisponibilidade(suppressLoadingState) {
+        if (!minhaReservaDisponibilidade) {
+          return;
+        }
+
+        var itemId = Number(minhaReservaItemInput.value || 0);
+        var data = String(state.schedulerViewStartDate || state.schedulerSelectedDate || minhaReservaDataInput.value || '').trim();
+        if (parseIsoDate(data) === null) {
+          data = todayIso();
+        }
+        var dataFim = editOnlyObservationMode
+          ? String(minhaReservaDataFimInput.value || '').trim()
+          : String(addDaysIso(data, 6));
+        var reservaId = Number(minhaReservaIdInput.value || 0);
+
+        if (data !== '' && (dataFim === '' || dataFim < data)) {
+          dataFim = data;
+          if (minhaReservaDataFimInput) {
+            minhaReservaDataFimInput.value = data;
+          }
+        }
+
+        if (itemId <= 0 || data === '') {
+          state.disponibilidadeReservas = [];
+          minhaReservaDisponibilidade.innerHTML = '<div class="disponibilidade-loading">Selecione item e data para ver disponibilidade.</div>';
+          renderSchedulerWeek();
+          return;
+        }
+
+        if (!suppressLoadingState) {
+          minhaReservaDisponibilidade.innerHTML = '<div class="disponibilidade-loading">Carregando disponibilidade...</div>';
+        }
+
+        var query = '?item_id=' + encodeURIComponent(String(itemId))
+          + '&data=' + encodeURIComponent(data)
+          + '&data_fim=' + encodeURIComponent(dataFim)
+          + '&ignore_id=' + encodeURIComponent(String(reservaId > 0 ? reservaId : 0))
+          + '&owner_token=' + encodeURIComponent(String(state.tempSelectionOwnerToken || ''));
+
+        fetch(endpoint('/institucional/meus-agendamentos/disponibilidade' + query), {
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+          .then(function (response) {
+            return response.json().catch(function () { return { ok: false, message: 'Resposta inválida do servidor.' }; })
+              .then(function (payload) {
+                if (!response.ok || !payload.ok) {
+                  throw new Error(payload.message || 'Erro ao carregar disponibilidade.');
+                }
+                return payload;
+              });
+          })
+          .then(function (payload) {
+            var reservas = Array.isArray(payload.data && payload.data.reservas) ? payload.data.reservas : [];
+            state.disponibilidadeReservas = reservas;
+            var removedCount = pruneUnavailableSelectedSlots();
+            renderDisponibilidade(reservas);
+            renderSchedulerWeek();
+            if (removedCount > 0) {
+              syncTemporarySelectionLocks({ silent: true });
+              showStatus(removedCount + ' horário(s) foram desmarcados por indisponibilidade no item selecionado.', true);
+            }
+          })
+          .catch(function () {
+            state.disponibilidadeReservas = [];
+            minhaReservaDisponibilidade.innerHTML = '<div class="disponibilidade-loading">Não foi possível carregar disponibilidade agora.</div>';
+            renderSchedulerWeek();
+          });
+      }
+
+      function renderItems() {
+        if (!state.itens.length) {
+          itensCards.innerHTML = '<div class="text-secondary small">Nenhum item ativo disponível.</div>';
+          return;
+        }
+
+        itensCards.innerHTML = state.itens.map(function (item) {
+          var imageUrl = absoluteAssetUrl(item.imagem_path || '');
+          var media = imageUrl !== ''
+            ? '<div class="item-card-media"><img src="' + escapeHtml(imageUrl) + '" alt="Imagem de ' + escapeHtml(item.nome || 'item') + '"></div>'
+            : '<div class="item-card-media"><i class="las la-image"></i></div>';
+
+          return '' +
+            '<div class="item-card">' +
+              media +
+              '<div class="item-card-content">' +
+                '<div class="fw-semibold small">' + escapeHtml(item.nome || '-') + '</div>' +
+                '<div class="small text-secondary">' + escapeHtml(item.descricao || 'Sem descrição') + '</div>' +
+                '<div class="mt-auto"><button type="button" class="btn btn-danger btn-sm js-solicitar-item" data-item-id="' + Number(item.id || 0) + '">Solicitar</button></div>' +
+              '</div>' +
+            '</div>';
+        }).join('');
+      }
+
+      function renderReservas() {
+        if (!state.reservas.length) {
+          var emptyMessage = state.escopo === 'historico'
+            ? 'Você ainda não possui agendamentos no histórico.'
+            : 'Você não possui agendamentos vigentes ou futuros.';
+          minhasReservasBody.innerHTML = '<tr><td colspan="5" class="text-center text-secondary py-3">' + emptyMessage + '</td></tr>';
+          return;
+        }
+
+        minhasReservasBody.innerHTML = state.reservas.map(function (reserva) {
+          var canDelete = isFutureDateReserva(reserva.inicio);
+          var status = getReservaStatus(reserva.inicio, reserva.fim);
+          var deleteAttrs = canDelete
+            ? ''
+            : ' disabled title="Exclusão permitida apenas para agendamentos com data futura."';
+          return '' +
+            '<tr>' +
+              '<td data-label="Período"><div class="d-flex align-items-center gap-2"><span>' + escapeHtml(toDisplayPeriodoComData(reserva.inicio, reserva.fim)) + '</span><span class="badge ' + escapeHtml(status.badgeClass) + '">' + escapeHtml(status.label) + '</span></div></td>' +
+              '<td data-label="Item">' + escapeHtml(reserva.item_nome || '-') + '</td>' +
+              '<td data-label="Responsável">' + escapeHtml(reserva.responsavel_nome || '-') + '</td>' +
+              '<td data-label="Observação">' + escapeHtml(reserva.observacao || '-') + '</td>' +
+              '<td class="text-end" data-label="Ações">' +
+                '<button type="button" class="btn btn-outline-primary btn-sm js-editar-reserva me-1" data-id="' + Number(reserva.id || 0) + '"><i class="las la-pen"></i></button>' +
+                '<button type="button" class="btn btn-outline-danger btn-sm js-excluir-reserva" data-id="' + Number(reserva.id || 0) + '" data-can-delete="' + (canDelete ? '1' : '0') + '"' + deleteAttrs + '><i class="las la-trash"></i></button>' +
+              '</td>' +
+            '</tr>';
+        }).join('');
+      }
+
+      function updateScopeTabsUi() {
+        if (!(tabsMinhasReservas instanceof HTMLElement)) {
+          return;
+        }
+
+        var buttons = tabsMinhasReservas.querySelectorAll('button[data-scope]');
+        buttons.forEach(function (button) {
+          var scope = String(button.getAttribute('data-scope') || '');
+          button.classList.toggle('active', scope === state.escopo);
+        });
+      }
+
+      function loadData() {
+        var scope = String(state.escopo || 'ativas').trim();
+        var query = scope === 'historico' ? '?escopo=historico' : '';
+
+        return fetch(endpoint('/institucional/meus-agendamentos/listar' + query), {
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+          .then(function (response) {
+            return response.json().catch(function () { return { ok: false, message: 'Resposta inválida do servidor.' }; })
+              .then(function (payload) {
+                if (!response.ok || !payload.ok) {
+                  throw new Error(payload.message || 'Erro ao carregar seus agendamentos.');
+                }
+                return payload;
+              });
+          })
+          .then(function (payload) {
+            state.itens = Array.isArray(payload.data && payload.data.itens) ? payload.data.itens : [];
+            state.reservas = Array.isArray(payload.data && payload.data.reservas) ? payload.data.reservas : [];
+            renderItems();
+            renderReservas();
+            refreshItemSelect();
+          })
+          .catch(function (error) {
+            itensCards.innerHTML = '<div class="text-danger small">Erro ao carregar itens.</div>';
+            minhasReservasBody.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-3">Erro ao carregar suas reservas.</td></tr>';
+            showStatus(error && error.message ? error.message : 'Erro ao carregar dados.', true);
+          });
+      }
+
+      function submitReserva() {
+        var formData = new FormData();
+        formData.append('id', String(Number(minhaReservaIdInput.value || 0)));
+        formData.append('item_id', String(Number(minhaReservaItemInput.value || 0)));
+        formData.append('data', String(minhaReservaDataInput.value || '').trim());
+        formData.append('data_fim', String(minhaReservaDataFimInput.value || '').trim());
+        formData.append('hora_inicio', String(minhaReservaHoraInicioInput.value || '').trim());
+        formData.append('hora_fim', String(minhaReservaHoraFimInput.value || '').trim());
+        formData.append('observacao', String(minhaReservaObservacaoInput.value || '').trim());
+        formData.append('owner_token', String(state.tempSelectionOwnerToken || ''));
+
+        return submitReservaComFormData(formData);
+      }
+
+      function submitReservaComFormData(formData) {
+        return new Promise(function (resolve, reject) {
+          var xhr = new XMLHttpRequest();
+          xhr.open('POST', endpoint('/institucional/agendamento/reservas/salvar'), true);
+          xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+
+          xhr.onload = function () {
+            var payload;
+            try {
+              payload = xhr.responseText ? JSON.parse(xhr.responseText) : { ok: false, message: 'Resposta inválida do servidor.' };
+            } catch (error) {
+              payload = { ok: false, message: 'Resposta inválida do servidor.' };
+            }
+
+            if (xhr.status >= 200 && xhr.status < 300 && payload && payload.ok) {
+              resolve(payload);
+              return;
+            }
+
+            reject(new Error((payload && payload.message) ? payload.message : 'Erro ao salvar reserva.'));
+          };
+
+          xhr.onerror = function () {
+            reject(new Error('Não foi possível comunicar com o servidor.'));
+          };
+
+          xhr.send(formData);
+          });
+      }
+
+      function submitReservasMultiplas(slots) {
+        var itemId = Number(minhaReservaItemInput.value || 0);
+        var observacao = String(minhaReservaObservacaoInput.value || '').trim();
+        var sequence = Promise.resolve();
+        var createdCount = 0;
+
+        slots.forEach(function (slot) {
+          sequence = sequence.then(function () {
+            var startDate = buildDateTimeFromIsoAndTime(slot.date, slot.time);
+            if (!(startDate instanceof Date) || Number.isNaN(startDate.getTime())) {
+              return Promise.resolve();
+            }
+
+            var endDate = new Date(startDate.getTime() + (60 * 60 * 1000));
+            var endTime = String(endDate.getHours()).padStart(2, '0') + ':' + String(endDate.getMinutes()).padStart(2, '0');
+
+            var formData = new FormData();
+            formData.append('id', '0');
+            formData.append('item_id', String(itemId));
+            formData.append('data', slot.date);
+            formData.append('data_fim', slot.date);
+            formData.append('hora_inicio', slot.time);
+            formData.append('hora_fim', endTime);
+            formData.append('observacao', observacao);
+            formData.append('owner_token', String(state.tempSelectionOwnerToken || ''));
+
+            return submitReservaComFormData(formData).then(function () {
+              createdCount += 1;
+            });
+          });
+        });
+
+        return sequence.then(function () {
+          return {
+            ok: true,
+            message: createdCount > 1
+              ? (createdCount + ' agendamentos criados com sucesso.')
+              : 'Agendamento criado com sucesso.'
+          };
+        });
+      }
+
+      function excluirReserva(reservaId) {
+        var id = Number(reservaId || 0);
+        if (id <= 0) {
+          return Promise.resolve();
+        }
+
+        var formData = new FormData();
+        formData.append('id', String(id));
+
+        return fetch(endpoint('/institucional/agendamento/reservas/excluir'), {
+          method: 'POST',
+          body: formData,
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+          .then(function (response) {
+            return response.json().catch(function () { return { ok: false, message: 'Resposta inválida do servidor.' }; })
+              .then(function (payload) {
+                if (!response.ok || !payload.ok) {
+                  throw new Error(payload.message || 'Erro ao excluir reserva.');
+                }
+                return payload;
+              });
+          });
+      }
+
+      function solicitarExclusaoReserva(reservaId) {
+        var id = Number(reservaId || 0);
+        if (id <= 0 || !modalConfirmarExclusao) {
+          return;
+        }
+
+        pendingDeleteReservaId = id;
+        modalConfirmarExclusao.show();
+      }
+
+      if (btnVoltar) {
+        btnVoltar.href = endpoint('/institucional');
+      }
+
+      if (btnNovoAgendamento) {
+        btnNovoAgendamento.addEventListener('click', function () {
+          resetForm();
+          modalMinhaReserva.show();
+        });
+      }
+
+      if (modalElement) {
+        modalElement.addEventListener('shown.bs.modal', function () {
+          syncSchedulerFromInputs();
+          startRealtimeAvailabilityLoop();
+        });
+
+        modalElement.addEventListener('hidden.bs.modal', function () {
+          stopRealtimeAvailabilityLoop();
+          releaseCurrentTemporarySelection({ silent: true });
+        });
+      }
+
+      if (tabsMinhasReservas) {
+        tabsMinhasReservas.addEventListener('click', function (event) {
+          var target = event.target;
+          if (!(target instanceof HTMLElement)) {
+            return;
+          }
+
+          var tabButton = target.closest('button[data-scope]');
+          if (!tabButton) {
+            return;
+          }
+
+          var nextScope = String(tabButton.getAttribute('data-scope') || '').trim();
+          if (nextScope !== 'ativas' && nextScope !== 'historico') {
+            return;
+          }
+
+          if (state.escopo === nextScope) {
+            return;
+          }
+
+          state.escopo = nextScope;
+          updateScopeTabsUi();
+          loadData();
+        });
+      }
+
+      minhaReservaItemInput.addEventListener('change', function () {
+        syncTemporarySelectionLocks({ silent: true }).finally(function () {
+          refreshDisponibilidade();
+        });
+      });
+      minhaReservaItemInput.addEventListener('change', function () {
+        renderSchedulerWeek();
+      });
+      minhaReservaDataInput.addEventListener('change', function () {
+        syncSchedulerFromInputs();
+        refreshDisponibilidade();
+      });
+      minhaReservaDataFimInput.addEventListener('change', refreshDisponibilidade);
+      minhaReservaHoraInicioInput.addEventListener('change', function () {
+        state.schedulerSelectedTime = String(minhaReservaHoraInicioInput.value || '').trim();
+        renderSchedulerWeek();
+      });
+
+      if (schedulerMiniCalendar) {
+        schedulerMiniCalendar.addEventListener('click', function (event) {
+          var target = event.target;
+          if (!(target instanceof HTMLElement)) {
+            return;
+          }
+
+          var dayButton = target.closest('[data-date]');
+          if (!dayButton) {
+            return;
+          }
+
+          var selectedDate = String(dayButton.getAttribute('data-date') || '').trim();
+          if (parseIsoDate(selectedDate) === null || editOnlyObservationMode) {
+            return;
+          }
+
+          setSchedulerSelectedDate(selectedDate, true);
+        });
+      }
+
+      if (schedulerWeekGrid) {
+        schedulerWeekGrid.addEventListener('click', function (event) {
+          var target = event.target;
+          if (!(target instanceof HTMLElement)) {
+            return;
+          }
+
+          var slotButton = target.closest('[data-slot-date][data-slot-time]');
+          if (!slotButton || editOnlyObservationMode) {
+            return;
+          }
+
+          var slotDate = String(slotButton.getAttribute('data-slot-date') || '').trim();
+          var slotTime = String(slotButton.getAttribute('data-slot-time') || '').trim();
+          setSchedulerSelectedSlot(slotDate, slotTime);
+          syncTemporarySelectionLocks({ silent: false }).finally(function () {
+            refreshDisponibilidade(true);
+          });
+        });
+      }
+
+      if (schedulerPrevWeekBtn) {
+        schedulerPrevWeekBtn.addEventListener('click', function () {
+          if (editOnlyObservationMode) {
+            return;
+          }
+
+          state.schedulerViewStartDate = addDaysIso(state.schedulerViewStartDate || todayIso(), -7);
+          renderSchedulerWeek();
+          refreshDisponibilidade(true);
+        });
+      }
+
+      if (schedulerNextWeekBtn) {
+        schedulerNextWeekBtn.addEventListener('click', function () {
+          if (editOnlyObservationMode) {
+            return;
+          }
+
+          state.schedulerViewStartDate = addDaysIso(state.schedulerViewStartDate || todayIso(), 7);
+          renderSchedulerWeek();
+          refreshDisponibilidade(true);
+        });
+      }
+
+      if (schedulerPrevMonthBtn) {
+        schedulerPrevMonthBtn.addEventListener('click', function () {
+          var baseDate = firstDayFromMonthKey(state.schedulerMonth || monthKeyFromIso(state.schedulerSelectedDate || todayIso()));
+          if (!(baseDate instanceof Date) || Number.isNaN(baseDate.getTime())) {
+            return;
+          }
+
+          var prevMonth = new Date(baseDate.getFullYear(), baseDate.getMonth() - 1, 1);
+          state.schedulerMonth = monthKeyFromIso(isoFromDate(prevMonth));
+          renderMiniCalendar();
+        });
+      }
+
+      if (schedulerNextMonthBtn) {
+        schedulerNextMonthBtn.addEventListener('click', function () {
+          var baseDate = firstDayFromMonthKey(state.schedulerMonth || monthKeyFromIso(state.schedulerSelectedDate || todayIso()));
+          if (!(baseDate instanceof Date) || Number.isNaN(baseDate.getTime())) {
+            return;
+          }
+
+          var nextMonth = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 1);
+          state.schedulerMonth = monthKeyFromIso(isoFromDate(nextMonth));
+          renderMiniCalendar();
+        });
+      }
+
+      itensCards.addEventListener('click', function (event) {
+        var target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+
+        var solicitarBtn = target.closest('.js-solicitar-item');
+        if (!solicitarBtn) {
+          return;
+        }
+
+        var itemId = Number(solicitarBtn.getAttribute('data-item-id') || 0);
+        resetForm(itemId);
+        modalMinhaReserva.show();
+      });
+
+      minhasReservasBody.addEventListener('click', function (event) {
+        var target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+
+        var deleteBtn = target.closest('.js-excluir-reserva');
+        if (deleteBtn) {
+          var reservaIdToDelete = Number(deleteBtn.getAttribute('data-id') || 0);
+          if (reservaIdToDelete <= 0) {
+            return;
+          }
+
+          var canDelete = String(deleteBtn.getAttribute('data-can-delete') || '0') === '1';
+          if (!canDelete) {
+            showStatus('Exclusão permitida apenas para agendamentos com data futura.', true);
+            return;
+          }
+
+          solicitarExclusaoReserva(reservaIdToDelete);
+          return;
+        }
+
+        var editBtn = target.closest('.js-editar-reserva');
+        if (!editBtn) {
+          return;
+        }
+
+        var reservaId = Number(editBtn.getAttribute('data-id') || 0);
+        var reserva = state.reservas.find(function (entry) { return Number(entry.id || 0) === reservaId; });
+        if (!reserva) {
+          return;
+        }
+
+        minhaReservaIdInput.value = String(reservaId);
+        refreshItemSelect(Number(reserva.item_id || 0));
+        minhaReservaDataInput.value = String(reserva.inicio || '').slice(0, 10);
+        minhaReservaDataFimInput.value = String(reserva.fim || '').slice(0, 10);
+        minhaReservaHoraInicioInput.value = String(reserva.inicio || '').slice(11, 16);
+        minhaReservaHoraFimInput.value = String(reserva.fim || '').slice(11, 16);
+        minhaReservaObservacaoInput.value = String(reserva.observacao || '');
+        setEditOnlyObservationMode(true);
+        syncSchedulerFromInputs();
+        refreshDisponibilidade();
+        modalMinhaReserva.show();
+      });
+
+      formMinhaReserva.addEventListener('submit', function (event) {
+        event.preventDefault();
+
+        var submitPromise;
+        if (editOnlyObservationMode) {
+          submitPromise = submitReserva();
+        } else {
+          var selectedSlots = getSortedSelectedSlots().filter(function (slot) {
+            return !isPastIsoDate(slot.date) && !isPastSlot(slot.date, slot.time);
+          });
+
+          if (!selectedSlots.length) {
+            showStatus('Selecione pelo menos um horário disponível para agendar.', true);
+            return;
+          }
+
+          if (selectedSlots.length === 1) {
+            var firstSlot = selectedSlots[0];
+            var startDate = buildDateTimeFromIsoAndTime(firstSlot.date, firstSlot.time);
+            if (!(startDate instanceof Date) || Number.isNaN(startDate.getTime())) {
+              showStatus('Horário selecionado inválido.', true);
+              return;
+            }
+
+            var endDate = new Date(startDate.getTime() + (60 * 60 * 1000));
+            minhaReservaDataInput.value = firstSlot.date;
+            minhaReservaDataFimInput.value = firstSlot.date;
+            minhaReservaHoraInicioInput.value = firstSlot.time;
+            minhaReservaHoraFimInput.value = String(endDate.getHours()).padStart(2, '0') + ':' + String(endDate.getMinutes()).padStart(2, '0');
+            submitPromise = submitReserva();
+          } else {
+            submitPromise = submitReservasMultiplas(selectedSlots);
+          }
+        }
+
+        submitPromise
+          .then(function (payload) {
+            modalMinhaReserva.hide();
+            showStatus(payload.message || 'Reserva salva com sucesso.', false);
+            return loadData();
+          })
+          .catch(function (error) {
+            showStatus(error && error.message ? error.message : 'Erro ao salvar reserva.', true);
+          });
+      });
+
+      if (btnConfirmarExclusaoMinhaReserva) {
+        btnConfirmarExclusaoMinhaReserva.addEventListener('click', function () {
+          var reservaIdToDelete = Number(pendingDeleteReservaId || 0);
+          if (reservaIdToDelete <= 0) {
+            if (modalConfirmarExclusao) {
+              modalConfirmarExclusao.hide();
+            }
+            return;
+          }
+
+          excluirReserva(reservaIdToDelete)
+            .then(function (payload) {
+              if (modalConfirmarExclusao) {
+                modalConfirmarExclusao.hide();
+              }
+              pendingDeleteReservaId = 0;
+              showStatus(payload.message || 'Reserva excluída com sucesso.', false);
+              return loadData();
+            })
+            .catch(function (error) {
+              if (modalConfirmarExclusao) {
+                modalConfirmarExclusao.hide();
+              }
+              pendingDeleteReservaId = 0;
+              showStatus(error && error.message ? error.message : 'Erro ao excluir reserva.', true);
+            });
+        });
+      }
+
+      if (modalConfirmarExclusaoElement) {
+        modalConfirmarExclusaoElement.addEventListener('hidden.bs.modal', function () {
+          pendingDeleteReservaId = 0;
+        });
+      }
+
+      syncSchedulerFromInputs();
+      updateScopeTabsUi();
+      loadData();
+      }
+
+      if (window.bootstrap && window.bootstrap.Modal) {
+        startPage();
+        return;
+      }
+
+      var bootstrapWaitAttempts = 0;
+      var bootstrapWaitTimer = window.setInterval(function () {
+        bootstrapWaitAttempts += 1;
+
+        if (window.bootstrap && window.bootstrap.Modal) {
+          window.clearInterval(bootstrapWaitTimer);
+          startPage();
+          return;
+        }
+
+        if (bootstrapWaitAttempts >= 200) {
+          window.clearInterval(bootstrapWaitTimer);
+          console.error('Bootstrap nao ficou disponivel para inicializar Meus Agendamentos.');
+        }
+      }, 25);
+    })();
+  </script>

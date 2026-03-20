@@ -1,0 +1,4469 @@
+<style>
+	.institutional-page-root {
+		background: transparent;
+		color: #212529;
+		font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+		margin: 0;
+		padding: 0;
+		height: 100vh;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+	}
+
+	.container-fluid.px-0 {
+		flex: 1 1 auto;
+		height: 100%;
+		min-height: 0;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+		width: 90%;
+		max-width: 90%;
+		margin: 0 auto;
+	}
+
+	.container-fluid.px-0>.p-2.p-md-3 {
+		flex: 1 1 auto;
+		min-height: 0;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+	}
+
+	.table-scroll-only {
+		flex: 1 1 auto;
+		min-height: 0;
+		max-height: calc(100vh - 310px);
+		overflow-y: auto;
+		overflow-x: auto;
+	}
+
+	.table-scroll-only thead th {
+		position: sticky;
+		top: 0;
+		z-index: 2;
+		background: #fff;
+	}
+
+	.top-status {
+		position: fixed;
+		top: 12px;
+		left: 50%;
+		transform: translateX(-50%);
+		z-index: 2000;
+		min-width: 280px;
+		max-width: 92vw;
+		border-radius: .5rem;
+		padding: .5rem .85rem;
+		box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+		font-size: .9rem;
+		font-weight: 500;
+	}
+
+	.top-status.is-success {
+		background: #d1e7dd;
+		color: #0f5132;
+		border: 1px solid #badbcc;
+	}
+
+	.top-status.is-error {
+		background: #f8d7da;
+		color: #842029;
+		border: 1px solid #f5c2c7;
+	}
+
+	.modulacao-tabs-shell {
+		min-height: 0;
+		flex: 1 1 auto;
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.modulacao-tabs-nav {
+		display: flex;
+		gap: .75rem;
+		flex-wrap: wrap;
+		border: 0;
+	}
+
+	.modulacao-tabs-nav .nav-link {
+		border: 1px solid rgba(33, 37, 41, 0.08);
+		border-radius: 999px;
+		padding: .55rem 1rem;
+		color: #495057;
+		background: #fff;
+		font-weight: 600;
+	}
+
+	.modulacao-tabs-nav .nav-link.active {
+		background: #212529;
+		color: #fff;
+		border-color: #212529;
+	}
+
+	.modulacao-tab-content {
+		min-height: 0;
+		flex: 1 1 auto;
+	}
+
+	.modulacao-tab-pane {
+		height: 100%;
+	}
+
+	.modulacao-card {
+		background: #fff;
+		border: 1px solid rgba(33, 37, 41, 0.08);
+		border-radius: 1rem;
+		box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+		padding: 1rem;
+		display: flex;
+		flex-direction: column;
+		min-height: 0;
+	}
+
+	.modulacao-card.is-wide {
+		grid-column: 1 / -1;
+	}
+
+	.modulacao-card-header {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: .75rem;
+		margin-bottom: .9rem;
+	}
+
+	.modulacao-card-header h2 {
+		font-size: 1rem;
+		margin: 0;
+		font-weight: 700;
+	}
+
+	.modulacao-card-header p {
+		margin: .2rem 0 0;
+		font-size: .86rem;
+		color: #6c757d;
+	}
+
+	.modulacao-toolbar {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: .75rem;
+		margin-bottom: .85rem;
+		flex-wrap: wrap;
+	}
+
+	.modulacao-search {
+		max-width: 320px;
+		min-width: 220px;
+	}
+
+	.modulacao-bulk-actions {
+		display: flex;
+		align-items: center;
+		gap: .5rem;
+		flex-wrap: wrap;
+	}
+
+	.modulacao-select-col {
+		width: 42px;
+	}
+
+	.modulacao-table td,
+	.modulacao-table th {
+		vertical-align: middle;
+		font-size: .9rem;
+	}
+
+	.modulacao-badge-muted {
+		display: inline-flex;
+		align-items: center;
+		padding: .2rem .5rem;
+		border-radius: 999px;
+		background: #f1f3f5;
+		font-size: .78rem;
+		color: #495057;
+	}
+
+	.muted-empty {
+		text-align: center;
+		color: #6c757d;
+		padding: 1rem;
+	}
+
+	.modulacao-note {
+		font-size: .84rem;
+		color: #6c757d;
+		background: #f8f9fa;
+		border: 1px solid rgba(33, 37, 41, 0.08);
+		border-radius: .75rem;
+		padding: .75rem;
+		margin-bottom: .85rem;
+	}
+
+	.modulacao-selector-card {
+		border: 1px solid rgba(33, 37, 41, 0.08);
+		border-radius: .85rem;
+		padding: .85rem;
+		background: #f8f9fa;
+	}
+
+	.modulacao-selector-summary {
+		display: flex;
+		flex-wrap: wrap;
+		gap: .45rem;
+		min-height: 44px;
+	}
+
+	.modulacao-selector-pill {
+		display: inline-flex;
+		align-items: center;
+		padding: .28rem .6rem;
+		border-radius: 999px;
+		background: #e9ecef;
+		font-size: .82rem;
+		color: #495057;
+	}
+
+	.modulacao-selector-mode-note {
+		margin-top: .75rem;
+		font-size: .8rem;
+		color: #6c757d;
+	}
+
+	.modulacao-selector-mode-note.is-editing {
+		color: #842029;
+		font-weight: 600;
+	}
+
+	.modulacao-selector-list {
+		max-height: 280px;
+		overflow-y: auto;
+	}
+
+	.modulacao-aulas-grid {
+		width: 100%;
+		border-collapse: separate;
+		border-spacing: 0;
+	}
+
+	.modulacao-aulas-grid th,
+	.modulacao-aulas-grid td {
+		border-bottom: 1px solid rgba(33, 37, 41, 0.08);
+		padding: .65rem .55rem;
+		text-align: center;
+		vertical-align: middle;
+		font-size: .88rem;
+	}
+
+	.modulacao-aulas-grid th:first-child,
+	.modulacao-aulas-grid td:first-child {
+		text-align: left;
+		font-weight: 600;
+		min-width: 150px;
+		background: #fff;
+		position: sticky;
+		left: 0;
+		z-index: 1;
+	}
+
+	.modulacao-aulas-grid thead th {
+		position: sticky;
+		top: 0;
+		background: #fff;
+		z-index: 2;
+	}
+
+	.modulacao-aulas-grid thead th:first-child {
+		z-index: 3;
+	}
+
+	.modulacao-aulas-grid .form-check-input {
+		float: none;
+		margin: 0;
+	}
+
+	.modulacao-aulas-layout {
+		display: grid;
+		grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+		gap: 1rem;
+		min-height: 0;
+		flex: 1 1 auto;
+	}
+
+	.modulacao-aulas-summary {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: .75rem;
+		margin-top: .9rem;
+	}
+
+	.modulacao-aulas-summary-card {
+		border: 1px solid rgba(33, 37, 41, 0.08);
+		border-radius: .85rem;
+		padding: .75rem;
+		background: #fff;
+	}
+
+	.modulacao-aulas-summary-card strong {
+		display: block;
+		font-size: 1rem;
+	}
+
+	.modulacao-aulas-summary-card span {
+		display: block;
+		font-size: .82rem;
+		color: #6c757d;
+		margin-top: .15rem;
+	}
+
+	.modulacao-beneficio-meta {
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: .75rem;
+		margin-bottom: .9rem;
+	}
+
+	.modulacao-beneficio-meta-card {
+		border: 1px solid rgba(33, 37, 41, 0.08);
+		border-radius: .85rem;
+		padding: .75rem;
+		background: #fff;
+	}
+
+	.modulacao-beneficio-meta-card strong {
+		display: block;
+		font-size: 1rem;
+	}
+
+	.modulacao-beneficio-meta-card span {
+		display: block;
+		font-size: .82rem;
+		color: #6c757d;
+		margin-top: .15rem;
+	}
+
+	.modulacao-beneficio-slots {
+		max-height: 260px;
+		overflow-y: auto;
+		border: 1px solid rgba(33, 37, 41, 0.08);
+		border-radius: .85rem;
+		padding: .85rem;
+		background: #f8f9fa;
+	}
+
+	.modulacao-beneficio-slot-item+.modulacao-beneficio-slot-item {
+		margin-top: .5rem;
+	}
+
+	.modulacao-beneficio-summary-note {
+		font-size: .82rem;
+		color: #6c757d;
+		margin-top: .75rem;
+	}
+
+	.modulacao-horario-layout {
+		display: grid;
+		grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+		gap: 1rem;
+		min-height: 0;
+		flex: 1 1 auto;
+	}
+
+	.modulacao-horario-panel {
+		border: 1px solid rgba(33, 37, 41, 0.08);
+		border-radius: .85rem;
+		padding: .9rem;
+		background: #f8f9fa;
+	}
+
+	.modulacao-horario-selectors-grid {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 1rem;
+		align-items: start;
+	}
+
+	.modulacao-horario-selector-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: .5rem;
+		margin-top: .75rem;
+	}
+
+	.modulacao-horario-selector-list .form-check+.form-check {
+		margin-top: .55rem;
+	}
+
+	.modulacao-horario-prompt-card {
+		border: 1px solid rgba(220, 53, 69, 0.28);
+		border-radius: 1rem;
+		padding: 1rem;
+		background: linear-gradient(180deg, rgba(220, 53, 69, 0.08) 0%, rgba(255, 255, 255, 0.96) 100%);
+		box-shadow: 0 10px 24px rgba(220, 53, 69, 0.08);
+	}
+
+	.modulacao-horario-prompt-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: .75rem;
+		margin-bottom: .75rem;
+	}
+
+	.modulacao-horario-prompt-title {
+		display: flex;
+		flex-direction: column;
+		gap: .2rem;
+	}
+
+	.modulacao-horario-prompt-kicker {
+		font-size: .74rem;
+		font-weight: 700;
+		letter-spacing: .08em;
+		text-transform: uppercase;
+		color: #b02a37;
+	}
+
+	.modulacao-horario-prompt-title strong {
+		font-size: .98rem;
+		color: #212529;
+	}
+
+	.modulacao-horario-prompt-title span {
+		font-size: .82rem;
+		color: #6c757d;
+	}
+
+	#horarioIaPrompt {
+		border: 1px solid rgba(220, 53, 69, 0.24);
+		min-height: 180px;
+		background: rgba(255, 255, 255, 0.96);
+		box-shadow: inset 0 1px 2px rgba(33, 37, 41, 0.04);
+	}
+
+	#horarioIaPrompt:focus {
+		border-color: rgba(220, 53, 69, 0.55);
+		box-shadow: 0 0 0 .2rem rgba(220, 53, 69, 0.12);
+	}
+
+	.modulacao-horario-assistant-shell {
+		border: 1px solid rgba(33, 37, 41, 0.08);
+		border-radius: 1rem;
+		background: #fff;
+		padding: .85rem;
+		margin-top: .9rem;
+	}
+
+	.modulacao-horario-assistant-header {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: .75rem;
+		margin-bottom: .75rem;
+	}
+
+	.modulacao-horario-assistant-header strong {
+		display: block;
+		font-size: .95rem;
+	}
+
+	.modulacao-horario-assistant-header span {
+		display: block;
+		font-size: .8rem;
+		color: #6c757d;
+		margin-top: .15rem;
+	}
+
+	.modulacao-horario-status-badge {
+		border-radius: 999px;
+		padding: .28rem .65rem;
+		font-size: .74rem;
+		font-weight: 700;
+		white-space: nowrap;
+		background: #f1f3f5;
+		color: #495057;
+		border: 1px solid rgba(33, 37, 41, 0.08);
+	}
+
+	.modulacao-horario-status-badge.is-busy {
+		background: rgba(220, 53, 69, 0.1);
+		color: #b02a37;
+		border-color: rgba(220, 53, 69, 0.22);
+	}
+
+	.modulacao-horario-status-badge.is-success {
+		background: rgba(25, 135, 84, 0.1);
+		color: #0f5132;
+		border-color: rgba(25, 135, 84, 0.2);
+	}
+
+	.modulacao-horario-status-badge.is-error {
+		background: rgba(220, 53, 69, 0.1);
+		color: #842029;
+		border-color: rgba(220, 53, 69, 0.22);
+	}
+
+	.modulacao-horario-timeline {
+		display: flex;
+		flex-direction: column;
+		gap: .75rem;
+		max-height: 320px;
+		overflow-y: auto;
+		padding-right: .2rem;
+	}
+
+	.modulacao-horario-message {
+		display: flex;
+		flex-direction: column;
+		gap: .28rem;
+		max-width: 92%;
+	}
+
+	.modulacao-horario-message.is-user {
+		align-self: flex-end;
+	}
+
+	.modulacao-horario-message.is-assistant,
+	.modulacao-horario-message.is-system {
+		align-self: flex-start;
+	}
+
+	.modulacao-horario-message-meta {
+		font-size: .72rem;
+		font-weight: 700;
+		letter-spacing: .03em;
+		text-transform: uppercase;
+		color: #6c757d;
+	}
+
+	.modulacao-horario-message-bubble {
+		border-radius: 1rem;
+		padding: .8rem .9rem;
+		font-size: .86rem;
+		line-height: 1.45;
+		border: 1px solid rgba(33, 37, 41, 0.08);
+		box-shadow: 0 6px 16px rgba(0, 0, 0, 0.04);
+	}
+
+	.modulacao-horario-message.is-user .modulacao-horario-message-bubble {
+		background: linear-gradient(180deg, rgba(220, 53, 69, 0.12) 0%, rgba(220, 53, 69, 0.05) 100%);
+		border-color: rgba(220, 53, 69, 0.2);
+	}
+
+	.modulacao-horario-message.is-assistant .modulacao-horario-message-bubble {
+		background: #ffffff;
+	}
+
+	.modulacao-horario-message.is-system .modulacao-horario-message-bubble {
+		background: #f8f9fa;
+		color: #495057;
+	}
+
+	.modulacao-horario-message-bubble ul {
+		margin: .5rem 0 0;
+		padding-left: 1.1rem;
+	}
+
+	.modulacao-horario-message-bubble li+li {
+		margin-top: .25rem;
+	}
+
+	.modulacao-horario-thinking {
+		display: inline-flex;
+		align-items: center;
+		gap: .45rem;
+		font-weight: 600;
+		color: #b02a37;
+	}
+
+	.modulacao-horario-thinking-dots {
+		display: inline-flex;
+		gap: .2rem;
+	}
+
+	.modulacao-horario-thinking-dots span {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: #dc3545;
+		animation: modulacaoHorarioPulse 1.1s infinite ease-in-out;
+	}
+
+	.modulacao-horario-thinking-dots span:nth-child(2) {
+		animation-delay: .15s;
+	}
+
+	.modulacao-horario-thinking-dots span:nth-child(3) {
+		animation-delay: .3s;
+	}
+
+	@keyframes modulacaoHorarioPulse {
+
+		0%,
+		80%,
+		100% {
+			opacity: .25;
+			transform: translateY(0);
+		}
+
+		40% {
+			opacity: 1;
+			transform: translateY(-2px);
+		}
+	}
+
+	.modulacao-horario-summary {
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: .75rem;
+		margin-bottom: .9rem;
+	}
+
+	.modulacao-horario-summary-card {
+		border: 1px solid rgba(33, 37, 41, 0.08);
+		border-radius: .85rem;
+		padding: .75rem;
+		background: #fff;
+	}
+
+	.modulacao-horario-summary-card strong {
+		display: block;
+		font-size: 1rem;
+	}
+
+	.modulacao-horario-summary-card span {
+		display: block;
+		font-size: .82rem;
+		color: #6c757d;
+		margin-top: .15rem;
+	}
+
+	.modulacao-horario-grid td {
+		min-width: 190px;
+		vertical-align: top;
+	}
+
+	.modulacao-horario-slot-card {
+		border: 1px solid rgba(33, 37, 41, 0.08);
+		border-radius: .75rem;
+		background: #fff;
+		padding: .55rem;
+		text-align: left;
+		box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+	}
+
+	.modulacao-horario-slot-card+.modulacao-horario-slot-card {
+		margin-top: .45rem;
+	}
+
+	.modulacao-horario-slot-card strong {
+		display: block;
+		font-size: .84rem;
+	}
+
+	.modulacao-horario-slot-card span {
+		display: block;
+		font-size: .79rem;
+		color: #6c757d;
+	}
+
+	.modulacao-horario-feedback {
+		font-size: .84rem;
+		color: #6c757d;
+	}
+
+	.modulacao-horario-visualizacao-body {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.modulacao-horario-turma-card {
+		border: 1px solid rgba(33, 37, 41, 0.08);
+		border-radius: .9rem;
+		background: #fff;
+		overflow: hidden;
+	}
+
+	.modulacao-horario-turma-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: flex-start;
+		gap: 1rem;
+		padding: .95rem 1rem;
+		background: #f8f9fa;
+		border-bottom: 1px solid rgba(33, 37, 41, 0.08);
+	}
+
+	.modulacao-horario-turma-header h3 {
+		margin: 0;
+		font-size: 1rem;
+	}
+
+	.modulacao-horario-turma-meta {
+		font-size: .82rem;
+		color: #6c757d;
+		margin-top: .2rem;
+	}
+
+	.modulacao-horario-turma-count {
+		white-space: nowrap;
+		font-size: .82rem;
+		color: #495057;
+		background: #fff;
+		border: 1px solid rgba(33, 37, 41, 0.08);
+		border-radius: 999px;
+		padding: .28rem .65rem;
+	}
+
+	.modulacao-horario-empty-panel {
+		border: 1px dashed rgba(33, 37, 41, 0.18);
+		border-radius: .9rem;
+		padding: 1.25rem;
+		text-align: center;
+		color: #6c757d;
+		background: #f8f9fa;
+	}
+
+	.modal {
+		display: none;
+		position: fixed;
+		inset: 0;
+	}
+
+	.modal-dialog-scrollable .modal-content {
+		max-height: calc(100vh - 2rem);
+	}
+
+	.modal-dialog-scrollable .modal-body {
+		overflow-y: auto;
+	}
+
+	.modal-footer {
+		position: sticky;
+		bottom: 0;
+		z-index: 2;
+		background: #fff;
+		border-top: 1px solid rgba(33, 37, 41, 0.08);
+	}
+
+	@media (max-width: 991.98px) {
+		.modulacao-search {
+			max-width: 100%;
+			min-width: 0;
+		}
+
+		.modulacao-aulas-layout {
+			grid-template-columns: 1fr;
+		}
+
+		.modulacao-aulas-summary {
+			grid-template-columns: 1fr;
+		}
+
+		.modulacao-beneficio-meta {
+			grid-template-columns: 1fr;
+		}
+
+		.modulacao-horario-layout {
+			grid-template-columns: 1fr;
+		}
+
+		.modulacao-horario-selectors-grid {
+			grid-template-columns: 1fr;
+		}
+
+		.modulacao-horario-summary {
+			grid-template-columns: 1fr;
+		}
+
+		.modal-dialog {
+			margin: .5rem;
+		}
+
+		.modal-dialog-scrollable .modal-content {
+			max-height: calc(100vh - 1rem);
+		}
+	}
+</style>
+
+<div id="statusMensagemModulacao" class="top-status d-none" role="alert" aria-live="polite"></div>
+
+<div class="container-fluid px-0 institutional-page-root">
+	<div class="p-2 p-md-3">
+		<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+			<div>
+				<h1 class="h4 fw-bold mb-1">Modulação e Horários</h1>
+				<div class="text-secondary small">Vincule professores e disciplinas, e configure a grade semanal comum
+					de aulas.</div>
+			</div>
+			<div class="d-flex gap-2 align-items-center">
+				<button id="btnAtualizarModulacao" class="btn btn-outline-primary btn-sm"
+					type="button">Atualizar</button>
+				<a href="<?= rtrim(BASE_URL, '/'); ?>/institucional" class="btn btn-outline-secondary btn-sm">
+					<i class="las la-arrow-left me-1"></i>Voltar
+				</a>
+			</div>
+		</div>
+
+		<div class="modulacao-tabs-shell">
+			<ul class="nav modulacao-tabs-nav" role="tablist">
+				<li class="nav-item" role="presentation">
+					<button class="nav-link active" id="tabHorarioBtn" data-bs-toggle="tab" data-bs-target="#tabHorario"
+						type="button" role="tab" aria-controls="tabHorario" aria-selected="true">Horário</button>
+				</li>
+				<li class="nav-item" role="presentation">
+					<button class="nav-link" id="tabAreasBtn" data-bs-toggle="tab" data-bs-target="#tabAreas"
+						type="button" role="tab" aria-controls="tabAreas" aria-selected="false">Área</button>
+				</li>
+				<li class="nav-item" role="presentation">
+					<button class="nav-link" id="tabDisciplinasBtn" data-bs-toggle="tab"
+						data-bs-target="#tabDisciplinas" type="button" role="tab" aria-controls="tabDisciplinas"
+						aria-selected="false">Disciplinas</button>
+				</li>
+				<li class="nav-item" role="presentation">
+					<button class="nav-link" id="tabVinculosBtn" data-bs-toggle="tab" data-bs-target="#tabVinculos"
+						type="button" role="tab" aria-controls="tabVinculos" aria-selected="false">Vínculos</button>
+				</li>
+				<li class="nav-item" role="presentation">
+					<button class="nav-link" id="tabAulasBtn" data-bs-toggle="tab" data-bs-target="#tabAulas"
+						type="button" role="tab" aria-controls="tabAulas" aria-selected="false">Aulas</button>
+				</li>
+				<li class="nav-item" role="presentation">
+					<button class="nav-link" id="tabLivreDocenciaBtn" data-bs-toggle="tab"
+						data-bs-target="#tabLivreDocencia" type="button" role="tab" aria-controls="tabLivreDocencia"
+						aria-selected="false">Livre Docência</button>
+				</li>
+				<li class="nav-item" role="presentation">
+					<button class="nav-link" id="tabPlanejamentoBtn" data-bs-toggle="tab"
+						data-bs-target="#tabPlanejamento" type="button" role="tab" aria-controls="tabPlanejamento"
+						aria-selected="false">Planejamento</button>
+				</li>
+			</ul>
+
+			<div class="tab-content modulacao-tab-content">
+				<div class="tab-pane fade modulacao-tab-pane" id="tabAreas" role="tabpanel"
+					aria-labelledby="tabAreasBtn" tabindex="0">
+					<section class="modulacao-card h-100">
+						<div class="modulacao-card-header">
+							<div>
+								<h2>Áreas</h2>
+								<p>Cadastre as áreas curriculares usadas nas disciplinas, como Humanas, Linguagens,
+									Libras e Projeto de Vida.</p>
+							</div>
+							<button id="btnNovaArea" class="btn btn-danger btn-sm" type="button"><i
+									class="las la-plus me-1"></i>Nova área</button>
+						</div>
+						<div class="modulacao-toolbar">
+							<input type="search" id="buscaAreas" class="form-control modulacao-search"
+								placeholder="Buscar área por nome ou status" autocomplete="off">
+						</div>
+						<div class="table-responsive table-scroll-only border rounded bg-white">
+							<table class="table table-sm mb-0 modulacao-table">
+								<thead>
+									<tr>
+										<th>Área</th>
+										<th>Status</th>
+										<th class="text-end">Ações</th>
+									</tr>
+								</thead>
+								<tbody id="areasBody">
+									<tr>
+										<td colspan="3" class="muted-empty">Carregando áreas...</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</section>
+				</div>
+
+				<div class="tab-pane fade modulacao-tab-pane" id="tabDisciplinas" role="tabpanel"
+					aria-labelledby="tabDisciplinasBtn" tabindex="0">
+					<section class="modulacao-card h-100">
+						<div class="modulacao-card-header">
+							<div>
+								<h2>Disciplinas</h2>
+								<p>Catálogo das disciplinas disponíveis para vínculo.</p>
+							</div>
+							<button id="btnNovaDisciplina" class="btn btn-danger btn-sm" type="button"><i
+									class="las la-plus me-1"></i>Nova disciplina</button>
+						</div>
+						<div class="modulacao-toolbar">
+							<input type="search" id="buscaDisciplinas" class="form-control modulacao-search"
+								placeholder="Buscar disciplina por nome ou status" autocomplete="off">
+							<div class="modulacao-bulk-actions">
+								<button id="btnExcluirDisciplinasSelecionadas" type="button"
+									class="btn btn-outline-danger btn-sm" disabled>Excluir selecionadas</button>
+							</div>
+						</div>
+						<div class="table-responsive table-scroll-only border rounded bg-white">
+							<table class="table table-sm mb-0 modulacao-table">
+								<thead>
+									<tr>
+										<th class="modulacao-select-col"><input type="checkbox"
+												id="selecionarTodasDisciplinas"
+												aria-label="Selecionar todas as disciplinas visíveis"></th>
+										<th>Disciplina</th>
+										<th>Área</th>
+										<th>Status</th>
+										<th class="text-end">Ações</th>
+									</tr>
+								</thead>
+								<tbody id="disciplinasBody">
+									<tr>
+										<td colspan="5" class="muted-empty">Carregando disciplinas...</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</section>
+				</div>
+
+				<div class="tab-pane fade modulacao-tab-pane" id="tabVinculos" role="tabpanel"
+					aria-labelledby="tabVinculosBtn" tabindex="0">
+					<section class="modulacao-card h-100">
+						<div class="modulacao-card-header">
+							<div>
+								<h2>Vínculos</h2>
+								<p>Cada vínculo liga um professor a uma turma e a uma disciplina. Um mesmo professor
+									pode ter vários vínculos conforme as turmas e disciplinas atendidas.</p>
+							</div>
+							<button id="btnNovoVinculo" class="btn btn-danger btn-sm" type="button"><i
+									class="las la-plus me-1"></i>Novo vínculo</button>
+						</div>
+						<div class="modulacao-toolbar">
+							<input type="search" id="buscaVinculos" class="form-control modulacao-search"
+								placeholder="Buscar vínculo por professor, turma ou disciplina" autocomplete="off">
+							<div class="modulacao-bulk-actions">
+								<button id="btnExcluirVinculosSelecionados" type="button"
+									class="btn btn-outline-danger btn-sm" disabled>Excluir selecionados</button>
+							</div>
+						</div>
+						<div class="table-responsive table-scroll-only border rounded bg-white">
+							<table class="table table-sm mb-0 modulacao-table">
+								<thead>
+									<tr>
+										<th class="modulacao-select-col"><input type="checkbox"
+												id="selecionarTodosVinculos"
+												aria-label="Selecionar todos os vínculos visíveis"></th>
+										<th>Professor</th>
+										<th>Turma</th>
+										<th>Disciplina</th>
+										<th class="text-end">Ações</th>
+									</tr>
+								</thead>
+								<tbody id="modulacoesBody">
+									<tr>
+										<td colspan="5" class="muted-empty">Carregando vínculos...</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</section>
+				</div>
+
+				<div class="tab-pane fade modulacao-tab-pane" id="tabAulas" role="tabpanel"
+					aria-labelledby="tabAulasBtn" tabindex="0">
+					<section class="modulacao-card h-100">
+						<div class="modulacao-card-header">
+							<div>
+								<h2>Horário comum de aulas</h2>
+							</div>
+							<div class="modulacao-bulk-actions">
+								<button id="btnRegerarGradeAulas" class="btn btn-outline-primary btn-sm"
+									type="button">Atualizar grade</button>
+								<button id="btnRestaurarPadraoAulas" class="btn btn-outline-secondary btn-sm"
+									type="button">Restaurar padrão</button>
+							</div>
+						</div>
+						<div class="modulacao-aulas-layout">
+							<div class="modulacao-selector-card">
+								<form id="formConfiguracaoAulas" novalidate>
+									<div class="row g-3">
+										<div class="col-sm-6">
+											<label class="form-label" for="aulasQuantidadeDia">Quantidade por
+												dia</label>
+											<input type="number" id="aulasQuantidadeDia" class="form-control" value="9"
+												min="1" max="20" step="1" required>
+										</div>
+										<div class="col-sm-6">
+											<label class="form-label" for="aulasDuracaoMinutos">Duração da aula</label>
+											<input type="number" id="aulasDuracaoMinutos" class="form-control"
+												value="50" min="10" max="180" step="5" required>
+										</div>
+										<div class="col-sm-6">
+											<label class="form-label" for="aulasHoraInicio">Início das aulas</label>
+											<input type="time" id="aulasHoraInicio" class="form-control" value="07:30"
+												required>
+										</div>
+										<div class="col-sm-6">
+											<label class="form-label" for="aulasHoraFim">Fim das aulas</label>
+											<input type="time" id="aulasHoraFim" class="form-control" value="17:00"
+												required>
+										</div>
+										<div class="col-sm-6">
+											<label class="form-label" for="aulasInicioAlmoco">Início do almoço</label>
+											<input type="time" id="aulasInicioAlmoco" class="form-control" value="12:00"
+												required>
+										</div>
+										<div class="col-sm-6">
+											<label class="form-label" for="aulasFimAlmoco">Fim do almoço</label>
+											<input type="time" id="aulasFimAlmoco" class="form-control" value="13:20"
+												required>
+										</div>
+									</div>
+									<div class="modulacao-aulas-summary" id="aulasResumoCards"></div>
+									<div class="d-flex flex-wrap gap-2 mt-3">
+										<button type="submit" class="btn btn-danger btn-sm">Salvar configuração</button>
+									</div>
+								</form>
+							</div>
+							<div class="table-responsive table-scroll-only border rounded bg-white">
+								<table class="modulacao-aulas-grid mb-0">
+									<thead>
+										<tr>
+											<th>Horário</th>
+											<th>Segunda</th>
+											<th>Terça</th>
+											<th>Quarta</th>
+											<th>Quinta</th>
+											<th>Sexta</th>
+											<th>Sábado</th>
+										</tr>
+									</thead>
+									<tbody id="aulasConfiguracaoBody">
+										<tr>
+											<td colspan="7" class="muted-empty">Carregando configuração de aulas...</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</section>
+				</div>
+
+				<div class="tab-pane fade show active modulacao-tab-pane" id="tabHorario" role="tabpanel"
+					aria-labelledby="tabHorarioBtn" tabindex="0">
+					<section class="modulacao-card h-100">
+						<div class="modulacao-card-header">
+							<div>
+								<h2>Horário</h2>
+							</div>
+						</div>
+						<div class="modulacao-horario-panel mb-3">
+							<div class="modulacao-horario-selectors-grid">
+								<div>
+									<label class="form-label">Professores para gerar</label>
+									<div class="modulacao-selector-card">
+										<div id="horarioProfessoresSummary" class="modulacao-selector-summary">
+											<div class="small text-secondary">Nenhum professor selecionado.</div>
+										</div>
+										<div class="modulacao-horario-selector-actions">
+											<button id="btnAbrirHorarioProfessoresModal" class="btn btn-outline-primary btn-sm" type="button"><i class="las la-chalkboard-teacher me-1"></i>Selecionar professores</button>
+											<button id="btnSelecionarTodosHorarioProfessores" class="btn btn-outline-secondary btn-sm" type="button">Selecionar todos</button>
+											<button id="btnLimparHorarioProfessores" class="btn btn-outline-secondary btn-sm" type="button">Limpar professores</button>
+										</div>
+									</div>
+									<div class="small text-secondary mt-1">Selecione os professores que terão a grade reconstruída.</div>
+								</div>
+								<div>
+									<label class="form-label">Turmas incluídas no pedido</label>
+									<div class="modulacao-selector-card">
+										<div id="horarioTurmasSummary" class="modulacao-selector-summary">
+											<div class="small text-secondary">Nenhuma turma selecionada.</div>
+										</div>
+										<div class="modulacao-horario-selector-actions">
+											<button id="btnAbrirHorarioTurmasModal" class="btn btn-outline-primary btn-sm" type="button"><i class="las la-layer-group me-1"></i>Selecionar turmas</button>
+											<button id="btnSelecionarTodasHorarioTurmas" class="btn btn-outline-secondary btn-sm" type="button">Selecionar todas</button>
+											<button id="btnLimparHorarioTurmas" class="btn btn-outline-secondary btn-sm" type="button">Limpar turmas</button>
+										</div>
+									</div>
+									<div class="small text-secondary mt-1">A IA só poderá alocar aulas nessas turmas.</div>
+								</div>
+							</div>
+						</div>
+						<div class="mb-3 modulacao-horario-prompt-card">
+							<div class="modulacao-horario-prompt-header">
+								<div class="modulacao-horario-prompt-title">
+									<div class="modulacao-horario-prompt-kicker">Instruções para a IA</div>
+									<strong>Descreva exatamente como o horário deve ser montado</strong>
+									<span>Use este campo para priorizar turmas, distribuir disciplinas, evitar janelas e
+										orientar a montagem semanal.</span>
+								</div>
+								<span class="modulacao-badge-muted">Campo principal</span>
+							</div>
+							<label class="form-label" for="horarioIaPrompt">Prompt de instruções</label>
+							<textarea id="horarioIaPrompt" class="form-control" rows="7"
+								placeholder="Ex.: Priorize o 6º Ano A e B nas primeiras aulas, distribua Matemática e Português ao longo da semana e evite janelas longas para os professores."></textarea>
+							<div class="modulacao-horario-assistant-shell">
+								<div class="modulacao-horario-assistant-header">
+									<div>
+										<strong>Assistente de horários</strong>
+										<span>Mostra etapas visíveis da geração em tempo real. O backend não envia
+											raciocínio interno literal.</span>
+									</div>
+									<div id="horarioIaStatusBadge" class="modulacao-horario-status-badge">Aguardando
+										prompt</div>
+								</div>
+								<div id="horarioIaTimeline" class="modulacao-horario-timeline"></div>
+							</div>
+						</div>
+
+						<div class="modulacao-horario-layout">
+							<div class="modulacao-horario-panel">
+								<div class="d-flex flex-wrap gap-2">
+									<button id="btnGerarHorarioIa" class="btn btn-danger btn-sm" type="button"><i
+											class="las la-magic me-1"></i>Gerar com IA</button>
+									<button id="btnAplicarHorarioIa" class="btn btn-outline-primary btn-sm"
+										type="button" disabled>Aplicar grade gerada</button>
+									<button id="btnLimparHorarioPreview" class="btn btn-outline-secondary btn-sm"
+										type="button">Limpar preview</button>
+								</div>
+								<div id="horarioFeedback" class="modulacao-horario-feedback mt-3">Selecione professores
+									e turmas, escreva as instruções e gere uma proposta automática.</div>
+								<div id="horarioIaNotas" class="modulacao-note d-none mt-3"></div>
+							</div>
+							<div class="d-flex flex-column min-height-0 gap-3">
+								<div class="modulacao-horario-summary" id="horarioResumoCards"></div>
+								<div class="modulacao-selector-card">
+									<div
+										class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+										<div>
+											<h3 class="h6 mb-1">Visualização da grade</h3>
+											<div class="small text-secondary">Abra o horário em um modal e veja a
+												distribuição separada por turma.</div>
+										</div>
+										<button id="btnVisualizarHorario" class="btn btn-outline-dark btn-sm"
+											type="button">VISUALIZAR HORÁRIO</button>
+									</div>
+									<div class="small text-secondary mt-3">Quando houver preview da IA, o modal mostrará
+										a proposta antes da aplicação. Sem preview, a visualização usa a grade aplicada
+										e respeita os filtros atuais de professores e turmas.</div>
+								</div>
+							</div>
+						</div>
+				</section>
+			</div>
+
+			<div class="tab-pane fade modulacao-tab-pane" id="tabLivreDocencia" role="tabpanel"
+				aria-labelledby="tabLivreDocenciaBtn" tabindex="0">
+				<section class="modulacao-card h-100">
+					<div class="modulacao-card-header">
+						<div>
+							<h2>Livre Docência</h2>
+							<p>Cadastre por usuário o dia e os horários de aula reservados para a Livre Docência,
+								calculados por 1/5 da carga horária semanal do professor.</p>
+						</div>
+						<button id="btnNovaLivreDocencia" class="btn btn-danger btn-sm" type="button"><i
+								class="las la-plus me-1"></i>Nova Livre Docência</button>
+					</div>
+					<div class="modulacao-toolbar">
+						<input type="search" id="buscaLivreDocencia" class="form-control modulacao-search"
+							placeholder="Buscar por usuário, função, dia ou horário" autocomplete="off">
+					</div>
+					<div class="table-responsive table-scroll-only border rounded bg-white">
+						<table class="table table-sm mb-0 modulacao-table">
+							<thead>
+								<tr>
+									<th>Usuário</th>
+									<th>Função</th>
+									<th>Carga semanal</th>
+									<th>1/5 CH</th>
+									<th>Dia</th>
+									<th>Horários</th>
+									<th class="text-end">Ações</th>
+								</tr>
+							</thead>
+							<tbody id="livreDocenciasBody">
+								<tr>
+									<td colspan="7" class="muted-empty">Carregando Livre Docência...</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</section>
+			</div>
+
+			<div class="tab-pane fade modulacao-tab-pane" id="tabPlanejamento" role="tabpanel"
+				aria-labelledby="tabPlanejamentoBtn" tabindex="0">
+				<section class="modulacao-card h-100">
+					<div class="modulacao-card-header">
+						<div>
+							<h2>Planejamento</h2>
+							<p>Cadastre por usuário o dia e os horários de aula reservados para Planejamento, também
+								calculados por 1/5 da carga horária semanal do professor.</p>
+						</div>
+						<button id="btnNovoPlanejamento" class="btn btn-danger btn-sm" type="button"><i
+								class="las la-plus me-1"></i>Novo Planejamento</button>
+					</div>
+					<div class="modulacao-toolbar">
+						<input type="search" id="buscaPlanejamento" class="form-control modulacao-search"
+							placeholder="Buscar por usuário, função, dia ou horário" autocomplete="off">
+					</div>
+					<div class="table-responsive table-scroll-only border rounded bg-white">
+						<table class="table table-sm mb-0 modulacao-table">
+							<thead>
+								<tr>
+									<th>Usuário</th>
+									<th>Função</th>
+									<th>Carga semanal</th>
+									<th>1/5 CH</th>
+									<th>Dia</th>
+									<th>Horários</th>
+									<th class="text-end">Ações</th>
+								</tr>
+							</thead>
+							<tbody id="planejamentosBody">
+								<tr>
+									<td colspan="7" class="muted-empty">Carregando Planejamento...</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</section>
+			</div>
+		</div>
+	</div>
+</div>
+</div>
+
+<div class="modal fade" id="modalDisciplina" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+		<div class="modal-content site-modal-content">
+			<div class="modal-header">
+				<h2 class="modal-title fs-5">Disciplina</h2>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+			</div>
+			<form id="formDisciplina" novalidate>
+				<div class="modal-body">
+					<input type="hidden" id="disciplinaId" value="0">
+					<div class="row g-3">
+						<div class="col-md-6">
+							<label class="form-label" for="disciplinaNome">Nome</label>
+							<input type="text" id="disciplinaNome" class="form-control" maxlength="120" required>
+						</div>
+						<div class="col-md-3">
+							<label class="form-label" for="disciplinaArea">Área</label>
+							<select id="disciplinaArea" class="form-select" required></select>
+						</div>
+						<div class="col-md-3">
+							<label class="form-label" for="disciplinaStatus">Status</label>
+							<select id="disciplinaStatus" class="form-select">
+								<option value="ativa">Ativa</option>
+								<option value="inativa">Inativa</option>
+							</select>
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="submit" class="btn btn-danger btn-sm">Salvar</button>
+					<button type="button" class="btn btn-outline-secondary btn-sm"
+						data-bs-dismiss="modal">Cancelar</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<div class="modal fade" id="modalArea" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+		<div class="modal-content site-modal-content">
+			<div class="modal-header">
+				<h2 class="modal-title fs-5">Área</h2>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+			</div>
+			<form id="formArea" novalidate>
+				<div class="modal-body">
+					<input type="hidden" id="areaId" value="0">
+					<div class="row g-3">
+						<div class="col-md-8">
+							<label class="form-label" for="areaNome">Nome</label>
+							<input type="text" id="areaNome" class="form-control" maxlength="120" required>
+						</div>
+						<div class="col-md-4">
+							<label class="form-label" for="areaStatus">Status</label>
+							<select id="areaStatus" class="form-select">
+								<option value="ativa">Ativa</option>
+								<option value="inativa">Inativa</option>
+							</select>
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="submit" class="btn btn-danger btn-sm">Salvar</button>
+					<button type="button" class="btn btn-outline-secondary btn-sm"
+						data-bs-dismiss="modal">Cancelar</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<div class="modal fade" id="modalVinculo" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+		<div class="modal-content site-modal-content">
+			<div class="modal-header">
+				<h2 class="modal-title fs-5">Vínculo</h2>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+			</div>
+			<form id="formVinculo" novalidate>
+				<div class="modal-body">
+					<input type="hidden" id="vinculoId" value="0">
+					<div class="modulacao-note">Na criação, você pode selecionar várias turmas e disciplinas para o
+						mesmo professor. Na edição, mantenha apenas uma turma e uma disciplina selecionadas.</div>
+					<div class="row g-3">
+						<div class="col-md-6">
+							<label class="form-label" for="vinculoProfessor">Professor</label>
+							<select id="vinculoProfessor" class="form-select" required></select>
+						</div>
+						<div class="col-md-6">
+							<label class="form-label">Turmas</label>
+							<div class="modulacao-selector-card">
+								<div id="vinculoTurmasSummary" class="modulacao-selector-summary">
+									<div class="small text-secondary">Nenhuma turma selecionada.</div>
+								</div>
+								<div id="vinculoTurmasModeNote" class="modulacao-selector-mode-note">Na criação, você
+									pode selecionar várias turmas.</div>
+								<div class="d-flex flex-wrap gap-2 mt-3">
+									<button type="button" class="btn btn-outline-primary btn-sm"
+										id="btnAbrirTurmasVinculoModal">
+										<i class="las la-layer-group me-1"></i>Selecionar turmas
+									</button>
+									<button type="button" class="btn btn-outline-secondary btn-sm"
+										id="btnLimparTurmasVinculo">
+										<i class="las la-eraser me-1"></i>Limpar turmas
+									</button>
+								</div>
+							</div>
+						</div>
+						<div class="col-md-12">
+							<label class="form-label">Disciplinas</label>
+							<div class="modulacao-selector-card">
+								<div id="vinculoDisciplinasSummary" class="modulacao-selector-summary">
+									<div class="small text-secondary">Nenhuma disciplina selecionada.</div>
+								</div>
+								<div id="vinculoDisciplinasModeNote" class="modulacao-selector-mode-note">Na criação,
+									você pode selecionar várias disciplinas.</div>
+								<div class="d-flex flex-wrap gap-2 mt-3">
+									<button type="button" class="btn btn-outline-primary btn-sm"
+										id="btnAbrirDisciplinasVinculoModal">
+										<i class="las la-book me-1"></i>Selecionar disciplinas
+									</button>
+									<button type="button" class="btn btn-outline-secondary btn-sm"
+										id="btnLimparDisciplinasVinculo">
+										<i class="las la-eraser me-1"></i>Limpar disciplinas
+									</button>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="submit" class="btn btn-danger btn-sm">Salvar</button>
+					<button type="button" class="btn btn-outline-secondary btn-sm"
+						data-bs-dismiss="modal">Cancelar</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<div class="modal fade" id="modalDisciplinasVinculo" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+		<div class="modal-content site-modal-content">
+			<div class="modal-header">
+				<div>
+					<div class="small text-secondary">Seleção de disciplinas</div>
+					<h2 class="modal-title fs-6 mb-0">Escolha as disciplinas do professor</h2>
+				</div>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+			</div>
+			<div class="modal-body">
+				<p class="small text-secondary mb-3">Na criação, marque várias disciplinas se necessário. Na edição,
+					mantenha apenas uma marcada.</p>
+				<div class="mb-3">
+					<input type="search" class="form-control form-control-sm" id="vinculoDisciplinasBusca"
+						placeholder="Buscar disciplina por nome" autocomplete="off">
+				</div>
+				<div class="border rounded p-2 modulacao-selector-list" id="vinculoDisciplinasLista"></div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="modal fade" id="modalTurmasVinculo" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+		<div class="modal-content site-modal-content">
+			<div class="modal-header">
+				<div>
+					<div class="small text-secondary">Seleção de turmas</div>
+					<h2 class="modal-title fs-6 mb-0">Escolha as turmas do vínculo</h2>
+				</div>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+			</div>
+			<div class="modal-body">
+				<p class="small text-secondary mb-3">Na criação, marque várias turmas se necessário. Na edição, mantenha
+					apenas uma marcada.</p>
+				<div class="mb-3">
+					<input type="search" class="form-control form-control-sm" id="vinculoTurmasBusca"
+						placeholder="Buscar turma por nome ou turno" autocomplete="off">
+				</div>
+				<div class="border rounded p-2 modulacao-selector-list" id="vinculoTurmasLista"></div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="modal fade" id="modalBeneficio" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+		<div class="modal-content site-modal-content">
+			<div class="modal-header">
+				<h2 class="modal-title fs-5" id="modalBeneficioTitulo">Benefício</h2>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+			</div>
+			<form id="formBeneficio" novalidate>
+				<div class="modal-body">
+					<input type="hidden" id="beneficioId" value="0">
+					<input type="hidden" id="beneficioTipo" value="livre_docencia">
+					<div class="modulacao-note">O limite do benefício é 1/5 da carga horária semanal do professor. Cada
+						horário marcado abate a duração real daquela aula, e não apenas a quantidade de checkboxes
+						selecionados.</div>
+					<div class="row g-3">
+						<div class="col-md-6">
+							<label class="form-label" for="beneficioUsuario">Usuário</label>
+							<select id="beneficioUsuario" class="form-select" required></select>
+						</div>
+						<div class="col-md-6">
+							<label class="form-label" for="beneficioDiaSemana">Dia da semana</label>
+							<select id="beneficioDiaSemana" class="form-select" required>
+								<option value="segunda">Segunda</option>
+								<option value="terca">Terça</option>
+								<option value="quarta">Quarta</option>
+								<option value="quinta">Quinta</option>
+								<option value="sexta">Sexta</option>
+								<option value="sabado">Sábado</option>
+							</select>
+						</div>
+					</div>
+					<div class="modulacao-beneficio-meta" id="beneficioResumoMeta"></div>
+					<div>
+						<label class="form-label d-block">Horários do benefício</label>
+						<div class="modulacao-beneficio-slots" id="beneficioSlotsLista">
+							<div class="small text-secondary">Selecione um usuário e um dia para carregar os horários.
+							</div>
+						</div>
+						<div class="modulacao-beneficio-summary-note" id="beneficioResumoSelecao"></div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="submit" class="btn btn-danger btn-sm">Salvar</button>
+					<button type="button" class="btn btn-outline-secondary btn-sm"
+						data-bs-dismiss="modal">Cancelar</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<div class="modal fade" id="modalConfirmacaoModulacao" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content site-modal-content">
+			<div class="modal-header">
+				<h2 class="modal-title fs-5" id="modalConfirmacaoModulacaoTitulo">Confirmar ação</h2>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+			</div>
+			<div class="modal-body" id="modalConfirmacaoModulacaoMensagem">
+				Deseja continuar com esta ação?
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-danger btn-sm" id="btnConfirmarAcaoModulacao">Confirmar</button>
+				<button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="modal fade" id="modalHorarioProfessores" tabindex="-1" aria-labelledby="modalHorarioProfessoresLabel"
+	aria-hidden="true">
+	<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+		<div class="modal-content site-modal-content">
+			<div class="modal-header">
+				<div>
+					<div class="small text-secondary">Seleção de professores</div>
+					<h2 class="modal-title fs-6 mb-0" id="modalHorarioProfessoresLabel">Escolha os professores para
+						geração</h2>
+				</div>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+			</div>
+			<div class="modal-body">
+				<p class="small text-secondary mb-3">Os professores marcados entram no pedido para a IA e também filtram
+					a grade aplicada quando não houver preview.</p>
+				<div class="mb-3">
+					<input type="search" id="horarioProfessoresBusca" class="form-control form-control-sm"
+						placeholder="Buscar professor por nome ou carga horária" autocomplete="off">
+				</div>
+				<div class="border rounded p-2 modulacao-selector-list modulacao-horario-selector-list"
+					id="horarioProfessoresLista"></div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-outline-secondary btn-sm"
+					id="btnModalSelecionarTodosHorarioProfessores">Selecionar todos</button>
+				<button type="button" class="btn btn-outline-secondary btn-sm"
+					id="btnModalLimparHorarioProfessores">Limpar seleção</button>
+				<button type="button" class="btn btn-primary btn-sm" data-bs-dismiss="modal">Concluir
+					professores</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="modal fade" id="modalHorarioTurmas" tabindex="-1" aria-labelledby="modalHorarioTurmasLabel"
+	aria-hidden="true">
+	<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+		<div class="modal-content site-modal-content">
+			<div class="modal-header">
+				<div>
+					<div class="small text-secondary">Seleção de turmas</div>
+					<h2 class="modal-title fs-6 mb-0" id="modalHorarioTurmasLabel">Escolha as turmas para geração</h2>
+				</div>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+			</div>
+			<div class="modal-body">
+				<p class="small text-secondary mb-3">As turmas marcadas entram no pedido da IA e ajudam a filtrar a
+					visualização da grade atual.</p>
+				<div class="mb-3">
+					<input type="search" id="horarioTurmasBusca" class="form-control form-control-sm"
+						placeholder="Buscar turma por nome ou turno" autocomplete="off">
+				</div>
+				<div class="border rounded p-2 modulacao-selector-list modulacao-horario-selector-list"
+					id="horarioTurmasLista"></div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-outline-secondary btn-sm"
+					id="btnModalSelecionarTodasHorarioTurmas">Selecionar todas</button>
+				<button type="button" class="btn btn-outline-secondary btn-sm" id="btnModalLimparHorarioTurmas">Limpar
+					seleção</button>
+				<button type="button" class="btn btn-primary btn-sm" data-bs-dismiss="modal">Concluir turmas</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="modal fade" id="modalHorarioVisualizacao" tabindex="-1" aria-labelledby="modalHorarioVisualizacaoLabel"
+	aria-hidden="true">
+	<div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+		<div class="modal-content site-modal-content">
+			<div class="modal-header">
+				<div>
+					<div class="small text-secondary">Visualização do horário</div>
+					<h2 class="modal-title fs-6 mb-0" id="modalHorarioVisualizacaoLabel">Grade semanal separada por
+						turma</h2>
+				</div>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+			</div>
+			<div class="modal-body">
+				<div id="horarioVisualizacaoBody" class="modulacao-horario-visualizacao-body">
+					<div class="modulacao-horario-empty-panel">Carregando grade semanal...</div>
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-primary btn-sm" data-bs-dismiss="modal">Fechar
+					visualização</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script>
+	(function () {
+		var pageStarted = false;
+		var bootstrapWaitAttempts = 0;
+
+		function hasBootstrapModal() {
+			return typeof window.bootstrap !== 'undefined'
+				&& window.bootstrap
+				&& typeof window.bootstrap.Modal === 'function';
+		}
+
+		function startPage() {
+			if (pageStarted) {
+				return;
+			}
+
+			if (!hasBootstrapModal()) {
+				bootstrapWaitAttempts += 1;
+				if (bootstrapWaitAttempts <= 80) {
+					window.setTimeout(startPage, 50);
+				}
+				return;
+			}
+
+			pageStarted = true;
+			var bootstrapApi = window.bootstrap;
+
+			var statusElement = document.getElementById('statusMensagemModulacao');
+			var btnAtualizar = document.getElementById('btnAtualizarModulacao');
+			var btnNovaArea = document.getElementById('btnNovaArea');
+			var btnNovaDisciplina = document.getElementById('btnNovaDisciplina');
+			var btnNovoVinculo = document.getElementById('btnNovoVinculo');
+			var btnNovaLivreDocencia = document.getElementById('btnNovaLivreDocencia');
+			var btnNovoPlanejamento = document.getElementById('btnNovoPlanejamento');
+			var btnRegerarGradeAulas = document.getElementById('btnRegerarGradeAulas');
+			var btnRestaurarPadraoAulas = document.getElementById('btnRestaurarPadraoAulas');
+			var btnExcluirDisciplinasSelecionadas = document.getElementById('btnExcluirDisciplinasSelecionadas');
+			var btnExcluirVinculosSelecionados = document.getElementById('btnExcluirVinculosSelecionados');
+			var buscaAreasInput = document.getElementById('buscaAreas');
+			var buscaDisciplinasInput = document.getElementById('buscaDisciplinas');
+			var buscaVinculosInput = document.getElementById('buscaVinculos');
+			var buscaLivreDocenciaInput = document.getElementById('buscaLivreDocencia');
+			var buscaPlanejamentoInput = document.getElementById('buscaPlanejamento');
+			var selecionarTodasDisciplinasInput = document.getElementById('selecionarTodasDisciplinas');
+			var selecionarTodosVinculosInput = document.getElementById('selecionarTodosVinculos');
+			var areasBody = document.getElementById('areasBody');
+			var disciplinasBody = document.getElementById('disciplinasBody');
+			var modulacoesBody = document.getElementById('modulacoesBody');
+			var livreDocenciasBody = document.getElementById('livreDocenciasBody');
+			var planejamentosBody = document.getElementById('planejamentosBody');
+			var aulasConfiguracaoBody = document.getElementById('aulasConfiguracaoBody');
+			var aulasResumoCards = document.getElementById('aulasResumoCards');
+
+			var modalAreaElement = document.getElementById('modalArea');
+			var modalDisciplinaElement = document.getElementById('modalDisciplina');
+			var modalVinculoElement = document.getElementById('modalVinculo');
+			var modalDisciplinasVinculoElement = document.getElementById('modalDisciplinasVinculo');
+			var modalTurmasVinculoElement = document.getElementById('modalTurmasVinculo');
+			var modalBeneficioElement = document.getElementById('modalBeneficio');
+			var modalConfirmacaoElement = document.getElementById('modalConfirmacaoModulacao');
+			var modalHorarioProfessoresElement = document.getElementById('modalHorarioProfessores');
+			var modalHorarioTurmasElement = document.getElementById('modalHorarioTurmas');
+			var modalHorarioVisualizacaoElement = document.getElementById('modalHorarioVisualizacao');
+			var modalArea = modalAreaElement ? new bootstrapApi.Modal(modalAreaElement) : null;
+			var modalDisciplina = modalDisciplinaElement ? new bootstrapApi.Modal(modalDisciplinaElement) : null;
+			var modalVinculo = modalVinculoElement ? new bootstrapApi.Modal(modalVinculoElement) : null;
+			var modalDisciplinasVinculo = modalDisciplinasVinculoElement ? new bootstrapApi.Modal(modalDisciplinasVinculoElement) : null;
+			var modalTurmasVinculo = modalTurmasVinculoElement ? new bootstrapApi.Modal(modalTurmasVinculoElement) : null;
+			var modalBeneficio = modalBeneficioElement ? new bootstrapApi.Modal(modalBeneficioElement) : null;
+			var modalConfirmacao = modalConfirmacaoElement ? new bootstrapApi.Modal(modalConfirmacaoElement) : null;
+			var modalHorarioProfessores = modalHorarioProfessoresElement ? new bootstrapApi.Modal(modalHorarioProfessoresElement) : null;
+			var modalHorarioTurmas = modalHorarioTurmasElement ? new bootstrapApi.Modal(modalHorarioTurmasElement) : null;
+			var modalHorarioVisualizacao = modalHorarioVisualizacaoElement ? new bootstrapApi.Modal(modalHorarioVisualizacaoElement) : null;
+
+			var formArea = document.getElementById('formArea');
+			var formDisciplina = document.getElementById('formDisciplina');
+			var formVinculo = document.getElementById('formVinculo');
+			var formBeneficio = document.getElementById('formBeneficio');
+			var formConfiguracaoAulas = document.getElementById('formConfiguracaoAulas');
+
+			var areaIdInput = document.getElementById('areaId');
+			var areaNomeInput = document.getElementById('areaNome');
+			var areaStatusInput = document.getElementById('areaStatus');
+			var disciplinaIdInput = document.getElementById('disciplinaId');
+			var disciplinaNomeInput = document.getElementById('disciplinaNome');
+			var disciplinaAreaInput = document.getElementById('disciplinaArea');
+			var disciplinaStatusInput = document.getElementById('disciplinaStatus');
+
+			var vinculoIdInput = document.getElementById('vinculoId');
+			var vinculoProfessorInput = document.getElementById('vinculoProfessor');
+			var vinculoTurmasSummary = document.getElementById('vinculoTurmasSummary');
+			var vinculoTurmasModeNote = document.getElementById('vinculoTurmasModeNote');
+			var btnAbrirTurmasVinculoModal = document.getElementById('btnAbrirTurmasVinculoModal');
+			var btnLimparTurmasVinculo = document.getElementById('btnLimparTurmasVinculo');
+			var vinculoTurmasBuscaInput = document.getElementById('vinculoTurmasBusca');
+			var vinculoTurmasLista = document.getElementById('vinculoTurmasLista');
+			var vinculoDisciplinasSummary = document.getElementById('vinculoDisciplinasSummary');
+			var vinculoDisciplinasModeNote = document.getElementById('vinculoDisciplinasModeNote');
+			var btnAbrirDisciplinasVinculoModal = document.getElementById('btnAbrirDisciplinasVinculoModal');
+			var btnLimparDisciplinasVinculo = document.getElementById('btnLimparDisciplinasVinculo');
+			var vinculoDisciplinasBuscaInput = document.getElementById('vinculoDisciplinasBusca');
+			var vinculoDisciplinasLista = document.getElementById('vinculoDisciplinasLista');
+			var beneficioIdInput = document.getElementById('beneficioId');
+			var beneficioTipoInput = document.getElementById('beneficioTipo');
+			var beneficioUsuarioInput = document.getElementById('beneficioUsuario');
+			var beneficioDiaSemanaInput = document.getElementById('beneficioDiaSemana');
+			var beneficioResumoMeta = document.getElementById('beneficioResumoMeta');
+			var beneficioSlotsLista = document.getElementById('beneficioSlotsLista');
+			var beneficioResumoSelecao = document.getElementById('beneficioResumoSelecao');
+			var modalBeneficioTitulo = document.getElementById('modalBeneficioTitulo');
+			var aulasQuantidadeDiaInput = document.getElementById('aulasQuantidadeDia');
+			var aulasDuracaoMinutosInput = document.getElementById('aulasDuracaoMinutos');
+			var aulasHoraInicioInput = document.getElementById('aulasHoraInicio');
+			var aulasHoraFimInput = document.getElementById('aulasHoraFim');
+			var aulasInicioAlmocoInput = document.getElementById('aulasInicioAlmoco');
+			var aulasFimAlmocoInput = document.getElementById('aulasFimAlmoco');
+			var modalConfirmacaoTitulo = document.getElementById('modalConfirmacaoModulacaoTitulo');
+			var modalConfirmacaoMensagem = document.getElementById('modalConfirmacaoModulacaoMensagem');
+			var btnConfirmarAcaoModulacao = document.getElementById('btnConfirmarAcaoModulacao');
+			var horarioProfessoresSummary = document.getElementById('horarioProfessoresSummary');
+			var horarioTurmasSummary = document.getElementById('horarioTurmasSummary');
+			var btnAbrirHorarioProfessoresModal = document.getElementById('btnAbrirHorarioProfessoresModal');
+			var btnSelecionarTodosHorarioProfessores = document.getElementById('btnSelecionarTodosHorarioProfessores');
+			var btnLimparHorarioProfessores = document.getElementById('btnLimparHorarioProfessores');
+			var btnModalSelecionarTodosHorarioProfessores = document.getElementById('btnModalSelecionarTodosHorarioProfessores');
+			var btnModalLimparHorarioProfessores = document.getElementById('btnModalLimparHorarioProfessores');
+			var horarioProfessoresBuscaInput = document.getElementById('horarioProfessoresBusca');
+			var horarioProfessoresLista = document.getElementById('horarioProfessoresLista');
+			var btnAbrirHorarioTurmasModal = document.getElementById('btnAbrirHorarioTurmasModal');
+			var btnSelecionarTodasHorarioTurmas = document.getElementById('btnSelecionarTodasHorarioTurmas');
+			var btnLimparHorarioTurmas = document.getElementById('btnLimparHorarioTurmas');
+			var btnModalSelecionarTodasHorarioTurmas = document.getElementById('btnModalSelecionarTodasHorarioTurmas');
+			var btnModalLimparHorarioTurmas = document.getElementById('btnModalLimparHorarioTurmas');
+			var horarioTurmasBuscaInput = document.getElementById('horarioTurmasBusca');
+			var horarioTurmasLista = document.getElementById('horarioTurmasLista');
+			var horarioIaPromptInput = document.getElementById('horarioIaPrompt');
+			var horarioIaTimeline = document.getElementById('horarioIaTimeline');
+			var horarioIaStatusBadge = document.getElementById('horarioIaStatusBadge');
+			var btnGerarHorarioIa = document.getElementById('btnGerarHorarioIa');
+			var btnAplicarHorarioIa = document.getElementById('btnAplicarHorarioIa');
+			var btnLimparHorarioPreview = document.getElementById('btnLimparHorarioPreview');
+			var btnVisualizarHorario = document.getElementById('btnVisualizarHorario');
+			var horarioVisualizacaoBody = document.getElementById('horarioVisualizacaoBody');
+			var horarioResumoCards = document.getElementById('horarioResumoCards');
+			var horarioFeedback = document.getElementById('horarioFeedback');
+			var horarioIaNotas = document.getElementById('horarioIaNotas');
+
+			var areas = [];
+			var professores = [];
+			var usuariosBeneficios = [];
+			var turmas = [];
+			var disciplinas = [];
+			var modulacoes = [];
+			var horariosSemanais = [];
+			var livreDocencias = [];
+			var planejamentos = [];
+			var configuracaoAulas = null;
+			var vinculoTurmaIdsSelecionadas = [];
+			var vinculoDisciplinaIdsSelecionadas = [];
+			var beneficioSlotsSelecionados = [];
+			var disciplinasSelecionadas = [];
+			var vinculacoesSelecionadas = [];
+			var horarioSelectedProfessorIds = [];
+			var horarioSelectedTurmaIds = [];
+			var horarioGeradoPreview = [];
+			var horarioGeradoNotas = [];
+			var horarioPreviewProfessorIds = [];
+			var horarioPreviewTurmaIds = [];
+			var horarioAssistantMessages = [];
+			var horarioAssistantMessageSeq = 0;
+			var horarioAssistantThinkingTimer = null;
+			var horarioAssistantThinkingMessageId = 0;
+			var horarioAssistantThinkingStepIndex = 0;
+			var horarioAssistantThinkingSteps = [
+				'Analisando professores, turmas e vínculos selecionados.',
+				'Conferindo faixas ativas e bloqueios de Planejamento e Livre Docência.',
+				'Montando uma proposta semanal sem conflito entre professores e turmas.',
+				'Organizando a resposta da IA para a pré-visualização.'
+			];
+			var confirmActionHandler = null;
+			var statusTimer = null;
+			var aulasDias = [
+				{ key: 'segunda', label: 'Segunda' },
+				{ key: 'terca', label: 'Terça' },
+				{ key: 'quarta', label: 'Quarta' },
+				{ key: 'quinta', label: 'Quinta' },
+				{ key: 'sexta', label: 'Sexta' },
+				{ key: 'sabado', label: 'Sábado' }
+			];
+
+			function normalizeSearchValue(value) {
+				return String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+			}
+
+			function matchesSearch(haystackParts, term) {
+				if (term === '') {
+					return true;
+				}
+
+				return haystackParts.some(function (part) {
+					return normalizeSearchValue(part).indexOf(term) >= 0;
+				});
+			}
+
+			function getFilteredAreas() {
+				var filtro = normalizeSearchValue(buscaAreasInput ? buscaAreasInput.value : '');
+				return areas.filter(function (item) {
+					return matchesSearch([
+						item.nome || '',
+						item.status || ''
+					], filtro);
+				});
+			}
+
+			function getFilteredDisciplinas() {
+				var filtro = normalizeSearchValue(buscaDisciplinasInput ? buscaDisciplinasInput.value : '');
+				return disciplinas.filter(function (item) {
+					return matchesSearch([
+						item.nome || '',
+						item.area_nome || '',
+						item.status || ''
+					], filtro);
+				});
+			}
+
+			function getFilteredModulacoes() {
+				var filtro = normalizeSearchValue(buscaVinculosInput ? buscaVinculosInput.value : '');
+				return modulacoes.filter(function (item) {
+					return matchesSearch([
+						item.professor_nome || '',
+						item.turma_nome || '',
+						item.disciplina_nome || ''
+					], filtro);
+				});
+			}
+
+			function syncBulkControls() {
+				if (btnExcluirDisciplinasSelecionadas) {
+					btnExcluirDisciplinasSelecionadas.disabled = disciplinasSelecionadas.length === 0;
+				}
+				if (btnExcluirVinculosSelecionados) {
+					btnExcluirVinculosSelecionados.disabled = vinculacoesSelecionadas.length === 0;
+				}
+
+				if (selecionarTodasDisciplinasInput) {
+					var disciplinasVisiveis = getFilteredDisciplinas().map(function (item) { return String(item.id || ''); }).filter(Boolean);
+					var disciplinasVisiveisSelecionadas = disciplinasVisiveis.filter(function (id) {
+						return disciplinasSelecionadas.indexOf(id) >= 0;
+					});
+					selecionarTodasDisciplinasInput.checked = disciplinasVisiveis.length > 0 && disciplinasVisiveisSelecionadas.length === disciplinasVisiveis.length;
+					selecionarTodasDisciplinasInput.indeterminate = disciplinasVisiveisSelecionadas.length > 0 && disciplinasVisiveisSelecionadas.length < disciplinasVisiveis.length;
+				}
+
+				if (selecionarTodosVinculosInput) {
+					var vinculacoesVisiveis = getFilteredModulacoes().map(function (item) { return String(item.id || ''); }).filter(Boolean);
+					var vinculacoesVisiveisSelecionadas = vinculacoesVisiveis.filter(function (id) {
+						return vinculacoesSelecionadas.indexOf(id) >= 0;
+					});
+					selecionarTodosVinculosInput.checked = vinculacoesVisiveis.length > 0 && vinculacoesVisiveisSelecionadas.length === vinculacoesVisiveis.length;
+					selecionarTodosVinculosInput.indeterminate = vinculacoesVisiveisSelecionadas.length > 0 && vinculacoesVisiveisSelecionadas.length < vinculacoesVisiveis.length;
+				}
+			}
+
+			function askConfirmation(title, message, onConfirm) {
+				confirmActionHandler = typeof onConfirm === 'function' ? onConfirm : null;
+				if (modalConfirmacaoTitulo) {
+					modalConfirmacaoTitulo.textContent = String(title || 'Confirmar ação');
+				}
+				if (modalConfirmacaoMensagem) {
+					modalConfirmacaoMensagem.textContent = String(message || 'Deseja continuar com esta ação?');
+				}
+				if (modalConfirmacao) {
+					modalConfirmacao.show();
+				}
+			}
+
+			function resolveBasePath() {
+				var pathname = String(window.location.pathname || '');
+				var indexPhpPos = pathname.indexOf('/index.php/');
+				if (indexPhpPos >= 0) {
+					return pathname.slice(0, indexPhpPos);
+				}
+				return '';
+			}
+
+			function buildEndpoint(path) {
+				var base = resolveBasePath();
+				var normalizedPath = String(path || '');
+				var pathname = String(window.location.pathname || '');
+				if (pathname.indexOf('/index.php/') >= 0) {
+					return base + '/index.php' + normalizedPath;
+				}
+				return base + normalizedPath;
+			}
+
+			function escapeHtml(value) {
+				return String(value == null ? '' : value)
+					.replace(/&/g, '&amp;')
+					.replace(/</g, '&lt;')
+					.replace(/>/g, '&gt;')
+					.replace(/"/g, '&quot;')
+					.replace(/'/g, '&#039;');
+			}
+
+			function showStatus(message, isError) {
+				if (!statusElement) {
+					return;
+				}
+				if (statusTimer) {
+					window.clearTimeout(statusTimer);
+					statusTimer = null;
+				}
+				statusElement.textContent = String(message || '').trim();
+				statusElement.classList.remove('d-none', 'is-success', 'is-error');
+				statusElement.classList.add(isError ? 'is-error' : 'is-success');
+				statusTimer = window.setTimeout(function () {
+					statusElement.classList.add('d-none');
+					statusElement.classList.remove('is-success', 'is-error');
+					statusElement.textContent = '';
+					statusTimer = null;
+				}, 2200);
+			}
+
+			function renderAreaRows() {
+				if (!areasBody) {
+					return;
+				}
+
+				var areasFiltradas = getFilteredAreas();
+				if (!areasFiltradas.length) {
+					areasBody.innerHTML = '<tr><td colspan="3" class="muted-empty">Nenhuma área cadastrada.</td></tr>';
+					return;
+				}
+
+				areasBody.innerHTML = areasFiltradas.map(function (item) {
+					return '<tr>'
+						+ '<td><strong>' + escapeHtml(item.nome || '') + '</strong></td>'
+						+ '<td><span class="modulacao-badge-muted">' + escapeHtml(item.status || 'ativa') + '</span></td>'
+						+ '<td class="text-end"><button type="button" class="btn btn-outline-primary btn-sm me-2 js-editar-area" data-id="' + escapeHtml(String(item.id || 0)) + '">Editar</button><button type="button" class="btn btn-outline-danger btn-sm js-excluir-area" data-id="' + escapeHtml(String(item.id || 0)) + '">Excluir</button></td>'
+						+ '</tr>';
+				}).join('');
+			}
+
+			function renderDisciplinaRows() {
+				if (!disciplinasBody) {
+					return;
+				}
+				var disciplinasFiltradas = getFilteredDisciplinas();
+				if (!disciplinasFiltradas.length) {
+					disciplinasBody.innerHTML = '<tr><td colspan="5" class="muted-empty">Nenhuma disciplina cadastrada.</td></tr>';
+					syncBulkControls();
+					return;
+				}
+				disciplinasBody.innerHTML = disciplinasFiltradas.map(function (item) {
+					var itemId = String(item.id || '');
+					var checked = disciplinasSelecionadas.indexOf(itemId) >= 0 ? ' checked' : '';
+					return '<tr>'
+						+ '<td class="modulacao-select-col"><input type="checkbox" class="form-check-input js-select-disciplina" data-id="' + escapeHtml(itemId) + '" aria-label="Selecionar disciplina"' + checked + '></td>'
+						+ '<td><strong>' + escapeHtml(item.nome || '') + '</strong></td>'
+						+ '<td>' + escapeHtml(item.area_nome || '-') + '</td>'
+						+ '<td><span class="modulacao-badge-muted">' + escapeHtml(item.status || 'ativa') + '</span></td>'
+						+ '<td class="text-end"><button type="button" class="btn btn-outline-primary btn-sm me-2 js-editar-disciplina" data-id="' + escapeHtml(String(item.id || 0)) + '">Editar</button><button type="button" class="btn btn-outline-danger btn-sm js-excluir-disciplina" data-id="' + escapeHtml(String(item.id || 0)) + '">Excluir</button></td>'
+						+ '</tr>';
+				}).join('');
+				syncBulkControls();
+			}
+
+			function renderAreaOptions() {
+				if (!disciplinaAreaInput) {
+					return;
+				}
+
+				disciplinaAreaInput.innerHTML = '<option value="">Selecione</option>' + areas.map(function (item) {
+					return '<option value="' + escapeHtml(String(item.id || 0)) + '">' + escapeHtml(item.nome || '') + '</option>';
+				}).join('');
+			}
+
+			function renderVinculoRows() {
+				if (!modulacoesBody) {
+					return;
+				}
+				var modulacoesFiltradas = getFilteredModulacoes();
+				if (!modulacoesFiltradas.length) {
+					modulacoesBody.innerHTML = '<tr><td colspan="5" class="muted-empty">Nenhum vínculo cadastrado.</td></tr>';
+					syncBulkControls();
+					return;
+				}
+				modulacoesBody.innerHTML = modulacoesFiltradas.map(function (item) {
+					var itemId = String(item.id || '');
+					var checked = vinculacoesSelecionadas.indexOf(itemId) >= 0 ? ' checked' : '';
+					return '<tr>'
+						+ '<td class="modulacao-select-col"><input type="checkbox" class="form-check-input js-select-vinculo" data-id="' + escapeHtml(itemId) + '" aria-label="Selecionar vínculo"' + checked + '></td>'
+						+ '<td>' + escapeHtml(item.professor_nome || '-') + '</td>'
+						+ '<td>' + escapeHtml(item.turma_nome || '-') + '</td>'
+						+ '<td>' + escapeHtml(item.disciplina_nome || '-') + '</td>'
+						+ '<td class="text-end"><button type="button" class="btn btn-outline-primary btn-sm me-2 js-editar-vinculo" data-id="' + escapeHtml(String(item.id || 0)) + '">Editar</button><button type="button" class="btn btn-outline-danger btn-sm js-excluir-vinculo" data-id="' + escapeHtml(String(item.id || 0)) + '">Excluir</button></td>'
+						+ '</tr>';
+				}).join('');
+				syncBulkControls();
+			}
+
+			function renderVinculoOptions() {
+				if (vinculoProfessorInput) {
+					vinculoProfessorInput.innerHTML = '<option value="">Selecione</option>' + professores.map(function (item) {
+						return '<option value="' + escapeHtml(String(item.id || 0)) + '">' + escapeHtml(item.nome || '') + '</option>';
+					}).join('');
+				}
+				renderTurmasSelector();
+				renderDisciplinasSelector();
+			}
+
+			function getDayLabel(dayKey) {
+				var match = aulasDias.find(function (day) {
+					return day.key === String(dayKey || '');
+				});
+				return match ? match.label : String(dayKey || '');
+			}
+
+			function getUsuarioBeneficioById(id) {
+				var numericId = Number(id || 0);
+				return getUsuariosBeneficiosDisponiveis().find(function (item) {
+					return Number(item.id || 0) === numericId;
+				}) || null;
+			}
+
+			function getUsuariosBeneficiosDisponiveis() {
+				var byId = {};
+
+				(Array.isArray(usuariosBeneficios) ? usuariosBeneficios : []).forEach(function (item) {
+					if (!item || !item.id) {
+						return;
+					}
+
+					byId[String(item.id)] = {
+						id: Number(item.id || 0),
+						nome: String(item.nome || ''),
+						usuario: String(item.usuario || ''),
+						email: String(item.email || ''),
+						funcao_nome: String(item.funcao_nome || ''),
+						cargaHoraria: Number(item.cargaHoraria || 40) || 40,
+						beneficio_minutos: Number(item.beneficio_minutos || Math.max(0, Math.round(((Number(item.cargaHoraria || 40) || 40) / 5) * 60))) || 0
+					};
+				});
+
+				(Array.isArray(professores) ? professores : []).forEach(function (item) {
+					if (!item || !item.id || byId[String(item.id)]) {
+						return;
+					}
+
+					var cargaHoraria = 40;
+					byId[String(item.id)] = {
+						id: Number(item.id || 0),
+						nome: String(item.nome || ''),
+						usuario: String(item.usuario || ''),
+						email: String(item.email || ''),
+						funcao_nome: String(item.funcao_nome || 'Professor'),
+						cargaHoraria: cargaHoraria,
+						beneficio_minutos: Math.max(0, Math.round((cargaHoraria / 5) * 60))
+					};
+				});
+
+				return Object.keys(byId).map(function (key) {
+					return byId[key];
+				}).sort(function (left, right) {
+					return String(left && left.nome ? left.nome : '').localeCompare(String(right && right.nome ? right.nome : ''));
+				});
+			}
+
+			function getCurrentBeneficioType() {
+				return String(beneficioTipoInput ? beneficioTipoInput.value || 'livre_docencia' : 'livre_docencia');
+			}
+
+			function getCurrentBeneficioLabel() {
+				return getCurrentBeneficioType() === 'planejamento' ? 'Planejamento' : 'Livre Docência';
+			}
+
+			function getCurrentBeneficioUser() {
+				return getUsuarioBeneficioById(beneficioUsuarioInput ? beneficioUsuarioInput.value : 0);
+			}
+
+			function getOtherBeneficioType(type) {
+				return String(type || '') === 'planejamento' ? 'livre_docencia' : 'planejamento';
+			}
+
+			function getBeneficioCollectionByType(type) {
+				return String(type || '') === 'planejamento' ? planejamentos : livreDocencias;
+			}
+
+			function getCurrentBeneficioBlockedRecords() {
+				var currentId = Number(beneficioIdInput ? beneficioIdInput.value || 0 : 0);
+				var currentUserId = Number(beneficioUsuarioInput ? beneficioUsuarioInput.value || 0 : 0);
+				var currentDay = String(beneficioDiaSemanaInput ? beneficioDiaSemanaInput.value || '' : '');
+
+				if (currentUserId <= 0 || currentDay === '') {
+					return [];
+				}
+
+				return [livreDocencias, planejamentos].reduce(function (result, collection) {
+					(Array.isArray(collection) ? collection : []).forEach(function (item) {
+						if (Number(item && item.usuario_id ? item.usuario_id : 0) !== currentUserId) {
+							return;
+						}
+						if (String(item && item.dia_semana ? item.dia_semana : '') !== currentDay) {
+							return;
+						}
+						if (Number(item && item.id ? item.id : 0) === currentId) {
+							return;
+						}
+						result.push(item);
+					});
+					return result;
+				}, []);
+			}
+
+			function getCurrentBeneficioBlockedSlotDetails() {
+				var blockedRecords = getCurrentBeneficioBlockedRecords();
+				var map = {};
+				blockedRecords.forEach(function (record) {
+					(Array.isArray(record && record.slots ? record.slots : []) ? record.slots : []).forEach(function (slot) {
+						var inicio = String(slot && slot.inicio ? slot.inicio : '').trim();
+						var fim = String(slot && slot.fim ? slot.fim : '').trim();
+						var key = inicio + '|' + fim;
+						if (inicio === '' || fim === '') {
+							return;
+						}
+
+						if (!map[key]) {
+							map[key] = {
+								tipos: {},
+								rotulos: []
+							};
+						}
+
+						var tipo = String(record && record.tipo ? record.tipo : '');
+						var label = tipo === 'planejamento' ? 'Planejamento' : 'Livre Docência';
+						if (!map[key].tipos[label]) {
+							map[key].tipos[label] = true;
+							map[key].rotulos.push(label);
+						}
+					});
+				});
+				return map;
+			}
+
+			function formatDurationMinutes(totalMinutes) {
+				var safeMinutes = Math.max(0, Number(totalMinutes || 0) || 0);
+				var hours = Math.floor(safeMinutes / 60);
+				var minutes = safeMinutes % 60;
+
+				if (hours > 0 && minutes > 0) {
+					return String(hours) + 'h' + String(minutes).padStart(2, '0') + 'min';
+				}
+
+				if (hours > 0) {
+					return String(hours) + 'h';
+				}
+
+				return String(minutes) + 'min';
+			}
+
+			function getSlotDurationMinutes(slot) {
+				if (!slot) {
+					return 0;
+				}
+
+				var inicioMinutes = timeToMinutes(String(slot.inicio || '').trim());
+				var fimMinutes = timeToMinutes(String(slot.fim || '').trim());
+				if (inicioMinutes === null || fimMinutes === null) {
+					return 0;
+				}
+
+				return Math.max(0, fimMinutes - inicioMinutes);
+			}
+
+			function sumBeneficioSlotMinutes(slots) {
+				return (Array.isArray(slots) ? slots : []).reduce(function (total, slot) {
+					return total + getSlotDurationMinutes(slot);
+				}, 0);
+			}
+
+			function getExpectedBeneficioMinutes(user) {
+				return Math.max(0, Number(user && user.beneficio_minutos ? user.beneficio_minutos : 0) || 0);
+			}
+
+			function getCurrentBeneficioRecord() {
+				var currentId = Number(beneficioIdInput ? beneficioIdInput.value || 0 : 0);
+				if (currentId <= 0) {
+					return null;
+				}
+
+				var collection = getBeneficioCollectionByType(getCurrentBeneficioType());
+				return (Array.isArray(collection) ? collection : []).find(function (item) {
+					return Number(item && item.id ? item.id : 0) === currentId;
+				}) || null;
+			}
+
+			function getCurrentBeneficioSameTypeOtherRecords() {
+				var currentId = Number(beneficioIdInput ? beneficioIdInput.value || 0 : 0);
+				var currentUserId = Number(beneficioUsuarioInput ? beneficioUsuarioInput.value || 0 : 0);
+				var collection = getBeneficioCollectionByType(getCurrentBeneficioType());
+
+				if (currentUserId <= 0) {
+					return [];
+				}
+
+				return (Array.isArray(collection) ? collection : []).filter(function (item) {
+					return Number(item && item.usuario_id ? item.usuario_id : 0) === currentUserId
+						&& Number(item && item.id ? item.id : 0) !== currentId;
+				});
+			}
+
+			function getCurrentBeneficioUsedSlotsInOtherRecords() {
+				return getCurrentBeneficioSameTypeOtherRecords().reduce(function (total, item) {
+					var slots = Array.isArray(item && item.slots ? item.slots : []) ? (item.slots || []) : [];
+					return total + sumBeneficioSlotMinutes(slots);
+				}, 0);
+			}
+
+			function getCurrentBeneficioAllowedSlots(user) {
+				var expectedMinutes = getExpectedBeneficioMinutes(user);
+				var usedInOtherRecords = getCurrentBeneficioUsedSlotsInOtherRecords();
+				var currentRecord = getCurrentBeneficioRecord();
+				var currentRecordMinutes = Array.isArray(currentRecord && currentRecord.slots ? currentRecord.slots : []) ? sumBeneficioSlotMinutes((currentRecord && currentRecord.slots) || []) : 0;
+				return Math.max(currentRecordMinutes, Math.max(0, expectedMinutes - usedInOtherRecords));
+			}
+
+			function buildBeneficioSearchParts(item) {
+				return [
+					item && item.usuario_nome ? item.usuario_nome : '',
+					item && item.funcao_nome ? item.funcao_nome : '',
+					item && item.dia_semana ? getDayLabel(item.dia_semana) : '',
+					item && item.horarios_texto ? item.horarios_texto : ''
+				];
+			}
+
+			function getFilteredBeneficios(items, searchInput) {
+				var filtro = normalizeSearchValue(searchInput ? searchInput.value : '');
+				return (Array.isArray(items) ? items : []).filter(function (item) {
+					return matchesSearch(buildBeneficioSearchParts(item), filtro);
+				});
+			}
+
+			function formatBeneficioSlots(slots) {
+				if (!Array.isArray(slots) || !slots.length) {
+					return '-';
+				}
+
+				return slots.map(function (slot) {
+					return String(slot && slot.inicio ? slot.inicio : '') + ' - ' + String(slot && slot.fim ? slot.fim : '');
+				}).join(', ');
+			}
+
+			function renderBeneficioRows(type) {
+				var items = type === 'planejamento' ? planejamentos : livreDocencias;
+				var body = type === 'planejamento' ? planejamentosBody : livreDocenciasBody;
+				var searchInput = type === 'planejamento' ? buscaPlanejamentoInput : buscaLivreDocenciaInput;
+				var typeLabel = type === 'planejamento' ? 'Planejamento' : 'Livre Docência';
+
+				if (!body) {
+					return;
+				}
+
+				var filteredItems = getFilteredBeneficios(items, searchInput);
+				if (!filteredItems.length) {
+					body.innerHTML = '<tr><td colspan="7" class="muted-empty">Nenhum cadastro de ' + escapeHtml(typeLabel) + ' encontrado.</td></tr>';
+					return;
+				}
+
+				body.innerHTML = filteredItems.map(function (item) {
+					return '<tr>'
+						+ '<td><strong>' + escapeHtml(item.usuario_nome || '-') + '</strong></td>'
+						+ '<td>' + escapeHtml(item.funcao_nome || '-') + '</td>'
+						+ '<td>' + escapeHtml(String(item.cargaHoraria || 0)) + '</td>'
+						+ '<td>' + escapeHtml(formatDurationMinutes(Number(item.beneficio_minutos || 0))) + '</td>'
+						+ '<td>' + escapeHtml(getDayLabel(item.dia_semana || '')) + '</td>'
+						+ '<td>' + escapeHtml(item.horarios_texto || formatBeneficioSlots(item.slots || [])) + '</td>'
+						+ '<td class="text-end"><button type="button" class="btn btn-outline-primary btn-sm me-2 js-editar-beneficio" data-id="' + escapeHtml(String(item.id || 0)) + '" data-tipo="' + escapeHtml(type) + '">Editar</button><button type="button" class="btn btn-outline-danger btn-sm js-excluir-beneficio" data-id="' + escapeHtml(String(item.id || 0)) + '" data-tipo="' + escapeHtml(type) + '" data-usuario="' + escapeHtml(item.usuario_nome || '') + '">Excluir</button></td>'
+						+ '</tr>';
+				}).join('');
+			}
+
+			function renderBeneficioUsuarioOptions() {
+				if (!beneficioUsuarioInput) {
+					return;
+				}
+
+				beneficioUsuarioInput.innerHTML = '<option value="">Selecione</option>' + getUsuariosBeneficiosDisponiveis().map(function (item) {
+					var label = String(item.nome || '') + (item.funcao_nome ? ' (' + String(item.funcao_nome) + ')' : '');
+					return '<option value="' + escapeHtml(String(item.id || 0)) + '">' + escapeHtml(label) + '</option>';
+				}).join('');
+			}
+
+			function getBeneficioAvailableSlots(dayKey) {
+				var selectedDay = String(dayKey || '');
+				var slots = configuracaoAulas && Array.isArray(configuracaoAulas.slots) ? configuracaoAulas.slots : [];
+				return slots.filter(function (slot) {
+					return slot && slot.inicio && slot.fim && slot.dias && slot.dias[selectedDay];
+				}).map(function (slot) {
+					return {
+						inicio: String(slot.inicio || ''),
+						fim: String(slot.fim || ''),
+						duracao_minutos: getSlotDurationMinutes(slot)
+					};
+				});
+			}
+
+			function normalizeBeneficioSelectedSlots(slots) {
+				var map = {};
+				(Array.isArray(slots) ? slots : []).forEach(function (slot) {
+					if (!slot) {
+						return;
+					}
+					var inicio = String(slot.inicio || '').trim();
+					var fim = String(slot.fim || '').trim();
+					if (!inicio || !fim) {
+						return;
+					}
+					map[inicio + '|' + fim] = { inicio: inicio, fim: fim, duracao_minutos: getSlotDurationMinutes({ inicio: inicio, fim: fim }) };
+				});
+				return Object.keys(map).map(function (key) { return map[key]; });
+			}
+
+			function renderBeneficioResumo() {
+				if (!beneficioResumoMeta || !beneficioResumoSelecao) {
+					return;
+				}
+
+				var user = getCurrentBeneficioUser();
+				var cargaHoraria = user ? Number(user.cargaHoraria || 0) || 0 : 0;
+				var beneficioMinutos = user ? getExpectedBeneficioMinutes(user) : 0;
+				var usedInOtherRecords = user ? getCurrentBeneficioUsedSlotsInOtherRecords() : 0;
+				var allowedForCurrentRecord = user ? getCurrentBeneficioAllowedSlots(user) : 0;
+				var selectedMinutes = sumBeneficioSlotMinutes(beneficioSlotsSelecionados);
+				var selectedDay = beneficioDiaSemanaInput ? getDayLabel(beneficioDiaSemanaInput.value || '') : '-';
+				var blockedSlotDetails = getCurrentBeneficioBlockedSlotDetails();
+				var blockedSlotKeys = Object.keys(blockedSlotDetails);
+
+				beneficioResumoMeta.innerHTML = ''
+					+ '<div class="modulacao-beneficio-meta-card"><strong>' + escapeHtml(user ? String(user.nome || '-') : '-') + '</strong><span>usuário selecionado</span></div>'
+					+ '<div class="modulacao-beneficio-meta-card"><strong>' + escapeHtml(String(cargaHoraria)) + '</strong><span>carga horária semanal</span></div>'
+					+ '<div class="modulacao-beneficio-meta-card"><strong>' + escapeHtml(formatDurationMinutes(beneficioMinutos)) + '</strong><span>limite de 1/5 da carga horária</span></div>'
+					+ '<div class="modulacao-beneficio-meta-card"><strong>' + escapeHtml(formatDurationMinutes(usedInOtherRecords)) + '</strong><span>já usados em outros cadastros</span></div>';
+
+				if (!user) {
+					beneficioResumoSelecao.textContent = 'Selecione um usuário para calcular automaticamente quantos horários esse benefício exige.';
+					return;
+				}
+
+				beneficioResumoSelecao.textContent = 'Selecionados ' + formatDurationMinutes(selectedMinutes) + ' de no máximo ' + formatDurationMinutes(allowedForCurrentRecord) + ' para este cadastro de ' + getCurrentBeneficioLabel() + '. Dia selecionado: ' + selectedDay + '.';
+				if (allowedForCurrentRecord <= 0) {
+					beneficioResumoSelecao.textContent += ' O limite total deste benefício já foi consumido em outros cadastros do usuário.';
+				}
+				if (blockedSlotKeys.length) {
+					beneficioResumoSelecao.textContent += ' Os horários já usados em outros cadastros deste usuário neste dia ficam bloqueados.';
+				}
+			}
+
+			function renderBeneficioSlotsSelector() {
+				if (!beneficioSlotsLista) {
+					return;
+				}
+
+				var selectedDay = beneficioDiaSemanaInput ? String(beneficioDiaSemanaInput.value || '') : '';
+				var availableSlots = getBeneficioAvailableSlots(selectedDay);
+				var blockedSlotDetails = getCurrentBeneficioBlockedSlotDetails();
+				var user = getCurrentBeneficioUser();
+				var allowedForCurrentRecord = user ? getCurrentBeneficioAllowedSlots(user) : 0;
+				var selectedMinutes = sumBeneficioSlotMinutes(beneficioSlotsSelecionados);
+				var availableKeys = {};
+				availableSlots.forEach(function (slot) {
+					availableKeys[slot.inicio + '|' + slot.fim] = true;
+				});
+				beneficioSlotsSelecionados = normalizeBeneficioSelectedSlots(beneficioSlotsSelecionados).filter(function (slot) {
+					var key = String(slot.inicio || '') + '|' + String(slot.fim || '');
+					return !!availableKeys[key] && !blockedSlotDetails[key];
+				});
+
+				if (!availableSlots.length) {
+					beneficioSlotsLista.innerHTML = '<div class="small text-secondary">Nenhum horário de aula está ativo para o dia selecionado.</div>';
+					renderBeneficioResumo();
+					return;
+				}
+
+				beneficioSlotsLista.innerHTML = availableSlots.map(function (slot, index) {
+					var key = slot.inicio + '|' + slot.fim;
+					var disabled = !!blockedSlotDetails[key];
+					var blockedLabel = disabled ? blockedSlotDetails[key].rotulos.join(' e ') : '';
+					var checked = beneficioSlotsSelecionados.some(function (selectedSlot) {
+						return String(selectedSlot.inicio || '') + '|' + String(selectedSlot.fim || '') === key;
+					}) ? ' checked' : '';
+					var quotaDisabled = !checked && (allowedForCurrentRecord - selectedMinutes) < Number(slot.duracao_minutos || 0);
+					var disabledAttribute = (disabled || quotaDisabled) ? ' disabled' : '';
+					var inputId = 'beneficioSlot_' + index + '_' + selectedDay;
+					return '<div class="form-check modulacao-beneficio-slot-item">'
+						+ '<input class="form-check-input js-beneficio-slot-checkbox" type="checkbox" id="' + escapeHtml(inputId) + '" data-inicio="' + escapeHtml(slot.inicio) + '" data-fim="' + escapeHtml(slot.fim) + '"' + checked + disabledAttribute + '>'
+						+ '<label class="form-check-label" for="' + escapeHtml(inputId) + '">' + escapeHtml(slot.inicio + ' - ' + slot.fim + ' (' + formatDurationMinutes(Number(slot.duracao_minutos || 0)) + ')') + (disabled ? ' <span class="text-danger small">(já usado em ' + escapeHtml(blockedLabel || 'outro cadastro') + ')</span>' : (quotaDisabled ? ' <span class="text-danger small">(ultrapassa o saldo disponível)</span>' : '')) + '</label>'
+						+ '</div>';
+				}).join('');
+
+				renderBeneficioResumo();
+			}
+
+			function resetBeneficioForm(type) {
+				if (beneficioIdInput) {
+					beneficioIdInput.value = '0';
+				}
+				if (beneficioTipoInput) {
+					beneficioTipoInput.value = String(type || 'livre_docencia');
+				}
+				if (beneficioUsuarioInput) {
+					beneficioUsuarioInput.value = '';
+				}
+				if (beneficioDiaSemanaInput) {
+					beneficioDiaSemanaInput.value = 'segunda';
+				}
+				beneficioSlotsSelecionados = [];
+				if (modalBeneficioTitulo) {
+					modalBeneficioTitulo.textContent = 'Novo ' + getCurrentBeneficioLabel();
+				}
+				renderBeneficioUsuarioOptions();
+				renderBeneficioSlotsSelector();
+				renderBeneficioResumo();
+			}
+
+			function populateBeneficioForm(item, type) {
+				resetBeneficioForm(type);
+				if (!item) {
+					return;
+				}
+
+				if (beneficioIdInput) {
+					beneficioIdInput.value = String(item.id || 0);
+				}
+				if (beneficioTipoInput) {
+					beneficioTipoInput.value = String(type || item.tipo || 'livre_docencia');
+				}
+				if (beneficioUsuarioInput) {
+					beneficioUsuarioInput.value = String(item.usuario_id || '');
+				}
+				if (beneficioDiaSemanaInput) {
+					beneficioDiaSemanaInput.value = String(item.dia_semana || 'segunda');
+				}
+				beneficioSlotsSelecionados = normalizeBeneficioSelectedSlots(item.slots || []);
+				if (modalBeneficioTitulo) {
+					modalBeneficioTitulo.textContent = 'Editar ' + getCurrentBeneficioLabel();
+				}
+				renderBeneficioSlotsSelector();
+				renderBeneficioResumo();
+			}
+
+			function handleBeneficioTableClick(event, defaultType) {
+				var target = event.target;
+				if (!(target instanceof HTMLElement)) {
+					return;
+				}
+
+				var editButton = target.closest('.js-editar-beneficio');
+				if (editButton instanceof HTMLElement) {
+					var editId = Number(editButton.getAttribute('data-id') || 0);
+					var editType = String(editButton.getAttribute('data-tipo') || defaultType || 'livre_docencia');
+					var item = (editType === 'planejamento' ? planejamentos : livreDocencias).find(function (row) {
+						return Number(row.id || 0) === editId;
+					}) || null;
+					if (!item) {
+						return;
+					}
+					populateBeneficioForm(item, editType);
+					if (modalBeneficio) {
+						modalBeneficio.show();
+					}
+					return;
+				}
+
+				var deleteButton = target.closest('.js-excluir-beneficio');
+				if (deleteButton instanceof HTMLElement) {
+					var deleteId = Number(deleteButton.getAttribute('data-id') || 0);
+					var deleteType = String(deleteButton.getAttribute('data-tipo') || defaultType || 'livre_docencia');
+					var usuarioNome = String(deleteButton.getAttribute('data-usuario') || '').trim();
+					if (deleteId <= 0) {
+						return;
+					}
+					askConfirmation('Excluir ' + (deleteType === 'planejamento' ? 'Planejamento' : 'Livre Docência'), 'Deseja excluir o cadastro de ' + (deleteType === 'planejamento' ? 'Planejamento' : 'Livre Docência') + (usuarioNome ? ' de ' + usuarioNome : '') + '?', function () {
+						var body = new FormData();
+						body.append('id', String(deleteId));
+						submitForm('/institucional/modulacao/beneficios/excluir', body, 'Cadastro excluído com sucesso.');
+					});
+				}
+			}
+
+			function getDefaultAulasConfig() {
+				return {
+					quantidade_aulas_dia: 9,
+					duracao_aula_minutos: 50,
+					hora_inicio: '07:30',
+					hora_fim: '17:00',
+					inicio_almoco: '12:00',
+					fim_almoco: '13:20',
+					slots: []
+				};
+			}
+
+			function shouldUseDefaultAulasTemplate(quantidadeAulasDia, duracaoMinutos, horaInicio, horaFim, inicioAlmoco, fimAlmoco) {
+				return Number(duracaoMinutos) === 50
+					&& Number(quantidadeAulasDia) === 9
+					&& String(horaInicio || '') === '07:30'
+					&& String(horaFim || '') === '17:00'
+					&& String(inicioAlmoco || '') === '12:00'
+					&& String(fimAlmoco || '') === '13:20';
+			}
+
+			function buildDefaultAulasTemplate(previousByKey, quantidadeAulasDia) {
+				var startTimes = ['07:30', '08:20', '09:30', '10:20', '11:10', '13:20', '14:10', '15:20', '16:10'];
+				return startTimes.slice(0, Math.max(0, Number(quantidadeAulasDia) || 0)).map(function (startTime) {
+					var inicio = timeToMinutes(startTime);
+					var fim = minutesToTime(inicio + 50);
+					var previous = previousByKey[startTime + '|' + fim] || null;
+					var dias = {};
+					aulasDias.forEach(function (day) {
+						dias[day.key] = previous && previous.dias ? Boolean(previous.dias[day.key]) : true;
+					});
+
+					return {
+						inicio: startTime,
+						fim: fim,
+						dias: dias
+					};
+				});
+			}
+
+			function cloneSlots(slots) {
+				if (!Array.isArray(slots)) {
+					return [];
+				}
+
+				return slots.map(function (slot) {
+					var dias = {};
+					aulasDias.forEach(function (day) {
+						dias[day.key] = !slot || !slot.dias ? true : Boolean(slot.dias[day.key]);
+					});
+
+					return {
+						inicio: String(slot && slot.inicio ? slot.inicio : ''),
+						fim: String(slot && slot.fim ? slot.fim : ''),
+						dias: dias
+					};
+				});
+			}
+
+			function timeToMinutes(value) {
+				var normalized = String(value || '').trim();
+				if (!/^\d{2}:\d{2}$/.test(normalized)) {
+					return null;
+				}
+
+				var parts = normalized.split(':');
+				return (Number(parts[0]) * 60) + Number(parts[1]);
+			}
+
+			function minutesToTime(totalMinutes) {
+				var hours = Math.floor(totalMinutes / 60);
+				var minutes = totalMinutes % 60;
+				return String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
+			}
+
+			function buildAulasSlotsFromInputs(previousSlots) {
+				var quantidadeAulasDia = Number(aulasQuantidadeDiaInput ? aulasQuantidadeDiaInput.value : 9);
+				var duracaoMinutos = Number(aulasDuracaoMinutosInput ? aulasDuracaoMinutosInput.value : 50);
+				var inicio = timeToMinutes(aulasHoraInicioInput ? aulasHoraInicioInput.value : '');
+				var fim = timeToMinutes(aulasHoraFimInput ? aulasHoraFimInput.value : '');
+				var inicioAlmoco = timeToMinutes(aulasInicioAlmocoInput ? aulasInicioAlmocoInput.value : '');
+				var fimAlmoco = timeToMinutes(aulasFimAlmocoInput ? aulasFimAlmocoInput.value : '');
+
+				if (inicio === null || fim === null || inicioAlmoco === null || fimAlmoco === null || !Number.isFinite(duracaoMinutos) || duracaoMinutos < 10 || !Number.isFinite(quantidadeAulasDia) || quantidadeAulasDia < 1) {
+					return [];
+				}
+
+				var previousByKey = {};
+				(Array.isArray(previousSlots) ? previousSlots : []).forEach(function (slot) {
+					if (!slot || !slot.inicio || !slot.fim) {
+						return;
+					}
+					previousByKey[String(slot.inicio) + '|' + String(slot.fim)] = slot;
+				});
+
+				if (shouldUseDefaultAulasTemplate(
+					quantidadeAulasDia,
+					duracaoMinutos,
+					aulasHoraInicioInput ? aulasHoraInicioInput.value : '',
+					aulasHoraFimInput ? aulasHoraFimInput.value : '',
+					aulasInicioAlmocoInput ? aulasInicioAlmocoInput.value : '',
+					aulasFimAlmocoInput ? aulasFimAlmocoInput.value : ''
+				)) {
+					return buildDefaultAulasTemplate(previousByKey, quantidadeAulasDia);
+				}
+
+				var generated = [];
+				var current = inicio;
+				while (current < fim) {
+					if (generated.length >= quantidadeAulasDia) {
+						break;
+					}
+
+					var slotFim = current + duracaoMinutos;
+					if (current < fimAlmoco && slotFim > inicioAlmoco) {
+						current = fimAlmoco;
+						continue;
+					}
+					if (slotFim > fim) {
+						break;
+					}
+
+					var slotInicioTexto = minutesToTime(current);
+					var slotFimTexto = minutesToTime(slotFim);
+					var previous = previousByKey[slotInicioTexto + '|' + slotFimTexto] || null;
+					var dias = {};
+					aulasDias.forEach(function (day) {
+						dias[day.key] = previous && previous.dias ? Boolean(previous.dias[day.key]) : true;
+					});
+
+					generated.push({
+						inicio: slotInicioTexto,
+						fim: slotFimTexto,
+						dias: dias
+					});
+					current = slotFim;
+				}
+
+				return generated;
+			}
+
+			function renderAulasResumo() {
+				if (!aulasResumoCards) {
+					return;
+				}
+
+				var slots = configuracaoAulas && Array.isArray(configuracaoAulas.slots) ? configuracaoAulas.slots : [];
+				var totalAulas = slots.length;
+				var totalMarcacoes = 0;
+				slots.forEach(function (slot) {
+					aulasDias.forEach(function (day) {
+						if (slot && slot.dias && slot.dias[day.key]) {
+							totalMarcacoes += 1;
+						}
+					});
+				});
+
+				aulasResumoCards.innerHTML = ''
+					+ '<div class="modulacao-aulas-summary-card"><strong>' + escapeHtml(String(totalAulas)) + '</strong><span>faixas de aula por dia</span></div>'
+					+ '<div class="modulacao-aulas-summary-card"><strong>' + escapeHtml(String(totalMarcacoes)) + '</strong><span>marcações ativas na semana</span></div>'
+					+ '<div class="modulacao-aulas-summary-card"><strong>' + escapeHtml(String(Number(aulasDuracaoMinutosInput ? aulasDuracaoMinutosInput.value || 0 : 0) || 0)) + ' min</strong><span>duração atual da aula</span></div>'
+					+ '<div class="modulacao-aulas-summary-card"><strong>' + escapeHtml(String(Number(aulasQuantidadeDiaInput ? aulasQuantidadeDiaInput.value || 0 : 0) || 0)) + '</strong><span>aulas configuradas por dia</span></div>';
+			}
+
+			function renderAulasGrid() {
+				if (!aulasConfiguracaoBody) {
+					return;
+				}
+
+				var slots = configuracaoAulas && Array.isArray(configuracaoAulas.slots) ? configuracaoAulas.slots : [];
+				if (!slots.length) {
+					aulasConfiguracaoBody.innerHTML = '<tr><td colspan="7" class="muted-empty">Nenhuma aula foi gerada com a duração e os horários informados.</td></tr>';
+					renderAulasResumo();
+					return;
+				}
+
+				aulasConfiguracaoBody.innerHTML = slots.map(function (slot, slotIndex) {
+					var linha = '<tr><td>' + escapeHtml(String(slot.inicio || '') + ' - ' + String(slot.fim || '')) + '</td>';
+					aulasDias.forEach(function (day) {
+						var checked = slot && slot.dias && slot.dias[day.key] ? ' checked' : '';
+						linha += '<td><input type="checkbox" class="form-check-input js-aula-slot-dia" data-slot-index="' + escapeHtml(String(slotIndex)) + '" data-dia="' + escapeHtml(day.key) + '"' + checked + '></td>';
+					});
+					linha += '</tr>';
+					return linha;
+				}).join('');
+
+				renderAulasResumo();
+			}
+
+			function applyAulasConfig(config) {
+				var safeConfig = config && typeof config === 'object' ? config : getDefaultAulasConfig();
+				configuracaoAulas = {
+					quantidade_aulas_dia: Number(safeConfig.quantidade_aulas_dia || 9) || 9,
+					duracao_aula_minutos: Number(safeConfig.duracao_aula_minutos || 50) || 50,
+					hora_inicio: String(safeConfig.hora_inicio || '07:30'),
+					hora_fim: String(safeConfig.hora_fim || '17:00'),
+					inicio_almoco: String(safeConfig.inicio_almoco || '12:00'),
+					fim_almoco: String(safeConfig.fim_almoco || '13:20'),
+					slots: cloneSlots(Array.isArray(safeConfig.slots) ? safeConfig.slots : [])
+				};
+
+				if (aulasQuantidadeDiaInput) {
+					aulasQuantidadeDiaInput.value = String(configuracaoAulas.quantidade_aulas_dia || 9);
+				}
+				if (aulasDuracaoMinutosInput) {
+					aulasDuracaoMinutosInput.value = String(configuracaoAulas.duracao_aula_minutos || 50);
+				}
+				if (aulasHoraInicioInput) {
+					aulasHoraInicioInput.value = configuracaoAulas.hora_inicio;
+				}
+				if (aulasHoraFimInput) {
+					aulasHoraFimInput.value = configuracaoAulas.hora_fim;
+				}
+				if (aulasInicioAlmocoInput) {
+					aulasInicioAlmocoInput.value = configuracaoAulas.inicio_almoco;
+				}
+				if (aulasFimAlmocoInput) {
+					aulasFimAlmocoInput.value = configuracaoAulas.fim_almoco;
+				}
+
+				if (!configuracaoAulas.slots.length) {
+					configuracaoAulas.slots = buildAulasSlotsFromInputs([]);
+				}
+
+				renderAulasGrid();
+			}
+
+			function getHorarioProfessorById(id) {
+				var numericId = Number(id || 0);
+				return professores.find(function (item) {
+					return Number(item && item.id ? item.id : 0) === numericId;
+				}) || getUsuariosBeneficiosDisponiveis().find(function (item) {
+					return Number(item && item.id ? item.id : 0) === numericId;
+				}) || null;
+			}
+
+			function getHorarioTurmaById(id) {
+				var numericId = Number(id || 0);
+				return turmas.find(function (item) {
+					return Number(item && item.id ? item.id : 0) === numericId;
+				}) || null;
+			}
+
+			function getHorarioDisciplinaById(id) {
+				var numericId = Number(id || 0);
+				return disciplinas.find(function (item) {
+					return Number(item && item.id ? item.id : 0) === numericId;
+				}) || null;
+			}
+
+			function getHorarioSelectedProfessorIds() {
+				return horarioSelectedProfessorIds.slice();
+			}
+
+			function getHorarioSelectedTurmaIds() {
+				return horarioSelectedTurmaIds.slice();
+			}
+
+			function getHorarioEntriesToDisplay() {
+				if (horarioGeradoPreview.length) {
+					return horarioGeradoPreview.slice();
+				}
+
+				var selectedProfessorIds = getHorarioSelectedProfessorIds();
+				var selectedTurmaIds = getHorarioSelectedTurmaIds();
+				return horariosSemanais.filter(function (entry) {
+					if (!entry) {
+						return false;
+					}
+
+					var matchesProfessor = !selectedProfessorIds.length || selectedProfessorIds.indexOf(Number(entry.professor_id || 0)) >= 0;
+					var matchesTurma = !selectedTurmaIds.length || selectedTurmaIds.indexOf(Number(entry.turma_id || 0)) >= 0;
+					return matchesProfessor && matchesTurma;
+				});
+			}
+
+			function resetHorarioPreview() {
+				horarioGeradoPreview = [];
+				horarioGeradoNotas = [];
+				horarioPreviewProfessorIds = [];
+				horarioPreviewTurmaIds = [];
+				if (btnAplicarHorarioIa) {
+					btnAplicarHorarioIa.disabled = true;
+				}
+			}
+
+			function setHorarioIaStatusBadge(text, state) {
+				if (!horarioIaStatusBadge) {
+					return;
+				}
+
+				horarioIaStatusBadge.textContent = String(text || 'Aguardando prompt');
+				horarioIaStatusBadge.classList.remove('is-busy', 'is-success', 'is-error');
+				if (state === 'busy' || state === 'success' || state === 'error') {
+					horarioIaStatusBadge.classList.add('is-' + state);
+				}
+			}
+
+			function createHorarioAssistantMessage(role, content, options) {
+				var safeOptions = options && typeof options === 'object' ? options : {};
+				horarioAssistantMessageSeq += 1;
+				return {
+					id: horarioAssistantMessageSeq,
+					role: role,
+					content: String(content || ''),
+					meta: String(safeOptions.meta || ''),
+					bullets: Array.isArray(safeOptions.bullets) ? safeOptions.bullets.slice() : [],
+					thinking: Boolean(safeOptions.thinking)
+				};
+			}
+
+			function renderHorarioAssistantMessages() {
+				if (!horarioIaTimeline) {
+					return;
+				}
+
+				if (!horarioAssistantMessages.length) {
+					horarioIaTimeline.innerHTML = '<div class="modulacao-horario-message is-system"><div class="modulacao-horario-message-meta">Assistente</div><div class="modulacao-horario-message-bubble">Descreva o que deseja no horário e clique em Gerar com IA para acompanhar as etapas visíveis da montagem.</div></div>';
+					horarioIaTimeline.scrollTop = horarioIaTimeline.scrollHeight;
+					return;
+				}
+
+				horarioIaTimeline.innerHTML = horarioAssistantMessages.map(function (message) {
+					var bulletsHtml = Array.isArray(message.bullets) && message.bullets.length
+						? '<ul>' + message.bullets.map(function (bullet) {
+							return '<li>' + escapeHtml(String(bullet || '')) + '</li>';
+						}).join('') + '</ul>'
+						: '';
+					var thinkingHtml = message.thinking
+						? '<div class="modulacao-horario-thinking"><span class="modulacao-horario-thinking-dots"><span></span><span></span><span></span></span><span>Processando</span></div>'
+						: '';
+					var metaLabel = message.role === 'user' ? 'Você' : (message.role === 'system' ? 'Sistema' : 'Assistente');
+					var metaExtra = message.meta !== '' ? '<div class="small text-secondary mt-2">' + escapeHtml(message.meta) + '</div>' : '';
+					return ''
+						+ '<div class="modulacao-horario-message is-' + escapeHtml(message.role) + '">'
+						+ '<div class="modulacao-horario-message-meta">' + escapeHtml(metaLabel) + '</div>'
+						+ '<div class="modulacao-horario-message-bubble">'
+						+ thinkingHtml
+						+ '<div>' + escapeHtml(message.content) + '</div>'
+						+ metaExtra
+						+ bulletsHtml
+						+ '</div>'
+						+ '</div>';
+				}).join('');
+
+				horarioIaTimeline.scrollTop = horarioIaTimeline.scrollHeight;
+			}
+
+			function pushHorarioAssistantMessage(role, content, options) {
+				horarioAssistantMessages.push(createHorarioAssistantMessage(role, content, options));
+				renderHorarioAssistantMessages();
+			}
+
+			function ensureHorarioAssistantIntro() {
+				if (horarioAssistantMessages.length) {
+					return;
+				}
+
+				pushHorarioAssistantMessage('assistant', 'Pronto para montar uma grade semanal.', {
+					meta: 'Selecione professores e turmas, escreva as instruções e acompanhe o andamento da geração aqui.'
+				});
+				setHorarioIaStatusBadge('Aguardando prompt', '');
+			}
+
+			function summarizeHorarioSelection(ids, type) {
+				var safeIds = Array.isArray(ids) ? ids : [];
+				if (!safeIds.length) {
+					return type === 'professor' ? 'nenhum professor' : 'nenhuma turma';
+				}
+
+				var labels = safeIds.map(function (id) {
+					if (type === 'professor') {
+						var professor = getHorarioProfessorById(id);
+						return professor && professor.nome ? String(professor.nome) : 'Professor #' + id;
+					}
+
+					var turma = getHorarioTurmaById(id);
+					return turma && turma.nome ? String(turma.nome) : 'Turma #' + id;
+				}).filter(Boolean);
+
+				if (labels.length <= 2) {
+					return labels.join(', ');
+				}
+
+				return labels.slice(0, 2).join(', ') + ' e mais ' + String(labels.length - 2);
+			}
+
+			function stopHorarioAssistantThinking(finalText, state, options) {
+				if (horarioAssistantThinkingTimer !== null) {
+					window.clearInterval(horarioAssistantThinkingTimer);
+					horarioAssistantThinkingTimer = null;
+				}
+
+				var safeOptions = options && typeof options === 'object' ? options : {};
+				if (horarioAssistantThinkingMessageId > 0) {
+					horarioAssistantMessages = horarioAssistantMessages.map(function (message) {
+						if (message.id !== horarioAssistantThinkingMessageId) {
+							return message;
+						}
+
+						message.thinking = false;
+						message.content = String(finalText || message.content || 'Processamento concluído.');
+						message.meta = String(safeOptions.meta || message.meta || '');
+						message.bullets = Array.isArray(safeOptions.bullets) ? safeOptions.bullets.slice() : message.bullets;
+						return message;
+					});
+					renderHorarioAssistantMessages();
+				}
+
+				horarioAssistantThinkingMessageId = 0;
+				setHorarioIaStatusBadge(
+					state === 'success' ? 'Resposta pronta' : (state === 'error' ? 'Falha na geração' : 'Aguardando prompt'),
+					state || ''
+				);
+			}
+
+			function startHorarioAssistantThinking(promptText, professorIds, turmaIds) {
+				if (horarioAssistantThinkingTimer !== null) {
+					window.clearInterval(horarioAssistantThinkingTimer);
+					horarioAssistantThinkingTimer = null;
+				}
+
+				var prompt = String(promptText || '').trim();
+				var userMessage = prompt !== ''
+					? prompt
+					: 'Gerar uma grade semanal com base nas seleções atuais e nas regras cadastradas.';
+
+				pushHorarioAssistantMessage('user', userMessage, {
+					meta: 'Professores: ' + summarizeHorarioSelection(professorIds, 'professor') + ' | Turmas: ' + summarizeHorarioSelection(turmaIds, 'turma')
+				});
+
+				horarioAssistantThinkingStepIndex = 0;
+				var thinkingMessage = createHorarioAssistantMessage('assistant', horarioAssistantThinkingSteps[0], {
+					meta: 'Acompanhando as etapas visíveis da geração.',
+					thinking: true
+				});
+				horarioAssistantThinkingMessageId = thinkingMessage.id;
+				horarioAssistantMessages.push(thinkingMessage);
+				renderHorarioAssistantMessages();
+				setHorarioIaStatusBadge('Gerando em tempo real', 'busy');
+
+				horarioAssistantThinkingTimer = window.setInterval(function () {
+					horarioAssistantThinkingStepIndex = (horarioAssistantThinkingStepIndex + 1) % horarioAssistantThinkingSteps.length;
+					horarioAssistantMessages = horarioAssistantMessages.map(function (message) {
+						if (message.id !== horarioAssistantThinkingMessageId) {
+							return message;
+						}
+
+						message.content = horarioAssistantThinkingSteps[horarioAssistantThinkingStepIndex];
+						return message;
+					});
+					renderHorarioAssistantMessages();
+				}, 1400);
+			}
+
+			function renderHorarioProfessoresSummary() {
+				if (!horarioProfessoresSummary) {
+					return;
+				}
+
+				if (!horarioSelectedProfessorIds.length) {
+					horarioProfessoresSummary.innerHTML = '<div class="small text-secondary">Nenhum professor selecionado.</div>';
+					return;
+				}
+
+				horarioProfessoresSummary.innerHTML = horarioSelectedProfessorIds.map(function (id) {
+					var professor = getHorarioProfessorById(id);
+					var details = getUsuarioBeneficioById(id);
+					var carga = details ? Number(details.cargaHoraria || 0) || 0 : 0;
+					var label = professor && professor.nome ? String(professor.nome) : 'Professor #' + id;
+					if (carga > 0) {
+						label += ' • ' + String(carga) + 'h';
+					}
+					return '<span class="modulacao-selector-pill">' + escapeHtml(label) + '</span>';
+				}).join('');
+			}
+
+			function renderHorarioTurmasSummary() {
+				if (!horarioTurmasSummary) {
+					return;
+				}
+
+				if (!horarioSelectedTurmaIds.length) {
+					horarioTurmasSummary.innerHTML = '<div class="small text-secondary">Nenhuma turma selecionada.</div>';
+					return;
+				}
+
+				horarioTurmasSummary.innerHTML = horarioSelectedTurmaIds.map(function (id) {
+					var turma = getHorarioTurmaById(id);
+					var label = turma && turma.nome ? String(turma.nome) : 'Turma #' + id;
+					if (turma && turma.turno) {
+						label += ' • ' + String(turma.turno);
+					}
+					return '<span class="modulacao-selector-pill">' + escapeHtml(label) + '</span>';
+				}).join('');
+			}
+
+			function updateHorarioSelection(ids, id, checked) {
+				var numericId = Number(id || 0);
+				if (numericId <= 0) {
+					return ids.slice();
+				}
+
+				var next = ids.slice();
+				var index = next.indexOf(numericId);
+				if (checked && index < 0) {
+					next.push(numericId);
+				}
+				if (!checked && index >= 0) {
+					next.splice(index, 1);
+				}
+
+				next.sort(function (a, b) {
+					return a - b;
+				});
+				return next;
+			}
+
+			function selectAllHorarioProfessores() {
+				horarioSelectedProfessorIds = professores.map(function (item) {
+					return Number(item && item.id ? item.id : 0);
+				}).filter(function (id) {
+					return id > 0;
+				});
+				handleHorarioScopeChanged();
+			}
+
+			function clearHorarioProfessores() {
+				horarioSelectedProfessorIds = [];
+				handleHorarioScopeChanged();
+			}
+
+			function selectAllHorarioTurmas() {
+				horarioSelectedTurmaIds = turmas.map(function (item) {
+					return Number(item && item.id ? item.id : 0);
+				}).filter(function (id) {
+					return id > 0;
+				});
+				handleHorarioScopeChanged();
+			}
+
+			function clearHorarioTurmas() {
+				horarioSelectedTurmaIds = [];
+				handleHorarioScopeChanged();
+			}
+
+			function handleHorarioScopeChanged() {
+				resetHorarioPreview();
+				renderHorarioOptions();
+				renderHorarioGrid();
+			}
+
+			function renderHorarioProfessoresSelector() {
+				if (!horarioProfessoresLista) {
+					return;
+				}
+
+				var filtro = normalizeSearchValue(horarioProfessoresBuscaInput ? horarioProfessoresBuscaInput.value : '');
+				var filtered = professores.filter(function (item) {
+					var details = getUsuarioBeneficioById(item.id);
+					return matchesSearch([
+						item.nome || '',
+						item.usuario || '',
+						String(details ? Number(details.cargaHoraria || 0) || 0 : 0)
+					], filtro);
+				});
+
+				if (!filtered.length) {
+					horarioProfessoresLista.innerHTML = '<div class="small text-secondary">Nenhum professor encontrado para o filtro atual.</div>';
+					return;
+				}
+
+				horarioProfessoresLista.innerHTML = filtered.map(function (item) {
+					var details = getUsuarioBeneficioById(item.id);
+					var carga = details ? Number(details.cargaHoraria || 0) || 0 : 0;
+					var checked = horarioSelectedProfessorIds.indexOf(Number(item.id || 0)) >= 0 ? ' checked' : '';
+					return ''
+						+ '<div class="form-check">'
+						+ '<input class="form-check-input js-horario-professor-checkbox" type="checkbox" value="' + escapeHtml(String(item.id || 0)) + '" id="horarioProfessor_' + escapeHtml(String(item.id || 0)) + '"' + checked + '>'
+						+ '<label class="form-check-label" for="horarioProfessor_' + escapeHtml(String(item.id || 0)) + '">' + escapeHtml(String(item.nome || '') + (carga > 0 ? ' • ' + carga + 'h' : '')) + '</label>'
+						+ '</div>';
+				}).join('');
+
+				Array.prototype.forEach.call(horarioProfessoresLista.querySelectorAll('.js-horario-professor-checkbox'), function (input) {
+					input.addEventListener('change', function () {
+						horarioSelectedProfessorIds = updateHorarioSelection(horarioSelectedProfessorIds, input.value, input.checked);
+						handleHorarioScopeChanged();
+					});
+				});
+			}
+
+			function renderHorarioTurmasSelector() {
+				if (!horarioTurmasLista) {
+					return;
+				}
+
+				var filtro = normalizeSearchValue(horarioTurmasBuscaInput ? horarioTurmasBuscaInput.value : '');
+				var filtered = turmas.filter(function (item) {
+					return matchesSearch([
+						item.nome || '',
+						item.turno || ''
+					], filtro);
+				});
+
+				if (!filtered.length) {
+					horarioTurmasLista.innerHTML = '<div class="small text-secondary">Nenhuma turma encontrada para o filtro atual.</div>';
+					return;
+				}
+
+				horarioTurmasLista.innerHTML = filtered.map(function (item) {
+					var checked = horarioSelectedTurmaIds.indexOf(Number(item.id || 0)) >= 0 ? ' checked' : '';
+					var label = String(item.nome || '');
+					if (item.turno) {
+						label += ' • ' + String(item.turno);
+					}
+					return ''
+						+ '<div class="form-check">'
+						+ '<input class="form-check-input js-horario-turma-checkbox" type="checkbox" value="' + escapeHtml(String(item.id || 0)) + '" id="horarioTurma_' + escapeHtml(String(item.id || 0)) + '"' + checked + '>'
+						+ '<label class="form-check-label" for="horarioTurma_' + escapeHtml(String(item.id || 0)) + '">' + escapeHtml(label) + '</label>'
+						+ '</div>';
+				}).join('');
+
+				Array.prototype.forEach.call(horarioTurmasLista.querySelectorAll('.js-horario-turma-checkbox'), function (input) {
+					input.addEventListener('change', function () {
+						horarioSelectedTurmaIds = updateHorarioSelection(horarioSelectedTurmaIds, input.value, input.checked);
+						handleHorarioScopeChanged();
+					});
+				});
+			}
+
+			function renderHorarioOptions() {
+				renderHorarioProfessoresSummary();
+				renderHorarioTurmasSummary();
+				renderHorarioProfessoresSelector();
+				renderHorarioTurmasSelector();
+			}
+
+			function renderHorarioNotes() {
+				if (!horarioIaNotas) {
+					return;
+				}
+
+				if (!horarioGeradoNotas.length) {
+					horarioIaNotas.classList.add('d-none');
+					horarioIaNotas.innerHTML = '';
+					return;
+				}
+
+				horarioIaNotas.classList.remove('d-none');
+				horarioIaNotas.innerHTML = '<strong class="d-block mb-2">Notas da IA</strong><ul class="mb-0 ps-3">' + horarioGeradoNotas.map(function (note) {
+					return '<li>' + escapeHtml(note || '') + '</li>';
+				}).join('') + '</ul>';
+			}
+
+			function renderHorarioResumo() {
+				if (!horarioResumoCards) {
+					return;
+				}
+
+				var entries = getHorarioEntriesToDisplay();
+				var uniqueProfessores = {};
+				var uniqueTurmas = {};
+				entries.forEach(function (entry) {
+					if (!entry) {
+						return;
+					}
+					if (entry.professor_id) {
+						uniqueProfessores[String(entry.professor_id)] = true;
+					}
+					if (entry.turma_id) {
+						uniqueTurmas[String(entry.turma_id)] = true;
+					}
+				});
+
+				var sourceLabel = horarioGeradoPreview.length ? 'preview gerado pela IA' : 'grade aplicada no sistema';
+				horarioResumoCards.innerHTML = ''
+					+ '<div class="modulacao-horario-summary-card"><strong>' + escapeHtml(String(entries.length)) + '</strong><span>aulas na visualização atual</span></div>'
+					+ '<div class="modulacao-horario-summary-card"><strong>' + escapeHtml(String(Object.keys(uniqueProfessores).length)) + '</strong><span>professores envolvidos</span></div>'
+					+ '<div class="modulacao-horario-summary-card"><strong>' + escapeHtml(String(Object.keys(uniqueTurmas).length)) + '</strong><span>turmas atendidas</span></div>'
+					+ '<div class="modulacao-horario-summary-card"><strong>' + escapeHtml(sourceLabel) + '</strong><span>origem da grade exibida</span></div>';
+			}
+
+			function renderHorarioGrid() {
+				if (!horarioVisualizacaoBody) {
+					return;
+				}
+
+				var entries = getHorarioEntriesToDisplay();
+				var slots = configuracaoAulas && Array.isArray(configuracaoAulas.slots) ? configuracaoAulas.slots : [];
+				var horarioDiasVisiveis = aulasDias.filter(function (day) {
+					return day.key !== 'sabado';
+				});
+				if (!slots.length) {
+					horarioVisualizacaoBody.innerHTML = '<div class="modulacao-horario-empty-panel">Configure primeiro a grade comum de aulas para gerar horários semanais.</div>';
+					renderHorarioResumo();
+					renderHorarioNotes();
+					if (btnVisualizarHorario) {
+						btnVisualizarHorario.disabled = true;
+					}
+					return;
+				}
+
+				if (!entries.length) {
+					var emptyMessage = horarioGeradoPreview.length
+						? 'A IA não retornou nenhuma aula válida para o preview atual.'
+						: 'Nenhuma aula encontrada para os filtros atuais na grade aplicada.';
+					horarioVisualizacaoBody.innerHTML = '<div class="modulacao-horario-empty-panel">' + escapeHtml(emptyMessage) + '</div>';
+					renderHorarioResumo();
+					renderHorarioNotes();
+					if (btnVisualizarHorario) {
+						btnVisualizarHorario.disabled = false;
+					}
+					if (horarioFeedback) {
+						horarioFeedback.textContent = horarioGeradoPreview.length
+							? 'Preview ativo sem aulas válidas: revise o prompt ou ajuste os filtros.'
+							: 'Nenhuma aula encontrada para os filtros atuais na grade aplicada.';
+					}
+					return;
+				}
+
+				var groupedByTurma = {};
+				entries.forEach(function (entry) {
+					if (!entry || !entry.turma_id) {
+						return;
+					}
+					var turmaKey = String(entry.turma_id);
+					groupedByTurma[turmaKey] = groupedByTurma[turmaKey] || [];
+					groupedByTurma[turmaKey].push(entry);
+				});
+
+				var turmaIds = Object.keys(groupedByTurma).sort(function (a, b) {
+					var turmaA = getHorarioTurmaById(a);
+					var turmaB = getHorarioTurmaById(b);
+					var nomeA = turmaA && turmaA.nome ? String(turmaA.nome) : 'Turma #' + a;
+					var nomeB = turmaB && turmaB.nome ? String(turmaB.nome) : 'Turma #' + b;
+					return nomeA.localeCompare(nomeB, 'pt-BR');
+				});
+
+				horarioVisualizacaoBody.innerHTML = ''
+					+ '<div class="modulacao-note mb-0">'
+					+ escapeHtml(horarioGeradoPreview.length ? 'Exibindo o preview gerado pela IA antes da aplicação.' : 'Exibindo a grade aplicada no sistema, filtrada pelas seleções atuais quando houver filtros.')
+					+ '</div>'
+					+ turmaIds.map(function (turmaId) {
+						var turma = getHorarioTurmaById(turmaId);
+						var turmaEntries = groupedByTurma[turmaId] || [];
+						var entryMap = {};
+						turmaEntries.forEach(function (entry) {
+							var key = String(entry.dia_semana || '') + '::' + String(entry.inicio || '') + '|' + String(entry.fim || '');
+							entryMap[key] = entryMap[key] || [];
+							entryMap[key].push(entry);
+						});
+
+						var title = turma && turma.nome ? String(turma.nome) : 'Turma #' + turmaId;
+						var meta = turma && turma.turno ? 'Turno: ' + String(turma.turno) : 'Turma selecionada para visualização';
+						var tableHtml = '<div class="table-responsive table-scroll-only"><table class="modulacao-aulas-grid modulacao-horario-grid mb-0"><thead><tr><th>Horário</th>'
+							+ horarioDiasVisiveis.map(function (day) {
+								return '<th>' + escapeHtml(day.label) + '</th>';
+							}).join('')
+							+ '</tr></thead><tbody>'
+							+ slots.map(function (slot) {
+								var slotKey = String(slot.inicio || '') + '|' + String(slot.fim || '');
+								var rowHtml = '<tr><td>' + escapeHtml(String(slot.inicio || '') + ' - ' + String(slot.fim || '')) + '</td>';
+								horarioDiasVisiveis.forEach(function (day) {
+									var cellEntries = entryMap[day.key + '::' + slotKey] || [];
+									if (!cellEntries.length) {
+										rowHtml += '<td><span class="text-secondary small">Livre</span></td>';
+										return;
+									}
+
+									rowHtml += '<td>' + cellEntries.map(function (entry) {
+										var professor = getHorarioProfessorById(entry.professor_id);
+										var disciplina = getHorarioDisciplinaById(entry.disciplina_id);
+										return '<div class="modulacao-horario-slot-card">'
+											+ '<strong>' + escapeHtml(String(disciplina && disciplina.nome ? disciplina.nome : 'Disciplina #' + entry.disciplina_id)) + '</strong>'
+											+ '<span>' + escapeHtml(String(professor && professor.nome ? professor.nome : 'Professor #' + entry.professor_id)) + '</span>'
+											+ (entry.observacoes ? '<span>' + escapeHtml(String(entry.observacoes || '')) + '</span>' : '')
+											+ '</div>';
+									}).join('') + '</td>';
+								});
+								rowHtml += '</tr>';
+								return rowHtml;
+							}).join('')
+							+ '</tbody></table></div>';
+
+						return ''
+							+ '<section class="modulacao-horario-turma-card">'
+							+ '<div class="modulacao-horario-turma-header">'
+							+ '<div><h3>' + escapeHtml(title) + '</h3><div class="modulacao-horario-turma-meta">' + escapeHtml(meta) + '</div></div>'
+							+ '<div class="modulacao-horario-turma-count">' + escapeHtml(String(turmaEntries.length)) + ' aulas</div>'
+							+ '</div>'
+							+ tableHtml
+							+ '</section>';
+					}).join('');
+
+				if (btnVisualizarHorario) {
+					btnVisualizarHorario.disabled = false;
+				}
+
+				if (horarioFeedback) {
+					horarioFeedback.textContent = horarioGeradoPreview.length
+						? 'Preview ativo: abra o modal para revisar a proposta da IA separada por turma antes de aplicar.'
+						: 'Abra o modal para visualizar a grade aplicada, separada por turma.';
+				}
+
+				renderHorarioResumo();
+				renderHorarioNotes();
+			}
+
+			function renderAll() {
+				renderAreaRows();
+				renderAreaOptions();
+				renderDisciplinaRows();
+				renderVinculoRows();
+				renderVinculoOptions();
+				renderHorarioOptions();
+				renderBeneficioUsuarioOptions();
+				renderBeneficioRows('livre_docencia');
+				renderBeneficioRows('planejamento');
+				renderAulasGrid();
+				renderHorarioGrid();
+				ensureHorarioAssistantIntro();
+			}
+
+			function fetchJson(url, options) {
+				return fetch(url, options || {}).then(function (response) {
+					return response.json().catch(function () {
+						return { ok: false, message: 'Resposta inválida do servidor.' };
+					}).then(function (payload) {
+						if (!response.ok || !payload.ok) {
+							throw new Error(payload.message || 'Erro ao processar a requisição.');
+						}
+						return payload;
+					});
+				});
+			}
+
+			function loadData(showRefreshMessage) {
+				if (showRefreshMessage) {
+					showStatus('Atualizando dados da modulação...', false);
+				}
+				return fetchJson(buildEndpoint('/institucional/modulacao/dados'), {
+					headers: { 'X-Requested-With': 'XMLHttpRequest' }
+				}).then(function (payload) {
+					var data = payload && payload.data ? payload.data : {};
+					areas = Array.isArray(data.areas) ? data.areas : [];
+					professores = Array.isArray(data.professores) ? data.professores : [];
+					usuariosBeneficios = Array.isArray(data.usuarios_beneficios) ? data.usuarios_beneficios : [];
+					if (!usuariosBeneficios.length && professores.length) {
+						usuariosBeneficios = professores.map(function (item) {
+							var cargaHoraria = 40;
+							return {
+								id: Number(item && item.id ? item.id : 0),
+								nome: String(item && item.nome ? item.nome : ''),
+								usuario: String(item && item.usuario ? item.usuario : ''),
+								email: String(item && item.email ? item.email : ''),
+								funcao_nome: String(item && item.funcao_nome ? item.funcao_nome : 'Professor'),
+								cargaHoraria: cargaHoraria,
+								beneficio_minutos: Math.max(0, Math.round((cargaHoraria / 5) * 60))
+							};
+						}).filter(function (item) {
+							return Number(item.id || 0) > 0;
+						});
+					}
+					disciplinas = Array.isArray(data.disciplinas) ? data.disciplinas : [];
+					turmas = Array.isArray(data.turmas) ? data.turmas : [];
+					modulacoes = Array.isArray(data.modulacoes) ? data.modulacoes : [];
+					horariosSemanais = Array.isArray(data.horarios_semanais) ? data.horarios_semanais : [];
+					livreDocencias = Array.isArray(data.livre_docencias) ? data.livre_docencias : [];
+					planejamentos = Array.isArray(data.planejamentos) ? data.planejamentos : [];
+					configuracaoAulas = data.configuracao_aulas && typeof data.configuracao_aulas === 'object'
+						? data.configuracao_aulas
+						: getDefaultAulasConfig();
+					disciplinasSelecionadas = disciplinasSelecionadas.filter(function (id) {
+						return disciplinas.some(function (item) { return String(item.id || '') === id; });
+					});
+					vinculacoesSelecionadas = vinculacoesSelecionadas.filter(function (id) {
+						return modulacoes.some(function (item) { return String(item.id || '') === id; });
+					});
+					horarioSelectedProfessorIds = horarioSelectedProfessorIds.filter(function (id) {
+						return professores.some(function (item) { return Number(item.id || 0) === Number(id || 0); });
+					});
+					horarioSelectedTurmaIds = horarioSelectedTurmaIds.filter(function (id) {
+						return turmas.some(function (item) { return Number(item.id || 0) === Number(id || 0); });
+					});
+					resetHorarioPreview();
+					applyAulasConfig(configuracaoAulas);
+					renderAll();
+					return payload;
+				}).catch(function (error) {
+					showStatus(error && error.message ? error.message : 'Não foi possível carregar os dados de modulação.', true);
+				});
+			}
+
+			function resetAreaForm() {
+				if (areaIdInput) {
+					areaIdInput.value = '0';
+				}
+				if (areaNomeInput) {
+					areaNomeInput.value = '';
+				}
+				if (areaStatusInput) {
+					areaStatusInput.value = 'ativa';
+				}
+			}
+
+			function resetDisciplinaForm() {
+				disciplinaIdInput.value = '0';
+				disciplinaNomeInput.value = '';
+				if (disciplinaAreaInput) {
+					disciplinaAreaInput.value = '';
+				}
+				disciplinaStatusInput.value = 'ativa';
+			}
+
+			function resetVinculoForm() {
+				vinculoIdInput.value = '0';
+				vinculoProfessorInput.value = '';
+				vinculoTurmaIdsSelecionadas = [];
+				vinculoDisciplinaIdsSelecionadas = [];
+				if (vinculoTurmasBuscaInput) {
+					vinculoTurmasBuscaInput.value = '';
+				}
+				if (vinculoDisciplinasBuscaInput) {
+					vinculoDisciplinasBuscaInput.value = '';
+				}
+				renderTurmasSelector();
+				renderDisciplinasSelector();
+			}
+
+			function isEdicaoVinculo() {
+				return Number(vinculoIdInput.value || 0) > 0;
+			}
+
+			function getDisciplinaNomeById(id) {
+				var disciplina = disciplinas.find(function (item) {
+					return String(item.id || '') === String(id || '');
+				});
+				return disciplina ? String(disciplina.nome || '') : '';
+			}
+
+			function getTurmaNomeById(id) {
+				var turma = turmas.find(function (item) {
+					return String(item.id || '') === String(id || '');
+				});
+				if (!turma) {
+					return '';
+				}
+
+				var label = String(turma.nome || '');
+				if (turma.turno) {
+					label += ' • ' + String(turma.turno);
+				}
+				return label;
+			}
+
+			function getSelectedTurmaIds() {
+				return vinculoTurmaIdsSelecionadas.slice();
+			}
+
+			function getSelectedDisciplinaIds() {
+				return vinculoDisciplinaIdsSelecionadas.slice();
+			}
+
+			function renderTurmasSummary() {
+				if (!vinculoTurmasSummary) {
+					return;
+				}
+
+				if (vinculoTurmasModeNote) {
+					if (isEdicaoVinculo()) {
+						vinculoTurmasModeNote.textContent = 'Modo de edição: mantenha apenas uma turma selecionada.';
+						vinculoTurmasModeNote.classList.add('is-editing');
+					} else {
+						vinculoTurmasModeNote.textContent = 'Na criação, você pode selecionar várias turmas.';
+						vinculoTurmasModeNote.classList.remove('is-editing');
+					}
+				}
+
+				if (!vinculoTurmaIdsSelecionadas.length) {
+					vinculoTurmasSummary.innerHTML = '<div class="small text-secondary">Nenhuma turma selecionada.</div>';
+					return;
+				}
+
+				vinculoTurmasSummary.innerHTML = vinculoTurmaIdsSelecionadas.map(function (id) {
+					return '<span class="modulacao-selector-pill">' + escapeHtml(getTurmaNomeById(id) || ('Turma ' + id)) + '</span>';
+				}).join('');
+			}
+
+			function renderTurmasSelector() {
+				renderTurmasSummary();
+				if (!vinculoTurmasLista) {
+					return;
+				}
+
+				if (!turmas.length) {
+					vinculoTurmasLista.innerHTML = '<div class="small text-secondary">Nenhuma turma cadastrada.</div>';
+					return;
+				}
+
+				var filtro = normalizeSearchValue(vinculoTurmasBuscaInput ? vinculoTurmasBuscaInput.value : '');
+				var turmasFiltradas = turmas.filter(function (item) {
+					return matchesSearch([
+						item.nome || '',
+						item.turno || ''
+					], filtro);
+				});
+
+				if (!turmasFiltradas.length) {
+					vinculoTurmasLista.innerHTML = '<div class="small text-secondary">Nenhuma turma encontrada para a busca informada.</div>';
+					return;
+				}
+
+				vinculoTurmasLista.innerHTML = turmasFiltradas.map(function (item) {
+					var itemId = String(item.id || '');
+					var inputId = 'vinculoTurmaCheck_' + itemId;
+					var checked = vinculoTurmaIdsSelecionadas.indexOf(itemId) >= 0 ? ' checked' : '';
+					var label = String(item.nome || '');
+					if (item.turno) {
+						label += ' • ' + String(item.turno);
+					}
+					return '<div class="form-check">'
+						+ '<input class="form-check-input js-vinculo-turma-checkbox" type="checkbox" value="' + escapeHtml(itemId) + '" id="' + escapeHtml(inputId) + '"' + checked + '>'
+						+ '<label class="form-check-label" for="' + escapeHtml(inputId) + '">' + escapeHtml(label) + '</label>'
+						+ '</div>';
+				}).join('');
+			}
+
+			function renderDisciplinasSummary() {
+				if (!vinculoDisciplinasSummary) {
+					return;
+				}
+
+				if (vinculoDisciplinasModeNote) {
+					if (isEdicaoVinculo()) {
+						vinculoDisciplinasModeNote.textContent = 'Modo de edição: mantenha apenas uma disciplina selecionada.';
+						vinculoDisciplinasModeNote.classList.add('is-editing');
+					} else {
+						vinculoDisciplinasModeNote.textContent = 'Na criação, você pode selecionar várias disciplinas.';
+						vinculoDisciplinasModeNote.classList.remove('is-editing');
+					}
+				}
+
+				if (!vinculoDisciplinaIdsSelecionadas.length) {
+					vinculoDisciplinasSummary.innerHTML = '<div class="small text-secondary">Nenhuma disciplina selecionada.</div>';
+					return;
+				}
+
+				vinculoDisciplinasSummary.innerHTML = vinculoDisciplinaIdsSelecionadas.map(function (id) {
+					return '<span class="modulacao-selector-pill">' + escapeHtml(getDisciplinaNomeById(id) || ('Disciplina ' + id)) + '</span>';
+				}).join('');
+			}
+
+			function renderDisciplinasSelector() {
+				renderDisciplinasSummary();
+				if (!vinculoDisciplinasLista) {
+					return;
+				}
+
+				if (!disciplinas.length) {
+					vinculoDisciplinasLista.innerHTML = '<div class="small text-secondary">Nenhuma disciplina cadastrada.</div>';
+					return;
+				}
+
+				var filtro = vinculoDisciplinasBuscaInput ? String(vinculoDisciplinasBuscaInput.value || '').trim().toLowerCase() : '';
+				var disciplinasFiltradas = disciplinas.filter(function (item) {
+					var nome = String(item.nome || '');
+					if (filtro === '') {
+						return true;
+					}
+					return nome.toLowerCase().indexOf(filtro) >= 0;
+				});
+
+				if (!disciplinasFiltradas.length) {
+					vinculoDisciplinasLista.innerHTML = '<div class="small text-secondary">Nenhuma disciplina encontrada para a busca informada.</div>';
+					return;
+				}
+
+				vinculoDisciplinasLista.innerHTML = disciplinasFiltradas.map(function (item) {
+					var itemId = String(item.id || '');
+					var inputId = 'vinculoDisciplinaCheck_' + itemId;
+					var checked = vinculoDisciplinaIdsSelecionadas.indexOf(itemId) >= 0 ? ' checked' : '';
+					return '<div class="form-check">'
+						+ '<input class="form-check-input js-vinculo-disciplina-checkbox" type="checkbox" value="' + escapeHtml(itemId) + '" id="' + escapeHtml(inputId) + '"' + checked + '>'
+						+ '<label class="form-check-label" for="' + escapeHtml(inputId) + '">' + escapeHtml(item.nome || '') + '</label>'
+						+ '</div>';
+				}).join('');
+			}
+
+			function submitForm(url, body, successMessage, onDone) {
+				fetchJson(buildEndpoint(url), {
+					method: 'POST',
+					body: body,
+					headers: { 'X-Requested-With': 'XMLHttpRequest' }
+				}).then(function (payload) {
+					showStatus(payload && payload.message ? payload.message : successMessage, false);
+					loadData(false);
+					if (typeof onDone === 'function') {
+						onDone();
+					}
+				}).catch(function (error) {
+					showStatus(error && error.message ? error.message : 'Não foi possível salvar agora.', true);
+				});
+			}
+
+			if (btnAtualizar) {
+				btnAtualizar.addEventListener('click', function () {
+					loadData(true);
+				});
+			}
+
+			if (btnConfirmarAcaoModulacao) {
+				btnConfirmarAcaoModulacao.addEventListener('click', function () {
+					var currentHandler = confirmActionHandler;
+					confirmActionHandler = null;
+					if (modalConfirmacao) {
+						modalConfirmacao.hide();
+					}
+					if (typeof currentHandler === 'function') {
+						currentHandler();
+					}
+				});
+			}
+
+			if (modalConfirmacaoElement) {
+				modalConfirmacaoElement.addEventListener('hidden.bs.modal', function () {
+					confirmActionHandler = null;
+				});
+			}
+
+			if (buscaAreasInput) {
+				buscaAreasInput.addEventListener('input', function () {
+					renderAreaRows();
+				});
+			}
+
+			if (buscaDisciplinasInput) {
+				buscaDisciplinasInput.addEventListener('input', function () {
+					renderDisciplinaRows();
+				});
+			}
+
+			if (buscaVinculosInput) {
+				buscaVinculosInput.addEventListener('input', function () {
+					renderVinculoRows();
+				});
+			}
+
+			if (buscaLivreDocenciaInput) {
+				buscaLivreDocenciaInput.addEventListener('input', function () {
+					renderBeneficioRows('livre_docencia');
+				});
+			}
+
+			if (buscaPlanejamentoInput) {
+				buscaPlanejamentoInput.addEventListener('input', function () {
+					renderBeneficioRows('planejamento');
+				});
+			}
+
+			if (selecionarTodasDisciplinasInput) {
+				selecionarTodasDisciplinasInput.addEventListener('change', function () {
+					var idsVisiveis = getFilteredDisciplinas().map(function (item) { return String(item.id || ''); }).filter(Boolean);
+					if (selecionarTodasDisciplinasInput.checked) {
+						idsVisiveis.forEach(function (id) {
+							if (disciplinasSelecionadas.indexOf(id) < 0) {
+								disciplinasSelecionadas.push(id);
+							}
+						});
+					} else {
+						disciplinasSelecionadas = disciplinasSelecionadas.filter(function (id) {
+							return idsVisiveis.indexOf(id) < 0;
+						});
+					}
+					renderDisciplinaRows();
+				});
+			}
+
+			if (selecionarTodosVinculosInput) {
+				selecionarTodosVinculosInput.addEventListener('change', function () {
+					var idsVisiveis = getFilteredModulacoes().map(function (item) { return String(item.id || ''); }).filter(Boolean);
+					if (selecionarTodosVinculosInput.checked) {
+						idsVisiveis.forEach(function (id) {
+							if (vinculacoesSelecionadas.indexOf(id) < 0) {
+								vinculacoesSelecionadas.push(id);
+							}
+						});
+					} else {
+						vinculacoesSelecionadas = vinculacoesSelecionadas.filter(function (id) {
+							return idsVisiveis.indexOf(id) < 0;
+						});
+					}
+					renderVinculoRows();
+				});
+			}
+
+			if (btnNovaDisciplina) {
+				btnNovaDisciplina.addEventListener('click', function () {
+					resetDisciplinaForm();
+					if (modalDisciplina) {
+						modalDisciplina.show();
+					}
+				});
+			}
+
+			if (btnNovaArea) {
+				btnNovaArea.addEventListener('click', function () {
+					resetAreaForm();
+					if (modalArea) {
+						modalArea.show();
+					}
+				});
+			}
+
+			if (btnNovoVinculo) {
+				btnNovoVinculo.addEventListener('click', function () {
+					resetVinculoForm();
+					renderVinculoOptions();
+					if (modalVinculo) {
+						modalVinculo.show();
+					}
+				});
+			}
+
+			if (btnNovaLivreDocencia) {
+				btnNovaLivreDocencia.addEventListener('click', function () {
+					resetBeneficioForm('livre_docencia');
+					if (modalBeneficio) {
+						modalBeneficio.show();
+					}
+				});
+			}
+
+			if (btnNovoPlanejamento) {
+				btnNovoPlanejamento.addEventListener('click', function () {
+					resetBeneficioForm('planejamento');
+					if (modalBeneficio) {
+						modalBeneficio.show();
+					}
+				});
+			}
+
+			if (btnAbrirDisciplinasVinculoModal) {
+				btnAbrirDisciplinasVinculoModal.addEventListener('click', function () {
+					renderDisciplinasSelector();
+					if (modalDisciplinasVinculo) {
+						modalDisciplinasVinculo.show();
+					}
+				});
+			}
+
+			if (btnAbrirTurmasVinculoModal) {
+				btnAbrirTurmasVinculoModal.addEventListener('click', function () {
+					renderTurmasSelector();
+					if (modalTurmasVinculo) {
+						modalTurmasVinculo.show();
+					}
+				});
+			}
+
+			if (btnLimparTurmasVinculo) {
+				btnLimparTurmasVinculo.addEventListener('click', function () {
+					vinculoTurmaIdsSelecionadas = [];
+					renderTurmasSelector();
+				});
+			}
+
+			if (btnLimparDisciplinasVinculo) {
+				btnLimparDisciplinasVinculo.addEventListener('click', function () {
+					vinculoDisciplinaIdsSelecionadas = [];
+					renderDisciplinasSelector();
+				});
+			}
+
+			if (btnRegerarGradeAulas) {
+				btnRegerarGradeAulas.addEventListener('click', function () {
+					configuracaoAulas = configuracaoAulas || getDefaultAulasConfig();
+					configuracaoAulas.quantidade_aulas_dia = Number(aulasQuantidadeDiaInput ? aulasQuantidadeDiaInput.value || 9 : 9) || 9;
+					configuracaoAulas.duracao_aula_minutos = Number(aulasDuracaoMinutosInput ? aulasDuracaoMinutosInput.value || 50 : 50) || 50;
+					configuracaoAulas.hora_inicio = aulasHoraInicioInput ? String(aulasHoraInicioInput.value || '07:30') : '07:30';
+					configuracaoAulas.hora_fim = aulasHoraFimInput ? String(aulasHoraFimInput.value || '17:00') : '17:00';
+					configuracaoAulas.inicio_almoco = aulasInicioAlmocoInput ? String(aulasInicioAlmocoInput.value || '12:00') : '12:00';
+					configuracaoAulas.fim_almoco = aulasFimAlmocoInput ? String(aulasFimAlmocoInput.value || '13:20') : '13:20';
+					configuracaoAulas.slots = buildAulasSlotsFromInputs(configuracaoAulas.slots);
+					renderAulasGrid();
+				});
+			}
+
+			if (btnRestaurarPadraoAulas) {
+				btnRestaurarPadraoAulas.addEventListener('click', function () {
+					applyAulasConfig(getDefaultAulasConfig());
+					configuracaoAulas.slots = buildAulasSlotsFromInputs([]);
+					renderAulasGrid();
+					renderHorarioGrid();
+				});
+			}
+
+			if (btnLimparHorarioPreview) {
+				btnLimparHorarioPreview.addEventListener('click', function () {
+					resetHorarioPreview();
+					renderHorarioGrid();
+					pushHorarioAssistantMessage('system', 'O preview atual foi limpo.', {
+						meta: 'A visualização voltou a usar a grade aplicada no sistema.'
+					});
+					setHorarioIaStatusBadge('Aguardando prompt', '');
+				});
+			}
+
+			if (btnAbrirHorarioProfessoresModal) {
+				btnAbrirHorarioProfessoresModal.addEventListener('click', function () {
+					renderHorarioProfessoresSelector();
+					if (modalHorarioProfessores) {
+						modalHorarioProfessores.show();
+					}
+				});
+			}
+
+			if (btnLimparHorarioProfessores) {
+				btnLimparHorarioProfessores.addEventListener('click', function () {
+					clearHorarioProfessores();
+				});
+			}
+
+			if (btnSelecionarTodosHorarioProfessores) {
+				btnSelecionarTodosHorarioProfessores.addEventListener('click', function () {
+					selectAllHorarioProfessores();
+				});
+			}
+
+			if (btnModalSelecionarTodosHorarioProfessores) {
+				btnModalSelecionarTodosHorarioProfessores.addEventListener('click', function () {
+					selectAllHorarioProfessores();
+				});
+			}
+
+			if (btnModalLimparHorarioProfessores) {
+				btnModalLimparHorarioProfessores.addEventListener('click', function () {
+					clearHorarioProfessores();
+				});
+			}
+
+			if (horarioProfessoresBuscaInput) {
+				horarioProfessoresBuscaInput.addEventListener('input', function () {
+					renderHorarioProfessoresSelector();
+				});
+			}
+
+			if (btnAbrirHorarioTurmasModal) {
+				btnAbrirHorarioTurmasModal.addEventListener('click', function () {
+					renderHorarioTurmasSelector();
+					if (modalHorarioTurmas) {
+						modalHorarioTurmas.show();
+					}
+				});
+			}
+
+			if (btnLimparHorarioTurmas) {
+				btnLimparHorarioTurmas.addEventListener('click', function () {
+					clearHorarioTurmas();
+				});
+			}
+
+			if (btnSelecionarTodasHorarioTurmas) {
+				btnSelecionarTodasHorarioTurmas.addEventListener('click', function () {
+					selectAllHorarioTurmas();
+				});
+			}
+
+			if (btnModalSelecionarTodasHorarioTurmas) {
+				btnModalSelecionarTodasHorarioTurmas.addEventListener('click', function () {
+					selectAllHorarioTurmas();
+				});
+			}
+
+			if (btnModalLimparHorarioTurmas) {
+				btnModalLimparHorarioTurmas.addEventListener('click', function () {
+					clearHorarioTurmas();
+				});
+			}
+
+			if (horarioTurmasBuscaInput) {
+				horarioTurmasBuscaInput.addEventListener('input', function () {
+					renderHorarioTurmasSelector();
+				});
+			}
+
+			if (btnVisualizarHorario) {
+				btnVisualizarHorario.addEventListener('click', function () {
+					renderHorarioGrid();
+					if (modalHorarioVisualizacao) {
+						modalHorarioVisualizacao.show();
+					}
+				});
+			}
+
+			if (btnGerarHorarioIa) {
+				btnGerarHorarioIa.addEventListener('click', function () {
+					var professorIds = getHorarioSelectedProfessorIds();
+					var turmaIds = getHorarioSelectedTurmaIds();
+					if (!professorIds.length) {
+						showStatus('Selecione ao menos um professor para gerar a grade.', true);
+						return;
+					}
+					if (!turmaIds.length) {
+						showStatus('Selecione ao menos uma turma para gerar a grade.', true);
+						return;
+					}
+
+					btnGerarHorarioIa.disabled = true;
+					if (btnAplicarHorarioIa) {
+						btnAplicarHorarioIa.disabled = true;
+					}
+					if (horarioFeedback) {
+						horarioFeedback.textContent = 'Gerando proposta com a IA...';
+					}
+					startHorarioAssistantThinking(horarioIaPromptInput ? String(horarioIaPromptInput.value || '') : '', professorIds, turmaIds);
+
+					var body = new FormData();
+					professorIds.forEach(function (id) {
+						body.append('professor_ids[]', String(id));
+					});
+					turmaIds.forEach(function (id) {
+						body.append('turma_ids[]', String(id));
+					});
+					body.append('prompt', horarioIaPromptInput ? String(horarioIaPromptInput.value || '') : '');
+
+					fetchJson(buildEndpoint('/institucional/modulacao/horarios/gerar'), {
+						method: 'POST',
+						body: body,
+						headers: { 'X-Requested-With': 'XMLHttpRequest' }
+					}).then(function (payload) {
+						var data = payload && payload.data ? payload.data : {};
+						horarioGeradoPreview = Array.isArray(data.entries) ? data.entries : [];
+						horarioGeradoNotas = Array.isArray(data.notes) ? data.notes : [];
+						horarioPreviewProfessorIds = Array.isArray(data.selected_professor_ids) ? data.selected_professor_ids : professorIds;
+						horarioPreviewTurmaIds = Array.isArray(data.selected_turma_ids) ? data.selected_turma_ids : turmaIds;
+						if (btnAplicarHorarioIa) {
+							btnAplicarHorarioIa.disabled = horarioGeradoPreview.length === 0;
+						}
+						stopHorarioAssistantThinking(
+							horarioGeradoPreview.length
+								? 'A proposta foi gerada e já está pronta para revisão.'
+								: 'A resposta chegou, mas nenhuma aula válida entrou no preview.',
+							'success',
+							{
+								meta: horarioGeradoPreview.length
+									? 'Abra o horário no modal para revisar a distribuição por turma.'
+									: 'Revise as notas, ajuste o prompt e tente novamente.',
+								bullets: horarioGeradoNotas.length
+									? horarioGeradoNotas.slice(0, 6)
+									: [
+										'Professores envolvidos: ' + String(horarioPreviewProfessorIds.length || professorIds.length),
+										'Turmas envolvidas: ' + String(horarioPreviewTurmaIds.length || turmaIds.length),
+										'Aulas retornadas: ' + String(horarioGeradoPreview.length)
+									]
+							}
+						);
+						renderHorarioGrid();
+						showStatus(payload && payload.message ? payload.message : 'Grade automática gerada com sucesso.', false);
+					}).catch(function (error) {
+						resetHorarioPreview();
+						stopHorarioAssistantThinking(
+							error && error.message ? error.message : 'Não foi possível gerar a grade automática agora.',
+							'error',
+							{ meta: 'Ajuste o prompt ou as seleções e tente novamente.' }
+						);
+						renderHorarioGrid();
+						showStatus(error && error.message ? error.message : 'Não foi possível gerar a grade automática agora.', true);
+					}).finally(function () {
+						btnGerarHorarioIa.disabled = false;
+					});
+				});
+			}
+
+			if (btnAplicarHorarioIa) {
+				btnAplicarHorarioIa.addEventListener('click', function () {
+					if (!horarioGeradoPreview.length || !horarioPreviewProfessorIds.length) {
+						showStatus('Gere uma proposta válida antes de aplicar a grade.', true);
+						return;
+					}
+
+					btnAplicarHorarioIa.disabled = true;
+					var body = new FormData();
+					horarioPreviewProfessorIds.forEach(function (id) {
+						body.append('professor_ids[]', String(id));
+					});
+					body.append('entries_json', JSON.stringify(horarioGeradoPreview));
+
+					fetchJson(buildEndpoint('/institucional/modulacao/horarios/aplicar'), {
+						method: 'POST',
+						body: body,
+						headers: { 'X-Requested-With': 'XMLHttpRequest' }
+					}).then(function (payload) {
+						resetHorarioPreview();
+						showStatus(payload && payload.message ? payload.message : 'Grade aplicada com sucesso.', false);
+						loadData(false);
+					}).catch(function (error) {
+						showStatus(error && error.message ? error.message : 'Não foi possível aplicar a grade gerada agora.', true);
+						btnAplicarHorarioIa.disabled = horarioGeradoPreview.length === 0;
+					});
+				});
+			}
+
+			if (vinculoDisciplinasBuscaInput) {
+				vinculoDisciplinasBuscaInput.addEventListener('input', function () {
+					renderDisciplinasSelector();
+				});
+			}
+
+			if (vinculoTurmasBuscaInput) {
+				vinculoTurmasBuscaInput.addEventListener('input', function () {
+					renderTurmasSelector();
+				});
+			}
+
+			if (beneficioUsuarioInput) {
+				beneficioUsuarioInput.addEventListener('change', function () {
+					renderBeneficioSlotsSelector();
+				});
+			}
+
+			if (beneficioDiaSemanaInput) {
+				beneficioDiaSemanaInput.addEventListener('change', function () {
+					renderBeneficioSlotsSelector();
+				});
+			}
+
+			if (beneficioSlotsLista) {
+				beneficioSlotsLista.addEventListener('change', function (event) {
+					var target = event.target;
+					if (!(target instanceof HTMLInputElement) || !target.classList.contains('js-beneficio-slot-checkbox')) {
+						return;
+					}
+
+					var user = getCurrentBeneficioUser();
+					var maxMinutes = user ? getCurrentBeneficioAllowedSlots(user) : 0;
+					var slot = {
+						inicio: String(target.getAttribute('data-inicio') || ''),
+						fim: String(target.getAttribute('data-fim') || '')
+					};
+					var slotKey = slot.inicio + '|' + slot.fim;
+					if (target.checked) {
+						if (maxMinutes > 0 && (sumBeneficioSlotMinutes(beneficioSlotsSelecionados) + getSlotDurationMinutes(slot)) > maxMinutes) {
+							target.checked = false;
+							showStatus('Voce pode selecionar aulas somando no máximo ' + formatDurationMinutes(maxMinutes) + ' neste cadastro, considerando o que já foi usado em outros registros.', true);
+							renderBeneficioResumo();
+							return;
+						}
+						if (maxMinutes <= 0) {
+							target.checked = false;
+							showStatus('O limite total deste benefício já foi atingido em outros cadastros do usuário.', true);
+							renderBeneficioResumo();
+							return;
+						}
+						beneficioSlotsSelecionados.push(slot);
+					} else {
+						beneficioSlotsSelecionados = beneficioSlotsSelecionados.filter(function (selectedSlot) {
+							return String(selectedSlot.inicio || '') + '|' + String(selectedSlot.fim || '') !== slotKey;
+						});
+					}
+
+					beneficioSlotsSelecionados = normalizeBeneficioSelectedSlots(beneficioSlotsSelecionados);
+					renderBeneficioSlotsSelector();
+				});
+			}
+
+			if (vinculoDisciplinasLista) {
+				vinculoDisciplinasLista.addEventListener('change', function (event) {
+					var target = event.target;
+					if (!(target instanceof HTMLInputElement) || !target.classList.contains('js-vinculo-disciplina-checkbox')) {
+						return;
+					}
+
+					var value = String(target.value || '').trim();
+					if (value === '') {
+						return;
+					}
+
+					if (target.checked) {
+						if (isEdicaoVinculo()) {
+							vinculoDisciplinaIdsSelecionadas = [value];
+						} else if (vinculoDisciplinaIdsSelecionadas.indexOf(value) < 0) {
+							vinculoDisciplinaIdsSelecionadas.push(value);
+						}
+					} else {
+						vinculoDisciplinaIdsSelecionadas = vinculoDisciplinaIdsSelecionadas.filter(function (id) {
+							return id !== value;
+						});
+					}
+
+					renderDisciplinasSelector();
+				});
+			}
+
+			if (vinculoTurmasLista) {
+				vinculoTurmasLista.addEventListener('change', function (event) {
+					var target = event.target;
+					if (!(target instanceof HTMLInputElement) || !target.classList.contains('js-vinculo-turma-checkbox')) {
+						return;
+					}
+
+					var value = String(target.value || '').trim();
+					if (value === '') {
+						return;
+					}
+
+					if (target.checked) {
+						if (isEdicaoVinculo()) {
+							vinculoTurmaIdsSelecionadas = [value];
+						} else if (vinculoTurmaIdsSelecionadas.indexOf(value) < 0) {
+							vinculoTurmaIdsSelecionadas.push(value);
+						}
+					} else {
+						vinculoTurmaIdsSelecionadas = vinculoTurmaIdsSelecionadas.filter(function (id) {
+							return id !== value;
+						});
+					}
+
+					renderTurmasSelector();
+				});
+			}
+
+			if (aulasConfiguracaoBody) {
+				aulasConfiguracaoBody.addEventListener('change', function (event) {
+					var target = event.target;
+					if (!(target instanceof HTMLInputElement) || !target.classList.contains('js-aula-slot-dia')) {
+						return;
+					}
+
+					var slotIndex = Number(target.getAttribute('data-slot-index') || -1);
+					var dia = String(target.getAttribute('data-dia') || '');
+					if (!configuracaoAulas || !Array.isArray(configuracaoAulas.slots) || slotIndex < 0 || !configuracaoAulas.slots[slotIndex] || dia === '') {
+						return;
+					}
+
+					configuracaoAulas.slots[slotIndex].dias[dia] = target.checked;
+					renderAulasResumo();
+				});
+			}
+
+
+			if (areasBody) {
+				areasBody.addEventListener('click', function (event) {
+					var target = event.target;
+					if (!(target instanceof HTMLElement)) {
+						return;
+					}
+
+					var editButton = target.closest('.js-editar-area');
+					if (editButton instanceof HTMLElement) {
+						var id = Number(editButton.getAttribute('data-id') || 0);
+						var item = areas.find(function (row) { return Number(row.id || 0) === id; }) || null;
+						if (!item) {
+							return;
+						}
+
+						areaIdInput.value = String(item.id || 0);
+						areaNomeInput.value = String(item.nome || '');
+						areaStatusInput.value = String(item.status || 'ativa');
+						if (modalArea) {
+							modalArea.show();
+						}
+						return;
+					}
+
+					var deleteButton = target.closest('.js-excluir-area');
+					if (deleteButton instanceof HTMLElement) {
+						var deleteId = Number(deleteButton.getAttribute('data-id') || 0);
+						if (deleteId <= 0) {
+							return;
+						}
+
+						askConfirmation('Excluir área', 'Deseja excluir esta área?', function () {
+							var body = new FormData();
+							body.append('id', String(deleteId));
+							submitForm('/institucional/modulacao/areas/excluir', body, 'Área excluída com sucesso.');
+						});
+					}
+				});
+			}
+
+			if (disciplinasBody) {
+				disciplinasBody.addEventListener('click', function (event) {
+					var target = event.target;
+					if (!(target instanceof HTMLElement)) {
+						return;
+					}
+					if (target instanceof HTMLInputElement && target.classList.contains('js-select-disciplina')) {
+						var selectedId = String(target.getAttribute('data-id') || '').trim();
+						if (selectedId !== '') {
+							if (target.checked && disciplinasSelecionadas.indexOf(selectedId) < 0) {
+								disciplinasSelecionadas.push(selectedId);
+							}
+							if (!target.checked) {
+								disciplinasSelecionadas = disciplinasSelecionadas.filter(function (id) { return id !== selectedId; });
+							}
+							syncBulkControls();
+						}
+						return;
+					}
+					var editButton = target.closest('.js-editar-disciplina');
+					if (editButton instanceof HTMLElement) {
+						var id = Number(editButton.getAttribute('data-id') || 0);
+						var item = disciplinas.find(function (row) { return Number(row.id || 0) === id; }) || null;
+						if (!item) {
+							return;
+						}
+						disciplinaIdInput.value = String(item.id || 0);
+						disciplinaNomeInput.value = String(item.nome || '');
+						if (disciplinaAreaInput) {
+							disciplinaAreaInput.value = String(item.area_id || '');
+						}
+						disciplinaStatusInput.value = String(item.status || 'ativa');
+						if (modalDisciplina) {
+							modalDisciplina.show();
+						}
+						return;
+					}
+					var deleteButton = target.closest('.js-excluir-disciplina');
+					if (deleteButton instanceof HTMLElement) {
+						var deleteId = Number(deleteButton.getAttribute('data-id') || 0);
+						if (deleteId <= 0) {
+							return;
+						}
+						askConfirmation('Excluir disciplina', 'Deseja excluir esta disciplina?', function () {
+							var body = new FormData();
+							body.append('id', String(deleteId));
+							submitForm('/institucional/modulacao/disciplinas/excluir', body, 'Disciplina excluída com sucesso.');
+						});
+					}
+				});
+			}
+
+			if (modulacoesBody) {
+				modulacoesBody.addEventListener('click', function (event) {
+					var target = event.target;
+					if (!(target instanceof HTMLElement)) {
+						return;
+					}
+					if (target instanceof HTMLInputElement && target.classList.contains('js-select-vinculo')) {
+						var selectedId = String(target.getAttribute('data-id') || '').trim();
+						if (selectedId !== '') {
+							if (target.checked && vinculacoesSelecionadas.indexOf(selectedId) < 0) {
+								vinculacoesSelecionadas.push(selectedId);
+							}
+							if (!target.checked) {
+								vinculacoesSelecionadas = vinculacoesSelecionadas.filter(function (id) { return id !== selectedId; });
+							}
+							syncBulkControls();
+						}
+						return;
+					}
+					var editButton = target.closest('.js-editar-vinculo');
+					if (editButton instanceof HTMLElement) {
+						var id = Number(editButton.getAttribute('data-id') || 0);
+						var item = modulacoes.find(function (row) { return Number(row.id || 0) === id; }) || null;
+						if (!item) {
+							return;
+						}
+						resetVinculoForm();
+						renderVinculoOptions();
+						vinculoIdInput.value = String(item.id || 0);
+						vinculoProfessorInput.value = String(item.professor_id || '');
+						vinculoTurmaIdsSelecionadas = item.turma_id ? [String(item.turma_id)] : [];
+						vinculoDisciplinaIdsSelecionadas = item.disciplina_id ? [String(item.disciplina_id)] : [];
+						renderTurmasSelector();
+						renderDisciplinasSelector();
+						if (modalVinculo) {
+							modalVinculo.show();
+						}
+						return;
+					}
+					var deleteButton = target.closest('.js-excluir-vinculo');
+					if (deleteButton instanceof HTMLElement) {
+						var deleteId = Number(deleteButton.getAttribute('data-id') || 0);
+						if (deleteId <= 0) {
+							return;
+						}
+						askConfirmation('Excluir vínculo', 'Deseja excluir este vínculo?', function () {
+							var body = new FormData();
+							body.append('id', String(deleteId));
+							submitForm('/institucional/modulacao/vinculos/excluir', body, 'Vínculo excluído com sucesso.');
+						});
+					}
+				});
+			}
+
+			if (livreDocenciasBody) {
+				livreDocenciasBody.addEventListener('click', function (event) {
+					handleBeneficioTableClick(event, 'livre_docencia');
+				});
+			}
+
+			if (planejamentosBody) {
+				planejamentosBody.addEventListener('click', function (event) {
+					handleBeneficioTableClick(event, 'planejamento');
+				});
+			}
+
+			if (btnExcluirDisciplinasSelecionadas) {
+				btnExcluirDisciplinasSelecionadas.addEventListener('click', function () {
+					if (!disciplinasSelecionadas.length) {
+						return;
+					}
+					askConfirmation('Excluir disciplinas selecionadas', 'Deseja excluir as disciplinas selecionadas?', function () {
+						var body = new FormData();
+						disciplinasSelecionadas.forEach(function (id) {
+							body.append('ids[]', id);
+						});
+						submitForm('/institucional/modulacao/disciplinas/excluir-lote', body, 'Disciplinas excluídas com sucesso.', function () {
+							disciplinasSelecionadas = [];
+							syncBulkControls();
+						});
+					});
+				});
+			}
+
+			if (btnExcluirVinculosSelecionados) {
+				btnExcluirVinculosSelecionados.addEventListener('click', function () {
+					if (!vinculacoesSelecionadas.length) {
+						return;
+					}
+					askConfirmation('Excluir vínculos selecionados', 'Deseja excluir os vínculos selecionados?', function () {
+						var body = new FormData();
+						vinculacoesSelecionadas.forEach(function (id) {
+							body.append('ids[]', id);
+						});
+						submitForm('/institucional/modulacao/vinculos/excluir-lote', body, 'Vínculos excluídos com sucesso.', function () {
+							vinculacoesSelecionadas = [];
+							syncBulkControls();
+						});
+					});
+				});
+			}
+
+			if (formArea) {
+				formArea.addEventListener('submit', function (event) {
+					event.preventDefault();
+					var body = new FormData();
+					body.append('id', String(areaIdInput.value || '0'));
+					body.append('nome', areaNomeInput.value || '');
+					body.append('status', areaStatusInput.value || 'ativa');
+					submitForm('/institucional/modulacao/areas/salvar', body, 'Área salva com sucesso.', function () {
+						if (modalArea) {
+							modalArea.hide();
+						}
+					});
+				});
+			}
+
+			if (formDisciplina) {
+				formDisciplina.addEventListener('submit', function (event) {
+					event.preventDefault();
+					var body = new FormData();
+					body.append('id', String(disciplinaIdInput.value || '0'));
+					body.append('area_id', disciplinaAreaInput ? String(disciplinaAreaInput.value || '') : '');
+					body.append('nome', disciplinaNomeInput.value || '');
+					body.append('status', disciplinaStatusInput.value || 'ativa');
+					submitForm('/institucional/modulacao/disciplinas/salvar', body, 'Disciplina salva com sucesso.', function () {
+						if (modalDisciplina) {
+							modalDisciplina.hide();
+						}
+					});
+				});
+			}
+
+			if (formVinculo) {
+				formVinculo.addEventListener('submit', function (event) {
+					event.preventDefault();
+					var turmaIds = getSelectedTurmaIds();
+					var disciplinaIds = getSelectedDisciplinaIds();
+					if (!turmaIds.length) {
+						showStatus('Selecione pelo menos uma turma para o vínculo.', true);
+						return;
+					}
+					if (!disciplinaIds.length) {
+						showStatus('Selecione pelo menos uma disciplina para o vínculo.', true);
+						return;
+					}
+					if (isEdicaoVinculo() && (turmaIds.length > 1 || disciplinaIds.length > 1)) {
+						showStatus('Na edição, selecione apenas uma turma e uma disciplina.', true);
+						return;
+					}
+					var body = new FormData();
+					body.append('id', String(vinculoIdInput.value || '0'));
+					body.append('professor_id', vinculoProfessorInput.value || '');
+					turmaIds.forEach(function (turmaId) {
+						body.append('turma_ids[]', turmaId);
+					});
+					disciplinaIds.forEach(function (disciplinaId) {
+						body.append('disciplina_ids[]', disciplinaId);
+					});
+					submitForm('/institucional/modulacao/vinculos/salvar', body, 'Vínculo salvo com sucesso.', function () {
+						if (modalVinculo) {
+							modalVinculo.hide();
+						}
+					});
+				});
+			}
+
+			if (formBeneficio) {
+				formBeneficio.addEventListener('submit', function (event) {
+					event.preventDefault();
+					var user = getCurrentBeneficioUser();
+					if (!user) {
+						showStatus('Selecione um usuário para o benefício.', true);
+						return;
+					}
+
+					var expectedMinutes = getExpectedBeneficioMinutes(user);
+					var allowedForCurrentRecord = getCurrentBeneficioAllowedSlots(user);
+					var normalizedSlots = normalizeBeneficioSelectedSlots(beneficioSlotsSelecionados);
+					var selectedMinutes = sumBeneficioSlotMinutes(normalizedSlots);
+					var blockedSlotDetails = getCurrentBeneficioBlockedSlotDetails();
+					var hasConflict = normalizedSlots.some(function (slot) {
+						var key = String(slot && slot.inicio ? slot.inicio : '') + '|' + String(slot && slot.fim ? slot.fim : '');
+						return !!blockedSlotDetails[key];
+					});
+					if (hasConflict) {
+						showStatus('Os horários selecionados já estão em uso em outro cadastro deste usuário.', true);
+						return;
+					}
+
+					if (allowedForCurrentRecord <= 0) {
+						showStatus('A carga horária total de ' + formatDurationMinutes(expectedMinutes) + ' deste benefício já foi atingida em outros cadastros do usuário.', true);
+						return;
+					}
+
+					if (!normalizedSlots.length || selectedMinutes > allowedForCurrentRecord) {
+						showStatus('Selecione aulas somando de 1 minuto até ' + formatDurationMinutes(allowedForCurrentRecord) + ' para este cadastro, considerando o que já foi usado em outros registros.', true);
+						return;
+					}
+
+					var body = new FormData();
+					body.append('id', String(beneficioIdInput ? beneficioIdInput.value || '0' : '0'));
+					body.append('tipo', getCurrentBeneficioType());
+					body.append('usuario_id', String(user.id || 0));
+					body.append('dia_semana', beneficioDiaSemanaInput ? String(beneficioDiaSemanaInput.value || 'segunda') : 'segunda');
+					body.append('slots_json', JSON.stringify(normalizedSlots));
+					submitForm('/institucional/modulacao/beneficios/salvar', body, getCurrentBeneficioLabel() + ' salvo com sucesso.', function () {
+						if (modalBeneficio) {
+							modalBeneficio.hide();
+						}
+					});
+				});
+			}
+
+			if (formConfiguracaoAulas) {
+				formConfiguracaoAulas.addEventListener('submit', function (event) {
+					event.preventDefault();
+					configuracaoAulas = configuracaoAulas || getDefaultAulasConfig();
+					configuracaoAulas.quantidade_aulas_dia = Number(aulasQuantidadeDiaInput ? aulasQuantidadeDiaInput.value || 9 : 9) || 9;
+					configuracaoAulas.duracao_aula_minutos = Number(aulasDuracaoMinutosInput ? aulasDuracaoMinutosInput.value || 50 : 50) || 50;
+					configuracaoAulas.hora_inicio = aulasHoraInicioInput ? String(aulasHoraInicioInput.value || '07:30') : '07:30';
+					configuracaoAulas.hora_fim = aulasHoraFimInput ? String(aulasHoraFimInput.value || '17:00') : '17:00';
+					configuracaoAulas.inicio_almoco = aulasInicioAlmocoInput ? String(aulasInicioAlmocoInput.value || '12:00') : '12:00';
+					configuracaoAulas.fim_almoco = aulasFimAlmocoInput ? String(aulasFimAlmocoInput.value || '13:20') : '13:20';
+					configuracaoAulas.slots = buildAulasSlotsFromInputs(configuracaoAulas.slots);
+
+					if (!configuracaoAulas.slots.length) {
+						showStatus('A configuração informada não gerou aulas válidas com a duração escolhida.', true);
+						return;
+					}
+
+					var body = new FormData();
+					body.append('quantidade_aulas_dia', String(configuracaoAulas.quantidade_aulas_dia || 9));
+					body.append('duracao_aula_minutos', String(configuracaoAulas.duracao_aula_minutos || 50));
+					body.append('hora_inicio', configuracaoAulas.hora_inicio);
+					body.append('hora_fim', configuracaoAulas.hora_fim);
+					body.append('inicio_almoco', configuracaoAulas.inicio_almoco);
+					body.append('fim_almoco', configuracaoAulas.fim_almoco);
+					body.append('slots_json', JSON.stringify(configuracaoAulas.slots));
+					submitForm('/institucional/modulacao/aulas/salvar', body, 'Configuração de aulas salva com sucesso.', function () {
+						renderAulasGrid();
+					});
+				});
+			}
+
+			resetAreaForm();
+			resetDisciplinaForm();
+			resetVinculoForm();
+			resetBeneficioForm('livre_docencia');
+			applyAulasConfig(getDefaultAulasConfig());
+			configuracaoAulas.slots = buildAulasSlotsFromInputs([]);
+			loadData(false);
+		}
+
+		if (document.readyState === 'loading') {
+			document.addEventListener('DOMContentLoaded', startPage, { once: true });
+			return;
+		}
+
+		startPage();
+	})();
+</script>

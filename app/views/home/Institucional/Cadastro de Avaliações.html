@@ -1,0 +1,1178 @@
+<?php
+$avaliacoes = is_array($avaliacoes ?? null) ? $avaliacoes : [];
+$turmas = is_array($turmas ?? null) ? $turmas : [];
+$alunos = is_array($alunos ?? null) ? $alunos : [];
+$disciplinas = is_array($disciplinas ?? null) ? $disciplinas : [];
+$usuariosAplicadores = is_array($usuariosAplicadores ?? null) ? $usuariosAplicadores : [];
+$usuariosAutores = is_array($usuariosAutores ?? null) ? $usuariosAutores : $usuariosAplicadores;
+$defaultGabaritoPreset = is_array($defaultGabaritoPreset ?? null) ? $defaultGabaritoPreset : [];
+$csrfToken = (string) ($csrfToken ?? '');
+$baseUrl = rtrim(BASE_URL, '/');
+$canManageAvaliacoes = (($canManageAvaliacoes ?? false) === true) || (($isAdmin ?? false) === true);
+$canEditAvaliacoes = (($canEditAvaliacoes ?? false) === true) || (($isAdmin ?? false) === true);
+$currentUserId = (int) ($currentUserId ?? 0);
+$isAdminViewer = (($isAdmin ?? false) === true);
+?>
+
+<section class="py-4 h-100 institutional-avaliacoes-shell">
+    <div class="container institutional-wide-container h-100 institutional-avaliacoes-shell-container">
+        <div class="row justify-content-center h-100 institutional-avaliacoes-shell-row">
+            <div class="col-12 h-100 institutional-avaliacoes-shell-col">
+                    <div class="p-2 p-md-3 d-flex flex-column h-100 institutional-avaliacoes-card-body">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                            <h1 class="h4 fw-bold mb-0">Cadastro de Avaliações</h1>
+                            <div class="d-flex align-items-center gap-2">
+                                <?php if ($canEditAvaliacoes): ?>
+                                <button type="button" class="btn btn-danger btn-sm js-admin-avaliacao-new">
+                                    <i class="las la-plus me-1"></i>Nova avaliação
+                                </button>
+                                <button type="button" class="btn btn-outline-danger btn-sm" id="adminAvaliacoesDeleteSelectedBtn" disabled>
+                                    <i class="las la-trash-alt me-1"></i>Excluir selecionadas
+                                </button>
+                                <?php endif; ?>
+
+                                <a href="<?= $baseUrl; ?>/institucional" class="btn btn-outline-secondary btn-sm">
+                                    <i class="las la-arrow-left me-1"></i>Voltar
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="mb-3 institutional-avaliacoes-search-wrap">
+                            <input type="search" class="form-control form-control-sm" id="adminAvaliacoesTableSearch" placeholder="Buscar avaliação" autocomplete="off">
+                        </div>
+
+                        <div id="avaliacoesListContainer" class="d-flex flex-column flex-grow-1 institutional-avaliacoes-list-container">
+                        <?php if ($avaliacoes === []): ?>
+                        <div class="alert alert-light border mb-0" role="alert">
+                            Nenhuma avaliação cadastrada no momento.
+                        </div>
+                        <?php else: ?>
+                        <div class="table-responsive border rounded flex-grow-1 institutional-avaliacoes-table-wrap">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <?php if ($canEditAvaliacoes): ?>
+                                        <th class="institutional-select-col institutional-avaliacoes-col-select"><input type="checkbox" id="adminAvaliacoesSelectAll" aria-label="Selecionar todas as avaliações"></th>
+                                        <?php endif; ?>
+                                        <th class="institutional-avaliacoes-col-name">Avaliação</th>
+                                        <th class="institutional-avaliacoes-col-apply">Aplicação</th>
+                                        <th class="institutional-avaliacoes-col-author">Autor</th>
+                                        <th class="institutional-avaliacoes-col-description">Descrição</th>
+                                        
+                                        <?php if ($canManageAvaliacoes): ?>
+                                        <th class="text-end institutional-avaliacoes-col-actions">Ações</th>
+                                        <?php endif; ?>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($avaliacoes as $avaliacao): ?>
+                                    <?php
+                                        $id = (int) ($avaliacao['id'] ?? 0);
+                                        $nome = trim((string) ($avaliacao['nome'] ?? ''));
+                                        $isRecuperacao = (int) ($avaliacao['is_recuperacao'] ?? 0) === 1;
+                                        $ciclo = (int) ($avaliacao['ciclo'] ?? 0);
+                                        $isSimulado = (int) ($avaliacao['is_simulado'] ?? 0) === 1;
+                                        $bimestre = (int) ($avaliacao['bimestre'] ?? 0);
+                                        $descricao = trim((string) ($avaliacao['descricao'] ?? ''));
+                                        $hasDescricao = $descricao !== '';
+                                        $aplicacao = trim((string) ($avaliacao['aplicacao'] ?? ''));
+                                        $autorId = (int) ($avaliacao['autor_id'] ?? 0);
+                                        $autorNome = trim((string) ($avaliacao['autor_nome'] ?? ''));
+                                        $aplicadorId = (int) ($avaliacao['aplicador_id'] ?? 0);
+                                        $aplicadoresRelacionadosIds = is_array($avaliacao['aplicadores_relacionados_ids'] ?? null) ? $avaliacao['aplicadores_relacionados_ids'] : [];
+                                        $aplicadorNome = trim((string) ($avaliacao['aplicador_nome'] ?? ''));
+                                        $gabarito = trim((string) ($avaliacao['gabarito'] ?? ''));
+                                        $turmasRelacionadasIds = is_array($avaliacao['turmas_relacionadas_ids'] ?? null) ? $avaliacao['turmas_relacionadas_ids'] : [];
+                                        $alunosRelacionadosIds = is_array($avaliacao['alunos_relacionados_ids'] ?? null) ? $avaliacao['alunos_relacionados_ids'] : [];
+                                        if ($aplicadoresRelacionadosIds === [] && $aplicadorId > 0) {
+                                            $aplicadoresRelacionadosIds = [$aplicadorId];
+                                        }
+                                        $canEditThisAvaliacao = $isAdminViewer || ($autorId === $currentUserId);
+
+                                        $aplicacaoDisplay = '-';
+                                        if ($aplicacao !== '') {
+                                            $dateObject = date_create($aplicacao);
+                                            if ($dateObject !== false) {
+                                                $aplicacaoDisplay = $dateObject->format('d/m/Y');
+                                            }
+                                        }
+
+                                        $descricaoResumo = '';
+                                        if ($hasDescricao) {
+                                            $descricaoResumo = preg_replace('/\s+/u', ' ', $descricao) ?? '';
+                                            $descricaoResumo = trim($descricaoResumo);
+                                            $descricaoResumo = mb_strimwidth($descricaoResumo, 0, 120, '...', 'UTF-8');
+                                        }
+
+                                        $searchText = implode(' ', [$nome, $aplicacao, $autorNome, $aplicadorNome, $descricao, $isRecuperacao ? 'recuperacao recuperação' : '']);
+                                    ?>
+                                    <tr class="js-admin-avaliacoes-row" data-avaliacao-id="<?= $id; ?>" data-search-text="<?= htmlspecialchars($searchText, ENT_QUOTES, 'UTF-8'); ?>">
+                                        <?php if ($canEditAvaliacoes): ?>
+                                        <td class="institutional-avaliacoes-col-select"><input type="checkbox" class="form-check-input js-admin-avaliacao-select" data-select-id="<?= $id; ?>" aria-label="Selecionar avaliação <?= htmlspecialchars($nome !== '' ? $nome : 'sem nome', ENT_QUOTES, 'UTF-8'); ?>"></td>
+                                        <?php endif; ?>
+                                        <td class="institutional-avaliacoes-col-name"><?= htmlspecialchars($nome !== '' ? $nome : 'Sem nome', ENT_QUOTES, 'UTF-8'); ?></td>
+                                        <td class="institutional-avaliacoes-col-apply"><?= htmlspecialchars($aplicacaoDisplay, ENT_QUOTES, 'UTF-8'); ?></td>
+                                        <td class="institutional-avaliacoes-col-author"><?= htmlspecialchars($autorNome !== '' ? $autorNome : '-', ENT_QUOTES, 'UTF-8'); ?></td>
+                                        <td class="institutional-avaliacoes-col-description">
+                                            <?php if ($hasDescricao): ?>
+                                            <span title="<?= htmlspecialchars($descricao, ENT_QUOTES, 'UTF-8'); ?>"><?= htmlspecialchars($descricaoResumo, ENT_QUOTES, 'UTF-8'); ?></span>
+                                            <?php else: ?>
+                                            -
+                                            <?php endif; ?>
+                                        </td>
+                                        <?php if ($canManageAvaliacoes): ?>
+                                        <td class="text-end institutional-avaliacoes-col-actions">
+                                            <button
+                                                type="button"
+                                                class="btn btn-outline-info btn-sm js-admin-avaliacao-dashboard"
+                                                data-id="<?= $id; ?>"
+                                                data-nome="<?= htmlspecialchars($nome, ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-is-recuperacao="<?= $isRecuperacao ? '1' : '0'; ?>"
+                                                data-ciclo="<?= $ciclo; ?>"
+                                                data-is-simulado="<?= $isSimulado ? '1' : '0'; ?>"
+                                                data-bimestre="<?= $bimestre; ?>"
+                                                data-aplicacao="<?= htmlspecialchars($aplicacao, ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-aplicador-id="<?= $aplicadorId; ?>"
+                                                data-aplicadores-ids="<?= htmlspecialchars(implode(',', array_map(static fn($value): string => (string) ((int) $value), $aplicadoresRelacionadosIds)), ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-autor-id="<?= $autorId; ?>"
+                                                data-turmas-ids="<?= htmlspecialchars(implode(',', array_map(static fn($value): string => (string) ((int) $value), $turmasRelacionadasIds)), ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-alunos-ids="<?= htmlspecialchars(implode(',', array_map(static fn($value): string => (string) ((int) $value), $alunosRelacionadosIds)), ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-gabarito="<?= htmlspecialchars($gabarito, ENT_QUOTES, 'UTF-8'); ?>"
+                                            >
+                                                <i class="las la-tachometer-alt me-1"></i>Painel
+                                            </button>
+                                            <?php if ($canEditThisAvaliacao): ?>
+                                            <button
+                                                type="button"
+                                                class="btn btn-outline-primary btn-sm js-admin-avaliacao-edit"
+                                                data-id="<?= $id; ?>"
+                                                data-nome="<?= htmlspecialchars($nome, ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-is-recuperacao="<?= $isRecuperacao ? '1' : '0'; ?>"
+                                                data-ciclo="<?= $ciclo; ?>"
+                                                data-is-simulado="<?= $isSimulado ? '1' : '0'; ?>"
+                                                data-bimestre="<?= $bimestre; ?>"
+                                                data-aplicacao="<?= htmlspecialchars($aplicacao, ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-aplicador-id="<?= $aplicadorId; ?>"
+                                                data-aplicadores-ids="<?= htmlspecialchars(implode(',', array_map(static fn($value): string => (string) ((int) $value), $aplicadoresRelacionadosIds)), ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-autor-id="<?= $autorId; ?>"
+                                                data-turmas-ids="<?= htmlspecialchars(implode(',', array_map(static fn($value): string => (string) ((int) $value), $turmasRelacionadasIds)), ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-alunos-ids="<?= htmlspecialchars(implode(',', array_map(static fn($value): string => (string) ((int) $value), $alunosRelacionadosIds)), ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-descricao="<?= htmlspecialchars($descricao, ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-gabarito="<?= htmlspecialchars($gabarito, ENT_QUOTES, 'UTF-8'); ?>"
+                                            >
+                                                <i class="las la-pen me-1"></i>Editar
+                                            </button>
+                                            
+                                            <button
+                                                type="button"
+                                                class="btn btn-outline-secondary btn-sm js-admin-avaliacao-copy"
+                                                data-id="<?= $id; ?>"
+                                                data-nome="<?= htmlspecialchars($nome, ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-is-recuperacao="<?= $isRecuperacao ? '1' : '0'; ?>"
+                                                data-ciclo="<?= $ciclo; ?>"
+                                                data-is-simulado="<?= $isSimulado ? '1' : '0'; ?>"
+                                                data-bimestre="<?= $bimestre; ?>"
+                                                data-aplicacao="<?= htmlspecialchars($aplicacao, ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-aplicador-id="<?= $aplicadorId; ?>"
+                                                data-aplicadores-ids="<?= htmlspecialchars(implode(',', array_map(static fn($value): string => (string) ((int) $value), $aplicadoresRelacionadosIds)), ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-autor-id="<?= $autorId; ?>"
+                                                data-turmas-ids="<?= htmlspecialchars(implode(',', array_map(static fn($value): string => (string) ((int) $value), $turmasRelacionadasIds)), ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-alunos-ids="<?= htmlspecialchars(implode(',', array_map(static fn($value): string => (string) ((int) $value), $alunosRelacionadosIds)), ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-descricao="<?= htmlspecialchars($descricao, ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-gabarito="<?= htmlspecialchars($gabarito, ENT_QUOTES, 'UTF-8'); ?>"
+                                            >
+                                                <i class="las la-copy me-1"></i>Copiar
+                                            </button>
+                                            <form method="post" action="<?= $baseUrl; ?>/index.php/paineladministrativo/avaliacoes/excluir" class="d-inline js-admin-avaliacao-delete-form">
+                                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                                <input type="hidden" name="id" value="<?= $id; ?>">
+                                                <button type="button" class="btn btn-outline-danger btn-sm js-admin-avaliacao-delete-trigger" data-item-name="<?= htmlspecialchars($nome !== '' ? $nome : 'esta avaliação', ENT_QUOTES, 'UTF-8'); ?>">
+                                                    <i class="las la-trash-alt me-1"></i>Excluir
+                                                </button>
+                                            </form>
+                                            <?php endif; ?>
+                                        </td>
+                                        <?php endif; ?>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                        <?php endif; ?>
+                        </div>
+
+                        <div id="adminAvaliacoesTableEmpty" class="alert alert-light border mt-3 d-none" role="alert">
+                            Nenhuma avaliação encontrada para a busca.
+                        </div>
+                    </div>
+            </div>
+        </div>
+
+        <?php if ($canManageAvaliacoes): ?>
+        <div class="modal fade admin-info-form-modal" id="adminAvaliacaoFormModal" tabindex="-1" data-bs-backdrop="static" aria-labelledby="adminAvaliacaoFormModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-xl modal-dialog-centered">
+                <div class="modal-content admin-informacoes-modal-content site-modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="adminAvaliacaoFormModalLabel">Nova avaliação</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="adminAvaliacaoForm" method="post" action="<?= $baseUrl; ?>/index.php/paineladministrativo/avaliacoes/salvar" class="mb-0" data-current-user-id="<?= $currentUserId; ?>" data-is-admin="<?= $isAdminViewer ? '1' : '0'; ?>">
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                            <input type="hidden" name="id" id="adminAvaliacaoId" value="0">
+                            <input type="hidden" name="gabarito" id="adminAvaliacaoGabarito" value="">
+
+                            <div class="row g-3">
+                                <div class="col-md-7">
+                                    <label class="form-label" for="adminAvaliacaoNome">Nome da avaliação</label>
+                                    <input type="text" class="form-control" id="adminAvaliacaoNome" name="nome" maxlength="255" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label" for="adminAvaliacaoBimestre">Bimestre</label>
+                                    <select class="form-select" id="adminAvaliacaoBimestre" name="bimestre" required>
+                                        <option value="">Selecione</option>
+                                        <option value="1">1º</option>
+                                        <option value="2">2º</option>
+                                        <option value="3">3º</option>
+                                        <option value="4">4º</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label" for="adminAvaliacaoAplicacao">Data da aplicação</label>
+                                    <input type="date" class="form-control" id="adminAvaliacaoAplicacao" name="aplicacao">
+                                </div>
+                                <div class="col-md-12">
+                                    <div class="form-check mt-1">
+                                        <input class="form-check-input" type="checkbox" id="adminAvaliacaoIsRecuperacao" name="is_recuperacao" value="1">
+                                        <label class="form-check-label" for="adminAvaliacaoIsRecuperacao">Esta avaliação vale como Recuperação</label>
+                                    </div>
+                                    <div class="form-text">Quando marcada, a nota corrigida alimenta o componente de recuperação em Notas e Desempenho.</div>
+                                </div>
+                                <div class="col-md-4" id="adminAvaliacaoCicloWrap">
+                                    <label class="form-label" for="adminAvaliacaoCiclo">Ciclo</label>
+                                    <select class="form-select" id="adminAvaliacaoCiclo" name="ciclo">
+                                        <option value="">Selecione</option>
+                                        <option value="1">1º ciclo</option>
+                                        <option value="2">2º ciclo</option>
+                                    </select>
+                                    <div class="form-text">Obrigatório para avaliações que não são recuperação.</div>
+                                </div>
+                                <div class="col-md-8 d-none" id="adminAvaliacaoSimuladoWrap">
+                                    <div class="form-check mt-4 pt-2">
+                                        <input class="form-check-input" type="checkbox" id="adminAvaliacaoIsSimulado" name="is_simulado" value="1">
+                                        <label class="form-check-label" for="adminAvaliacaoIsSimulado">Esta avaliação do 2º ciclo é um Simulado</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Usuários aplicadores</label>
+                                    <div class="admin-avaliacao-selector-summary-card">
+                                        <div id="adminAvaliacaoAplicadoresSummary" class="admin-avaliacao-selector-summary-body">
+                                            <div class="small text-secondary">Nenhum aplicador selecionado.</div>
+                                        </div>
+                                        <div class="d-flex flex-wrap gap-2 mt-3">
+                                            <button type="button" class="btn btn-outline-primary btn-sm" id="adminAvaliacaoOpenAplicadoresModalBtn">
+                                                <i class="las la-user-check me-1"></i>Selecionar aplicadores
+                                            </button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" id="adminAvaliacaoClearAplicadoresBtn">
+                                                <i class="las la-user-times me-1"></i>Limpar aplicadores
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <select class="form-select d-none" id="adminAvaliacaoAplicador" name="aplicador_ids[]" multiple size="6" aria-hidden="true" tabindex="-1">
+                                        <?php foreach ($usuariosAplicadores as $usuarioAplicador): ?>
+                                        <?php
+                                            $usuarioAplicadorId = (int) ($usuarioAplicador['id'] ?? 0);
+                                            $usuarioAplicadorNome = trim((string) ($usuarioAplicador['nome'] ?? ''));
+                                            if ($usuarioAplicadorId <= 0 || $usuarioAplicadorNome === '') {
+                                                continue;
+                                            }
+                                        ?>
+                                        <option value="<?= $usuarioAplicadorId; ?>"><?= htmlspecialchars($usuarioAplicadorNome, ENT_QUOTES, 'UTF-8'); ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <div class="form-text">Selecione um ou mais aplicadores para liberar o acesso deles à correção da avaliação.</div>
+                                </div>
+                                <?php if ($isAdminViewer): ?>
+                                <div class="col-md-6">
+                                    <label class="form-label" for="adminAvaliacaoAutor">Autor da avaliação</label>
+                                    <select class="form-select" id="adminAvaliacaoAutor" name="autor_id">
+                                        <option value="">Selecione</option>
+                                        <?php foreach ($usuariosAutores as $usuarioAutor): ?>
+                                        <?php
+                                            $usuarioAutorId = (int) ($usuarioAutor['id'] ?? 0);
+                                            $usuarioAutorNome = trim((string) ($usuarioAutor['nome'] ?? ''));
+                                            if ($usuarioAutorId <= 0 || $usuarioAutorNome === '') {
+                                                continue;
+                                            }
+                                        ?>
+                                        <option value="<?= $usuarioAutorId; ?>"><?= htmlspecialchars($usuarioAutorNome, ENT_QUOTES, 'UTF-8'); ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <div class="form-text">Como admin, você pode reatribuir a autoria desta avaliação.</div>
+                                </div>
+                                <?php endif; ?>
+                                <div class="col-12">
+                                    <label class="form-label">Turmas relacionadas</label>
+                                    <div class="admin-avaliacao-selector-summary-card">
+                                        <div id="adminAvaliacaoTurmasSummary" class="admin-avaliacao-selector-summary-body">
+                                            <div class="small text-secondary">Nenhuma turma selecionada.</div>
+                                        </div>
+                                        <div class="d-flex flex-wrap gap-2 mt-3">
+                                            <button type="button" class="btn btn-outline-primary btn-sm" id="adminAvaliacaoOpenTurmasModalBtn">
+                                                <i class="las la-layer-group me-1"></i>Selecionar turmas
+                                            </button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" id="adminAvaliacaoClearTurmasBtn">
+                                                <i class="las la-eraser me-1"></i>Limpar turmas
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="form-text">Selecione uma ou mais turmas para vincular à avaliação.</div>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Alunos que farão a avaliação</label>
+                                    <div class="admin-avaliacao-selector-summary-card">
+                                        <div id="adminAvaliacaoAlunosSummary" class="admin-avaliacao-selector-summary-body">
+                                            <div class="small text-secondary">Selecione as turmas para liberar a seleção de alunos.</div>
+                                        </div>
+                                        <div class="d-flex flex-wrap gap-2 mt-3">
+                                            <button type="button" class="btn btn-outline-primary btn-sm" id="adminAvaliacaoOpenAlunosModalBtn" disabled>
+                                                <i class="las la-user-friends me-1"></i>Selecionar alunos
+                                            </button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" id="adminAvaliacaoClearAlunosBtn">
+                                                <i class="las la-user-minus me-1"></i>Limpar alunos
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="form-text">Marque os alunos das turmas selecionadas que participarão desta avaliação.</div>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label" for="adminAvaliacaoDescricao">Descrição</label>
+                                    <textarea class="form-control" id="adminAvaliacaoDescricao" name="descricao" rows="4" maxlength="3000" placeholder="Detalhes adicionais da avaliação"></textarea>
+                                </div>
+                            </div>
+
+                            <div class="d-flex flex-wrap gap-2 mt-3 admin-avaliacao-form-actions">
+                                <button type="submit" class="btn btn-danger btn-sm" id="adminAvaliacaoSubmitButton"><i class="las la-save me-1"></i>Salvar avaliação</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="adminAvaliacaoResetButton"><i class="las la-undo me-1"></i>Limpar</button>
+                            </div>
+
+                            <div class="modal fade admin-info-form-modal admin-avaliacao-selector-modal" id="adminAvaliacaoTurmasModal" tabindex="-1" aria-labelledby="adminAvaliacaoTurmasModalLabel" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content site-modal-content">
+                                        <div class="modal-header">
+                                            <div>
+                                                <div class="small text-secondary">Seleção de turmas</div>
+                                                <h2 class="h6 mb-0" id="adminAvaliacaoTurmasModalLabel">Escolha as turmas vinculadas</h2>
+                                            </div>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <p class="small text-secondary mb-3">As turmas marcadas liberarão a seleção de alunos no próximo passo.</p>
+                                            <div class="mb-3">
+                                                <input type="search" class="form-control form-control-sm" id="adminAvaliacaoTurmasSearch" placeholder="Buscar turma por nome" autocomplete="off">
+                                            </div>
+                                            <div class="border rounded p-2 admin-avaliacao-turmas-list" id="adminAvaliacaoTurmasList">
+                                                <?php if ($turmas === []): ?>
+                                                <div class="small text-secondary">Nenhuma turma cadastrada. Cadastre em "Cadastro de Turmas".</div>
+                                                <?php endif; ?>
+                                                <?php foreach ($turmas as $turmaOption): ?>
+                                                <?php
+                                                    $turmaOptionId = (int) ($turmaOption['id'] ?? 0);
+                                                    $turmaOptionNome = trim((string) ($turmaOption['nome'] ?? ''));
+                                                    if ($turmaOptionId <= 0 || $turmaOptionNome === '') {
+                                                        continue;
+                                                    }
+                                                ?>
+                                                <div class="form-check">
+                                                    <input
+                                                        class="form-check-input js-admin-avaliacao-turma-checkbox"
+                                                        type="checkbox"
+                                                        value="<?= $turmaOptionId; ?>"
+                                                        id="adminAvaliacaoTurmaRel_<?= $turmaOptionId; ?>"
+                                                        name="turmas_relacionadas[]"
+                                                        form="adminAvaliacaoForm"
+                                                        data-ano-escolar="<?= htmlspecialchars(trim((string)($turmaOption['ano_escolar'] ?? '')), ENT_QUOTES, 'UTF-8'); ?>"
+                                                    >
+                                                    <label class="form-check-label" for="adminAvaliacaoTurmaRel_<?= $turmaOptionId; ?>">
+                                                        <?= htmlspecialchars($turmaOptionNome, ENT_QUOTES, 'UTF-8'); ?>
+                                                    </label>
+                                                </div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                            <div class="small text-secondary mt-2 d-none" id="adminAvaliacaoTurmasSearchEmpty">Nenhuma turma encontrada para a busca atual.</div>
+                                        </div>
+                                        <div class="modal-footer justify-content-between">
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" id="adminAvaliacaoOpenAlunosFromTurmasBtn">
+                                                <i class="las la-arrow-right me-1"></i>Selecionar alunos
+                                            </button>
+                                            <button type="button" class="btn btn-primary btn-sm" data-bs-dismiss="modal">Concluir turmas</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="modal fade admin-info-form-modal admin-avaliacao-selector-modal" id="adminAvaliacaoAlunosModal" tabindex="-1" aria-labelledby="adminAvaliacaoAlunosModalLabel" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered modal-lg">
+                                    <div class="modal-content site-modal-content">
+                                        <div class="modal-header">
+                                            <div>
+                                                <div class="small text-secondary">Seleção de alunos</div>
+                                                <h2 class="h6 mb-0" id="adminAvaliacaoAlunosModalLabel">Escolha os alunos das turmas selecionadas</h2>
+                                            </div>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="row g-2 mb-3">
+                                                <div class="col-md-7">
+                                                    <input type="search" class="form-control form-control-sm" id="adminAvaliacaoAlunosSearch" placeholder="Buscar aluno por nome" autocomplete="off">
+                                                </div>
+                                                <div class="col-md-5">
+                                                    <select class="form-select form-select-sm" id="adminAvaliacaoAlunosTurmaFilter">
+                                                        <option value="all">Todas as turmas selecionadas</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="border rounded p-2 admin-avaliacao-turmas-list admin-avaliacao-alunos-modal-list" id="adminAvaliacaoAlunosRelacionadosWrap">
+                                                <div class="small text-secondary">Selecione primeiro uma turma para listar os alunos.</div>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-primary btn-sm" data-bs-dismiss="modal">Concluir alunos</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="modal fade admin-info-form-modal admin-avaliacao-selector-modal" id="adminAvaliacaoAplicadoresModal" tabindex="-1" aria-labelledby="adminAvaliacaoAplicadoresModalLabel" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered modal-lg">
+                                    <div class="modal-content site-modal-content">
+                                        <div class="modal-header">
+                                            <div>
+                                                <div class="small text-secondary">Seleção de aplicadores</div>
+                                                <h2 class="h6 mb-0" id="adminAvaliacaoAplicadoresModalLabel">Escolha os usuários aplicadores</h2>
+                                            </div>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="row g-2 mb-3">
+                                                <div class="col-md-8">
+                                                    <input type="search" class="form-control form-control-sm" id="adminAvaliacaoAplicadoresSearch" placeholder="Buscar aplicador por nome" autocomplete="off">
+                                                </div>
+                                                <div class="col-md-4 d-flex gap-2">
+                                                    <button type="button" class="btn btn-outline-secondary btn-sm flex-grow-1" id="adminAvaliacaoAplicadoresSelectAllBtn">Selecionar todos</button>
+                                                    <button type="button" class="btn btn-outline-secondary btn-sm flex-grow-1" id="adminAvaliacaoAplicadoresClearAllBtn">Limpar</button>
+                                                </div>
+                                            </div>
+                                            <div class="border rounded p-2 admin-avaliacao-turmas-list admin-avaliacao-aplicadores-modal-list" id="adminAvaliacaoAplicadoresList">
+                                                <?php if ($usuariosAplicadores === []): ?>
+                                                <div class="small text-secondary">Nenhum usuário disponível para aplicação.</div>
+                                                <?php endif; ?>
+                                                <?php foreach ($usuariosAplicadores as $usuarioAplicador): ?>
+                                                <?php
+                                                    $usuarioAplicadorId = (int) ($usuarioAplicador['id'] ?? 0);
+                                                    $usuarioAplicadorNome = trim((string) ($usuarioAplicador['nome'] ?? ''));
+                                                    if ($usuarioAplicadorId <= 0 || $usuarioAplicadorNome === '') {
+                                                        continue;
+                                                    }
+                                                ?>
+                                                <div class="form-check js-admin-avaliacao-aplicador-option" data-search-text="<?= htmlspecialchars($usuarioAplicadorNome, ENT_QUOTES, 'UTF-8'); ?>">
+                                                    <input
+                                                        class="form-check-input js-admin-avaliacao-aplicador-checkbox"
+                                                        type="checkbox"
+                                                        value="<?= $usuarioAplicadorId; ?>"
+                                                        id="adminAvaliacaoAplicadorRel_<?= $usuarioAplicadorId; ?>"
+                                                    >
+                                                    <label class="form-check-label" for="adminAvaliacaoAplicadorRel_<?= $usuarioAplicadorId; ?>">
+                                                        <?= htmlspecialchars($usuarioAplicadorNome, ENT_QUOTES, 'UTF-8'); ?>
+                                                    </label>
+                                                </div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                            <div class="small text-secondary mt-2 d-none" id="adminAvaliacaoAplicadoresSearchEmpty">Nenhum aplicador encontrado para a busca atual.</div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-primary btn-sm" data-bs-dismiss="modal">Concluir aplicadores</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade admin-info-form-modal" id="adminAvaliacaoDashboardModal" tabindex="-1" data-bs-backdrop="static" aria-labelledby="adminAvaliacaoDashboardModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content admin-informacoes-modal-content site-modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="adminAvaliacaoDashboardModalLabel">Gerenciamento da Avaliação</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <ul class="nav nav-tabs" id="adminAvaliacaoDashboardTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="adminAvaliacaoDashboardTabEstatisticas" data-bs-toggle="tab" data-bs-target="#adminAvaliacaoDashboardPaneEstatisticas" type="button" role="tab" aria-controls="adminAvaliacaoDashboardPaneEstatisticas" aria-selected="true">Estatísticas</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="adminAvaliacaoDashboardTabCorrecao" data-bs-toggle="tab" data-bs-target="#adminAvaliacaoDashboardPaneCorrecao" type="button" role="tab" aria-controls="adminAvaliacaoDashboardPaneCorrecao" aria-selected="false">Correção</button>
+                            </li>
+                            <li class="nav-item d-none" role="presentation">
+                                <button class="nav-link" id="adminAvaliacaoDashboardTabQuestoes" data-bs-toggle="tab" data-bs-target="#adminAvaliacaoDashboardPaneQuestoes" type="button" role="tab" aria-controls="adminAvaliacaoDashboardPaneQuestoes" aria-selected="false">Questões</button>
+                            </li>
+                            <li class="nav-item d-none" role="presentation">
+                                <button class="nav-link" id="adminAvaliacaoDashboardTabLayout" data-bs-toggle="tab" data-bs-target="#adminAvaliacaoDashboardPaneLayout" type="button" role="tab" aria-controls="adminAvaliacaoDashboardPaneLayout" aria-selected="false">Layout da Avaliação</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="adminAvaliacaoDashboardTabGabarito" data-bs-toggle="tab" data-bs-target="#adminAvaliacaoDashboardPaneGabarito" type="button" role="tab" aria-controls="adminAvaliacaoDashboardPaneGabarito" aria-selected="false">Configurações</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="adminAvaliacaoDashboardTabImpressao" data-bs-toggle="tab" data-bs-target="#adminAvaliacaoDashboardPaneImpressao" type="button" role="tab" aria-controls="adminAvaliacaoDashboardPaneImpressao" aria-selected="false">Impressão</button>
+                            </li>
+                        </ul>
+                        <div class="tab-content border border-top-0 rounded-bottom p-3" id="adminAvaliacaoDashboardTabsContent">
+                            <div class="tab-pane fade show active" id="adminAvaliacaoDashboardPaneEstatisticas" role="tabpanel" aria-labelledby="adminAvaliacaoDashboardTabEstatisticas" tabindex="0">
+                                <div class="admin-avaliacao-stats-root" id="adminAvaliacaoStatsRoot">
+                                    <div class="admin-avaliacao-stats-empty">
+                                        <div class="admin-avaliacao-stats-empty-title">Painel pedagógico</div>
+                                        <div class="admin-avaliacao-stats-empty-text">As estatísticas aparecerão aqui assim que houver correções salvas para esta avaliação.</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="adminAvaliacaoDashboardPaneCorrecao" role="tabpanel" aria-labelledby="adminAvaliacaoDashboardTabCorrecao" tabindex="0">
+                                <div class="row g-3 admin-avaliacao-correcao-row">
+                                    <div class="col-12 col-xl-4 admin-avaliacao-correcao-scanner-col">
+                                        <div class="border rounded p-3 bg-light admin-avaliacao-correcao-panel h-100">
+                                            <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                                <div>
+                                                    <div class="small fw-semibold text-dark">Fluxo de correção</div>
+                                                    <div class="small text-secondary">Abra a correção em tela cheia para ler QR e gabarito com a câmera.</div>
+                                                </div>
+                                                <span class="badge text-bg-secondary">Tela cheia</span>
+                                            </div>
+                                            <div class="d-grid gap-2 mb-3">
+                                                <button type="button" class="btn btn-outline-primary btn-sm" id="adminAvaliacaoCorrecaoStartBtn">
+                                                    <i class="las la-camera me-1"></i>Corrigir
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 col-xl-8 admin-avaliacao-correcao-results-col">
+                                        <div class="border rounded p-3 bg-light admin-avaliacao-correcao-panel h-100">
+                                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                                                <div>
+                                                    <div class="small fw-semibold text-dark">Provas já corrigidas</div>
+                                                    <div class="small text-secondary" id="adminAvaliacaoCorrecaoListStatus">Atualizando lista...</div>
+                                                </div>
+                                                <button type="button" class="btn btn-outline-dark btn-sm" id="adminAvaliacaoCorrecaoRefreshBtn">
+                                                    <i class="las la-sync me-1"></i>Atualizar
+                                                </button>
+                                            </div>
+                                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                                                <div>
+                                                    <div class="small fw-semibold text-dark">Alunos previstos para a avaliação</div>
+                                                    <div class="small text-secondary" id="adminAvaliacaoCorrecaoRosterStatus">Carregando status dos alunos previstos...</div>
+                                                </div>
+                                            </div>
+                                            <div class="admin-avaliacao-correcao-search-wrap mb-3">
+                                                <input type="search" class="form-control form-control-sm" id="adminAvaliacaoCorrecaoSearch" placeholder="Buscar por aluno, turma, status, resultado ou data" autocomplete="off">
+                                            </div>
+                                            <div class="table-responsive border rounded bg-white admin-avaliacao-correcao-table-wrap">
+                                                <table class="table table-sm align-middle mb-0" id="adminAvaliacaoCorrecaoRosterTable">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Aluno</th>
+                                                            <th>Turma</th>
+                                                            <th>Status</th>
+                                                            <th>Resultado</th>
+                                                            <th>Corrigida em</th>
+                                                            <th class="text-end">Ações</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="adminAvaliacaoCorrecaoRosterBody">
+                                                        <tr>
+                                                            <td colspan="6" class="text-center text-secondary py-4">Nenhum aluno relacionado a esta avaliação.</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="adminAvaliacaoDashboardPaneQuestoes" role="tabpanel" aria-labelledby="adminAvaliacaoDashboardTabQuestoes" tabindex="0">
+                                <div class="alert alert-secondary mb-0 py-2 px-3 small" role="alert">
+                                    Configuração de questões e marcação de respostas corretas movidas temporariamente para a aba <strong>Layout do Gabarito</strong>.
+                                </div>
+                            </div>
+                            <div class="modal fade admin-avaliacao-correcao-modal" id="adminAvaliacaoCorrecaoModal" tabindex="-1" aria-labelledby="adminAvaliacaoCorrecaoModalLabel" aria-hidden="true">
+                                <div class="modal-dialog modal-fullscreen">
+                                    <div class="modal-content admin-avaliacao-correcao-modal-content">
+                                        <div class="modal-body admin-avaliacao-correcao-modal-body">
+                                            <h2 class="visually-hidden" id="adminAvaliacaoCorrecaoModalLabel">Leitura de QR e gabarito</h2>
+                                            <div class="visually-hidden" id="adminAvaliacaoCorrecaoResumo">Leia o QR Code da folha para identificar aluno, turma e avaliação.</div>
+                                            <div class="admin-avaliacao-correcao-camera-wrap admin-avaliacao-correcao-camera-wrap-modal mb-3">
+                                                <video id="adminAvaliacaoCorrecaoVideo" class="admin-avaliacao-correcao-video d-none" playsinline autoplay muted></video>
+                                                <div class="admin-avaliacao-correcao-video-placeholder" id="adminAvaliacaoCorrecaoVideoPlaceholder">
+                                                    A câmera será aberta aqui durante a correção.
+                                                </div>
+                                                <div class="admin-avaliacao-correcao-overlay-topbar">
+                                                    <span class="badge text-bg-secondary" id="adminAvaliacaoCorrecaoStepBadge">Aguardando</span>
+                                                    <button type="button" class="btn btn-outline-success btn-sm d-none" id="adminAvaliacaoCorrecaoCaptureBtn">
+                                                        <i class="las la-check-circle me-1"></i>Ler gabarito
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-danger btn-sm" id="adminAvaliacaoCorrecaoStopBtn">
+                                                        <i class="las la-times-circle me-1"></i>Encerrar correção
+                                                    </button>
+                                                </div>
+                                                <div class="admin-avaliacao-correcao-align-guide d-none" id="adminAvaliacaoCorrecaoAlignGuide" aria-hidden="true">
+                                                    <div class="admin-avaliacao-correcao-align-guide-box">
+                                                        <span class="align-guide-corner align-guide-corner--tl"></span>
+                                                        <span class="align-guide-corner align-guide-corner--tr"></span>
+                                                        <span class="align-guide-corner align-guide-corner--bl"></span>
+                                                        <span class="align-guide-corner align-guide-corner--br"></span>
+                                                        <span class="align-guide-marker" id="alignGuideMarkerTL"></span>
+                                                        <span class="align-guide-marker" id="alignGuideMarkerTR"></span>
+                                                        <span class="align-guide-marker" id="alignGuideMarkerBL"></span>
+                                                        <span class="align-guide-marker" id="alignGuideMarkerBR"></span>
+                                                        <span class="align-guide-label">Encaixe o gabarito aqui</span>
+                                                    </div>
+                                                </div>
+                                                <div class="admin-avaliacao-correcao-overlay d-none" id="adminAvaliacaoCorrecaoOverlay">
+                                                    <div class="admin-avaliacao-correcao-guide-frame">
+                                                        <img class="admin-avaliacao-correcao-guide-template d-none" id="adminAvaliacaoCorrecaoGuideTemplate" alt="Guia do gabarito">
+                                                    </div>
+                                                    <svg class="admin-avaliacao-correcao-diagnostics" id="adminAvaliacaoCorrecaoDiagnostics" aria-hidden="true"></svg>
+                                                    <div class="admin-avaliacao-correcao-overlay-target d-none" id="adminAvaliacaoCorrecaoOverlayTarget"></div>
+                                                    <div class="admin-avaliacao-correcao-overlay-message" id="adminAvaliacaoCorrecaoOverlayMessage"></div>
+                                                </div>
+                                                <div class="admin-avaliacao-correcao-overlay-actions-layer">
+                                                    <div class="admin-avaliacao-correcao-overlay-actions d-none" id="adminAvaliacaoCorrecaoConfirmWrap">
+                                                        <button type="button" class="btn btn-success btn-sm" id="adminAvaliacaoCorrecaoConfirmBtn">
+                                                            <i class="las la-arrow-right me-1"></i>Continuar para leitura do gabarito
+                                                        </button>
+                                                    </div>
+                                                    <div class="admin-avaliacao-correcao-overlay-actions d-none" id="adminAvaliacaoCorrecaoProcessWrap">
+                                                        <button type="button" class="btn btn-success btn-sm" id="adminAvaliacaoCorrecaoProcessBtn">
+                                                            <i class="las la-camera me-1"></i>Processar gabarito
+                                                        </button>
+                                                    </div>
+                                                    <div class="admin-avaliacao-correcao-overlay-actions d-none" id="adminAvaliacaoCorrecaoNextWrap">
+                                                        <button type="button" class="btn btn-outline-danger btn-sm mb-2" id="adminAvaliacaoCorrecaoRetryBtn">
+                                                            <i class="las la-undo-alt me-1"></i>Corrigir novamente
+                                                        </button>
+                                                        <button type="button" class="btn btn-primary btn-sm" id="adminAvaliacaoCorrecaoNextBtn">
+                                                            <i class="las la-qrcode me-1"></i>Ir para próximo QR Code
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="admin-avaliacao-correcao-processing-overlay d-none" id="adminAvaliacaoCorrecaoProcessingOverlay">
+                                                <div class="admin-avaliacao-correcao-processing-content">
+                                                    <div class="spinner-border text-light mb-3" role="status">
+                                                        <span class="visually-hidden">Processando...</span>
+                                                    </div>
+                                                    <div class="text-white fw-semibold">Processando...</div>
+                                                </div>
+                                            </div>
+                                            <div class="visually-hidden" id="adminAvaliacaoCorrecaoStatus">Nenhuma correção em andamento.</div>
+                                            <div class="border rounded bg-white p-2 mt-3 d-none" id="adminAvaliacaoCorrecaoTargetCard">
+                                                <div class="small fw-semibold text-dark mb-1">Folha identificada</div>
+                                                <div class="small text-secondary" id="adminAvaliacaoCorrecaoTargetText"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal fade admin-avaliacao-correcao-discursiva-modal" id="adminAvaliacaoCorrecaoDiscursivaModal" tabindex="-1" aria-labelledby="adminAvaliacaoCorrecaoDiscursivaModalLabel" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content admin-avaliacao-correcao-discursiva-modal-content site-modal-content">
+                                        <div class="modal-header">
+                                            <div>
+                                                <div class="small text-secondary">Notas discursivas</div>
+                                                <h2 class="h6 mb-0" id="adminAvaliacaoCorrecaoDiscursivaModalLabel">Informe a pontuação das questões discursivas</h2>
+                                            </div>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="small text-secondary mb-3" id="adminAvaliacaoCorrecaoDiscursivaSummary">Preencha as notas antes de concluir a correção desta folha.</div>
+                                            <div class="d-grid gap-3" id="adminAvaliacaoCorrecaoDiscursivaList"></div>
+                                            <div class="small text-danger mt-3 d-none" id="adminAvaliacaoCorrecaoDiscursivaError"></div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" id="adminAvaliacaoCorrecaoDiscursivaCancelBtn">Cancelar</button>
+                                            <button type="button" class="btn btn-primary btn-sm" id="adminAvaliacaoCorrecaoDiscursivaSaveBtn">Salvar notas e concluir</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal fade admin-avaliacao-correcao-revisao-modal" id="adminAvaliacaoCorrecaoRevisaoModal" tabindex="-1" aria-labelledby="adminAvaliacaoCorrecaoRevisaoModalLabel" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content admin-avaliacao-correcao-discursiva-modal-content site-modal-content">
+                                        <div class="modal-header">
+                                            <div>
+                                                <div class="small text-secondary">Revisão rápida</div>
+                                                <h2 class="h6 mb-0" id="adminAvaliacaoCorrecaoRevisaoModalLabel">Confirme a leitura antes de salvar</h2>
+                                            </div>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="small text-secondary mb-3" id="adminAvaliacaoCorrecaoRevisaoSummary">Revise os itens destacados antes de concluir a correção desta folha.</div>
+                                            <div class="d-grid gap-3" id="adminAvaliacaoCorrecaoRevisaoList"></div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" id="adminAvaliacaoCorrecaoRevisaoCancelBtn">Voltar para leitura</button>
+                                            <button type="button" class="btn btn-primary btn-sm" id="adminAvaliacaoCorrecaoRevisaoSaveBtn">Confirmar e salvar</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal fade admin-avaliacao-correcao-edicao-modal" id="adminAvaliacaoCorrecaoEdicaoModal" tabindex="-1" aria-labelledby="adminAvaliacaoCorrecaoEdicaoModalLabel" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered admin-avaliacao-correcao-edicao-dialog">
+                                    <div class="modal-content admin-avaliacao-correcao-discursiva-modal-content admin-avaliacao-correcao-edicao-modal-content site-modal-content">
+                                        <div class="modal-header">
+                                            <div>
+                                                <div class="small text-secondary">Edição manual</div>
+                                                <h2 class="h6 mb-0" id="adminAvaliacaoCorrecaoEdicaoModalLabel">Ajustar respostas e notas da correção</h2>
+                                            </div>
+                                        </div>
+                                        <div class="modal-body admin-avaliacao-correcao-edicao-modal-body">
+                                            <div class="small text-secondary mb-3" id="adminAvaliacaoCorrecaoEdicaoSummary">Revise as respostas e notas antes de salvar as alterações.</div>
+                                            <div class="admin-avaliacao-correcao-edicao-list" id="adminAvaliacaoCorrecaoEdicaoList"></div>
+                                            <div class="small text-danger mt-3 d-none" id="adminAvaliacaoCorrecaoEdicaoError"></div>
+                                        </div>
+                                        <div class="modal-footer admin-avaliacao-correcao-edicao-modal-footer">
+                                            <button type="button" class="btn btn-primary btn-sm" id="adminAvaliacaoCorrecaoEdicaoSaveBtn">Salvar alterações</button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" id="adminAvaliacaoCorrecaoEdicaoCancelBtn">Cancelar</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade admin-avaliacao-layout-pane d-none" id="adminAvaliacaoDashboardPaneLayout" role="tabpanel" aria-labelledby="adminAvaliacaoDashboardTabLayout" tabindex="0">
+                                <div class="row g-3">
+                                    <div class="col-12 admin-avaliacao-layout-toolbar-wrap">
+                                        <div class="admin-avaliacao-layout-ribbon-track">
+                                            <div class="admin-avaliacao-layout-ribbon-group">
+                                                <span class="small text-secondary">Grade</span>
+                                                <div class="form-check form-switch mb-0">
+                                                    <input class="form-check-input" type="checkbox" role="switch" id="adminAvaliacaoLayoutSnapGrid" checked>
+                                                    <label class="form-check-label small" for="adminAvaliacaoLayoutSnapGrid">Ativo</label>
+                                                </div>
+                                                <input type="number" class="form-control form-control-sm" id="adminAvaliacaoLayoutGridSize" min="4" max="80" step="1" value="12">
+                                                <span class="small text-secondary">px</span>
+                                            </div>
+                                            <div class="admin-avaliacao-layout-ribbon-group">
+                                                <span class="small text-secondary">Ampliação</span>
+                                                <input type="range" class="form-range" id="adminAvaliacaoLayoutFontScale" min="80" max="200" step="5" value="100" aria-label="Ampliação da avaliação">
+                                                <span class="small text-secondary" id="adminAvaliacaoLayoutFontScaleValue">100%</span>
+                                            </div>
+                                            <div class="admin-avaliacao-layout-ribbon-group dropdown" data-bs-auto-close="outside">
+                                                <button type="button" class="btn btn-outline-dark btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="las la-image me-1"></i>Plano de fundo
+                                                </button>
+                                                <div class="dropdown-menu p-3 admin-avaliacao-layout-dropdown-menu">
+                                                    <label class="small text-secondary mb-1" for="adminAvaliacaoLayoutBackgroundFile">Selecionar/alterar imagem</label>
+                                                    <input type="file" class="form-control form-control-sm mb-2" id="adminAvaliacaoLayoutBackgroundFile" accept="image/png,image/jpeg,image/webp">
+                                                    <div class="d-flex flex-wrap gap-2">
+                                                        <button type="button" class="btn btn-outline-primary btn-sm d-none" id="adminAvaliacaoLayoutBackgroundSelectBtn">
+                                                            Selecionar plano de fundo
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-danger btn-sm d-none" id="adminAvaliacaoLayoutBackgroundRemoveBtn">
+                                                            Remover
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="admin-avaliacao-layout-ribbon-group dropdown" data-bs-auto-close="outside">
+                                                <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="las la-plus me-1"></i>Inserir
+                                                </button>
+                                                <div class="dropdown-menu p-3 admin-avaliacao-layout-dropdown-menu">
+                                                    <input type="file" class="d-none" id="adminAvaliacaoLayoutImageFile" accept="image/png,image/jpeg,image/webp" multiple>
+                                                    <div class="d-flex flex-wrap gap-2">
+                                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="adminAvaliacaoLayoutImageAddBtn">
+                                                            Inserir imagem
+                                                        </button>
+                                                    </div>
+                                                    <div class="border-top mt-2 pt-2">
+                                                        <div class="small text-secondary mb-2">Inserir objeto</div>
+                                                        <div class="d-flex flex-wrap gap-2 mb-2">
+                                                            <button type="button" class="btn btn-outline-secondary btn-sm js-admin-layout-insert-object" data-object-type="line"><i class="las la-minus me-1"></i>Linha</button>
+                                                            <button type="button" class="btn btn-outline-secondary btn-sm js-admin-layout-insert-object" data-object-type="rect"><i class="las la-square me-1"></i>Retângulo</button>
+                                                            <button type="button" class="btn btn-outline-secondary btn-sm js-admin-layout-insert-object" data-object-type="square"><i class="las la-stop me-1"></i>Quadrado</button>
+                                                            <button type="button" class="btn btn-outline-secondary btn-sm js-admin-layout-insert-object" data-object-type="circle"><i class="las la-circle me-1"></i>Círculo</button>
+                                                            <button type="button" class="btn btn-outline-secondary btn-sm js-admin-layout-insert-object" data-object-type="arrow"><i class="las la-long-arrow-alt-right me-1"></i>Seta</button>
+                                                            <button type="button" class="btn btn-outline-secondary btn-sm js-admin-layout-insert-object" data-object-type="text"><i class="las la-font me-1"></i>Caixa de texto</button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="admin-avaliacao-layout-ribbon-group admin-avaliacao-layout-actions">
+                                                <button type="button" class="btn btn-outline-secondary btn-sm" id="adminAvaliacaoLayoutResetQuestionsBtn">
+                                                    <i class="las la-undo me-1"></i>Resetar posição
+                                                </button>
+                                                <button type="button" class="btn btn-outline-secondary btn-sm" id="adminAvaliacaoLayoutUndoBtn" disabled>
+                                                    <i class="las la-undo-alt me-1"></i>Desfazer
+                                                </button>
+                                                <button type="button" class="btn btn-outline-secondary btn-sm" id="adminAvaliacaoLayoutRedoBtn" disabled>
+                                                    <i class="las la-redo-alt me-1"></i>Refazer
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 admin-avaliacao-layout-editor-col">
+                                        <div class="d-flex flex-wrap align-items-center gap-2 admin-avaliacao-layout-zoombar admin-avaliacao-canvas-zoombar">
+                                            <button type="button" class="btn btn-outline-dark btn-sm" id="adminAvaliacaoLayoutZoomOutBtn" aria-label="Diminuir zoom">
+                                                <i class="las la-search-minus"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-outline-dark btn-sm" id="adminAvaliacaoLayoutZoomResetBtn">100%</button>
+                                            <button type="button" class="btn btn-outline-dark btn-sm" id="adminAvaliacaoLayoutZoomInBtn" aria-label="Aumentar zoom">
+                                                <i class="las la-search-plus"></i>
+                                            </button>
+                                            <span class="small text-secondary" id="adminAvaliacaoLayoutPagesInfo">Páginas: 1</span>
+                                        </div>
+                                        <div class="border rounded p-2 bg-light admin-avaliacao-layout-editor-wrap">
+                                            <div class="admin-avaliacao-layout-object-panel d-none" id="adminAvaliacaoLayoutObjectStyleGroup">
+                                                <span class="small text-secondary">Controles do objeto selecionado</span>
+                                                <div class="d-flex flex-wrap align-items-center gap-2">
+                                                    <label class="small text-secondary mb-0" for="adminAvaliacaoLayoutObjectStrokeColor">Cor</label>
+                                                    <input type="color" class="form-control form-control-color" id="adminAvaliacaoLayoutObjectStrokeColor" value="#0d6efd" title="Cor do objeto">
+                                                    <label class="small text-secondary mb-0" for="adminAvaliacaoLayoutObjectStrokeWidth">Espessura</label>
+                                                    <input type="number" class="form-control form-control-sm" id="adminAvaliacaoLayoutObjectStrokeWidth" min="1" max="20" step="1" value="2" style="width:78px;">
+                                                    <label class="small text-secondary mb-0" for="adminAvaliacaoLayoutObjectOpacity">Opacidade</label>
+                                                    <input type="range" class="form-range" id="adminAvaliacaoLayoutObjectOpacity" min="10" max="100" step="5" value="100" style="width:120px;">
+                                                    <span class="small text-secondary" id="adminAvaliacaoLayoutObjectOpacityValue">100%</span>
+                                                </div>
+                                                <div class="d-flex flex-wrap align-items-center gap-2" id="adminAvaliacaoLayoutObjectTextControls">
+                                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="adminAvaliacaoLayoutObjectTextBoldBtn" title="Negrito">
+                                                        <i class="las la-bold"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="adminAvaliacaoLayoutObjectTextItalicBtn" title="Itálico">
+                                                        <i class="las la-italic"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="adminAvaliacaoLayoutObjectTextUnderlineBtn" title="Sublinhado">
+                                                        <i class="las la-underline"></i>
+                                                    </button>
+                                                    <label class="small text-secondary mb-0" for="adminAvaliacaoLayoutObjectTextColor">Cor texto</label>
+                                                    <input type="color" class="form-control form-control-color" id="adminAvaliacaoLayoutObjectTextColor" value="#212529" title="Cor do texto">
+                                                    <label class="small text-secondary mb-0" for="adminAvaliacaoLayoutObjectFontSize">Fonte</label>
+                                                    <input type="number" class="form-control form-control-sm" id="adminAvaliacaoLayoutObjectFontSize" min="10" max="72" step="1" value="20" style="width:78px;">
+                                                </div>
+                                            </div>
+                                            <canvas id="adminAvaliacaoLayoutEditorCanvas" width="794" height="1123" aria-label="Editor de layout da avaliação em páginas A4"></canvas>
+                                        </div>
+                                        <div class="small text-secondary mt-2" id="adminAvaliacaoLayoutHint" aria-live="polite"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="adminAvaliacaoDashboardPaneGabarito" role="tabpanel" aria-labelledby="adminAvaliacaoDashboardTabGabarito" tabindex="0">
+                                <ul class="nav nav-pills nav-sm gap-2 mb-3" id="adminAvaliacaoGabaritoSubtabs" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" id="adminAvaliacaoGabaritoSubtabMarcacao" data-bs-toggle="tab" data-bs-target="#adminAvaliacaoGabaritoSubpaneMarcacao" type="button" role="tab" aria-controls="adminAvaliacaoGabaritoSubpaneMarcacao" aria-selected="true">Questões e Respostas</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="adminAvaliacaoGabaritoSubtabDisciplinas" data-bs-toggle="tab" data-bs-target="#adminAvaliacaoGabaritoSubpaneDisciplinas" type="button" role="tab" aria-controls="adminAvaliacaoGabaritoSubpaneDisciplinas" aria-selected="false">Disciplinas e Habilidades</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="adminAvaliacaoGabaritoSubtabLayout" data-bs-toggle="tab" data-bs-target="#adminAvaliacaoGabaritoSubpaneLayout" type="button" role="tab" aria-controls="adminAvaliacaoGabaritoSubpaneLayout" aria-selected="false">Layout do Gabarito</button>
+                                    </li>
+                                </ul>
+                                <div class="tab-content" id="adminAvaliacaoGabaritoSubtabsContent">
+                                    <div class="tab-pane fade show active" id="adminAvaliacaoGabaritoSubpaneMarcacao" role="tabpanel" aria-labelledby="adminAvaliacaoGabaritoSubtabMarcacao" tabindex="0">
+                                        <div class="row g-3 admin-avaliacao-gabarito-pane-row">
+                                            <div class="col-12">
+                                                <div class="d-flex flex-wrap align-items-end gap-2">
+                                                    <div>
+                                                        <label class="form-label form-label-sm mb-1" for="adminAvaliacaoQuestoesTotal">Total de questões</label>
+                                                        <input type="number" class="form-control form-control-sm" id="adminAvaliacaoQuestoesTotal" min="1" max="200" step="1" value="1">
+                                                    </div>
+                                                    <div>
+                                                        <label class="form-label form-label-sm mb-1" for="adminAvaliacaoAlternativasTotal">Alternativas por questão</label>
+                                                        <input type="number" class="form-control form-control-sm" id="adminAvaliacaoAlternativasTotal" min="2" max="10" step="1" value="4">
+                                                    </div>
+                                                    <div>
+                                                        <label class="form-label form-label-sm mb-1" for="adminAvaliacaoQuestoesPorColuna">Questões por coluna</label>
+                                                        <input type="number" class="form-control form-control-sm" id="adminAvaliacaoQuestoesPorColuna" min="1" max="50" step="1" value="10">
+                                                    </div>
+                                                    <div>
+                                                        <label class="form-label form-label-sm mb-1 d-block">Respostas</label>
+                                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="adminAvaliacaoRestaurarRespostasBtn">
+                                                            <i class="las la-eraser me-1"></i>Restaurar respostas
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-12 admin-avaliacao-questoes-list-col">
+                                                <div class="border rounded p-2 bg-light" id="adminAvaliacaoQuestoesList"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="tab-pane fade" id="adminAvaliacaoGabaritoSubpaneDisciplinas" role="tabpanel" aria-labelledby="adminAvaliacaoGabaritoSubtabDisciplinas" tabindex="0">
+                                        <div class="row g-3 admin-avaliacao-gabarito-pane-row">
+                                            <div class="col-12 admin-avaliacao-disciplinas-list-col">
+                                                <div class="small text-secondary mb-1">Defina a disciplina e a habilidade de cada questão para uso futuro em estatísticas.</div>
+                                                <div class="border rounded p-2 bg-light" id="adminAvaliacaoDisciplinasHabilidadesList"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="tab-pane fade" id="adminAvaliacaoGabaritoSubpaneLayout" role="tabpanel" aria-labelledby="adminAvaliacaoGabaritoSubtabLayout" tabindex="0">
+                                        <div class="row g-3 admin-avaliacao-gabarito-pane-row">
+                                            <input type="file" class="d-none" id="adminAvaliacaoGabaritoFundoArquivo" accept="image/png,image/jpeg,image/webp,application/pdf,.pdf">
+                                            <input type="file" class="d-none" id="adminAvaliacaoGabaritoImagemArquivo" accept="image/png,image/jpeg,image/webp" multiple>
+                                            <div class="col-12 col-lg-4 col-xl-3 admin-avaliacao-gabarito-controls-col">
+                                                <div class="border rounded p-2 bg-light admin-avaliacao-gabarito-controls-panel">
+                                                    <div class="d-grid gap-2 admin-avaliacao-gabarito-controls-grid">
+                                                        <button type="button" class="btn btn-outline-primary btn-sm" id="adminAvaliacaoGabaritoFundoSelectBtn">
+                                                            <i class="las la-folder-open me-1"></i>Selecionar plano de fundo
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-danger btn-sm d-none" id="adminAvaliacaoGabaritoFundoRemoveBtn">
+                                                            <i class="las la-trash-alt me-1"></i>Remover plano de fundo
+                                                        </button>
+                                                        <?php if (($isAdmin ?? false) === true): ?>
+                                                        <button type="button" class="btn btn-outline-success btn-sm" id="adminAvaliacaoGabaritoFundoSetDefaultBtn" disabled>
+                                                            <i class="las la-check-circle me-1"></i>Definir como padrão
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-secondary btn-sm<?= $defaultGabaritoPreset === [] ? ' d-none' : ''; ?>" id="adminAvaliacaoGabaritoFundoClearDefaultBtn">
+                                                            <i class="las la-times-circle me-1"></i>Remover padrão
+                                                        </button>
+                                                        <?php endif; ?>
+                                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="adminAvaliacaoGabaritoImagemSelectBtn">
+                                                            <i class="las la-image me-1"></i>Inserir imagem
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="adminAvaliacaoGabaritoImagemLayerDownBtn" disabled>
+                                                            <i class="las la-level-down-alt me-1"></i>Camada -
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="adminAvaliacaoGabaritoImagemLayerUpBtn" disabled>
+                                                            <i class="las la-level-up-alt me-1"></i>Camada +
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="adminAvaliacaoGabaritoImagemRotateLeftBtn" disabled>
+                                                            <i class="las la-undo-alt me-1"></i>Girar -
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="adminAvaliacaoGabaritoImagemRotateRightBtn" disabled>
+                                                            <i class="las la-redo-alt me-1"></i>Girar +
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="adminAvaliacaoGabaritoImagemCropBtn" disabled>
+                                                            <i class="las la-crop-alt me-1"></i>Recortar
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="adminAvaliacaoGabaritoImagemCropResetBtn" disabled>
+                                                            <i class="las la-expand-arrows-alt me-1"></i>Resetar recorte
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-danger btn-sm" id="adminAvaliacaoGabaritoImagemDeleteBtn" disabled>
+                                                            <i class="las la-trash-alt me-1"></i>Excluir imagem
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="adminAvaliacaoGabaritoObjetoInsertBtn" disabled>
+                                                            <i class="las la-shapes me-1"></i>Objeto (em breve)
+                                                        </button>
+                                                    </div>
+                                                    <div class="small text-secondary mt-2" id="adminAvaliacaoGabaritoFundoAtual">Nenhum plano de fundo selecionado.</div>
+                                                    <?php if (($isAdmin ?? false) === true): ?>
+                                                    <div class="small text-secondary mt-1" id="adminAvaliacaoGabaritoFundoPadraoAtual"><?= $defaultGabaritoPreset === [] ? 'Nenhum plano de fundo padrão definido.' : 'Plano de fundo padrão ativo para novas avaliações.'; ?></div>
+                                                    <?php endif; ?>
+                                                    <div class="d-flex flex-wrap align-items-center gap-2 admin-avaliacao-layout-zoombar admin-avaliacao-canvas-zoombar admin-avaliacao-gabarito-zoombar-side mt-3">
+                                                        <button type="button" class="btn btn-outline-dark btn-sm" id="adminAvaliacaoGabaritoZoomOutBtn" aria-label="Diminuir zoom do gabarito">
+                                                            <i class="las la-search-minus"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-dark btn-sm" id="adminAvaliacaoGabaritoZoomResetBtn">100%</button>
+                                                        <button type="button" class="btn btn-outline-dark btn-sm" id="adminAvaliacaoGabaritoZoomInBtn" aria-label="Aumentar zoom do gabarito">
+                                                            <i class="las la-search-plus"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-12 col-lg-8 col-xl-9 admin-avaliacao-gabarito-canvas-col">
+                                                <div class="border rounded p-2 bg-light admin-avaliacao-gabarito-layout-wrap">
+                                                    <canvas id="adminAvaliacaoA4EditorCanvas" style="width:794px;height:1123px;display:block;" aria-label="Editor de layout A4 do gabarito"></canvas>
+                                                </div>
+                                                <div class="form-text" id="adminAvaliacaoGabaritoEscalaValor">Use esta página A4 para posicionar o bloco do gabarito. Áreas de dados do aluno e QR Code permanecem como referência visual.</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <canvas id="adminAvaliacaoGabaritoPreviewCanvas" width="1200" height="1600" class="d-none" aria-hidden="true"></canvas>
+                                <img id="adminAvaliacaoGabaritoPreviewImage" src="" alt="" class="d-none" aria-hidden="true">
+                            </div>
+                            <div class="tab-pane fade" id="adminAvaliacaoDashboardPaneImpressao" role="tabpanel" aria-labelledby="adminAvaliacaoDashboardTabImpressao" tabindex="0">
+                                <div class="row g-3 admin-avaliacao-impressao-row">
+                                    <div class="col-12 col-xl-3 admin-avaliacao-impressao-controls-col">
+                                        <div class="border rounded p-3 bg-light admin-avaliacao-impressao-controls-panel">
+                                            <div class="small text-secondary" id="adminAvaliacaoImpressaoResumo">A visualização A4 será montada com os alunos vinculados à avaliação.</div>
+                                            <div class="mt-3">
+                                                <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                                    <div class="small fw-semibold text-dark">Turmas para impressão</div>
+                                                    <div class="d-flex gap-2">
+                                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="adminAvaliacaoImpressaoTurmasTodasBtn">Todas</button>
+                                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="adminAvaliacaoImpressaoTurmasNenhumaBtn">Nenhuma</button>
+                                                    </div>
+                                                </div>
+                                                <div class="border rounded bg-white p-2 admin-avaliacao-impressao-turmas-wrap" id="adminAvaliacaoImpressaoTurmasWrap">
+                                                    <div class="small text-secondary">Nenhuma turma disponível.</div>
+                                                </div>
+                                            </div>
+                                            <div class="d-grid gap-2 mt-3">
+                                                <button type="button" class="btn btn-outline-primary btn-sm" id="adminAvaliacaoImpressaoAtualizarBtn">
+                                                    <i class="las la-sync me-1"></i>Atualizar visualização
+                                                </button>
+                                                <button type="button" class="btn btn-outline-dark btn-sm" id="adminAvaliacaoImpressaoImprimirBtn">
+                                                    <i class="las la-print me-1"></i>Imprimir
+                                                </button>
+                                            </div>
+                                            <div class="small text-secondary mt-3" id="adminAvaliacaoImpressaoStatus">Cada folha será preenchida automaticamente com numeração por turma, dados do aluno, turma e QR Code com os ids da avaliação, aluno e turma.</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 col-xl-9 admin-avaliacao-impressao-preview-col">
+                                        <div class="border rounded p-2 bg-light admin-avaliacao-impressao-preview-wrap">
+                                            <div class="admin-avaliacao-impressao-search-wrap mb-3">
+                                                <input type="search" class="form-control form-control-sm" id="adminAvaliacaoImpressaoSearch" placeholder="Buscar por aluno, turma ou numeração" autocomplete="off">
+                                            </div>
+                                            <div class="admin-avaliacao-impressao-preview-grid" id="adminAvaliacaoImpressaoGrid">
+                                                <div class="admin-avaliacao-impressao-empty">Nenhuma folha gerada ainda.</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="admin-avaliacao-dashboard-savebar d-none" id="adminAvaliacaoDashboardSaveBar">
+                            <button type="button" class="btn btn-danger btn-sm" id="adminAvaliacaoGabaritoSalvarBtn">
+                                <i class="las la-save me-1"></i>Salvar Alterações
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade admin-info-confirm-modal" id="adminAvaliacaoDeleteConfirmModal" tabindex="-1" data-bs-backdrop="static" aria-labelledby="adminAvaliacaoDeleteConfirmModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-sm modal-dialog-centered">
+                <div class="modal-content admin-informacoes-modal-content site-modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="adminAvaliacaoDeleteConfirmModalLabel">Confirmar exclusão</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-0" id="adminAvaliacaoDeleteConfirmText">Deseja realmente excluir esta avaliação?</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-danger btn-sm" id="adminAvaliacaoDeleteConfirmButton">Excluir</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade admin-info-form-modal admin-avaliacao-selector-modal" id="adminAvaliacaoStatsFiltersModal" tabindex="-1" aria-labelledby="adminAvaliacaoStatsFiltersModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content site-modal-content">
+                    <div class="modal-header">
+                        <div>
+                            <div class="small text-secondary">Filtros das estatísticas</div>
+                            <h2 class="h6 mb-0" id="adminAvaliacaoStatsFiltersModalLabel">Selecionar filtros</h2>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="small text-secondary mb-3">Escolha os filtros que serão aplicados na sub-aba atual das estatísticas.</p>
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <div class="admin-avaliacao-stats-filter-group">
+                                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                        <label class="form-label form-label-sm mb-0">Turma</label>
+                                        <span class="small text-secondary">Selecione uma ou mais opções</span>
+                                    </div>
+                                    <input type="search" class="form-control form-control-sm admin-avaliacao-stats-filter-search" id="adminAvaliacaoStatsFilterTurmaSearch" placeholder="Buscar turma..." autocomplete="off">
+                                    <div class="admin-avaliacao-stats-filter-card-wrap">
+                                        <div class="admin-avaliacao-stats-filter-card-grid" id="adminAvaliacaoStatsFilterTurmaList"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="admin-avaliacao-stats-filter-group">
+                                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                        <label class="form-label form-label-sm mb-0">Aluno</label>
+                                        <span class="small text-secondary">Selecione uma ou mais opções</span>
+                                    </div>
+                                    <input type="search" class="form-control form-control-sm admin-avaliacao-stats-filter-search" id="adminAvaliacaoStatsFilterAlunoSearch" placeholder="Buscar aluno..." autocomplete="off">
+                                    <div class="admin-avaliacao-stats-filter-card-wrap">
+                                        <div class="admin-avaliacao-stats-filter-card-grid" id="adminAvaliacaoStatsFilterAlunoList"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="admin-avaliacao-stats-filter-group">
+                                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                        <label class="form-label form-label-sm mb-0">Filtro da sub-aba</label>
+                                        <span class="small text-secondary">Selecione uma ou mais opções</span>
+                                    </div>
+                                    <input type="search" class="form-control form-control-sm admin-avaliacao-stats-filter-search" id="adminAvaliacaoStatsFilterSectionSearch" placeholder="Buscar filtro..." autocomplete="off">
+                                    <div class="admin-avaliacao-stats-filter-card-wrap is-compact">
+                                        <div class="admin-avaliacao-stats-filter-card-grid" id="adminAvaliacaoStatsFilterSectionList"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer justify-content-between">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="adminAvaliacaoStatsFiltersClearBtn">Limpar filtros</button>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-primary btn-sm" id="adminAvaliacaoStatsFiltersApplyBtn">Aplicar filtros</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- Modal Seletor de Habilidades -->
+        <div class="modal fade" id="adminAvaliacaoHabilidadeSelectorModal" tabindex="-1" aria-labelledby="adminAvaliacaoHabilidadeSelectorModalLabel" aria-hidden="true" data-bs-backdrop="static">
+            <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header py-2">
+                        <h6 class="modal-title" id="adminAvaliacaoHabilidadeSelectorModalLabel">Selecionar Habilidades — Questão <span id="adminHabilidadeSelectorQuestaoNum"></span></h6>
+                        <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                    </div>
+                    <div class="modal-body p-2">
+                        <div class="d-flex flex-wrap gap-2 mb-2 align-items-center">
+                            <input type="search" class="form-control form-control-sm flex-grow-1" id="adminHabilidadeSelectorSearch" placeholder="Buscar código ou descrição..." autocomplete="off" style="min-width:180px;">
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Filtro documento">
+                                <button type="button" class="btn btn-outline-secondary active" data-hb-filter="todos">Todos</button>
+                                <button type="button" class="btn btn-outline-secondary" data-hb-filter="BNCC">BNCC</button>
+                                <button type="button" class="btn btn-outline-secondary" data-hb-filter="DCT">DCT</button>
+                                <button type="button" class="btn btn-outline-secondary" data-hb-filter="Matriz">Matriz</button>
+                            </div>
+                        </div>
+                        <div class="small text-secondary mb-2" id="adminHabilidadeSelectorDisciplinaInfo"></div>
+                        <div class="d-none mb-1" id="adminHabilidadeAnoEscolarFilterWrap">
+                            <span class="small text-secondary"><i class="las la-filter me-1"></i>Filtrando pelo <span id="adminHabilidadeAnoEscolarInfo" class="fw-semibold text-body"></span> das turmas da avaliação</span>
+                        </div>
+                        <div class="border rounded bg-white" style="max-height:340px;overflow-y:auto;" id="adminHabilidadeSelectorList">
+                            <div class="text-center text-secondary py-4">Carregando habilidades...</div>
+                        </div>
+                        <div class="mt-2">
+                            <label class="form-label form-label-sm mb-1">Adicionar habilidade personalizada</label>
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control" id="adminHabilidadeSelectorCustomInput" placeholder="Digite e pressione Enter ou clique em Adicionar" maxlength="160">
+                                <button type="button" class="btn btn-outline-primary" id="adminHabilidadeSelectorCustomAddBtn">Adicionar</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer py-2 justify-content-between">
+                        <span class="small text-secondary" id="adminHabilidadeSelectorCount">0 selecionada(s)</span>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="button" class="btn btn-primary btn-sm" id="adminHabilidadeSelectorConfirmBtn">Confirmar seleção</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script type="application/json" id="adminAvaliacoesAlunosData"><?= htmlspecialchars((string) json_encode($alunos, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_NOQUOTES, 'UTF-8'); ?></script>
+<script type="application/json" id="adminAvaliacoesDisciplinasData"><?= htmlspecialchars((string) json_encode($disciplinas, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_NOQUOTES, 'UTF-8'); ?></script>
+<script type="application/json" id="adminAvaliacoesDefaultGabaritoData"><?= htmlspecialchars((string) json_encode($defaultGabaritoPreset, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_NOQUOTES, 'UTF-8'); ?></script>
+<script>
+    window.__useDedicatedAvaliacoesScript = true;
+</script>
+<script src="<?= BASE_URL; ?>/public/assets/vendor/js-aruco2/cv.js?v=<?= filemtime(__DIR__ . '/../../../../public/assets/vendor/js-aruco2/cv.js'); ?>"></script>
+<script src="<?= BASE_URL; ?>/public/assets/vendor/js-aruco2/aruco.js?v=<?= filemtime(__DIR__ . '/../../../../public/assets/vendor/js-aruco2/aruco.js'); ?>"></script>
+<script src="<?= BASE_URL; ?>/public/assets/js/avaliacoes.js?v=<?= filemtime(__DIR__ . '/../../../../public/assets/js/avaliacoes.js'); ?>"></script>

@@ -1,0 +1,1667 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Controle de Refeitório</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/line-awesome@1.3.0/dist/line-awesome/css/line-awesome.min.css">
+<style>
+	/* -------------------------------------------------------
+	   Controle de Refeitório — estilos
+	   ------------------------------------------------------- */
+	.institutional-page-root {
+		background: transparent;
+		color: #212529;
+		font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+		margin: 0;
+		padding: 0;
+		height: 100vh;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+		max-width: 100%;
+		box-sizing: border-box;
+	}
+
+	.ref-wrap {
+		flex: 1 1 auto;
+		min-height: 0;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+		width: 100%;
+		max-width: 100%;
+		margin: 0;
+		padding: .75rem .75rem;
+		box-sizing: border-box;
+	}
+
+	.ref-wrap > .tab-content {
+		flex: 1 1 auto;
+		min-height: 0;
+		overflow-y: auto;
+		overflow-x: hidden;
+	}
+
+	.top-status {
+		position: fixed;
+		top: 12px;
+		left: 50%;
+		transform: translateX(-50%);
+		z-index: 2000;
+		min-width: 280px;
+		max-width: 92vw;
+		border-radius: .5rem;
+		padding: .5rem .85rem;
+		box-shadow: 0 8px 20px rgba(0,0,0,.15);
+		font-size: .9rem;
+		font-weight: 500;
+	}
+
+	.top-status.is-success { background:#d1e7dd; color:#0f5132; border:1px solid #badbcc; }
+	.top-status.is-error   { background:#f8d7da; color:#842029; border:1px solid #f5c2c7; }
+
+	html, body { overflow-x: hidden; max-width: 100%; }
+
+	/* --- scanner --- */
+	.scanner-card {
+		max-width: 100%;
+	}
+
+	#scannerVideo {
+		width: 100%;
+		border-radius: .75rem;
+		background: #000;
+		display: none;
+		max-height: 320px;
+		object-fit: cover;
+	}
+
+	#scannerCanvas { display: none; }
+
+	.scan-overlay {
+		position: relative;
+	}
+
+	.scan-overlay::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		border-radius: .75rem;
+		box-shadow: inset 0 0 0 3px rgba(192,57,43,.6);
+		pointer-events: none;
+	}
+
+	.scan-scanning::after {
+		animation: scanPulse 1s ease-in-out infinite;
+	}
+
+	@keyframes scanPulse {
+		0%,100% { box-shadow: inset 0 0 0 3px rgba(192,57,43,.6); }
+		50%      { box-shadow: inset 0 0 0 4px rgba(192,57,43,1); }
+	}
+
+	/* --- resultado do scan --- */
+	.result-card {
+		border-radius: 1rem;
+		border: none;
+		box-shadow: 0 6px 20px rgba(0,0,0,.09);
+	}
+
+	.result-card.is-ok {
+		border-left: 5px solid #198754;
+	}
+
+	.result-card.is-blocked {
+		border-left: 5px solid #c0392b;
+	}
+
+	.result-card.is-waiting {
+		border-left: 5px solid #f59e0b;
+	}
+
+	.result-name {
+		font-size: 1.35rem;
+		font-weight: 700;
+	}
+
+	/* --- QR codes --- */
+	.qr-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+		gap: .75rem;
+	}
+
+	.qr-card {
+		border: 1px solid #dee2e6;
+		border-radius: .75rem;
+		padding: .6rem;
+		text-align: center;
+		background: #fff;
+		break-inside: avoid;
+	}
+
+	.qr-card .qr-img-wrap { margin: 0 auto .4rem; width: 120px; height: 120px; }
+	.qr-card .qr-nome     { font-size: .72rem; font-weight: 600; line-height: 1.2; word-break: break-word; }
+	.qr-card .qr-turma    { font-size: .66rem; color: #6c757d; }
+
+	@media print {
+		.ref-nav-tabs,
+		.ref-toolbar,
+		.no-print { display: none !important; }
+
+		html, body { height: auto !important; overflow: visible !important; }
+
+		.institutional-page-root {
+			height: auto !important;
+			overflow: visible !important;
+		}
+
+		.ref-wrap {
+			overflow: visible !important;
+			height: auto !important;
+			width: 100% !important;
+			max-width: 100% !important;
+			padding: 0 !important;
+		}
+
+		.ref-wrap > .tab-content {
+			overflow: visible !important;
+			height: auto !important;
+		}
+
+		/* Garante que apenas a aba de QR codes seja impressa */
+		.tab-pane { display: none !important; }
+		#tabQrCodes { display: block !important; }
+
+		.qr-grid { grid-template-columns: repeat(4, 1fr) !important; gap: .4rem !important; }
+	}
+
+	/* --- tipos de refeição --- */
+	.tipo-badge {
+		display: inline-block;
+		width: 14px; height: 14px;
+		border-radius: 50%;
+		vertical-align: middle;
+		margin-right: 6px;
+	}
+
+	/* --- dashboard --- */
+	.dash-stat-card {
+		border-radius: 1rem;
+		border: none;
+		box-shadow: 0 4px 14px rgba(0,0,0,.08);
+		padding: 1rem 1.25rem;
+		color: #fff;
+		display: flex;
+		align-items: center;
+		gap: .75rem;
+	}
+
+	.dash-stat-card .stat-icon  { font-size: 2rem; opacity: .85; }
+	.dash-stat-card .stat-total { font-size: 2rem; font-weight: 800; line-height: 1; }
+	.dash-stat-card .stat-label { font-size: .78rem; opacity: .88; margin-top: .15rem; }
+
+	.table-scroll-only {
+		width: 100%;
+		max-height: 380px;
+		overflow-y: auto;
+		overflow-x: hidden;
+	}
+
+	.table-scroll-only thead th {
+		position: sticky;
+		top: 0;
+		z-index: 2;
+		background: #fff;
+	}
+
+	.table td, .table th { vertical-align: middle; }
+	.muted-empty { text-align: center; color: #6c757d; padding: 1rem; }
+
+	/* ================================================================
+	   MOBILE — otimizações responsivas
+	   ================================================================ */
+
+	/* Elementos exclusivos câmera mobile — sempre ocultos no desktop */
+	.qr-target-frame,
+	.mobile-cam-topbar { display: none; }
+
+	.mobile-scan-result-panel {
+		display: none;
+		transition: transform .22s cubic-bezier(.4, 0, .2, 1);
+	}
+
+	@media (max-width: 767.98px) {
+
+		/* Wrap com padding reduzido */
+		.ref-wrap { padding: .4rem .35rem; }
+
+		/* Nav-tabs: scroll horizontal compacto */
+		#refTabs {
+			display: none;  /* no mobile só há a aba de Controle de Entrada */
+		}
+
+		/* Tab panes: forcêr somente tabEntrada visível */
+		#tabQrCodes,
+		#tabTipos,
+		#tabDash  { display: none !important; }
+		#tabEntrada { display: block !important; opacity: 1 !important; }
+
+		/* Tab 1 — empilha verticalmente */
+		#tabEntrada .col-lg-5,
+		#tabEntrada .col-lg-7        { flex: 0 0 100%; max-width: 100%; }
+		.scanner-card                { max-width: 100%; }
+		#scannerVideo                { max-height: 58vw; }
+
+		/* Botões grandes e verticais */
+		#btnIniciarCamera,
+		#btnPararCamera {
+			min-height: 52px;
+			font-size: 1.05rem;
+			width: 100%;
+			flex: none !important;
+		}
+		#btnLiberar,
+		#btnCancelarScan             { min-height: 50px; font-size: .97rem; }
+
+		/* ——— Câmera em tela cheia ——— */
+		body.mobile-cam-active #scanOverlayWrap {
+			position: fixed;
+			inset: 0;
+			z-index: 1060;
+			background: #000;
+			border-radius: 0;
+			overflow: hidden;
+		}
+		body.mobile-cam-active #scannerVideo {
+			position: absolute;
+			inset: 0;
+			width: 100%;
+			height: 100%;
+			max-height: none;
+			border-radius: 0;
+			object-fit: cover;
+			display: block !important;
+		}
+		/* Desativa animação de borda padrão no fullscreen */
+		body.mobile-cam-active #scanOverlayWrap::after { display: none !important; }
+
+		/* ——— Mira de leitura QR ——— */
+		body.mobile-cam-active .qr-target-frame {
+			display: block;
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -60%);
+			width: min(64vw, 240px);
+			height: min(64vw, 240px);
+			pointer-events: none;
+			z-index: 3;
+			border: 1.5px solid rgba(255,255,255,.3);
+			border-radius: .75rem;
+			box-shadow: 0 0 0 200vmax rgba(0,0,0,.42);
+			animation: mobileMiraPulse 1.3s ease-in-out infinite;
+		}
+		@keyframes mobileMiraPulse {
+			0%,100% { box-shadow: 0 0 0 200vmax rgba(0,0,0,.42); border-color: rgba(255,255,255,.3); }
+			50%      { box-shadow: 0 0 0 200vmax rgba(0,0,0,.22); border-color: rgba(255,255,255,.85); }
+		}
+		/* Cantos da mira */
+		body.mobile-cam-active .qr-target-frame::before,
+		body.mobile-cam-active .qr-target-frame::after {
+			content: '';
+			position: absolute;
+			width: 22px; height: 22px;
+			border-color: #ff6b6b;
+			border-style: solid;
+		}
+		body.mobile-cam-active .qr-target-frame::before {
+			top: -2px; left: -2px;
+			border-width: 3px 0 0 3px;
+			border-radius: .55rem 0 0 0;
+		}
+		body.mobile-cam-active .qr-target-frame::after {
+			bottom: -2px; right: -2px;
+			border-width: 0 3px 3px 0;
+			border-radius: 0 0 .55rem 0;
+		}
+		body.mobile-cam-active .qr-c-tr {
+			position: absolute; top: -2px; right: -2px;
+			width: 22px; height: 22px;
+			border: solid #ff6b6b;
+			border-width: 3px 3px 0 0;
+			border-radius: 0 .55rem 0 0;
+		}
+		body.mobile-cam-active .qr-c-bl {
+			position: absolute; bottom: -2px; left: -2px;
+			width: 22px; height: 22px;
+			border: solid #ff6b6b;
+			border-width: 0 0 3px 3px;
+			border-radius: 0 0 0 .55rem;
+		}
+
+		/* ——— Barra superior da câmera (refeição + botão fechar) ——— */
+		body.mobile-cam-active .mobile-cam-topbar {
+			display: flex;
+			position: absolute;
+			top: 0; left: 0; right: 0;
+			z-index: 5;
+			padding: calc(.8rem + env(safe-area-inset-top, 0px)) .85rem .8rem;
+			align-items: center;
+			gap: .6rem;
+			background: linear-gradient(to bottom, rgba(0,0,0,.68), transparent);
+		}
+		.mobile-cam-tipo-nome {
+			flex: 1;
+			color: #fff;
+			font-weight: 600;
+			font-size: .95rem;
+			text-shadow: 0 1px 3px rgba(0,0,0,.5);
+			overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+		}
+		.btn-cam-fechar {
+			background: rgba(255,255,255,.18);
+			border: 1.5px solid rgba(255,255,255,.42);
+			color: #fff;
+			border-radius: .5rem;
+			padding: .38rem .72rem;
+			font-size: 1.2rem;
+			line-height: 1;
+			-webkit-backdrop-filter: blur(6px);
+			backdrop-filter: blur(6px);
+			cursor: pointer;
+		}
+
+		/* ——— Painel de resultado sobre a câmera ——— */
+		body.mobile-cam-active .mobile-scan-result-panel {
+			display: flex;
+			position: absolute;
+			bottom: 0; left: 0; right: 0;
+			z-index: 5;
+			flex-direction: column;
+			gap: .55rem;
+			padding: 2rem 1.1rem calc(1.6rem + env(safe-area-inset-bottom, 0px));
+			background: linear-gradient(to top, rgba(0,0,0,.9) 65%, transparent);
+		}
+		.mobile-scan-result-panel.is-hidden { transform: translateY(110%); }
+		.msr-nome  { color: #fff; font-size: 1.3rem; font-weight: 800; line-height: 1.2; }
+		.msr-turma { color: rgba(255,255,255,.7); font-size: .87rem; }
+		.msr-status-bar {
+			display: flex; align-items: center; gap: .5rem;
+			border-radius: .6rem; padding: .65rem .9rem;
+			font-size: .97rem; font-weight: 700;
+		}
+		.msr-status-bar.is-ok      { background: rgba(25,135,84,.92);  color: #fff; }
+		.msr-status-bar.is-blocked { background: rgba(192,57,43,.92);  color: #fff; }
+		.msr-actions { display: flex; gap: .55rem; }
+		.msr-actions .btn {
+			flex: 1 1 0;
+			min-height: 54px;
+			font-size: 1rem;
+			font-weight: 600;
+			border-radius: .75rem;
+		}
+
+	} /* /mobile */
+
+	/* ================================================================
+	   Fullscreen API — overlay toma a tela real (mesmo dentro de iframe)
+	   ================================================================ */
+	#scanOverlayWrap:fullscreen,
+	#scanOverlayWrap:-webkit-full-screen {
+		background: #000 !important;
+		border-radius: 0 !important;
+		overflow: hidden !important;
+	}
+	#scanOverlayWrap:fullscreen #scannerVideo,
+	#scanOverlayWrap:-webkit-full-screen #scannerVideo {
+		position: absolute !important;
+		inset: 0 !important;
+		width: 100% !important;
+		height: 100% !important;
+		max-height: none !important;
+		border-radius: 0 !important;
+		object-fit: cover !important;
+		display: block !important;
+	}
+	#scanOverlayWrap:fullscreen::after,
+	#scanOverlayWrap:-webkit-full-screen::after { display: none !important; }
+
+	/* Mira */
+	#scanOverlayWrap:fullscreen .qr-target-frame,
+	#scanOverlayWrap:-webkit-full-screen .qr-target-frame {
+		display: block;
+		position: absolute;
+		top: 50%; left: 50%;
+		transform: translate(-50%, -60%);
+		width: min(64vw, 240px);
+		height: min(64vw, 240px);
+		pointer-events: none;
+		z-index: 3;
+		border: 1.5px solid rgba(255,255,255,.3);
+		border-radius: .75rem;
+		box-shadow: 0 0 0 200vmax rgba(0,0,0,.42);
+		animation: mobileMiraPulse 1.3s ease-in-out infinite;
+	}
+	#scanOverlayWrap:fullscreen .qr-target-frame::before,
+	#scanOverlayWrap:-webkit-full-screen .qr-target-frame::before {
+		content: '';
+		position: absolute;
+		width: 22px; height: 22px;
+		border-color: #ff6b6b; border-style: solid;
+		top: -2px; left: -2px;
+		border-width: 3px 0 0 3px;
+		border-radius: .55rem 0 0 0;
+	}
+	#scanOverlayWrap:fullscreen .qr-target-frame::after,
+	#scanOverlayWrap:-webkit-full-screen .qr-target-frame::after {
+		content: '';
+		display: block !important;
+		position: absolute;
+		width: 22px; height: 22px;
+		border-color: #ff6b6b; border-style: solid;
+		bottom: -2px; right: -2px;
+		border-width: 0 3px 3px 0;
+		border-radius: 0 0 .55rem 0;
+	}
+	#scanOverlayWrap:fullscreen .qr-c-tr,
+	#scanOverlayWrap:-webkit-full-screen .qr-c-tr {
+		display: block; position: absolute; top: -2px; right: -2px;
+		width: 22px; height: 22px; border: solid #ff6b6b;
+		border-width: 3px 3px 0 0; border-radius: 0 .55rem 0 0;
+	}
+	#scanOverlayWrap:fullscreen .qr-c-bl,
+	#scanOverlayWrap:-webkit-full-screen .qr-c-bl {
+		display: block; position: absolute; bottom: -2px; left: -2px;
+		width: 22px; height: 22px; border: solid #ff6b6b;
+		border-width: 0 0 3px 3px; border-radius: 0 0 0 .55rem;
+	}
+
+	/* Topbar */
+	#scanOverlayWrap:fullscreen .mobile-cam-topbar,
+	#scanOverlayWrap:-webkit-full-screen .mobile-cam-topbar {
+		display: flex;
+		position: absolute; top: 0; left: 0; right: 0;
+		z-index: 5;
+		padding: calc(.8rem + env(safe-area-inset-top, 0px)) .85rem .8rem;
+		align-items: center; gap: .6rem;
+		background: linear-gradient(to bottom, rgba(0,0,0,.68), transparent);
+	}
+
+	/* Painel resultado */
+	#scanOverlayWrap:fullscreen .mobile-scan-result-panel:not(.is-hidden),
+	#scanOverlayWrap:-webkit-full-screen .mobile-scan-result-panel:not(.is-hidden) {
+		display: flex;
+		position: absolute; bottom: 0; left: 0; right: 0;
+		z-index: 5;
+		flex-direction: column; gap: .55rem;
+		padding: 2rem 1.1rem calc(1.6rem + env(safe-area-inset-bottom, 0px));
+		background: linear-gradient(to top, rgba(0,0,0,.9) 65%, transparent);
+	}
+</style>
+</head>
+<body>
+<!-- ==================== ROOT ==================== -->
+<div id="statusMensagem" class="top-status d-none" role="alert" aria-live="polite"></div>
+
+<div class="institutional-page-root">
+<div class="ref-wrap">
+
+	<ul class="nav nav-tabs mb-3 ref-nav-tabs no-print" id="refTabs" role="tablist">
+		<li class="nav-item" role="presentation">
+			<button class="nav-link active" id="tab-entrada-btn" data-bs-toggle="tab" data-bs-target="#tabEntrada" type="button" role="tab">
+				<i class="las la-qrcode me-1"></i>Controle de Entrada
+			</button>
+		</li>
+		<li class="nav-item" role="presentation">
+			<button class="nav-link" id="tab-qr-btn" data-bs-toggle="tab" data-bs-target="#tabQrCodes" type="button" role="tab">
+				<i class="las la-id-card me-1"></i>QR Codes
+			</button>
+		</li>
+		<li class="nav-item" role="presentation">
+			<button class="nav-link" id="tab-tipos-btn" data-bs-toggle="tab" data-bs-target="#tabTipos" type="button" role="tab">
+				<i class="las la-concierge-bell me-1"></i>Tipos de Refeição
+			</button>
+		</li>
+		<li class="nav-item" role="presentation">
+			<button class="nav-link" id="tab-dash-btn" data-bs-toggle="tab" data-bs-target="#tabDash" type="button" role="tab">
+				<i class="las la-chart-bar me-1"></i>Dashboard &amp; Relatórios
+			</button>
+		</li>
+	</ul>
+
+	<div class="tab-content" id="refTabsContent">
+
+		<!-- ========================================
+		     ABA 1 — Controle de Entrada
+		     ======================================== -->
+		<div class="tab-pane fade show active" id="tabEntrada" role="tabpanel">
+			<div class="row g-3">
+
+				<!-- Seleção de refeição + scanner -->
+				<div class="col-lg-5">
+					<div class="card scanner-card border-0 shadow-sm h-100">
+						<div class="card-body d-flex flex-column gap-3">
+
+							<div>
+								<label class="form-label fw-semibold" for="selecionarTipo">Refeição em andamento</label>
+								<select id="selecionarTipo" class="form-select form-select-lg">
+									<option value="">Carregando…</option>
+								</select>
+							</div>
+
+							<div class="scan-overlay" id="scanOverlayWrap">
+								<video id="scannerVideo" autoplay playsinline muted></video>
+								<canvas id="scannerCanvas"></canvas>
+								<!-- Mobile: mira + topbar + painel de resultado sobre câmera -->
+								<div class="qr-target-frame no-print" id="qrTargetFrame">
+									<span class="qr-c qr-c-tr"></span>
+									<span class="qr-c qr-c-bl"></span>
+								</div>
+								<div class="mobile-cam-topbar no-print">
+									<span class="mobile-cam-tipo-nome" id="mobileCamTipoNome"></span>
+									<button class="btn-cam-fechar" id="btnFecharCameraMobile" type="button" aria-label="Fechar câmera">
+										<i class="las la-times"></i>
+									</button>
+								</div>
+								<div id="mobileScanResult" class="mobile-scan-result-panel is-hidden no-print">
+									<div class="msr-nome" id="mobileResNome">—</div>
+									<div class="msr-turma" id="mobileResTurma">—</div>
+									<div class="msr-status-bar" id="mobileResStatusBar"></div>
+									<div class="msr-actions">
+										<button id="mobileBtnLiberar" class="btn btn-success" type="button" disabled>
+											<i class="las la-check-circle me-1"></i>Liberar entrada
+										</button>
+										<button id="mobileBtnCancelar" class="btn btn-outline-light" type="button">
+											<i class="las la-times me-1"></i>Cancelar
+										</button>
+									</div>
+								</div>
+							</div>
+
+							<div class="d-flex gap-2">
+								<button id="btnIniciarCamera" class="btn btn-danger flex-fill" type="button">
+									<i class="las la-camera me-1"></i>Iniciar câmera
+								</button>
+								<button id="btnPararCamera" class="btn btn-outline-secondary flex-fill d-none" type="button">
+									<i class="las la-stop-circle me-1"></i>Parar
+								</button>
+							</div>
+
+						<!-- Busca por nome ou turma -->
+						<div class="position-relative">
+							<div class="input-group">
+								<input type="text" id="inputBuscaAluno" class="form-control"
+									placeholder="Buscar por nome ou turma…"
+									maxlength="80" autocomplete="off" aria-label="Buscar aluno">
+								<button class="btn btn-outline-danger" id="btnBuscarAlunoManual" type="button" aria-label="Buscar">
+									<i class="las la-search"></i>
+								</button>
+							</div>
+							<div id="buscaResultados"
+								class="position-absolute w-100 bg-white border rounded shadow d-none"
+								style="top:100%; z-index:300; max-height:280px; overflow-y:auto;">
+							</div>
+						</div>
+
+					</div><!-- /card-body -->
+				</div><!-- /scanner-card -->
+			</div><!-- /col-lg-5 -->
+
+			<!-- Resultado do scan -->
+			<div class="col-lg-7 d-flex flex-column gap-3">
+
+					<div id="resultadoScan" class="card result-card is-waiting d-none">
+						<div class="card-body">
+							<div class="result-name mb-1" id="resNome">—</div>
+							<div class="text-muted mb-2" id="resTurma">—</div>
+							<div class="mb-3" id="resStatus">—</div>
+							<div class="d-flex gap-2 flex-wrap" id="resAcoes">
+								<button id="btnLiberar" class="btn btn-success" type="button" disabled>
+									<i class="las la-check-circle me-1"></i>Liberar entrada
+								</button>
+								<button id="btnCancelarScan" class="btn btn-outline-secondary" type="button">
+									<i class="las la-times me-1"></i>Cancelar
+								</button>
+							</div>
+						</div>
+					</div>
+
+					<!-- Últimas entradas do dia -->
+					<div class="card border-0 shadow-sm flex-fill">
+						<div class="card-header bg-white border-0 fw-semibold d-flex align-items-center justify-content-between">
+							<span><i class="las la-history me-1 text-muted"></i>Últimas entradas hoje</span>
+							<span id="totalHojeContador" class="badge bg-danger">0</span>
+						</div>
+						<div class="table-scroll-only">
+							<table class="table table-sm mb-0">
+								<thead>
+									<tr>
+										<th>Horário</th>
+										<th>Aluno</th>
+										<th>Turma</th>
+										<th>Refeição</th>
+									</tr>
+								</thead>
+								<tbody id="ultimasEntradasBody">
+									<tr><td colspan="4" class="muted-empty">Nenhuma entrada registrada ainda hoje.</td></tr>
+								</tbody>
+							</table>
+						</div>
+					</div>
+
+				</div>
+			</div>
+		</div>
+
+		<!-- ========================================
+		     ABA 2 — QR Codes
+		     ======================================== -->
+		<div class="tab-pane fade" id="tabQrCodes" role="tabpanel">
+			<div class="d-flex align-items-center gap-2 flex-wrap mb-3 no-print">
+				<label class="form-label mb-0 fw-semibold" for="filtroTurmaQr">Turma:</label>
+				<select id="filtroTurmaQr" class="form-select form-select-sm" style="max-width:220px">
+					<option value="">Todas as turmas</option>
+				</select>
+				<button id="btnGerarQr" class="btn btn-danger btn-sm" type="button">
+					<i class="las la-sync me-1"></i>Gerar QR Codes
+				</button>
+				<button id="btnImprimirQr" class="btn btn-outline-secondary btn-sm" type="button">
+					<i class="las la-print me-1"></i>Imprimir
+				</button>
+				<span class="text-muted small ms-auto" id="qrContador"></span>
+			</div>
+			<div id="qrGrid" class="qr-grid">
+				<p class="text-muted small">Selecione uma turma ou clique em "Gerar QR Codes" para exibir todos os alunos.</p>
+			</div>
+		</div>
+
+		<!-- ========================================
+		     ABA 3 — Tipos de Refeição
+		     ======================================== -->
+		<div class="tab-pane fade" id="tabTipos" role="tabpanel">
+			<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3 no-print">
+				<span class="fw-semibold">Tipos de Refeição Cadastrados</span>
+				<button id="btnNovoTipo" class="btn btn-danger btn-sm" type="button">
+					<i class="las la-plus me-1"></i>Novo tipo
+				</button>
+			</div>
+			<div class="table-scroll-only border rounded bg-white">
+				<table class="table table-sm mb-0">
+					<thead>
+						<tr>
+							<th style="width:34px"></th>
+							<th>Nome</th>
+							<th>Descrição</th>
+							<th>Início</th>
+							<th>Fim</th>
+							<th>Status</th>
+							<th class="text-end">Ações</th>
+						</tr>
+					</thead>
+					<tbody id="tiposBody">
+						<tr><td colspan="7" class="muted-empty">Carregando…</td></tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+
+		<!-- ========================================
+		     ABA 4 — Dashboard & Relatórios
+		     ======================================== -->
+		<div class="tab-pane fade" id="tabDash" role="tabpanel">
+
+			<!-- Resumo hoje -->
+			<div id="dashResumoHoje" class="row g-3 mb-4">
+				<!-- preenchido via JS -->
+			</div>
+
+			<!-- Filtros relatório -->
+			<div class="card border-0 shadow-sm mb-3 no-print">
+				<div class="card-body">
+					<div class="row g-2 align-items-end">
+						<div class="col-sm-auto">
+							<label class="form-label form-label-sm mb-1">Período</label>
+							<div class="d-flex gap-2">
+								<input type="date" id="relDataInicio" class="form-control form-control-sm" style="max-width:150px">
+								<span class="align-self-center text-muted">até</span>
+								<input type="date" id="relDataFim" class="form-control form-control-sm" style="max-width:150px">
+							</div>
+						</div>
+						<div class="col-sm-auto">
+							<label class="form-label form-label-sm mb-1">Refeição</label>
+							<select id="relTipo" class="form-select form-select-sm" style="max-width:180px">
+								<option value="">Todas</option>
+							</select>
+						</div>
+						<div class="col-sm-auto">
+							<label class="form-label form-label-sm mb-1">Turma</label>
+							<select id="relTurma" class="form-select form-select-sm" style="max-width:180px">
+								<option value="">Todas</option>
+							</select>
+						</div>
+						<div class="col-sm-auto">
+							<button id="btnRelatorioFiltrar" class="btn btn-danger btn-sm" type="button">
+								<i class="las la-filter me-1"></i>Filtrar
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Totais por tipo no período -->
+			<div id="relTotaisWrap" class="row g-2 mb-3"></div>
+
+			<!-- Tabela de registros -->
+			<div class="card border-0 shadow-sm">
+				<div class="card-header bg-white border-0 fw-semibold d-flex align-items-center justify-content-between">
+					<span>Registros</span>
+					<span id="relTotal" class="badge bg-danger">0</span>
+				</div>
+				<div class="table-scroll-only">
+					<table class="table table-sm mb-0">
+						<thead>
+							<tr>
+								<th>Data</th>
+								<th>Horário</th>
+								<th>Aluno</th>
+								<th>Matrícula</th>
+								<th>Turma</th>
+								<th>Refeição</th>
+							</tr>
+						</thead>
+						<tbody id="relBody">
+							<tr><td colspan="6" class="muted-empty">Use o filtro para carregar os registros.</td></tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+
+		</div><!-- /tabDash -->
+	</div><!-- /tab-content -->
+</div><!-- /ref-wrap -->
+</div><!-- /institutional-page-root -->
+
+<!-- =========================================================
+     MODAL — Novo / Editar tipo de refeição
+     ========================================================= -->
+<div class="modal fade" id="modalTipo" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content site-modal-content">
+			<div class="modal-header">
+				<h2 class="modal-title fs-5" id="modalTipoTitulo">Tipo de Refeição</h2>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+			</div>
+			<form id="formTipo" novalidate>
+				<div class="modal-body">
+					<input type="hidden" id="tipoId" value="0">
+					<div class="row g-3">
+						<div class="col-12">
+							<label class="form-label" for="tipoNome">Nome <span class="text-danger">*</span></label>
+							<input type="text" id="tipoNome" class="form-control" maxlength="80" required placeholder="Ex.: Almoço">
+						</div>
+						<div class="col-12">
+							<label class="form-label" for="tipoDescricao">Descrição</label>
+							<input type="text" id="tipoDescricao" class="form-control" maxlength="255" placeholder="Opcional">
+						</div>
+						<div class="col-6">
+							<label class="form-label" for="tipoHorIni">Horário de início</label>
+							<input type="time" id="tipoHorIni" class="form-control">
+						</div>
+						<div class="col-6">
+							<label class="form-label" for="tipoHorFim">Horário de fim</label>
+							<input type="time" id="tipoHorFim" class="form-control">
+						</div>
+						<div class="col-6">
+							<label class="form-label" for="tipoCor">Cor</label>
+							<input type="color" id="tipoCor" class="form-control form-control-color" value="#4a90d9">
+						</div>
+						<div class="col-6 d-flex align-items-end pb-1">
+							<div class="form-check">
+								<input class="form-check-input" type="checkbox" id="tipoAtivo" checked>
+								<label class="form-check-label" for="tipoAtivo">Ativo</label>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+					<button type="submit" class="btn btn-danger btn-sm" id="btnSalvarTipo">
+						<i class="las la-save me-1"></i>Salvar
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<!-- jsQR (leitura de QR code) -->
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<!-- QRCode.js (geração de QR code) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+/* ============================================================
+   Controle de Refeitório — JavaScript
+   ============================================================ */
+(function () {
+	'use strict';
+
+	/* --------------------------------------------------------
+	   Estado
+	   -------------------------------------------------------- */
+	var state = {
+		tipos:        [],
+		turmas:       [],
+		resumoHoje:   [],
+		scanAtivo:    false,
+		stream:       null,
+		alunoAtual:   null,
+		tipoAtualId:  0,
+		animFrameId:  null,
+	};
+
+	/* --------------------------------------------------------
+	   Utilitários
+	   -------------------------------------------------------- */
+	function esc(s) {
+		return String(s ?? '')
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;');
+	}
+
+	function formatHora(h) {
+		if (!h) return '';
+		return String(h).substring(0, 5);
+	}
+
+	function formatData(d) {
+		if (!d) return '';
+		var parts = String(d).split('-');
+		if (parts.length === 3) return parts[2] + '/' + parts[1] + '/' + parts[0];
+		return d;
+	}
+
+	function showStatus(msg, tipo) {
+		var el = document.getElementById('statusMensagem');
+		el.textContent = msg;
+		el.className = 'top-status is-' + tipo;
+		clearTimeout(el._t);
+		el._t = setTimeout(function () { el.className = 'top-status d-none'; }, 3500);
+	}
+
+	function post(url, data, cb) {
+		var fd = new FormData();
+		Object.keys(data).forEach(function (k) { fd.append(k, data[k] ?? ''); });
+		fetch(url, { method: 'POST', body: fd })
+			.then(function (r) { return r.json(); })
+			.then(cb)
+			.catch(function (e) { showStatus('Erro de comunicação: ' + e.message, 'error'); });
+	}
+
+	function get(url, cb) {
+		fetch(url)
+			.then(function (r) { return r.json(); })
+			.then(cb)
+			.catch(function (e) { showStatus('Erro de comunicação: ' + e.message, 'error'); });
+	}
+
+	/* --------------------------------------------------------
+	   Polling em tempo real — atualiza a cada 5 segundos
+	   -------------------------------------------------------- */
+	var _pollTimer = null;
+
+	function startPolling() {
+		if (_pollTimer) return;
+		_pollTimer = setInterval(pollServidor, 5000);
+	}
+
+	function stopPolling() {
+		if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+	}
+
+	function pollServidor() {
+		get('/institucional/refeitorio/poll', function (res) {
+			if (!res.ok) return;
+			applyPollData(res);
+		});
+	}
+
+	function applyPollData(res) {
+		var resumo  = res.resumo_hoje      || [];
+		var ultimas = res.ultimas_entradas || [];
+
+		// Atualiza cards do dashboard
+		state.resumoHoje = resumo;
+		renderDashResumoHoje();
+
+		// Atualiza contador do badge
+		document.getElementById('totalHojeContador').textContent = ultimas.length;
+
+		// Atualiza tabela de últimas entradas
+		var tbody = document.getElementById('ultimasEntradasBody');
+		if (!ultimas.length) {
+			tbody.innerHTML = '<tr><td colspan="4" class="muted-empty">Nenhuma entrada registrada ainda hoje.</td></tr>';
+			return;
+		}
+		var html = '';
+		ultimas.forEach(function (r) {
+			html += '<tr>' +
+				'<td>' + esc(formatHora(r.horario)) + '</td>' +
+				'<td class="fw-semibold">' + esc(r.aluno_nome) + '</td>' +
+				'<td>' + esc(r.turma || '\u2014') + '</td>' +
+				'<td>' + esc(r.tipo_nome) + '</td>' +
+				'</tr>';
+		});
+		tbody.innerHTML = html;
+	}
+
+	/* --------------------------------------------------------
+	   Inicialização — carrega dados base
+	   -------------------------------------------------------- */
+	function init() {
+		// datas padrão do relatório
+		var today = new Date().toISOString().slice(0, 10);
+		document.getElementById('relDataInicio').value = today;
+		document.getElementById('relDataFim').value   = today;
+
+		get('/institucional/refeitorio/dados', function (res) {
+			if (!res.ok) { showStatus(res.message || 'Erro ao carregar dados.', 'error'); return; }
+
+			state.tipos      = res.tipos      || [];
+			state.turmas     = res.turmas     || [];
+			state.resumoHoje = res.resumo     || [];
+
+			preencherSelectTipo();
+			preencherSelectsTurma();
+			renderTiposTabela();
+			renderDashResumoHoje();
+
+			// Carrega entradas de hoje imediatamente e inicia polling
+			pollServidor();
+			startPolling();
+		});
+
+		bindEvents();
+		window.addEventListener('beforeunload', stopPolling);
+	}
+
+	/* --------------------------------------------------------
+	   Selects
+	   -------------------------------------------------------- */
+	function preencherSelectTipo() {
+		var sel   = document.getElementById('selecionarTipo');
+		var relT  = document.getElementById('relTipo');
+		var html  = '<option value="">— Selecione uma refeição —</option>';
+		var rhtml = '<option value="">Todas</option>';
+
+		state.tipos.forEach(function (t) {
+			if (t.ativo == 1) {
+				html  += '<option value="' + esc(t.id) + '">' + esc(t.nome) + '</option>';
+			}
+			rhtml += '<option value="' + esc(t.id) + '">' + esc(t.nome) + '</option>';
+		});
+
+		sel.innerHTML  = html;
+		relT.innerHTML = rhtml;
+	}
+
+	function preencherSelectsTurma() {
+		['filtroTurmaQr', 'relTurma'].forEach(function (id) {
+			var sel = document.getElementById(id);
+			var html = '<option value="">Todas</option>';
+			state.turmas.forEach(function (t) {
+				html += '<option value="' + esc(t.id) + '">' + esc(t.nome) + '</option>';
+			});
+			sel.innerHTML = html;
+		});
+	}
+
+	/* --------------------------------------------------------
+	   Tabela de tipos de refeição
+	   -------------------------------------------------------- */
+	function renderTiposTabela() {
+		var tbody = document.getElementById('tiposBody');
+		if (!state.tipos.length) {
+			tbody.innerHTML = '<tr><td colspan="7" class="muted-empty">Nenhum tipo de refeição cadastrado.</td></tr>';
+			return;
+		}
+
+		var html = '';
+		state.tipos.forEach(function (t) {
+			html += '<tr>' +
+				'<td><span class="tipo-badge" style="background:' + esc(t.cor || '#ccc') + '"></span></td>' +
+				'<td class="fw-semibold">' + esc(t.nome) + '</td>' +
+				'<td class="text-muted small">' + esc(t.descricao || '') + '</td>' +
+				'<td>' + (t.horario_ini ? formatHora(t.horario_ini) : '<span class="text-muted">—</span>') + '</td>' +
+				'<td>' + (t.horario_fim ? formatHora(t.horario_fim) : '<span class="text-muted">—</span>') + '</td>' +
+				'<td>' + (t.ativo == 1 ? '<span class="badge bg-success">Ativo</span>' : '<span class="badge bg-secondary">Inativo</span>') + '</td>' +
+				'<td class="text-end">' +
+					'<button class="btn btn-outline-secondary btn-sm me-1" onclick="refEditarTipo(' + t.id + ')"><i class="las la-edit"></i></button>' +
+					'<button class="btn btn-outline-danger btn-sm" onclick="refExcluirTipo(' + t.id + ',\'' + esc(t.nome) + '\')"><i class="las la-trash-alt"></i></button>' +
+				'</td>' +
+			'</tr>';
+		});
+		tbody.innerHTML = html;
+	}
+
+	/* --------------------------------------------------------
+	   Dashboard — resumo hoje
+	   -------------------------------------------------------- */
+	function renderDashResumoHoje() {
+		var wrap = document.getElementById('dashResumoHoje');
+		if (!state.resumoHoje.length) { wrap.innerHTML = ''; return; }
+
+		var html = '';
+		state.resumoHoje.forEach(function (item) {
+			html += '<div class="col-sm-6 col-md-4 col-xl-3">' +
+				'<div class="dash-stat-card" style="background:' + esc(item.cor || '#4a90d9') + '">' +
+					'<div class="stat-icon"><i class="las la-utensils"></i></div>' +
+					'<div>' +
+						'<div class="stat-total">' + Number(item.total || 0) + '</div>' +
+						'<div class="stat-label">' + esc(item.nome) + ' — hoje</div>' +
+					'</div>' +
+				'</div>' +
+			'</div>';
+		});
+		wrap.innerHTML = html;
+	}
+
+	/* --------------------------------------------------------
+	   Scanner de QR code
+	   -------------------------------------------------------- */
+	function iniciarCamera() {
+		var tipoSel = document.getElementById('selecionarTipo');
+		if (!tipoSel.value) {
+			showStatus('Selecione uma refeição antes de usar o scanner.', 'error');
+			tipoSel.focus();
+			return;
+		}
+
+		navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+			.then(function (stream) {
+				state.stream = stream;
+				state.scanAtivo = true;
+
+				var video = document.getElementById('scannerVideo');
+				video.srcObject = stream;
+				video.style.display = 'block';
+				video.play();
+
+				document.getElementById('btnIniciarCamera').classList.add('d-none');
+				document.getElementById('btnPararCamera').classList.remove('d-none');
+				document.getElementById('scanOverlayWrap').classList.add('scan-scanning');
+
+				// Preenche nome da refeição na topbar mobile
+				var _tipoSel = document.getElementById('selecionarTipo');
+				document.getElementById('mobileCamTipoNome').textContent =
+					(_tipoSel.selectedIndex >= 0 && _tipoSel.options[_tipoSel.selectedIndex])
+						? _tipoSel.options[_tipoSel.selectedIndex].text : '';
+
+				// Tenta Fullscreen API (rompe limites do iframe com allowfullscreen)
+				var _overlay = document.getElementById('scanOverlayWrap');
+				var _fsReq = _overlay.requestFullscreen ||
+					_overlay.webkitRequestFullscreen ||
+					_overlay.mozRequestFullScreen ||
+					_overlay.msRequestFullscreen;
+				if (_fsReq) {
+					_fsReq.call(_overlay).catch(function () {
+						// Bloqueado (ex.: iOS <16.4) — fallback: preenche o iframe
+						document.body.classList.add('mobile-cam-active');
+					});
+				} else {
+					document.body.classList.add('mobile-cam-active');
+				}
+
+				video.addEventListener('loadedmetadata', function () {
+					requestAnimationFrame(tickScanner);
+				});
+			})
+			.catch(function (err) {
+				showStatus('Não foi possível acessar a câmera: ' + err.message, 'error');
+			});
+	}
+
+	function pararCamera() {
+		state.scanAtivo = false;
+		if (state.animFrameId) { cancelAnimationFrame(state.animFrameId); state.animFrameId = null; }
+		if (state.stream) {
+			state.stream.getTracks().forEach(function (t) { t.stop(); });
+			state.stream = null;
+		}
+
+		var video = document.getElementById('scannerVideo');
+		video.srcObject = null;
+		video.style.display = 'none';
+
+		document.getElementById('btnIniciarCamera').classList.remove('d-none');
+		document.getElementById('btnPararCamera').classList.add('d-none');
+		document.getElementById('scanOverlayWrap').classList.remove('scan-scanning');
+
+		// Limpa overlays mobile
+		document.getElementById('mobileScanResult').classList.add('is-hidden');
+		document.body.classList.remove('mobile-cam-active');
+
+		// Sai do fullscreen (se ativo)
+		var _exitFs = document.exitFullscreen ||
+			document.webkitExitFullscreen ||
+			document.mozCancelFullScreen ||
+			document.msExitFullscreen;
+		if (_exitFs && (document.fullscreenElement || document.webkitFullscreenElement)) {
+			_exitFs.call(document).catch(function () {});
+		}
+	}
+
+	var _ultimaMatriculaScaneada = null;
+	var _bloqueioScan = false;
+
+	function tickScanner() {
+		if (!state.scanAtivo) return;
+		state.animFrameId = requestAnimationFrame(tickScanner);
+
+		if (_bloqueioScan) return;
+
+		var video  = document.getElementById('scannerVideo');
+		var canvas = document.getElementById('scannerCanvas');
+
+		if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
+
+		canvas.width  = video.videoWidth;
+		canvas.height = video.videoHeight;
+		var ctx = canvas.getContext('2d');
+		ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+		// Lê apenas a região da mira de QR quando ela estiver visível
+		var frame     = document.getElementById('qrTargetFrame');
+		var frameRect = frame.getBoundingClientRect();
+		var imageData;
+		if (frameRect.width > 10 && frameRect.height > 10) {
+			var wrap     = document.getElementById('scanOverlayWrap');
+			var wrapRect = wrap.getBoundingClientRect();
+			var scaleX   = canvas.width  / (wrapRect.width  || 1);
+			var scaleY   = canvas.height / (wrapRect.height || 1);
+			var cropX    = Math.max(0, Math.round((frameRect.left - wrapRect.left) * scaleX));
+			var cropY    = Math.max(0, Math.round((frameRect.top  - wrapRect.top)  * scaleY));
+			var cropW    = Math.min(canvas.width  - cropX, Math.round(frameRect.width  * scaleX));
+			var cropH    = Math.min(canvas.height - cropY, Math.round(frameRect.height * scaleY));
+			imageData = (cropW > 10 && cropH > 10)
+				? ctx.getImageData(cropX, cropY, cropW, cropH)
+				: ctx.getImageData(0, 0, canvas.width, canvas.height);
+		} else {
+			imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+		}
+
+		var code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+
+		if (code && code.data && code.data !== _ultimaMatriculaScaneada) {
+			_ultimaMatriculaScaneada = code.data;
+			_bloqueioScan = true;
+			buscarAluno(code.data.trim());
+		}
+	}
+
+	/* --------------------------------------------------------
+	   Buscar aluno (por matrícula)
+	   -------------------------------------------------------- */
+	function buscarAluno(matricula) {
+		var tipoId = document.getElementById('selecionarTipo').value;
+		if (!tipoId) {
+			showStatus('Selecione uma refeição antes de escanear.', 'error');
+			_bloqueioScan = false;
+			return;
+		}
+
+		get('/institucional/refeitorio/buscar-aluno?matricula=' + encodeURIComponent(matricula) + '&tipo_id=' + encodeURIComponent(tipoId), function (res) {
+			if (!res.ok) {
+				showStatus(res.message || 'Aluno não encontrado.', 'error');
+				_bloqueioScan = false;
+				return;
+			}
+
+			state.alunoAtual   = res.aluno;
+			state.tipoAtualId  = parseInt(tipoId);
+			exibirResultado(res.aluno, res.ja_consumiu);
+		});
+	}
+
+	function exibirResultado(aluno, jaConsumiu) {
+		var card    = document.getElementById('resultadoScan');
+		var btnLib  = document.getElementById('btnLiberar');
+
+		document.getElementById('resNome').textContent   = aluno.nome;
+		document.getElementById('resTurma').textContent  = aluno.turma || '(sem turma)';
+
+		if (jaConsumiu) {
+			document.getElementById('resStatus').innerHTML =
+				'<span class="badge bg-danger fs-6"><i class="las la-times-circle me-1"></i>Já consumiu esta refeição hoje</span>';
+			btnLib.disabled = true;
+			card.className  = 'card result-card is-blocked';
+		} else {
+			document.getElementById('resStatus').innerHTML =
+				'<span class="badge bg-success fs-6"><i class="las la-check-circle me-1"></i>Liberado — ainda não consumiu</span>';
+			btnLib.disabled = false;
+			card.className  = 'card result-card is-ok';
+		}
+
+		card.classList.remove('d-none');
+
+		// Mobile: atualizar painel de resultado sobre a câmera
+		var _msr     = document.getElementById('mobileScanResult');
+		var _msrBar  = document.getElementById('mobileResStatusBar');
+		var _mBtnLib = document.getElementById('mobileBtnLiberar');
+		document.getElementById('mobileResNome').textContent  = aluno.nome;
+		document.getElementById('mobileResTurma').textContent = aluno.turma || '(sem turma)';
+		if (jaConsumiu) {
+			_msrBar.className = 'msr-status-bar is-blocked';
+			_msrBar.innerHTML = '<i class="las la-times-circle me-2"></i>Já consumiu esta refeição hoje';
+			_mBtnLib.disabled = true;
+		} else {
+			_msrBar.className = 'msr-status-bar is-ok';
+			_msrBar.innerHTML = '<i class="las la-check-circle me-2"></i>Liberado — ainda não consumiu';
+			_mBtnLib.disabled = false;
+		}
+		_msr.classList.remove('is-hidden');
+	}
+
+	function registrarConsumo() {
+		if (!state.alunoAtual || !state.tipoAtualId) return;
+
+		var btnLib = document.getElementById('btnLiberar');
+		btnLib.disabled = true;
+		btnLib.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Registrando…';
+
+		post('/institucional/refeitorio/registrar', {
+			aluno_id: state.alunoAtual.id,
+			tipo_id:  state.tipoAtualId,
+		}, function (res) {
+			btnLib.innerHTML = '<i class="las la-check-circle me-1"></i>Liberar entrada';
+
+			if (!res.ok) {
+				showStatus(res.message || 'Erro ao registrar.', 'error');
+				btnLib.disabled = false;
+				return;
+			}
+
+			showStatus('Entrada de ' + state.alunoAtual.nome + ' registrada com sucesso!', 'success');
+			adicionarUltimaEntrada(state.alunoAtual, res.horario);
+			limparResultado();
+		});
+	}
+
+	function adicionarUltimaEntrada(aluno, horario) {
+		var tbody = document.getElementById('ultimasEntradasBody');
+		var tipoNome = '';
+		state.tipos.forEach(function (t) {
+			if (String(t.id) === String(state.tipoAtualId)) tipoNome = t.nome;
+		});
+
+		var primeiraLinha = tbody.querySelector('.muted-empty');
+		if (primeiraLinha) tbody.innerHTML = '';
+
+		var tr = document.createElement('tr');
+		tr.innerHTML =
+			'<td>' + esc(formatHora(horario)) + '</td>' +
+			'<td class="fw-semibold">' + esc(aluno.nome) + '</td>' +
+			'<td>' + esc(aluno.turma || '—') + '</td>' +
+			'<td>' + esc(tipoNome) + '</td>';
+		tbody.insertBefore(tr, tbody.firstChild);
+
+		var conta = tbody.querySelectorAll('tr').length;
+		document.getElementById('totalHojeContador').textContent = conta;
+	}
+
+	function limparResultado() {
+		document.getElementById('resultadoScan').classList.add('d-none');
+		document.getElementById('mobileScanResult').classList.add('is-hidden');
+		state.alunoAtual  = null;
+		state.tipoAtualId = 0;
+		_ultimaMatriculaScaneada = null;
+		_bloqueioScan = false;
+	}
+
+	/* --------------------------------------------------------
+	   QR Codes — geração
+	   -------------------------------------------------------- */
+	function gerarQrCodes() {
+		var turmaId = document.getElementById('filtroTurmaQr').value;
+		var grid    = document.getElementById('qrGrid');
+		grid.innerHTML = '<p class="text-muted small">Carregando…</p>';
+
+		get('/institucional/refeitorio/qrcodes' + (turmaId ? '?turma_id=' + encodeURIComponent(turmaId) : ''), function (res) {
+			if (!res.ok) { showStatus(res.message || 'Erro ao carregar alunos.', 'error'); return; }
+
+			var alunos = res.alunos || [];
+			document.getElementById('qrContador').textContent = alunos.length + ' aluno(s)';
+
+			if (!alunos.length) {
+				grid.innerHTML = '<p class="text-muted small">Nenhum aluno encontrado.</p>';
+				return;
+			}
+
+			// Limpa e cria cards
+			grid.innerHTML = '';
+			alunos.forEach(function (aluno) {
+				var card = document.createElement('div');
+				card.className = 'qr-card';
+
+				var qrWrap = document.createElement('div');
+				qrWrap.className = 'qr-img-wrap';
+
+				var nome = document.createElement('div');
+				nome.className = 'qr-nome';
+				nome.textContent = aluno.nome;
+
+				var turma = document.createElement('div');
+				turma.className = 'qr-turma';
+				turma.textContent = aluno.turma || '';
+
+				card.appendChild(qrWrap);
+				card.appendChild(nome);
+				card.appendChild(turma);
+				grid.appendChild(card);
+
+				// Gera QR code com a matrícula
+				try {
+					new QRCode(qrWrap, {
+						text:          aluno.matricula,
+						width:         120,
+						height:        120,
+						colorDark:     '#000000',
+						colorLight:    '#ffffff',
+						correctLevel:  QRCode.CorrectLevel.M,
+					});
+				} catch (e) {
+					qrWrap.textContent = aluno.matricula;
+				}
+			});
+		});
+	}
+
+	/* --------------------------------------------------------
+	   Tipos — modal
+	   -------------------------------------------------------- */
+	window.refEditarTipo = function (id) {
+		var tipo = state.tipos.find(function (t) { return String(t.id) === String(id); });
+		if (!tipo) return;
+
+		document.getElementById('tipoId').value         = tipo.id;
+		document.getElementById('tipoNome').value       = tipo.nome;
+		document.getElementById('tipoDescricao').value  = tipo.descricao || '';
+		document.getElementById('tipoHorIni').value     = (tipo.horario_ini || '').substring(0, 5);
+		document.getElementById('tipoHorFim').value     = (tipo.horario_fim || '').substring(0, 5);
+		document.getElementById('tipoCor').value        = tipo.cor || '#4a90d9';
+		document.getElementById('tipoAtivo').checked    = tipo.ativo == 1;
+		document.getElementById('modalTipoTitulo').textContent = 'Editar Tipo';
+
+		bootstrap.Modal.getOrCreateInstance(document.getElementById('modalTipo')).show();
+	};
+
+	window.refExcluirTipo = function (id, nome) {
+		if (!confirm('Excluir o tipo "' + nome + '"? Esta ação não poderá ser desfeita se houver registros vinculados.')) return;
+
+		post('/institucional/refeitorio/tipos/excluir', { id: id }, function (res) {
+			if (!res.ok) { showStatus(res.message || 'Erro ao excluir.', 'error'); return; }
+			showStatus('Tipo excluído com sucesso.', 'success');
+			recarregarTipos();
+		});
+	};
+
+	function abrirNovoTipo() {
+		document.getElementById('formTipo').reset();
+		document.getElementById('tipoId').value = '0';
+		document.getElementById('tipoCor').value = '#4a90d9';
+		document.getElementById('tipoAtivo').checked = true;
+		document.getElementById('modalTipoTitulo').textContent = 'Novo Tipo de Refeição';
+		bootstrap.Modal.getOrCreateInstance(document.getElementById('modalTipo')).show();
+	}
+
+	function salvarTipo(e) {
+		e.preventDefault();
+		var btn = document.getElementById('btnSalvarTipo');
+		btn.disabled = true;
+		btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Salvando…';
+
+		post('/institucional/refeitorio/tipos/salvar', {
+			id:          document.getElementById('tipoId').value,
+			nome:        document.getElementById('tipoNome').value.trim(),
+			descricao:   document.getElementById('tipoDescricao').value.trim(),
+			horario_ini: document.getElementById('tipoHorIni').value,
+			horario_fim: document.getElementById('tipoHorFim').value,
+			cor:         document.getElementById('tipoCor').value,
+			ativo:       document.getElementById('tipoAtivo').checked ? '1' : '0',
+		}, function (res) {
+			btn.disabled = false;
+			btn.innerHTML = '<i class="las la-save me-1"></i>Salvar';
+
+			if (!res.ok) { showStatus(res.message || 'Erro ao salvar.', 'error'); return; }
+			showStatus('Tipo de refeição salvo com sucesso.', 'success');
+			bootstrap.Modal.getInstance(document.getElementById('modalTipo')).hide();
+			recarregarTipos();
+		});
+	}
+
+	function recarregarTipos() {
+		get('/institucional/refeitorio/dados', function (res) {
+			if (!res.ok) return;
+			state.tipos      = res.tipos  || [];
+			state.turmas     = res.turmas || [];
+			state.resumoHoje = res.resumo || [];
+			renderTiposTabela();
+			preencherSelectTipo();
+			preencherSelectsTurma();
+			renderDashResumoHoje();
+		});
+	}
+
+	/* --------------------------------------------------------
+	   Relatório
+	   -------------------------------------------------------- */
+	function filtrarRelatorio() {
+		var ini   = document.getElementById('relDataInicio').value;
+		var fim   = document.getElementById('relDataFim').value;
+		var tipo  = document.getElementById('relTipo').value;
+		var turma = document.getElementById('relTurma').value;
+
+		var url = '/institucional/refeitorio/relatorio?data_inicio=' + encodeURIComponent(ini) +
+		          '&data_fim=' + encodeURIComponent(fim) +
+		          (tipo  ? '&tipo_id='  + encodeURIComponent(tipo)  : '') +
+		          (turma ? '&turma_id=' + encodeURIComponent(turma) : '');
+
+		document.getElementById('relBody').innerHTML = '<tr><td colspan="6" class="muted-empty"><span class="spinner-border spinner-border-sm me-1"></span>Carregando…</td></tr>';
+
+		get(url, function (res) {
+			if (!res.ok) { showStatus(res.message || 'Erro ao carregar relatório.', 'error'); return; }
+
+			// Totais por tipo
+			var totaisWrap = document.getElementById('relTotaisWrap');
+			var th = '';
+			(res.totais || []).forEach(function (t) {
+				th += '<div class="col-sm-6 col-md-4 col-xl-3">' +
+					'<div class="dash-stat-card" style="background:' + esc(t.cor || '#4a90d9') + '">' +
+						'<div class="stat-icon"><i class="las la-utensils"></i></div>' +
+						'<div><div class="stat-total">' + Number(t.total || 0) + '</div>' +
+						'<div class="stat-label">' + esc(t.nome) + '</div></div>' +
+					'</div></div>';
+			});
+			totaisWrap.innerHTML = th;
+
+			var registros = res.registros || [];
+			document.getElementById('relTotal').textContent = registros.length;
+
+			if (!registros.length) {
+				document.getElementById('relBody').innerHTML = '<tr><td colspan="6" class="muted-empty">Nenhum registro encontrado para o período selecionado.</td></tr>';
+				return;
+			}
+
+			var html = '';
+			registros.forEach(function (r) {
+				html += '<tr>' +
+					'<td>' + esc(formatData(r.data)) + '</td>' +
+					'<td>' + esc(formatHora(r.horario)) + '</td>' +
+					'<td class="fw-semibold">' + esc(r.aluno_nome) + '</td>' +
+					'<td>' + esc(r.matricula) + '</td>' +
+					'<td>' + esc(r.turma) + '</td>' +
+					'<td><span class="tipo-badge" style="background:' + esc(r.refeicao_cor || '#ccc') + '"></span>' + esc(r.refeicao_nome) + '</td>' +
+				'</tr>';
+			});
+			document.getElementById('relBody').innerHTML = html;
+		});
+	}
+
+	/* --------------------------------------------------------
+	   Busca de aluno por nome / turma — autocomplete
+	   -------------------------------------------------------- */
+	var _buscaTimer = null;
+
+	function bindBuscaAluno() {
+		var input = document.getElementById('inputBuscaAluno');
+		var lista = document.getElementById('buscaResultados');
+
+		input.addEventListener('input', function () {
+			clearTimeout(_buscaTimer);
+			var q = input.value.trim();
+			if (q.length < 2) { lista.classList.add('d-none'); lista.innerHTML = ''; return; }
+			_buscaTimer = setTimeout(function () { executarBuscaAluno(q); }, 320);
+		});
+
+		document.getElementById('btnBuscarAlunoManual').addEventListener('click', function () {
+			var q = input.value.trim();
+			if (q.length >= 2) executarBuscaAluno(q);
+		});
+
+		input.addEventListener('keydown', function (ev) {
+			if (ev.key === 'Escape') { lista.classList.add('d-none'); lista.innerHTML = ''; }
+			if (ev.key === 'Enter') {
+				ev.preventDefault();
+				var primeiro = lista.querySelector('.busca-item');
+				if (primeiro) primeiro.click();
+				else { var q = input.value.trim(); if (q.length >= 2) executarBuscaAluno(q); }
+			}
+		});
+
+		document.addEventListener('click', function (ev) {
+			if (!input.contains(ev.target) && !lista.contains(ev.target)) {
+				lista.classList.add('d-none');
+			}
+		});
+	}
+
+	function executarBuscaAluno(q) {
+		var tipoId = document.getElementById('selecionarTipo').value;
+		if (!tipoId) { showStatus('Selecione uma refeição antes de buscar.', 'error'); return; }
+		var lista = document.getElementById('buscaResultados');
+		lista.innerHTML = '<div class="px-3 py-2 text-muted small"><span class="spinner-border spinner-border-sm me-1"></span>Buscando…</div>';
+		lista.classList.remove('d-none');
+
+		get('/institucional/refeitorio/pesquisar-alunos?q=' + encodeURIComponent(q) + '&tipo_id=' + encodeURIComponent(tipoId), function (res) {
+			if (!res.ok) { lista.classList.add('d-none'); return; }
+			var alunos = res.alunos || [];
+			if (!alunos.length) {
+				lista.innerHTML = '<div class="px-3 py-2 text-muted small">Nenhum aluno encontrado.</div>';
+				return;
+			}
+			var html = '';
+			alunos.forEach(function (a) {
+				var cls = a.ja_consumiu == 1 ? 'text-danger' : 'text-success';
+				var ico = a.ja_consumiu == 1 ? 'la-times-circle' : 'la-check-circle';
+				html += '<button type="button" class="busca-item d-flex align-items-center gap-2 w-100 px-3 py-2 border-0 bg-transparent text-start" ' +
+					'data-id="' + esc(String(a.id)) + '">' +
+					'<i class="las ' + ico + ' ' + cls + ' fs-5 flex-shrink-0"></i>' +
+					'<div><div class="fw-semibold" style="font-size:.88rem">' + esc(a.nome) + '</div>' +
+					'<div class="text-muted" style="font-size:.75rem">' + esc(a.turma || '') + ' · ' + esc(a.matricula) + '</div>' +
+					'</div></button>';
+			});
+			lista.innerHTML = html;
+			lista._cache = alunos;
+			lista.querySelectorAll('.busca-item').forEach(function (btn) {
+				btn.addEventListener('click', function () {
+					var aluno = (lista._cache || []).find(function (a) { return String(a.id) === String(btn.dataset.id); });
+					if (!aluno) return;
+					document.getElementById('inputBuscaAluno').value = aluno.nome;
+					lista.classList.add('d-none');
+					state.alunoAtual  = aluno;
+					state.tipoAtualId = parseInt(document.getElementById('selecionarTipo').value);
+					exibirResultado(aluno, aluno.ja_consumiu == 1);
+				});
+			});
+		});
+	}
+
+	/* --------------------------------------------------------
+	   Bind eventos
+	   -------------------------------------------------------- */
+	function bindEvents() {
+		document.getElementById('btnIniciarCamera').addEventListener('click', iniciarCamera);
+		document.getElementById('btnPararCamera').addEventListener('click', pararCamera);
+		document.getElementById('btnLiberar').addEventListener('click', registrarConsumo);
+		document.getElementById('btnCancelarScan').addEventListener('click', function () {
+			limparResultado();
+			_bloqueioScan = false;
+		});
+
+		// Mobile: fechar câmera + liberar/cancelar do painel over-camera
+		document.getElementById('btnFecharCameraMobile').addEventListener('click', pararCamera);
+		document.getElementById('mobileBtnLiberar').addEventListener('click', registrarConsumo);
+		document.getElementById('mobileBtnCancelar').addEventListener('click', function () {
+			limparResultado();
+			_bloqueioScan = false;
+		});
+
+		// Busca por nome / turma
+		bindBuscaAluno();
+
+		// Tipo de refeição
+		document.getElementById('btnNovoTipo').addEventListener('click', abrirNovoTipo);
+		document.getElementById('formTipo').addEventListener('submit', salvarTipo);
+
+		// QR Codes
+		document.getElementById('btnGerarQr').addEventListener('click', gerarQrCodes);
+		document.getElementById('btnImprimirQr').addEventListener('click', function () {
+			// Garante que a aba de QR codes esteja ativa antes de imprimir
+			var tabEl = document.getElementById('tab-qr-btn');
+			if (tabEl) { bootstrap.Tab.getOrCreateInstance(tabEl).show(); }
+			setTimeout(function () { window.print(); }, 150);
+		});
+
+		// Relatório
+		document.getElementById('btnRelatorioFiltrar').addEventListener('click', filtrarRelatorio);
+
+		// Ao mudar aba de dashboard, recarregar resumo
+		document.getElementById('tab-dash-btn').addEventListener('shown.bs.tab', function () {
+			filtrarRelatorio();
+		});
+
+		// Parar câmera ao mudar de aba
+		document.querySelectorAll('#refTabs .nav-link').forEach(function (btn) {
+			btn.addEventListener('shown.bs.tab', function (ev) {
+				if (ev.target.id !== 'tab-entrada-btn') {
+					pararCamera();
+				}
+			});
+		});
+
+		// Fullscreen — se usuário sair via botão do browser (Esc), parar câmera
+		function _onFsChange() {
+			var fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+			if (!fsEl && state.scanAtivo) { pararCamera(); }
+		}
+		document.addEventListener('fullscreenchange', _onFsChange);
+		document.addEventListener('webkitfullscreenchange', _onFsChange);
+	}
+
+	/* Inicializa */
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', init);
+	} else {
+		init();
+	}
+
+})();
+</script></body>
+</html>

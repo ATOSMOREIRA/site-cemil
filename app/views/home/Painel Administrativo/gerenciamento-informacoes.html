@@ -1,0 +1,194 @@
+<?php
+$csrfToken = (string) ($csrfToken ?? '');
+$baseUrl = rtrim(BASE_URL, '/');
+$informacoesPosts = is_array($informacoesPosts ?? null) ? $informacoesPosts : [];
+?>
+
+<section class="admin-informacoes-shell">
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+        <button type="button" class="btn btn-danger btn-sm js-admin-informacao-new">
+            <i class="las la-plus me-1"></i>Nova informação
+        </button>
+        <div class="ms-md-auto w-100 w-md-auto admin-search-wrap">
+            <input type="search" class="form-control form-control-sm admin-informacoes-search" id="adminInformacoesTableSearch" placeholder="Buscar publicação" autocomplete="off">
+        </div>
+    </div>
+
+    <div class="table-responsive border rounded admin-informacoes-table-wrap">
+        <table class="table table-sm align-middle mb-0 admin-informacoes-table">
+            <thead>
+                <tr>
+                    <th>Título</th>
+                    <th>Data</th>
+                    <th>Mídia</th>
+                    <th class="text-end">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if ($informacoesPosts === []): ?>
+                <tr>
+                    <td colspan="4" class="text-center text-secondary py-3">Nenhuma publicação cadastrada.</td>
+                </tr>
+                <?php endif; ?>
+
+                <?php foreach ($informacoesPosts as $post): ?>
+                <?php
+                    $id = (int) ($post['id'] ?? 0);
+                    $titulo = trim((string) ($post['titulo'] ?? ''));
+                    $conteudoHtml = (string) ($post['conteudo_html'] ?? '');
+                    $imagemPath = trim((string) ($post['imagem_path'] ?? ''));
+                    $videoPath = trim((string) ($post['video_path'] ?? ''));
+                    $createdAt = trim((string) ($post['created_at'] ?? ''));
+
+                    $searchText = implode(' ', [$titulo, strip_tags($conteudoHtml), $createdAt]);
+                    $mediaLabel = 'Texto';
+                    if ($imagemPath !== '' && $videoPath !== '') {
+                        $mediaLabel = 'Imagem e vídeo';
+                    } elseif ($imagemPath !== '') {
+                        $mediaLabel = 'Imagem';
+                    } elseif ($videoPath !== '') {
+                        $mediaLabel = 'Vídeo';
+                    }
+
+                    $createdAtFormatted = $createdAt;
+                    if ($createdAt !== '') {
+                        $dateObject = date_create($createdAt);
+                        if ($dateObject !== false) {
+                            $createdAtFormatted = $dateObject->format('d/m/Y H:i');
+                        }
+                    }
+                ?>
+                <tr class="js-admin-informacoes-row" data-search-text="<?= htmlspecialchars($searchText, ENT_QUOTES, 'UTF-8'); ?>">
+                    <td><?= htmlspecialchars($titulo !== '' ? $titulo : 'Sem título', ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td><?= htmlspecialchars($createdAtFormatted, ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td><?= htmlspecialchars($mediaLabel, ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td class="text-end">
+                        <button
+                            type="button"
+                            class="btn btn-outline-primary btn-sm js-admin-informacao-edit"
+                            data-id="<?= $id; ?>"
+                            data-titulo="<?= htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8'); ?>"
+                            data-conteudo-b64="<?= htmlspecialchars(base64_encode($conteudoHtml), ENT_QUOTES, 'UTF-8'); ?>"
+                            data-imagem="<?= htmlspecialchars($imagemPath, ENT_QUOTES, 'UTF-8'); ?>"
+                            data-video="<?= htmlspecialchars($videoPath, ENT_QUOTES, 'UTF-8'); ?>"
+                        >
+                            Editar
+                        </button>
+
+                        <form method="post" action="<?= $baseUrl; ?>/index.php/paineladministrativo/informacoes/excluir" class="d-inline js-admin-informacao-delete-form">
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                            <input type="hidden" name="id" value="<?= $id; ?>">
+                            <button type="button" class="btn btn-outline-danger btn-sm js-admin-informacao-delete-trigger" data-item-name="<?= htmlspecialchars($titulo !== '' ? $titulo : 'esta publicação', ENT_QUOTES, 'UTF-8'); ?>">Excluir</button>
+                        </form>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+
+    <div id="adminInformacoesTableEmpty" class="alert alert-light border mt-3 d-none admin-informacoes-empty" role="alert">
+        Nenhuma publicação encontrada para a busca.
+    </div>
+
+    <div class="modal fade admin-info-form-modal" id="adminInformacaoFormModal" tabindex="-1" data-bs-backdrop="static" aria-labelledby="adminInformacaoFormModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content admin-informacoes-modal-content site-modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="adminInformacaoFormModalLabel">Nova informação</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="adminInformacaoForm" method="post" action="<?= $baseUrl; ?>/index.php/paineladministrativo/informacoes/salvar" enctype="multipart/form-data" class="mb-0">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                        <input type="hidden" name="id" id="adminInformacaoId" value="0">
+                        <input type="hidden" name="conteudo_html" id="adminInformacaoConteudoHtml" value="">
+
+                        <div class="mb-3">
+                            <label class="form-label" for="adminInformacaoTitulo">Título</label>
+                            <input type="text" class="form-control" id="adminInformacaoTitulo" name="titulo" maxlength="255" required>
+                        </div>
+
+                        <div class="mb-2 d-flex flex-wrap gap-2 admin-info-editor-toolbar">
+                            <button type="button" class="btn btn-outline-secondary btn-sm js-admin-info-cmd" data-cmd="bold" title="Negrito"><i class="las la-bold"></i></button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm js-admin-info-cmd" data-cmd="italic" title="Itálico"><i class="las la-italic"></i></button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm js-admin-info-cmd" data-cmd="underline" title="Sublinhado"><i class="las la-underline"></i></button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm js-admin-info-cmd" data-cmd="insertUnorderedList" title="Lista"><i class="las la-list-ul"></i></button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm js-admin-info-cmd" data-cmd="insertOrderedList" title="Lista numerada"><i class="las la-list-ol"></i></button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm js-admin-info-link" title="Inserir link"><i class="las la-link"></i></button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm js-admin-info-emoji" data-emoji="😊">😊</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm js-admin-info-emoji" data-emoji="📌">📌</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm js-admin-info-emoji" data-emoji="✅">✅</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm js-admin-info-emoji" data-emoji="🎉">🎉</button>
+                        </div>
+
+                        <label class="form-label" for="adminInformacaoEditor">Texto da publicação</label>
+                        <div id="adminInformacaoEditor" class="form-control admin-info-editor mb-3" contenteditable="true" aria-label="Texto da publicação"></div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label" for="adminInformacaoImagem">Imagem</label>
+                                <input type="file" class="form-control" id="adminInformacaoImagem" name="imagem" accept=".jpg,.jpeg,.png,.gif,.webp,image/*">
+                                <div class="form-text">Formatos: JPG, PNG, GIF, WEBP (até 10MB).</div>
+                                <input type="hidden" id="adminInformacaoRemoverImagem" name="remover_imagem" value="0">
+                                <div class="d-flex flex-wrap gap-2 mt-2">
+                                    <a href="#" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm disabled" id="adminInformacaoVisualizarImagemBtn" aria-disabled="true">
+                                        <i class="las la-eye me-1"></i>Visualizar atual
+                                    </a>
+                                    <button type="button" class="btn btn-outline-danger btn-sm" id="adminInformacaoRemoverImagemBtn" disabled>
+                                        <i class="las la-trash-alt me-1"></i>Remover atual
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary btn-sm" id="adminInformacaoSubstituirImagemBtn" disabled>
+                                        <i class="las la-sync-alt me-1"></i>Substituir
+                                    </button>
+                                </div>
+                                <div class="small text-secondary mt-1" id="adminInformacaoImagemAtual"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="adminInformacaoVideo">Vídeo</label>
+                                <input type="file" class="form-control" id="adminInformacaoVideo" name="video" accept=".mp4,.webm,.ogg,.mov,video/*">
+                                <div class="form-text">Formatos: MP4, WEBM, OGG, MOV (até 60MB).</div>
+                                <input type="hidden" id="adminInformacaoRemoverVideo" name="remover_video" value="0">
+                                <div class="d-flex flex-wrap gap-2 mt-2">
+                                    <a href="#" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm disabled" id="adminInformacaoVisualizarVideoBtn" aria-disabled="true">
+                                        <i class="las la-eye me-1"></i>Visualizar atual
+                                    </a>
+                                    <button type="button" class="btn btn-outline-danger btn-sm" id="adminInformacaoRemoverVideoBtn" disabled>
+                                        <i class="las la-trash-alt me-1"></i>Remover atual
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary btn-sm" id="adminInformacaoSubstituirVideoBtn" disabled>
+                                        <i class="las la-sync-alt me-1"></i>Substituir
+                                    </button>
+                                </div>
+                                <div class="small text-secondary mt-1" id="adminInformacaoVideoAtual"></div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex flex-wrap gap-2 mt-3 admin-informacao-form-actions">
+                            <button type="submit" class="btn btn-danger btn-sm" id="adminInformacaoSubmitButton"><i class="las la-save me-1"></i>Publicar informação</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="adminInformacaoResetButton"><i class="las la-undo me-1"></i>Limpar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade admin-info-confirm-modal" id="adminInformacaoDeleteConfirmModal" tabindex="-1" data-bs-backdrop="static" aria-labelledby="adminInformacaoDeleteConfirmModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-sm modal-dialog-centered">
+            <div class="modal-content admin-informacoes-modal-content site-modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="adminInformacaoDeleteConfirmModalLabel">Confirmar exclusão</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0" id="adminInformacaoDeleteConfirmText">Deseja realmente excluir esta publicação?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger btn-sm" id="adminInformacaoDeleteConfirmButton">Excluir</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

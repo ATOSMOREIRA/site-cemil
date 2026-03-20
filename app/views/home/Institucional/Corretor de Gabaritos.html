@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Correção de Gabaritos</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <link rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/line-awesome@1.3.0/dist/line-awesome/css/line-awesome.min.css">
+  <style>
+    #canvasMaster,
+    #canvasStudent {
+      border: 1px solid black;
+      max-width: 100%;
+      height: auto;
+      margin-bottom: 15px;
+    }
+
+    .processing-feedback {
+      margin-top: 10px;
+      font-style: italic;
+    }
+  </style>
+</head>
+
+<body class="container mt-4">
+
+  <h1 class="text-center mb-4">Sistema de Correção de Gabaritos</h1>
+
+  <div class="row">
+    <!-- Coluna Mestre -->
+    <div class="col-md-6">
+      <h2>Gabarito Mestre</h2>
+      <div class="form-group">
+        <label for="masterImageInput" class="btn btn-primary">
+          <i class="las la-upload"></i> Carregar Gabarito Vazio
+          <input type="file" id="masterImageInput" accept="image/*,application/pdf" class="d-none">
+        </label>
+      </div>
+      <div class="form-group">
+        <label for="loadMasterKey" class="btn btn-secondary">
+          <i class="las la-file-upload"></i> Carregar Respostas Mestre (.json)
+          <input type="file" id="loadMasterKey" accept=".json" class="d-none">
+        </label>
+      </div>
+      <div class="form-group">
+        <button id="saveMasterKey" class="btn btn-success" disabled>
+          <i class="las la-save"></i> Salvar Respostas Mestre (.json)
+        </button>
+        <small class="form-text text-muted">Clique no gabarito vazio para marcar as posições das respostas e digite a
+          resposta correta (ex: A, B, C, D, E).</small>
+      </div>
+      <canvas id="canvasMaster"></canvas>
+      <div id="masterFeedback" class="processing-feedback"></div>
+    </div>
+
+    <!-- Coluna Alunos -->
+    <div class="col-md-6">
+      <h2>Gabaritos Respondidos</h2>
+      <div class="form-group">
+        <label for="studentFilesInput" class="btn btn-info">
+          <i class="las la-images"></i> Carregar Gabaritos Respondidos
+          <input type="file" id="studentFilesInput" accept="image/*,application/pdf" multiple class="d-none">
+        </label>
+      </div>
+      <div class="form-group">
+        <label for="candidateSheetInput" class="btn btn-dark">
+          <i class="las la-file-excel"></i> Carregar Planilha de Candidatos (.xlsx)
+          <input type="file" id="candidateSheetInput" accept=".xlsx,.xls" class="d-none">
+        </label>
+        <button id="processStudents" class="btn btn-warning" disabled>
+          <i class="las la-cogs"></i> Processar Gabaritos e Gerar Relatórios
+        </button>
+        <div class="form-check mt-2">
+          <input class="form-check-input" type="checkbox" value="" id="generateIndividualPdfs">
+          <label class="form-check-label" for="generateIndividualPdfs">
+            Gerar PDF individual
+          </label>
+        </div>
+      </div>
+      <!-- ...existing code... -->
+      <div class="card mb-3">
+        <div class="card-header font-weight-bold">Matérias e Intervalos de Questões</div>
+        <div class="card-body">
+          <div class="form-row align-items-end">
+            <div class="col-md-4">
+              <label>Nome da Matéria</label>
+              <input type="text" id="materiaNome" class="form-control" placeholder="Ex: Matemática">
+            </div>
+            <div class="col-md-2">
+              <label>Questão Início</label>
+              <input type="number" id="materiaInicio" class="form-control" min="1">
+            </div>
+            <div class="col-md-2">
+              <label>Questão Fim</label>
+              <input type="number" id="materiaFim" class="form-control" min="1">
+            </div>
+            <div class="col-md-2">
+              <button id="addMateriaBtn" class="btn btn-primary">Adicionar Matéria</button>
+            </div>
+          </div>
+          <div class="mt-3">
+            <ul id="materiasList" class="list-group"></ul>
+          </div>
+        </div>
+      </div>
+      <!-- ...existing code... -->
+      <div id="studentFeedback" class="processing-feedback"></div>
+      <canvas id="canvasStudent" style="display: none;"></canvas> <!-- Hidden canvas for student processing -->
+    </div>
+  </div>
+
+  <hr>
+  <h2>Arquivos de Modelo</h2>
+  <div>
+    <p class="mb-0" style="font-size: small;">(Caso não tenha o arquivo)</p>
+    <a href="/templates/arquivosTemplates/MODELO DE GABARITO.docx" download
+      class="btn btn-outline-primary btn-sm mb-3 animated-button" style="font-size: smaller;"><i
+        class="las la-download"></i>
+      Baixar
+      Modelo de Gabarito</a>
+    <a href="/templates/arquivosTemplates/MODELO DE DADOS PARA O GABARITO.xlsx" download
+      class="btn btn-outline-success btn-sm mb-3 animated-button" style="font-size: smaller;"><i
+        class="las la-download"></i>
+      Baixar
+      Modelo de Dados Planilha dos Candidatos</a>
+  </div>
+  <hr>
+
+  <h2>Resultados Gerais</h2>
+  <div class="form-group">
+    <button id="exportGeneralResults" class="btn btn-success" disabled>
+      <i class="las la-file-excel"></i> Exportar Relatório Geral (.xlsx)
+    </button>
+  </div>
+  <pre id="generalResults" class="border p-3 bg-light"></pre>
+
+
+  <!-- Scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <!-- Tesseract.js for OCR -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- jsPDF for PDF generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- XLSX for Excel export -->
+  <script async src="https://docs.opencv.org/4.10.0/opencv.js" onload="onOpenCvReady();"></script> <!-- OpenCV.js -->
+
+  <script>
+    // --- Global State ---
+    let cvReady = false;
+    let tesseractReady = false;
+    let masterImageData = null;
+    let masterKey = []; // Array of { x, y, questionNumber, correctAnswer }
+    let studentFiles = [];
+    let allStudentResults = []; // Array of { fileName, candidateInfo, studentAnswers, score, corrections }
+    let candidateSheetData = [];
+    let masterCanvas, masterCtx, studentCanvas, studentCtx;
+    let masterImageWidth, masterImageHeight;
+    let masterAnswerGridRect = null; // { x, y, width, height } - Detected answer area in master
+    let generateIndividualPdfsCheckbox; // Reference to the checkbox
+
+    const TOLERANCE = 15; // Pixel tolerance for matching answers
+
+    // --- Initialization ---
+    window.onload = () => {
+      masterCanvas = document.getElementById('canvasMaster');
+      masterCtx = masterCanvas.getContext('2d');
+      studentCanvas = document.getElementById('canvasStudent'); // Offscreen canvas for processing
+      studentCtx = studentCanvas.getContext('2d');
+      generateIndividualPdfsCheckbox = document.getElementById('generateIndividualPdfs'); // Get checkbox reference
+
+      setupEventListeners();
+      checkLibrariesReady();
+
+      // Initialize Tesseract.js worker
+      Tesseract.createWorker('por', 1, { // 'por' for Portuguese
+        logger: m => console.log(m) // Optional: log progress
+      }).then(worker => {
+        window.tesseractWorker = worker;
+        tesseractReady = true;
+        console.log("Tesseract.js ready.");
+        checkLibrariesReady();
+      });
+    };
+
+    function onOpenCvReady() {
+      cvReady = true;
+      console.log("OpenCV.js ready.");
+      checkLibrariesReady();
+    }
+
+    function checkLibrariesReady() {
+      const processBtn = document.getElementById('processStudents');
+      const masterInput = document.getElementById('masterImageInput');
+      if (cvReady && tesseractReady) {
+        console.log("All libraries ready.");
+        masterInput.disabled = false; // Enable master upload once libs are ready
+        // processBtn might still be disabled until master key and student files are loaded
+      } else {
+        masterInput.disabled = true;
+        processBtn.disabled = true;
+      }
+    }
+
+    // --- Event Listeners Setup ---
+    function setupEventListeners() {
+      document.getElementById('masterImageInput').addEventListener('change', handleMasterImageSelect);
+      document.getElementById('loadMasterKey').addEventListener('change', loadMasterKeyFromFile);
+      document.getElementById('saveMasterKey').addEventListener('click', saveMasterKeyToFile);
+      document.getElementById('studentFilesInput').addEventListener('change', handleStudentFilesSelect);
+      document.getElementById('processStudents').addEventListener('click', processAllStudentFiles);
+      document.getElementById('exportGeneralResults').addEventListener('click', exportGeneralReport);
+      document.getElementById('candidateSheetInput').addEventListener('change', handleCandidateSheetSelect);
+      masterCanvas.addEventListener('click', handleMasterCanvasClick);
+    }
+
+    // --- Master Gabarito Functions ---
+    async function handleMasterImageSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      document.getElementById('masterFeedback').textContent = `Carregando ${file.name}...`;
+      masterKey = []; // Reset key when new image is loaded
+      updateButtonStates();
+
+      try {
+        masterImageData = await loadImageData(file);
+        const img = new Image();
+        img.onload = () => {
+          masterImageWidth = img.width;
+          masterImageHeight = img.height;
+          masterCanvas.width = masterImageWidth;
+          masterCanvas.height = masterImageHeight;
+          masterCtx.drawImage(img, 0, 0);
+          document.getElementById('masterFeedback').textContent = "Gabarito vazio carregado. Clique nas posições das respostas corretas.";
+          // Optional: Automatically detect answer grid area here
+          // masterAnswerGridRect = findAnswerGridArea(masterCanvas);
+          // if(masterAnswerGridRect) drawRect(masterCtx, masterAnswerGridRect, 'blue');
+          updateButtonStates();
+        };
+        img.src = masterImageData;
+      } catch (error) {
+        console.error("Error loading master image:", error);
+        document.getElementById('masterFeedback').textContent = `Erro ao carregar imagem: ${error.message}`;
+      }
+    }
+    // ...existing code...
+    let materias = [];
+
+    document.getElementById('addMateriaBtn').onclick = function () {
+      const nome = document.getElementById('materiaNome').value.trim();
+      const inicio = parseInt(document.getElementById('materiaInicio').value);
+      const fim = parseInt(document.getElementById('materiaFim').value);
+      if (!nome || isNaN(inicio) || isNaN(fim) || inicio > fim) {
+        alert('Preencha corretamente os campos da matéria.');
+        return;
+      }
+      materias.push({ nome, inicio, fim });
+      atualizarListaMaterias();
+      document.getElementById('materiaNome').value = '';
+      document.getElementById('materiaInicio').value = '';
+      document.getElementById('materiaFim').value = '';
+    };
+
+    function atualizarListaMaterias() {
+      const ul = document.getElementById('materiasList');
+      ul.innerHTML = '';
+      materias.forEach((m, idx) => {
+        const li = document.createElement('li');
+        li.className = 'list-group-item d-flex justify-content-between align-items-center';
+        li.textContent = `${m.nome}: questões ${m.inicio} a ${m.fim}`;
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-sm btn-danger';
+        btn.textContent = 'Remover';
+        btn.onclick = () => { materias.splice(idx, 1); atualizarListaMaterias(); };
+        li.appendChild(btn);
+        ul.appendChild(li);
+      });
+    }
+
+    function handleCandidateSheetSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+        candidateSheetData = [];
+        for (let i = 1; i < rows.length; i++) { // Começa da linha 2
+          const row = rows[i];
+          if (row && row[0]) {
+            candidateSheetData.push({
+              registration: String(row[0]).trim(),
+              name: String(row[1] || '').trim(),
+              cpf: String(row[2] || '').replace(/[^\d]/g, ''),
+              birthdate: String(row[3] || '').trim()
+            });
+          }
+        }
+        alert(`Planilha de candidatos carregada: ${candidateSheetData.length} registros.`);
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function findCandidateByRegistration(registration) {
+      return candidateSheetData.find(c => c.registration == registration);
+    }
+
+    function handleMasterCanvasClick(event) {
+      if (!masterImageData) {
+        alert("Carregue uma imagem de gabarito vazio primeiro.");
+        return;
+      }
+      const rect = masterCanvas.getBoundingClientRect();
+      const scaleX = masterCanvas.width / rect.width;
+      const scaleY = masterCanvas.height / rect.height;
+      const x = (event.clientX - rect.left) * scaleX;
+      const y = (event.clientY - rect.top) * scaleY;
+
+      const questionNumber = prompt(`Número da questão para a posição (${Math.round(x)}, ${Math.round(y)}):`);
+      if (!questionNumber || isNaN(parseInt(questionNumber))) return;
+
+      const correctAnswer = prompt(`Resposta CORRETA para a questão ${questionNumber} (ex: A, B, C, D, E):`);
+      if (!correctAnswer) return;
+
+      masterKey.push({ x, y, questionNumber: parseInt(questionNumber), correctAnswer: correctAnswer.toUpperCase().trim() });
+
+      // Draw feedback on canvas
+      masterCtx.fillStyle = "red";
+      masterCtx.beginPath();
+      masterCtx.arc(x, y, 5, 0, 2 * Math.PI);
+      masterCtx.fill();
+      masterCtx.fillStyle = "white";
+      masterCtx.font = "bold 10px Arial";
+      masterCtx.textAlign = "center";
+      masterCtx.textBaseline = "middle";
+      masterCtx.fillText(questionNumber, x, y - 10); // Display question number above
+      masterCtx.fillText(correctAnswer, x, y + 10); // Display answer below
+
+      console.log("Master key point added:", masterKey[masterKey.length - 1]);
+      updateButtonStates();
+    }
+
+    function saveMasterKeyToFile() {
+      if (masterKey.length === 0) {
+        alert("Nenhuma resposta mestre foi definida.");
+        return;
+      }
+      // Include image dimensions and potentially the detected grid for reference
+      const dataToSave = {
+        imageWidth: masterImageWidth,
+        imageHeight: masterImageHeight,
+        // answerGridRect: masterAnswerGridRect, // If detected
+        answers: masterKey
+      };
+      const data = JSON.stringify(dataToSave, null, 2); // Pretty print JSON
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'gabarito_mestre.json';
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.getElementById('masterFeedback').textContent = "Respostas mestre salvas em gabarito_mestre.json";
+    }
+
+    function loadMasterKeyFromFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const loadedData = JSON.parse(e.target.result);
+          if (!loadedData.answers || !Array.isArray(loadedData.answers)) {
+            throw new Error("Formato inválido. Arquivo deve conter um objeto com a chave 'answers' sendo um array.");
+          }
+          masterKey = loadedData.answers;
+          // Optional: Load dimensions if needed for validation later
+          // masterImageWidth = loadedData.imageWidth;
+          // masterImageHeight = loadedData.imageHeight;
+
+          document.getElementById('masterFeedback').textContent = `Respostas mestre carregadas de ${file.name}.`;
+          // Redraw points on canvas if master image is loaded
+          if (masterImageData) {
+            redrawMasterPoints();
+          }
+          updateButtonStates();
+        } catch (error) {
+          console.error("Error loading master key:", error);
+          document.getElementById('masterFeedback').textContent = `Erro ao carregar chave mestre: ${error.message}`;
+          masterKey = [];
+          updateButtonStates();
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function redrawMasterPoints() {
+      if (!masterImageData || !masterCtx) return;
+      // Redraw the base image first
+      const img = new Image();
+      img.onload = () => {
+        masterCanvas.width = img.width;
+        masterCanvas.height = img.height;
+        masterCtx.drawImage(img, 0, 0);
+        // Then draw the points
+        masterKey.forEach(point => {
+          masterCtx.fillStyle = "red";
+          masterCtx.beginPath();
+          masterCtx.arc(point.x, point.y, 5, 0, 2 * Math.PI);
+          masterCtx.fill();
+          masterCtx.fillStyle = "white";
+          masterCtx.font = "bold 10px Arial";
+          masterCtx.textAlign = "center";
+          masterCtx.textBaseline = "middle";
+          masterCtx.fillText(point.questionNumber, point.x, point.y - 10);
+          masterCtx.fillText(point.correctAnswer, point.x, point.y + 10);
+        });
+      }
+      img.src = masterImageData;
+    }
+
+
+    // --- Student Gabarito Functions ---
+    function handleStudentFilesSelect(event) {
+      studentFiles = Array.from(event.target.files);
+      document.getElementById('studentFeedback').textContent = `${studentFiles.length} arquivo(s) selecionado(s).`;
+      allStudentResults = []; // Reset results when new files are selected
+      document.getElementById('generalResults').textContent = ""; // Clear previous general report
+      updateButtonStates();
+    }
+
+    async function processAllStudentFiles() {
+      if (studentFiles.length === 0 || masterKey.length === 0) {
+        alert("Carregue as respostas mestre e os arquivos dos alunos primeiro.");
+        return;
+      }
+      if (!cvReady || !tesseractReady) {
+        alert("Bibliotecas OpenCV ou Tesseract não estão prontas. Aguarde.");
+        return;
+      }
+
+      const shouldGeneratePdfs = generateIndividualPdfsCheckbox.checked; // Check the checkbox state
+
+      document.getElementById('processStudents').disabled = true;
+      document.getElementById('studentFeedback').textContent = "Processando gabaritos dos alunos...";
+      allStudentResults = []; // Clear previous results
+
+      let processedCount = 0;
+      for (const file of studentFiles) {
+        processedCount++;
+        let feedbackMsg = `Processando ${processedCount}/${studentFiles.length}: ${file.name}...`;
+        document.getElementById('studentFeedback').textContent = feedbackMsg;
+        console.log(`Processing ${file.name}`);
+        try {
+          const studentResult = await processSingleStudentFile(file);
+          allStudentResults.push(studentResult);
+
+          // Generate individual PDF only if the checkbox is checked
+          if (shouldGeneratePdfs && !studentResult.error) {
+            await generateIndividualPdfReport(studentResult);
+            feedbackMsg = `Processado ${processedCount}/${studentFiles.length}: ${file.name}. PDF gerado.`;
+          } else if (!studentResult.error) {
+            feedbackMsg = `Processado ${processedCount}/${studentFiles.length}: ${file.name}.`;
+          }
+          document.getElementById('studentFeedback').textContent = feedbackMsg;
+
+
+        } catch (error) {
+          console.error(`Error processing ${file.name}:`, error);
+          allStudentResults.push({ // Add error entry
+            fileName: file.name,
+            error: error.message,
+            candidateInfo: { name: "Erro", cpf: "Erro", registration: "Erro" },
+            studentAnswers: {},
+            score: 0,
+            corrections: []
+          });
+          document.getElementById('studentFeedback').textContent = `Erro ao processar ${file.name}: ${error.message}`;
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Pause briefly on error
+        }
+      }
+
+      document.getElementById('studentFeedback').textContent = `Processamento concluído para ${studentFiles.length} arquivos. ${allStudentResults.filter(r => !r.error).length} processados com sucesso.`;
+      generateGeneralReportDisplay(); // Display summary in <pre> tag
+      updateButtonStates(); // Re-enable buttons
+    }
+
+    async function processSingleStudentFile(file) {
+      const studentImageData = await loadImageData(file);
+      const img = new Image();
+
+      return new Promise((resolve, reject) => {
+        img.onload = async () => {
+          try {
+            studentCanvas.width = img.width;
+            studentCanvas.height = img.height;
+            studentCtx.drawImage(img, 0, 0);
+
+            // --- TODO: Implement Robust Alignment ---
+            // This is crucial and complex. It might involve finding reference points
+            // on both master and student sheets and calculating a perspective transform.
+            // For now, we assume the student image is reasonably aligned or
+            // we process based on relative positions defined in masterKey.
+            // let alignedCanvas = alignStudentCanvas(studentCanvas, masterImageData); // Placeholder
+            let alignedCanvas = studentCanvas; // Use original for now
+
+            // --- 1. Extract Candidate Info (OCR) ---
+            // Define the approximate region for candidate info (adjust as needed)
+            // Ajuste a região para capturar a área acima do gabarito (topo da folha)
+            // Por exemplo, pega os 18% superiores da imagem, centralizado horizontalmente
+            const infoRegion = {
+              x: img.width * 0.1,
+              y: 0,
+              width: img.width * 0.8,
+              height: img.height * 0.18
+            };
+            drawRect(studentCtx, infoRegion, 'rgba(255, 255, 0, 0.3)'); // Visualize region (opcional)
+            const candidateInfo = await extractCandidateInfo(alignedCanvas, infoRegion);
+            console.log(`Candidate Info for ${file.name}:`, candidateInfo);
+
+            // --- 2. Detect Marked Answers ---
+            // We need to map masterKey coordinates to the student canvas.
+            // If alignment was done, use masterKey directly. If not, assume similar layout.
+            const studentAnswers = detectStudentMarks(alignedCanvas, masterKey);
+            console.log(`Detected Answers for ${file.name}:`, studentAnswers);
+
+            // --- 3. Compare with Master Key ---
+            const { score, corrections } = compareAnswers(studentAnswers, masterKey);
+            console.log(`Score for ${file.name}: ${score}`);
+
+            resolve({
+              fileName: file.name,
+              imageDataUrl: studentImageData, // Store image data for PDF
+              candidateInfo,
+              studentAnswers,
+              score,
+              corrections
+            });
+
+          } catch (error) {
+            reject(error);
+          }
+        };
+        img.onerror = reject;
+        img.src = studentImageData;
+      });
+    }
+
+    // --- Image Processing & Analysis (Placeholders/Simplified) ---
+
+    async function loadImageData(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          if (file.type === 'application/pdf') {
+            try {
+              const pdfData = new Uint8Array(e.target.result);
+              const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+              const page = await pdf.getPage(1); // Process first page
+              const viewport = page.getViewport({ scale: 2.0 }); // Increase scale for better quality
+              const canvas = document.createElement('canvas');
+              const context = canvas.getContext('2d');
+              canvas.height = viewport.height;
+              canvas.width = viewport.width;
+              await page.render({ canvasContext: context, viewport: viewport }).promise;
+              resolve(canvas.toDataURL('image/png'));
+            } catch (pdfError) {
+              reject(new Error(`Failed to render PDF: ${pdfError.message}`));
+            }
+          } else {
+            resolve(e.target.result); // For image files
+          }
+        };
+        reader.onerror = reject;
+        if (file.type === 'application/pdf') {
+          reader.readAsArrayBuffer(file);
+        } else {
+          reader.readAsDataURL(file);
+        }
+      });
+    }
+
+    async function extractCandidateInfo(canvas, region) {
+      // --- OCR Implementation ---
+      if (!window.tesseractWorker) {
+        console.warn("Tesseract worker not ready.");
+        return { name: "OCR Indisponível", cpf: "N/A", registration: "N/A" };
+      }
+      try {
+        // Create a temporary canvas for the region to improve OCR accuracy
+        const regionCanvas = document.createElement('canvas');
+        regionCanvas.width = region.width;
+        regionCanvas.height = region.height;
+        const regionCtx = regionCanvas.getContext('2d');
+        regionCtx.drawImage(canvas, region.x, region.y, region.width, region.height, 0, 0, region.width, region.height);
+
+        // OCR
+        const { data: { text } } = await window.tesseractWorker.recognize(regionCanvas);
+        console.log("OCR Raw Text:", text);
+
+        // Remove header if present
+        let cleanText = text.replace(/CART[ÃA]O[\s\-]*RESPOSTA[\s\-]*/i, '').trim();
+
+        // Try to extract fields using regex
+        let registration = cleanText.match(/N[º°]?\s*DE\s*INSCRI[ÇC][AÃ]O\s*:\s*([0-9]+)/i)?.[1]?.trim() || "Inscrição não encontrada";
+        let name = cleanText.match(/NOME\s*:\s*([A-ZÀ-Ú\s]+)/i)?.[1]?.trim() || "Nome não encontrado";
+        let cpf = cleanText.match(/CPF\s*:\s*([\d.\-]+)/i)?.[1]?.trim() || "CPF não encontrado";
+        let birthdate = cleanText.match(/DATA\s*DE\s*NASCIMENTO\s*:\s*([0-9]{2}\/[0-9]{2}\/[0-9]{4})/i)?.[1]?.trim() || "Data de nascimento não encontrada";
+
+        // Fallbacks: try to find by line if regex fails or for new layout
+        if (registration === "Inscrição não encontrada" || name === "Nome não encontrado" || cpf === "CPF não encontrado") {
+          const lines = cleanText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+          lines.forEach(line => {
+            if (/^N[º°]?\s*DE\s*INSCRI[ÇC][AÃ]O\s*:/.test(line)) {
+              registration = line.split(':').slice(1).join(':').trim();
+            } else if (/^NOME\s*:/.test(line)) {
+              name = line.split(':').slice(1).join(':').trim();
+            } else if (/^CPF\s*:/.test(line)) {
+              cpf = line.split(':').slice(1).join(':').trim();
+            }
+          });
+        }
+        // Melhorias na detecção do nome do candidato
+        if (name === "Nome não encontrado") {
+          const nameLine = cleanText.split('\n').find(l => /NOME\s*DO\s*CANDIDATO\s*:|NOME\s*:/i.test(l));
+          if (nameLine) {
+            name = nameLine.split(':').slice(1).join(':').trim();
+          } else {
+            const lines = cleanText.split('\n');
+            const regIdx = lines.findIndex(l => /INSCRI[ÇC][AÃ]O/i.test(l));
+            if (regIdx >= 0 && lines[regIdx + 1]) {
+              name = lines[regIdx + 1].replace(/NOME\s*:?/i, '').trim();
+            }
+          }
+        }
+        // Fallback: se o nome ainda não foi encontrado, tenta pegar a maior linha em maiúsculas
+        if (name === "Nome não encontrado") {
+          const upperLines = cleanText.split('\n').filter(l => l.trim().length > 5 && /^[A-ZÀ-Ú\s]+$/.test(l.trim()));
+          if (upperLines.length > 0) {
+            name = upperLines.sort((a, b) => b.length - a.length)[0].trim();
+          }
+        }
+        if (cpf === "CPF não encontrado") {
+          const cpfLine = cleanText.split('\n').find(l => /^CPF\s*:/i.test(l));
+          if (cpfLine) {
+            cpf = cpfLine.split(':').pop().trim();
+          }
+        }
+
+        // Simple cleanup
+        name = name.replace(/\n/g, ' ').replace(/[^A-ZÀ-Ú\s]/gi, '').trim();
+        cpf = cpf.replace(/[^\d.-]/g, '');
+
+        return { name, cpf, registration };
+      } catch (error) {
+        console.error("OCR Error:", error);
+        return { name: "Erro OCR", cpf: "Erro OCR", registration: "Erro OCR" };
+      }
+    }
+
+    function detectStudentMarks(canvas, masterKeyPoints) {
+      // --- Improved Mark Detection Logic with Coordinate Mapping ---
+      let detectedAnswers = {}; // { questionNumber: detectedAnswerLabel }
+      if (!cvReady) {
+        console.warn("OpenCV not ready for mark detection.");
+        return detectedAnswers;
+      }
+
+      try {
+        let src = cv.imread(canvas);
+        let gray = new cv.Mat();
+        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+        cv.GaussianBlur(gray, gray, new cv.Size(5, 5), 0);
+
+        // Use adaptive thresholding to better handle variations in ink color/darkness
+        let thresh = new cv.Mat();
+        // Parameters: src, dst, maxValue, adaptiveMethod, thresholdType, blockSize, C
+        // blockSize: Size of the neighborhood area (must be odd).
+        // C: Constant subtracted from the calculated mean or weighted mean.
+        cv.adaptiveThreshold(gray, thresh, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C,
+          cv.THRESH_BINARY_INV, 11, 3); // Block size 11, C=3 (adjust C if needed)
+
+        // Get dimensions of student canvas and master template
+        const studentWidth = canvas.width;
+        const studentHeight = canvas.height;
+        // Use global masterImageWidth/masterImageHeight if available, else fallback to max from masterKeyPoints
+        let refWidth = typeof masterImageWidth !== "undefined" && masterImageWidth ? masterImageWidth : Math.max(...masterKeyPoints.map(p => p.x));
+        let refHeight = typeof masterImageHeight !== "undefined" && masterImageHeight ? masterImageHeight : Math.max(...masterKeyPoints.map(p => p.y));
+
+        // Group master key points by question number
+        const questions = {};
+        masterKeyPoints.forEach(p => {
+          if (!questions[p.questionNumber]) {
+            questions[p.questionNumber] = [];
+          }
+          // Map master coordinates to student image coordinates
+          const mappedX = (p.x / refWidth) * studentWidth;
+          const mappedY = (p.y / refHeight) * studentHeight;
+          questions[p.questionNumber].push({ x: mappedX, y: mappedY, label: p.correctAnswer });
+        });
+
+        for (const qNum in questions) {
+          let bestOption = null;
+          let bestMarkScore = 0; // Use markRatio as the score
+
+          questions[qNum].forEach(option => {
+            // Define a larger ROI around the expected answer position
+            const roiSize = 24; // Aumentado para buscar bolinhas maiores
+            const roiX = Math.max(0, Math.round(option.x - roiSize / 2));
+            const roiY = Math.max(0, Math.round(option.y - roiSize / 2));
+            const roiW = Math.min(roiSize, thresh.cols - roiX);
+            const roiH = Math.min(roiSize, thresh.rows - roiY);
+
+            if (roiW <= 0 || roiH <= 0) return; // Skip if ROI is invalid
+
+            let roiRect = new cv.Rect(roiX, roiY, roiW, roiH);
+
+            // Analyze the thresholded image ROI
+            let roiThresh = thresh.roi(roiRect);
+            let whitePixels = cv.countNonZero(roiThresh);
+            let totalPixels = roiThresh.rows * roiThresh.cols;
+            let markRatio = totalPixels > 0 ? whitePixels / totalPixels : 0;
+            roiThresh.delete(); // Clean up ROI mat
+
+            // Analyze the original grayscale image ROI for darkness
+            let roiGray = gray.roi(roiRect);
+            let meanIntensity = cv.mean(roiGray)[0];
+            roiGray.delete(); // Clean up ROI mat
+
+            // --- Decision Logic ---
+            // A filled bubble should have a significant portion of 'marked' pixels
+            // after adaptive thresholding AND should be darker than the background.
+            // Adjust these thresholds based on testing:
+            const minMarkRatio = 0.16; // Lowered slightly? Test this value.
+            const maxMeanIntensity = 190; // Increased slightly to allow lighter grays.
+
+            // Optional: Visualize ROIs and values for debugging
+            // studentCtx.strokeStyle = 'yellow';
+            // studentCtx.lineWidth = 1;
+            // studentCtx.strokeRect(roiX, roiY, roiW, roiH);
+            // studentCtx.fillStyle = 'yellow';
+            // studentCtx.font = '8px Arial';
+            // studentCtx.fillText(markRatio.toFixed(2), roiX, roiY - 2);
+            // studentCtx.fillText(meanIntensity.toFixed(0), roiX, roiY + roiH + 8);
+
+            if (markRatio > minMarkRatio && meanIntensity < maxMeanIntensity) {
+              // This option looks marked. Compare its ratio to the best one found so far for this question.
+              if (markRatio > bestMarkScore) {
+                bestMarkScore = markRatio;
+                bestOption = option.label;
+              }
+            }
+          });
+
+          // Assign the best option found for this question number
+          if (bestOption) {
+            detectedAnswers[qNum] = bestOption;
+          }
+          // Optional: Add fallback logic if no option clearly passes,
+          // e.g., pick the one with the highest markRatio even if below threshold,
+          // but this might lead to incorrect answers if the mark is very faint.
+          // Consider if it's better to leave it unanswered in ambiguous cases.
+
+        }
+
+        // Clean up OpenCV Mats
+        src.delete(); gray.delete(); thresh.delete();
+      } catch (error) {
+        console.error("Error during mark detection:", error);
+        // Clean up Mats in case of error
+        if (src && !src.isDeleted()) src.delete();
+        if (gray && !gray.isDeleted()) gray.delete();
+        if (thresh && !thresh.isDeleted()) thresh.delete();
+        // Note: ROIs should be deleted within the loop
+      }
+
+      return detectedAnswers;
+    }
+
+    function compareAnswers(studentAnswers, masterKeyPoints) {
+      let score = 0;
+      let corrections = []; // { questionNumber, studentAnswer, correctAnswer, isCorrect }
+
+      // Create a map of correct answers from masterKey for easy lookup
+      const correctAnswersMap = {};
+      masterKeyPoints.forEach(p => {
+        // Only store one correct answer per question number
+        if (!correctAnswersMap[p.questionNumber]) {
+          correctAnswersMap[p.questionNumber] = p.correctAnswer;
+        }
+      });
+
+
+      // Iterate through all possible questions defined in the master key
+      for (const qNum in correctAnswersMap) {
+        const correctAnswer = correctAnswersMap[qNum];
+        const studentAnswer = studentAnswers[qNum] || null; // Get student's answer or null if not answered
+        const isCorrect = studentAnswer === correctAnswer;
+
+        if (isCorrect) {
+          score++;
+        }
+
+        corrections.push({
+          questionNumber: qNum,
+          studentAnswer: studentAnswer,
+          correctAnswer: correctAnswer,
+          isCorrect: isCorrect
+        });
+      }
+
+      // Sort corrections by question number
+      corrections.sort((a, b) => parseInt(a.questionNumber) - parseInt(b.questionNumber));
+
+
+      return { score, corrections };
+    }
+
+    // --- Reporting Functions ---
+
+    function generateGeneralReportDisplay() {
+      const resultsDiv = document.getElementById('generalResults');
+      if (allStudentResults.length === 0) {
+        resultsDiv.textContent = "Nenhum resultado de aluno para exibir.";
+        return;
+      }
+
+      let reportText = `Relatório Geral - ${allStudentResults.length} Gabarito(s) Processado(s)\n`;
+      reportText += "===================================================\n\n";
+
+      allStudentResults.forEach((result, index) => {
+        reportText += `Arquivo: ${result.fileName}\n`; // Added filename for clarity
+        if (result.error) {
+          reportText += `  Status: ERRO - ${result.error}\n`;
+        } else {
+          reportText += `  CPF: ${result.candidateInfo.cpf || 'N/A'}\n`;
+          reportText += `  Pontuação: ${result.score} / ${result.corrections.length}\n`;
+          // Optional: List incorrect answers
+          // const incorrect = result.corrections.filter(c => !c.isCorrect);
+          // if (incorrect.length > 0) {
+          //     reportText += `  Respostas Incorretas/Não Marcadas:\n`;
+          //     incorrect.forEach(c => {
+          //         reportText += `    Questão ${c.questionNumber}: Marcou ${c.studentAnswer || '-'}. Correta: ${c.correctAnswer}\n`;
+          //     });
+          // }
+        }
+        reportText += "---------------------------------------------------\n";
+      });
+
+      resultsDiv.textContent = reportText;
+      updateButtonStates(); // Enable export button
+    }
+
+    function exportGeneralReport() {
+      if (allStudentResults.length === 0) {
+        alert("Não há resultados para exportar.");
+        return;
+      }
+
+      // Cabeçalho dinâmico com matérias
+      const header = [
+        "Arquivo", "Nº Inscrição", "Nome", "CPF", "Data Nascimento", "Pontuação", "Total Questões"
+      ];
+      materias.forEach(m => header.push(`Acertos ${m.nome}`));
+      header.push("Situação", "Status", "Erro");
+      const dataForSheet = [header];
+
+      // Funções auxiliares (CPF, data, etc)
+      function formatCPF(cpf) {
+        cpf = cpf.padStart(11, '0');
+        return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+      }
+      function excelDateToString(serial) {
+        if (!serial || isNaN(serial)) return serial;
+        const utc_days = Math.floor(serial - 25569);
+        const utc_value = utc_days * 86400;
+        const date_info = new Date(utc_value * 1000);
+        const day = String(date_info.getUTCDate()).padStart(2, '0');
+        const month = String(date_info.getUTCMonth() + 1).padStart(2, '0');
+        const year = date_info.getUTCFullYear();
+        return `${day}/${month}/${year}`;
+      }
+
+      allStudentResults.forEach(result => {
+        let registration = result.candidateInfo.registration || '';
+        let cpf = (result.candidateInfo.cpf || '').replace(/[^\d]/g, '');
+
+        let candidate = candidateSheetData.find(c => c.registration == registration) ||
+          candidateSheetData.find(c => c.cpf == cpf);
+
+        let name = candidate ? candidate.name : (result.candidateInfo.name || '');
+        let birthdate = candidate ? candidate.birthdate : '';
+
+        if (cpf && cpf.length === 11) cpf = formatCPF(cpf);
+        if (birthdate && !isNaN(birthdate)) birthdate = excelDateToString(Number(birthdate));
+
+        // --- ETAPA 3: Cálculo de acertos por matéria e situação ---
+        let materiaPontuacao = {};
+        let desclassificado = false;
+        materias.forEach(m => {
+          let acertos = 0;
+          if (!result.error) {
+            result.corrections.forEach(corr => {
+              const q = parseInt(corr.questionNumber);
+              if (q >= m.inicio && q <= m.fim && corr.isCorrect) acertos++;
+            });
+          }
+          materiaPontuacao[m.nome] = acertos;
+          if (acertos === 0) desclassificado = true;
+        });
+        const situacao = desclassificado ? "Desclassificado" : "Classificado";
+        // --- FIM ETAPA 3 ---
+
+        // --- ETAPA 4: Montagem da linha com matérias e situação ---
+        const row = [
+          result.fileName,
+          candidate ? candidate.registration : registration,
+          name,
+          cpf,
+          birthdate,
+          result.error ? 0 : result.score,
+          result.error ? 0 : result.corrections.length
+        ];
+        materias.forEach(m => row.push(materiaPontuacao[m.nome]));
+        row.push(situacao, result.error ? "Erro" : "OK", result.error || "");
+        dataForSheet.push(row);
+        // --- FIM ETAPA 4 ---
+      });
+
+      const worksheet = XLSX.utils.aoa_to_sheet(dataForSheet);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Resultados Gerais');
+      XLSX.writeFile(workbook, 'relatorio_geral_gabaritos.xlsx');
+    }
+
+    async function generateIndividualPdfReport(result) {
+      if (result.error) {
+        console.warn(`Skipping PDF for ${result.fileName} due to error.`);
+        return; // Don't generate PDF for errored files
+      }
+
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({
+        orientation: 'p', // portrait
+        unit: 'pt', // points
+        format: 'a4'
+      });
+
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const margin = 40;
+      let currentY = margin;
+
+      // --- Header ---
+      pdf.setFontSize(16);
+      pdf.text("Relatório Individual de Gabarito", pageWidth / 2, currentY, { align: 'center' });
+      currentY += 30;
+
+      pdf.setFontSize(10);
+      pdf.text(`CPF: ${result.candidateInfo.cpf || 'N/A'}`, margin, currentY);
+      currentY += 15;
+      pdf.text(`Pontuação: ${result.score} / ${result.corrections.length}`, margin, currentY);
+      currentY += 30;
+
+      // --- Add Student's Gabarito Image ---
+      try {
+        const imgProps = pdf.getImageProperties(result.imageDataUrl);
+        const imgWidth = pageWidth - 2 * margin;
+        const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+
+        // Ajuste: Se a imagem não couber, reduza para caber e deixar espaço para o relatório
+        let availableHeight = pageHeight - margin - currentY - 120; // 120px reservados para relatório
+        let finalImgHeight = imgHeight;
+        let finalImgWidth = imgWidth;
+        if (imgHeight > availableHeight) {
+          finalImgHeight = availableHeight;
+          finalImgWidth = (imgProps.width * finalImgHeight) / imgProps.height;
+        }
+
+        pdf.addImage(result.imageDataUrl, 'PNG', margin, currentY, finalImgWidth, finalImgHeight);
+
+        // --- Draw Overlays on Image (Corrections) ---
+        // Ensure masterImageWidth and masterImageHeight are available
+        if (typeof masterImageWidth === 'undefined' || typeof masterImageHeight === 'undefined' || !masterImageWidth || !masterImageHeight) {
+          console.error("Master image dimensions not available for PDF overlay scaling.");
+          throw new Error("Dimensões da imagem mestre não disponíveis.");
+        }
+
+        const imgScaleX = finalImgWidth / masterImageWidth;
+        const imgScaleY = finalImgHeight / masterImageHeight;
+
+        result.corrections.forEach(corr => {
+          // Find the master key point for the *correct* answer of this question
+          const correctMasterPoint = masterKey.find(p => p.questionNumber == corr.questionNumber && p.correctAnswer == corr.correctAnswer);
+          // Find the master key point for the answer the *student marked* (if any)
+          const studentMarkMasterPoint = corr.studentAnswer ? masterKey.find(p => p.questionNumber == corr.questionNumber && p.correctAnswer == corr.studentAnswer) : null;
+
+          if (correctMasterPoint) {
+            // Calculate draw coordinates based on the *correct* answer's position
+            const correctDrawX = margin + correctMasterPoint.x * imgScaleX;
+            const correctDrawY = currentY + correctMasterPoint.y * imgScaleY;
+
+            if (corr.isCorrect) {
+              // Draw green circle around the correct (and marked) answer
+              pdf.setDrawColor(0, 150, 0); // Green
+              pdf.setLineWidth(1);
+              pdf.circle(correctDrawX, correctDrawY, 7, 'S'); // 'S' for stroke
+            } else {
+              // Draw red X over the *correct* answer position
+              pdf.setDrawColor(200, 0, 0); // Red
+              pdf.setLineWidth(1.5);
+              pdf.line(correctDrawX - 5, correctDrawY - 5, correctDrawX + 5, correctDrawY + 5); // X part 1
+              pdf.line(correctDrawX - 5, correctDrawY + 5, correctDrawX + 5, correctDrawY - 5); // X part 2
+
+              // If the student marked a *different* answer, draw a red square around it
+              if (studentMarkMasterPoint && studentMarkMasterPoint !== correctMasterPoint) {
+                const studentDrawX = margin + studentMarkMasterPoint.x * imgScaleX;
+                const studentDrawY = currentY + studentMarkMasterPoint.y * imgScaleY;
+                pdf.setDrawColor(200, 0, 0); // Red
+                pdf.setLineWidth(1);
+                pdf.rect(studentDrawX - 4, studentDrawY - 4, 8, 8, 'S'); // 'S' for stroke
+              }
+              // If the student didn't mark anything (studentAnswer is null), only the red X on the correct answer is shown.
+            }
+          } else {
+            console.warn(`Could not find master key point for question ${corr.questionNumber}, correct answer ${corr.correctAnswer}`);
+          }
+        });
+
+        // --- Relatório Individual no rodapé da mesma página ---
+        let reportY = currentY + finalImgHeight + 20;
+        if (reportY + 80 > pageHeight - margin) {
+          reportY = pageHeight - margin - 80; // Garante que não vai sair da página
+        }
+        // You could add a summary table here if needed, using pdf.text or pdf.autoTable
+
+      } catch (imgError) {
+        console.error("Error adding image or overlays to PDF:", imgError);
+        pdf.setTextColor(255, 0, 0);
+        pdf.text(`Erro ao processar imagem para PDF: ${imgError.message}`, margin, currentY);
+        pdf.setTextColor(0, 0, 0);
+        currentY += 20;
+      }
+
+      // --- Save PDF ---
+      const safeCpf = (result.candidateInfo.cpf || 'SemCPF').replace(/[^0-9]/gi, '');
+      const safeFilename = result.fileName.replace(/[^a-z0-9_.-]/gi, '_'); // Sanitize filename
+      const filename = `Gabarito_${safeCpf}_${safeFilename}.pdf`;
+      pdf.save(filename);
+      console.log(`Generated PDF: ${filename}`);
+    }
+
+
+    // --- Utility Functions ---
+    function updateButtonStates() {
+      const saveMasterBtn = document.getElementById('saveMasterKey');
+      const processStudentsBtn = document.getElementById('processStudents');
+      const exportGeneralBtn = document.getElementById('exportGeneralResults');
+
+      saveMasterBtn.disabled = masterKey.length === 0;
+      processStudentsBtn.disabled = masterKey.length === 0 || studentFiles.length === 0 || !cvReady || !tesseractReady;
+      exportGeneralBtn.disabled = allStudentResults.length === 0;
+    }
+
+    function drawRect(ctx, rect, color = 'red', lineWidth = 2) {
+      if (!rect) return;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = lineWidth;
+      ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+    }
+
+    // --- Placeholder for Advanced OpenCV Functions (Requires more implementation) ---
+    function findAnswerGridArea(canvas) {
+      // TODO: Use OpenCV (cv.findContours, cv.approxPolyDP) to find the largest
+      // rectangular area likely containing the answers. Similar to the original code's
+      // findGabaritoArea but might need refinement.
+      console.warn("findAnswerGridArea not implemented.");
+      return null; // Return { x, y, width, height }
+    }
+
+    function alignStudentCanvas(studentCanvas, masterImageData) {
+      // TODO: Implement alignment using OpenCV's perspectiveTransform or feature matching.
+      // This is complex and requires identifying corresponding points or features
+      // on both the master template and the student's sheet.
+      console.warn("alignStudentCanvas not implemented. Using unaligned canvas.");
+      return studentCanvas;
+    }
+
+
+  </script>
+
+  <!-- Bootstrap JS Dependencies -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,202 @@
+<section class="hero-section d-flex align-items-center">    
+    <div class="container app-wide-container text-center">
+        <h1 class="hero-main-title mt-2 mb-0">CEMIL</h1>
+        <p class="hero-main-subtitle mb-0">Jardenir Jorge Frederico</p>
+        <div class="hero-logo-stage mx-auto mb-1" aria-hidden="true">
+            <div class="hero-particle-layer"></div>
+            <div class="hero-ember-layer"></div>
+            <div class="hero-flame-layer"></div>
+            <div class="hero-flame-layer hero-flame-layer-soft"></div>
+            <img src="<?= htmlspecialchars((string) SCHOOL_LOGO, ENT_QUOTES, 'UTF-8'); ?>" alt="Logo da escola"
+                class="hero-school-logo">
+            <div class="hero-steam-layer"></div>
+        </div>
+    </div>
+</section>
+<p></p>
+<section class="instagram-section pb-5">
+    <?php $instagramLinksCount = max(0, min(3, (int) ($instagramLinksCount ?? 0))); ?>
+    <div class="container app-wide-container">
+        <div class="row justify-content-center mb-3">
+            <div class="col-lg-10 text-center">
+                <h2 class="h4 fw-bold mb-1 d-inline-flex align-items-center gap-2">
+                    <i class="lab la-instagram"></i>
+                    <span>Siga-nos no Instagram</span>
+                </h2>
+                <p class="text-secondary mb-0">
+                    <a href="<?= htmlspecialchars($instagramProfileUrl, ENT_QUOTES, 'UTF-8'); ?>" target="_blank"
+                        rel="noopener noreferrer" class="instagram-profile-link">
+                        @
+                        <?= htmlspecialchars((string) INSTAGRAM_USERNAME, ENT_QUOTES, 'UTF-8'); ?>
+                    </a>
+                </p>
+                <?php if (!empty($isAdmin)): ?>
+                <button type="button" class="btn btn-danger btn-sm mt-2 btn-micro" data-bs-toggle="modal"
+                    data-bs-target="#instagramManageModal">
+                    <i class="las la-cog me-1"></i>Gerenciar
+                </button>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <div id="instagramPostsWrapper" class="instagram-posts-wrapper position-relative"
+            data-endpoint="<?= rtrim(BASE_URL, '/'); ?>/api/instagram-posts"
+            data-has-links="<?= !empty($hasInstagramLinks) ? '1' : '0'; ?>">
+            <div id="instagramPostsSkeleton" class="row g-4 justify-content-center instagram-skeleton-row is-hidden"
+                aria-live="polite" aria-busy="false">
+                <div class="col-12 col-sm-6 col-lg-auto">
+                    <article
+                        class="card border-0 shadow-sm instagram-post-card h-100 instagram-skeleton-card instagram-loading-card">
+                        <div class="instagram-loading-card-body d-flex align-items-center justify-content-center">
+                            <div class="text-center">
+                                <div class="spinner-border text-danger" role="status" aria-hidden="true"></div>
+                                <p class="small text-secondary mt-2 mb-0">Carregando...</p>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+            </div>
+
+            <div id="instagramPostsContainer" class="row g-4 justify-content-center"></div>
+
+            <div id="instagramPostsEmpty" class="row justify-content-center d-none">
+                <div class="col-lg-8">
+                    <div class="alert alert-light border text-center mb-0" role="alert">
+                        Configure os links dos posts.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="modal fade" id="instagramPreviewModal" tabindex="-1" aria-labelledby="instagramPreviewModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content site-modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="instagramPreviewModalLabel">Postagem do Instagram</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="instagram-preview-embed-wrap mb-3">
+                    <iframe id="instagramPreviewFrame" class="instagram-preview-frame" src="about:blank"
+                        title="Pré-visualização da postagem" loading="lazy"
+                        allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+                        allowfullscreen></iframe>
+                </div>
+                <p id="instagramPreviewTitle" class="text-secondary mb-3"></p>
+                <a id="instagramPreviewLink" href="#" target="_blank" rel="noopener noreferrer"
+                    class="btn btn-outline-danger btn-micro"><i class="lab la-instagram me-1"></i>Ver no Instagram</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<?php if (!empty($isAdmin)): ?>
+<div class="modal fade" id="instagramManageModal" tabindex="-1" aria-labelledby="instagramManageModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content instagram-manage-modal-content site-modal-content">
+            <div class="modal-header instagram-manage-modal-header">
+                <h5 class="modal-title d-flex align-items-center gap-2" id="instagramManageModalLabel">
+                    <span class="instagram-manage-title-icon"><i class="lab la-instagram"></i></span>
+                    <span>Gerenciar publicações</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <form method="post" action="<?= rtrim(BASE_URL, '/'); ?>/gerenciar-links-instagram">
+                <div class="modal-body instagram-manage-modal-body">
+                    <div class="instagram-manage-intro mb-3">
+                        <p class="mb-1 fw-semibold">Atualize até 3 links exibidos na home</p>
+                        <p class="small text-secondary mb-0">Os links são opcionais. Você pode salvar com 0, 1, 2 ou 3
+                            links, no formato <strong>/p/</strong> ou <strong>/reel/</strong>.</p>
+                        <div class="instagram-manage-status mt-2">
+                            <span id="instagramManageValidCount"
+                                class="badge text-bg-secondary instagram-manage-status-badge">0/3 links válidos</span>
+                        </div>
+                    </div>
+
+                    <?php if (!empty($instagramManageError)): ?>
+                    <div class="alert alert-danger" role="alert">
+                        <?= htmlspecialchars((string) $instagramManageError, ENT_QUOTES, 'UTF-8'); ?>
+                    </div>
+                    <?php endif; ?>
+                    <?php if (!empty($instagramManageSuccess)): ?>
+                    <div class="alert alert-success" role="alert">
+                        <?= htmlspecialchars((string) $instagramManageSuccess, ENT_QUOTES, 'UTF-8'); ?>
+                    </div>
+                    <?php endif; ?>
+
+                    <input type="hidden" name="csrf_token"
+                        value="<?= htmlspecialchars((string) $csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+
+                    <div class="mb-3">
+                        <?php $link1 = (string) ($instagramManageLinks[0] ?? ''); ?>
+                        <label for="link_1" class="form-label d-flex align-items-center justify-content-between">
+                            <span><span class="badge text-bg-dark me-1">1</span> Link 1</span>
+                            <a id="open_link_1"
+                                href="<?= htmlspecialchars($link1 !== '' ? $link1 : '#', ENT_QUOTES, 'UTF-8'); ?>"
+                                target="_blank" rel="noopener noreferrer"
+                                class="btn btn-outline-secondary btn-sm btn-micro <?= $link1 === '' ? 'disabled' : ''; ?>"
+                                <?=$link1==='' ? 'aria-disabled="true" tabindex="-1"' : '' ; ?>><i
+                                    class="las la-external-link-alt me-1"></i>Abrir</a>
+                        </label>
+                        <div class="input-group instagram-manage-input-group">
+                            <span class="input-group-text"><i class="lab la-instagram"></i></span>
+                            <input type="url" class="form-control js-instagram-manage-link" id="link_1" name="link_1"
+                                data-open-link-id="open_link_1"
+                                value="<?= htmlspecialchars($link1, ENT_QUOTES, 'UTF-8'); ?>"
+                                placeholder="https://www.instagram.com/p/.../">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <?php $link2 = (string) ($instagramManageLinks[1] ?? ''); ?>
+                        <label for="link_2" class="form-label d-flex align-items-center justify-content-between">
+                            <span><span class="badge text-bg-dark me-1">2</span> Link 2</span>
+                            <a id="open_link_2"
+                                href="<?= htmlspecialchars($link2 !== '' ? $link2 : '#', ENT_QUOTES, 'UTF-8'); ?>"
+                                target="_blank" rel="noopener noreferrer"
+                                class="btn btn-outline-secondary btn-sm btn-micro <?= $link2 === '' ? 'disabled' : ''; ?>"
+                                <?=$link2==='' ? 'aria-disabled="true" tabindex="-1"' : '' ; ?>><i
+                                    class="las la-external-link-alt me-1"></i>Abrir</a>
+                        </label>
+                        <div class="input-group instagram-manage-input-group">
+                            <span class="input-group-text"><i class="lab la-instagram"></i></span>
+                            <input type="url" class="form-control js-instagram-manage-link" id="link_2" name="link_2"
+                                data-open-link-id="open_link_2"
+                                value="<?= htmlspecialchars($link2, ENT_QUOTES, 'UTF-8'); ?>"
+                                placeholder="https://www.instagram.com/reel/.../">
+                        </div>
+                    </div>
+                    <div class="mb-0">
+                        <?php $link3 = (string) ($instagramManageLinks[2] ?? ''); ?>
+                        <label for="link_3" class="form-label d-flex align-items-center justify-content-between">
+                            <span><span class="badge text-bg-dark me-1">3</span> Link 3</span>
+                            <a id="open_link_3"
+                                href="<?= htmlspecialchars($link3 !== '' ? $link3 : '#', ENT_QUOTES, 'UTF-8'); ?>"
+                                target="_blank" rel="noopener noreferrer"
+                                class="btn btn-outline-secondary btn-sm btn-micro <?= $link3 === '' ? 'disabled' : ''; ?>"
+                                <?=$link3==='' ? 'aria-disabled="true" tabindex="-1"' : '' ; ?>><i
+                                    class="las la-external-link-alt me-1"></i>Abrir</a>
+                        </label>
+                        <div class="input-group instagram-manage-input-group">
+                            <span class="input-group-text"><i class="lab la-instagram"></i></span>
+                            <input type="url" class="form-control js-instagram-manage-link" id="link_3" name="link_3"
+                                data-open-link-id="open_link_3"
+                                value="<?= htmlspecialchars($link3, ENT_QUOTES, 'UTF-8'); ?>"
+                                placeholder="https://www.instagram.com/p/.../">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer instagram-manage-modal-footer">
+                    <button type="submit" class="btn btn-danger btn-micro"><i class="las la-save me-1"></i>Salvar
+                        alterações</button>
+                    <button type="button" class="btn btn-secondary btn-micro" data-bs-dismiss="modal"><i
+                            class="las la-times me-1"></i>Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<?php endif; ?>

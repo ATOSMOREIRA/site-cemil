@@ -1,0 +1,1893 @@
+	<style>
+		.institutional-page-root {
+			background: transparent;
+			color: #212529;
+			font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+			margin: 0;
+			padding: 0;
+			height: 100vh;
+			display: flex;
+			flex-direction: column;
+			overflow: hidden;
+		}
+
+		.container-fluid.px-0 {
+			flex: 1 1 auto;
+			height: 100%;
+			min-height: 0;
+			display: flex;
+			flex-direction: column;
+			overflow: hidden;
+			width: 90%;
+			max-width: 90%;
+			margin: 0 auto;
+		}
+
+		.container-fluid.px-0 > .p-2.p-md-3 {
+			flex: 1 1 auto;
+			min-height: 0;
+			display: flex;
+			flex-direction: column;
+			overflow: hidden;
+		}
+
+		.page-card {
+			border: 0;
+			border-radius: 1rem;
+			box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+		}
+
+		.toolbar {
+			display: flex;
+			gap: .75rem;
+			flex-wrap: wrap;
+			align-items: center;
+			justify-content: space-between;
+			margin-bottom: 1rem;
+		}
+
+		.table td,
+		.table th {
+			vertical-align: middle;
+		}
+
+		.muted-empty {
+			text-align: center;
+			color: #6c757d;
+			padding: 1rem;
+		}
+
+		.top-status {
+			position: fixed;
+			top: 12px;
+			left: 50%;
+			transform: translateX(-50%);
+			z-index: 2000;
+			min-width: 280px;
+			max-width: 92vw;
+			border-radius: .5rem;
+			padding: .5rem .85rem;
+			box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+			font-size: .9rem;
+			font-weight: 500;
+		}
+
+		.top-status.is-success {
+			background: #d1e7dd;
+			color: #0f5132;
+			border: 1px solid #badbcc;
+		}
+
+		.top-status.is-error {
+			background: #f8d7da;
+			color: #842029;
+			border: 1px solid #f5c2c7;
+		}
+
+		.table-scroll-only {
+			flex: 0 1 auto;
+			min-height: auto;
+			width: 100%;
+			max-height: calc(100vh - 230px);
+			overflow-y: auto;
+			overflow-x: auto;
+		}
+
+		.table-scroll-only thead th {
+			position: sticky;
+			top: 0;
+			z-index: 2;
+			background: #fff;
+		}
+
+		.institutional-page-root.is-embedded-iframe .modal-backdrop {
+			display: none !important;
+		}
+
+		.institutional-page-root.is-embedded-iframe {
+			height: 100%;
+			min-height: 0;
+			overflow: hidden;
+			width: 100%;
+			max-width: 100%;
+		}
+
+		.institutional-page-root.is-embedded-iframe > .p-2.p-md-3 {
+			flex: 1 1 auto;
+			min-height: 0;
+			overflow: hidden;
+		}
+
+		.institutional-page-root.is-embedded-iframe .table-scroll-only {
+			flex: 1 1 auto;
+			min-height: 0;
+			max-height: none;
+			overflow-y: auto;
+		}
+
+		.modal {
+			position: fixed;
+			inset: 0;
+		}
+
+		.import-preview-modal .modal-dialog {
+			max-width: min(1500px, 96vw);
+		}
+
+		.import-preview-summary {
+			display: flex;
+			flex-wrap: wrap;
+			gap: .5rem;
+			margin-bottom: .75rem;
+		}
+
+		.import-preview-summary .badge {
+			font-size: .78rem;
+			padding: .45rem .65rem;
+		}
+
+		.import-preview-mapping {
+			border: 1px solid rgba(33, 37, 41, .12);
+			border-radius: .75rem;
+			padding: .9rem;
+			background: rgba(248, 249, 250, .85);
+			margin-bottom: .9rem;
+		}
+
+		.import-preview-mapping-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+			gap: .75rem;
+		}
+
+		.import-preview-mapping .form-label {
+			font-size: .78rem;
+			font-weight: 600;
+			margin-bottom: .25rem;
+		}
+
+		.import-preview-table-wrap {
+			max-height: min(62vh, 720px);
+			overflow: auto;
+			border: 1px solid rgba(33, 37, 41, .12);
+			border-radius: .75rem;
+		}
+
+		.import-preview-table {
+			min-width: 1580px;
+		}
+
+		.import-preview-table thead th {
+			position: sticky;
+			top: 0;
+			background: #fff;
+			z-index: 2;
+			white-space: nowrap;
+		}
+
+		.import-preview-table td,
+		.import-preview-table th {
+			vertical-align: top;
+		}
+
+		.import-preview-table .form-control,
+		.import-preview-table .form-select {
+			min-width: 120px;
+		}
+
+		.import-preview-table textarea.form-control {
+			min-width: 220px;
+			resize: vertical;
+		}
+
+		.import-preview-row.is-review {
+			background: rgba(255, 243, 205, .45);
+		}
+
+		.import-preview-row.is-update {
+			background: rgba(207, 244, 252, .35);
+		}
+
+		.import-preview-row.is-create {
+			background: rgba(209, 231, 221, .22);
+		}
+
+		.import-preview-messages {
+			min-width: 220px;
+			font-size: .78rem;
+			line-height: 1.45;
+		}
+
+		.import-preview-status {
+			min-width: 150px;
+		}
+	</style>
+	<div id="statusMensagem" class="top-status d-none" role="alert" aria-live="polite"></div>
+	<input type="file" id="importarAlunosArquivo" class="d-none" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+	<div class="container-fluid px-0 institutional-page-root">
+		<div class="p-2 p-md-3">
+			<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+				<h1 class="h4 fw-bold mb-0">Cadastro de Alunos</h1>
+				<div class="d-flex gap-2 align-items-center">
+					<button id="btnImportarAlunos" class="btn btn-outline-primary btn-sm" type="button"><i class="las la-file-import me-1"></i>Importar planilha</button>
+					<button id="btnNovoAluno" class="btn btn-danger btn-sm" type="button"><i class="las la-plus me-1"></i>Novo aluno</button>
+					<button id="btnExcluirSelecionadosAlunos" class="btn btn-outline-danger btn-sm" type="button" disabled><i class="las la-trash-alt me-1"></i>Excluir selecionados</button>
+					<a id="btnVoltarAlunos" href="#" target="_top" class="btn btn-outline-secondary btn-sm">
+						<i class="las la-arrow-left me-1"></i>Voltar
+					</a>
+				</div>
+			</div>
+			<div class="mb-3">
+				<input type="search" class="form-control form-control-sm" id="buscaAlunos" placeholder="Buscar por nome, matrícula, turma, RG, CPF, necessidade/deficiência ou responsável">
+			</div>
+
+			<div class="table-responsive table-scroll-only border rounded bg-white">
+				<table class="table table-sm mb-0">
+					<thead>
+						<tr>
+							<th class="institutional-select-col"><input type="checkbox" id="selectAllAlunos" aria-label="Selecionar todos os alunos"></th>
+							<th>Nome</th>
+							<th>Matrícula</th>
+							<th>Turma</th>
+							<th>Data Nascimento</th>
+							<th>Entrada</th>
+							<th>Data de saída</th>
+							<th>RG</th>
+							<th>CPF</th>
+							<th>Necessidade/Deficiência</th>
+							<th>Responsável</th>
+							<th class="text-end">Ações</th>
+						</tr>
+					</thead>
+					<tbody id="alunosBody">
+						<tr>
+							<td colspan="12" class="muted-empty">Nenhum aluno cadastrado.</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+
+	<div class="modal fade" id="modalAluno" tabindex="-1" aria-hidden="true">
+		<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+			<div class="modal-content site-modal-content">
+				<div class="modal-header">
+					<h2 class="modal-title fs-5" id="modalAlunoTitulo">Aluno</h2>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+				</div>
+				<form id="formAluno" novalidate>
+					<div class="modal-body">
+						<input type="hidden" id="alunoId" value="0">
+
+						<div class="row g-3">
+							<div class="col-md-4">
+								<label class="form-label" for="nomeAluno">Nome completo</label>
+								<input type="text" id="nomeAluno" class="form-control" maxlength="150" required placeholder="Nome do aluno">
+							</div>
+
+							<div class="col-md-2">
+								<label class="form-label" for="matriculaAluno">Matrícula</label>
+								<input type="text" id="matriculaAluno" class="form-control" maxlength="30" required placeholder="Ex.: 2026001">
+							</div>
+
+							<div class="col-md-3">
+								<label class="form-label" for="turmaAluno">Turma</label>
+								<select id="turmaAluno" class="form-select" required>
+									<option value="">Selecione uma turma</option>
+								</select>
+							</div>
+
+							<div class="col-md-3">
+								<label class="form-label" for="dataNascimentoAluno">Data de nascimento</label>
+								<input type="date" id="dataNascimentoAluno" class="form-control">
+							</div>
+
+							<div class="col-md-3">
+								<label class="form-label" for="dataEntradaAluno">Entrada</label>
+								<input type="date" id="dataEntradaAluno" class="form-control">
+							</div>
+
+							<div class="col-md-3">
+								<label class="form-label" for="dataSaidaAluno">Data de saída</label>
+								<input type="date" id="dataSaidaAluno" class="form-control">
+							</div>
+
+							<div class="col-md-3">
+								<label class="form-label" for="rgAluno">RG</label>
+								<input type="text" id="rgAluno" class="form-control" maxlength="20" placeholder="RG do aluno">
+							</div>
+
+							<div class="col-md-3">
+								<label class="form-label" for="cpfAluno">CPF</label>
+								<input type="text" id="cpfAluno" class="form-control" maxlength="14" placeholder="000.000.000-00" inputmode="numeric" autocomplete="off">
+							</div>
+
+							<div class="col-12">
+								<label class="form-label" for="necessidadeDeficienciaAluno">Necessidade/Deficiência</label>
+								<textarea id="necessidadeDeficienciaAluno" class="form-control" rows="2" maxlength="255" placeholder="Informe necessidade, deficiência ou observação pedagógica relevante"></textarea>
+							</div>
+
+							<div class="col-md-4">
+								<label class="form-label" for="responsavelAluno">Responsável</label>
+								<input type="text" id="responsavelAluno" class="form-control" maxlength="150" placeholder="Nome do responsável">
+							</div>
+
+							<div class="col-md-4">
+								<label class="form-label" for="telefoneAluno">Telefone</label>
+								<input type="text" id="telefoneAluno" class="form-control" maxlength="25" placeholder="(00) 00000-0000">
+							</div>
+
+							<div class="col-md-4">
+								<label class="form-label" for="emailAluno">E-mail</label>
+								<input type="email" id="emailAluno" class="form-control" maxlength="180" placeholder="aluno@email.com">
+							</div>
+						</div>
+					</div>
+					<div class="modal-footer">
+                        <button type="submit" class="btn btn-danger btn-sm">Salvar</button>
+						<button type="button" class="btn btn-outline-secondary btn-sm" id="btnCancelarAluno" data-bs-dismiss="modal">Cancelar</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	</div>
+
+	<div class="modal fade" id="modalConfirmarExclusaoAluno" tabindex="-1" aria-hidden="true">
+		<div class="modal-dialog modal-dialog-centered">
+			<div class="modal-content site-modal-content">
+				<div class="modal-header">
+					<h2 class="modal-title fs-5">Confirmar exclusão</h2>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+				</div>
+				<div class="modal-body">
+					<p class="mb-0" id="mensagemConfirmacaoAluno">Deseja realmente excluir este aluno?</p>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-danger btn-sm" id="btnConfirmarExclusaoAluno">Excluir</button>
+					<button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="modal fade import-preview-modal" id="modalImportarAlunosPreview" tabindex="-1" aria-hidden="true">
+		<div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+			<div class="modal-content site-modal-content">
+				<div class="modal-header">
+					<div>
+						<h2 class="modal-title fs-5 mb-1">Conferir importação de alunos</h2>
+						<div class="small text-secondary" id="importPreviewFileName">Selecione uma planilha para visualizar os dados.</div>
+					</div>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+				</div>
+				<div class="modal-body">
+					<div class="import-preview-summary" id="importPreviewSummary"></div>
+					<div class="import-preview-mapping">
+						<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+							<div>
+								<div class="fw-semibold">Mapeamento das colunas da planilha</div>
+								<div class="small text-secondary">A identificação automática já vem preenchida, mas você pode redefinir cada coluna antes de conferir a importação.</div>
+							</div>
+							<button type="button" class="btn btn-outline-secondary btn-sm" id="btnImportPreviewAutoMap">Usar identificação automática</button>
+						</div>
+						<div class="import-preview-mapping-grid" id="importPreviewMappingFields"></div>
+					</div>
+					<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+						<div class="form-check mb-0">
+							<input class="form-check-input" type="checkbox" id="importPreviewSelectAll">
+							<label class="form-check-label" for="importPreviewSelectAll">Selecionar todos os válidos</label>
+						</div>
+						<div class="small text-secondary">Linhas com problemas ficam em revisão até serem corrigidas.</div>
+					</div>
+					<div class="import-preview-table-wrap">
+						<table class="table table-sm mb-0 import-preview-table">
+							<thead>
+								<tr>
+									<th>Importar</th>
+									<th>Status</th>
+									<th>Linha</th>
+									<th>Nome</th>
+									<th>Matrícula</th>
+									<th>Turma</th>
+									<th>Nascimento</th>
+									<th>Entrada</th>
+									<th>Saída</th>
+									<th>RG</th>
+									<th>CPF</th>
+									<th>Necessidade/Deficiência</th>
+									<th>Responsável</th>
+									<th>Telefone</th>
+									<th>E-mail</th>
+									<th>Observações</th>
+								</tr>
+							</thead>
+							<tbody id="importPreviewBody">
+								<tr>
+									<td colspan="16" class="muted-empty">Nenhuma pré-visualização carregada.</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+					<button type="button" class="btn btn-danger btn-sm" id="btnConfirmarImportacaoPreview" disabled>Importar selecionados</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	<script>
+		(function () {
+			function startPage() {
+			var isEmbeddedIframe = window.parent !== window;
+			var pageRoot = document.querySelector('.institutional-page-root');
+			if (isEmbeddedIframe) {
+				if (pageRoot) {
+					pageRoot.classList.add('is-embedded-iframe');
+				}
+			}
+
+			var modalElement = document.getElementById('modalAluno');
+			var alunoModal = modalElement ? new bootstrap.Modal(modalElement) : null;
+			var confirmModalElement = document.getElementById('modalConfirmarExclusaoAluno');
+			var confirmarExclusaoModal = confirmModalElement ? new bootstrap.Modal(confirmModalElement) : null;
+			var previewModalElement = document.getElementById('modalImportarAlunosPreview');
+			var importPreviewModal = previewModalElement ? new bootstrap.Modal(previewModalElement) : null;
+			var btnNovoAluno = document.getElementById('btnNovoAluno');
+			var btnImportarAlunos = document.getElementById('btnImportarAlunos');
+			var btnVoltarAlunos = document.getElementById('btnVoltarAlunos');
+			var btnExcluirSelecionados = document.getElementById('btnExcluirSelecionadosAlunos');
+			var btnCancelarAluno = document.getElementById('btnCancelarAluno');
+			var btnConfirmarExclusao = document.getElementById('btnConfirmarExclusaoAluno');
+			var btnConfirmarImportacaoPreview = document.getElementById('btnConfirmarImportacaoPreview');
+			var btnImportPreviewAutoMap = document.getElementById('btnImportPreviewAutoMap');
+			var importarArquivoInput = document.getElementById('importarAlunosArquivo');
+			var importPreviewBody = document.getElementById('importPreviewBody');
+			var importPreviewSummary = document.getElementById('importPreviewSummary');
+			var importPreviewMappingFields = document.getElementById('importPreviewMappingFields');
+			var importPreviewSelectAll = document.getElementById('importPreviewSelectAll');
+			var importPreviewFileName = document.getElementById('importPreviewFileName');
+			var selectAllAlunos = document.getElementById('selectAllAlunos');
+			var form = document.getElementById('formAluno');
+			var modalTitulo = document.getElementById('modalAlunoTitulo');
+			var mensagemConfirmacao = document.getElementById('mensagemConfirmacaoAluno');
+			var buscaInput = document.getElementById('buscaAlunos');
+			var body = document.getElementById('alunosBody');
+			var statusMensagem = document.getElementById('statusMensagem');
+
+			var idInput = document.getElementById('alunoId');
+			var nomeInput = document.getElementById('nomeAluno');
+			var matriculaInput = document.getElementById('matriculaAluno');
+			var turmaInput = document.getElementById('turmaAluno');
+			var nascimentoInput = document.getElementById('dataNascimentoAluno');
+			var entradaInput = document.getElementById('dataEntradaAluno');
+			var dataSaidaInput = document.getElementById('dataSaidaAluno');
+			var rgInput = document.getElementById('rgAluno');
+			var cpfInput = document.getElementById('cpfAluno');
+			var necessidadeDeficienciaInput = document.getElementById('necessidadeDeficienciaAluno');
+			var responsavelInput = document.getElementById('responsavelAluno');
+			var telefoneInput = document.getElementById('telefoneAluno');
+			var emailInput = document.getElementById('emailAluno');
+
+			var alunos = [];
+			var turmasDisponiveis = [];
+			var selectedAlunoIdsForDelete = [];
+			var pendingDeleteAlunoIds = [];
+			var filteredAlunoIds = [];
+			var statusTimer = null;
+			var importInProgress = false;
+			var previewImportAutoMapping = {};
+			var previewImportHeaders = [];
+			var previewImportRawRows = [];
+			var previewImportMapping = {};
+			var previewImportRows = [];
+			var pollIntervalMs = 5000;
+			var pollTimer = null;
+			var syncInProgress = false;
+			var lastAlunosSignature = '';
+			var lastTurmasSignature = '';
+			var importPreviewFieldDefinitions = [
+				{ key: 'nome', label: 'Nome' },
+				{ key: 'matricula', label: 'Matrícula' },
+				{ key: 'turma', label: 'Turma' },
+				{ key: 'data_nascimento', label: 'Data de nascimento' },
+				{ key: 'data_entrada', label: 'Entrada' },
+				{ key: 'data_saida', label: 'Saída' },
+				{ key: 'rg', label: 'RG' },
+				{ key: 'cpf', label: 'CPF' },
+				{ key: 'necessidade_deficiencia', label: 'Necessidade/Deficiência' },
+				{ key: 'responsavel', label: 'Responsável' },
+				{ key: 'telefone', label: 'Telefone' },
+				{ key: 'email', label: 'E-mail' }
+			];
+
+			function resolveBasePath() {
+				var pathname = String(window.location.pathname || '');
+				var indexPhpPos = pathname.indexOf('/index.php/');
+
+				if (indexPhpPos >= 0) {
+					return pathname.slice(0, indexPhpPos);
+				}
+
+				return '';
+			}
+
+			function buildEndpoint(path) {
+				var base = resolveBasePath();
+				var normalizedPath = String(path || '');
+				var pathname = String(window.location.pathname || '');
+
+				if (pathname.indexOf('/index.php/') >= 0) {
+					return base + '/index.php' + normalizedPath;
+				}
+
+				return base + normalizedPath;
+			}
+
+			if (btnVoltarAlunos) {
+				btnVoltarAlunos.href = buildEndpoint('/institucional');
+				btnVoltarAlunos.addEventListener('click', function (event) {
+					event.preventDefault();
+					window.top.location.href = buildEndpoint('/institucional');
+				});
+			}
+
+			function showStatus(message, isError) {
+				if (!statusMensagem) {
+					return;
+				}
+
+				if (statusTimer) {
+					window.clearTimeout(statusTimer);
+					statusTimer = null;
+				}
+
+				statusMensagem.textContent = String(message || '').trim();
+				statusMensagem.classList.remove('d-none', 'is-success', 'is-error');
+				statusMensagem.classList.add(isError ? 'is-error' : 'is-success');
+
+				statusTimer = window.setTimeout(function () {
+					statusMensagem.classList.add('d-none');
+					statusMensagem.classList.remove('is-success', 'is-error');
+					statusMensagem.textContent = '';
+					statusTimer = null;
+				}, 2000);
+
+				scheduleParentContentHeight();
+			}
+
+			function notifyParentContentHeight() {
+				if (!isEmbeddedIframe) {
+					return;
+				}
+
+				var documentElement = document.documentElement;
+				var documentBody = document.body;
+				var nextHeight = Math.max(
+					pageRoot ? pageRoot.scrollHeight : 0,
+					documentElement ? documentElement.scrollHeight : 0,
+					documentBody ? documentBody.scrollHeight : 0,
+					documentElement ? documentElement.offsetHeight : 0,
+					documentBody ? documentBody.offsetHeight : 0
+				);
+
+				if (nextHeight <= 0) {
+					return;
+				}
+
+				try {
+					window.parent.postMessage({ type: 'cemil:iframe-content-height', height: nextHeight }, '*');
+				} catch (error) {
+				}
+			}
+
+			function scheduleParentContentHeight() {
+				if (!isEmbeddedIframe) {
+					return;
+				}
+
+				window.requestAnimationFrame(function () {
+					notifyParentContentHeight();
+					window.setTimeout(notifyParentContentHeight, 120);
+				});
+			}
+
+			function normalize(text) {
+				return String(text || '')
+					.toLowerCase()
+					.normalize('NFD')
+					.replace(/[\u0300-\u036f]/g, '');
+			}
+
+			function formatDateToView(dateValue) {
+				var value = String(dateValue || '').trim();
+				if (!value) {
+					return '-';
+				}
+
+				var parts = value.split('-');
+				if (parts.length !== 3) {
+					return value;
+				}
+
+				return parts[2] + '/' + parts[1] + '/' + parts[0];
+			}
+
+			function renderTurmaOptions(selectedTurmaId) {
+				if (!turmaInput) {
+					return;
+				}
+
+				var selected = Number(selectedTurmaId || 0);
+				var options = ['<option value="">Selecione uma turma</option>'];
+
+				turmasDisponiveis.forEach(function (turma) {
+					var turmaId = Number(turma.id || 0);
+					if (turmaId <= 0) {
+						return;
+					}
+
+					var turmaNome = String(turma.nome || '').trim();
+					if (turmaNome === '') {
+						return;
+					}
+
+					var selectedAttr = turmaId === selected ? ' selected' : '';
+					options.push('<option value="' + turmaId + '"' + selectedAttr + '>' + escapeHtml(turmaNome) + '</option>');
+				});
+
+				turmaInput.innerHTML = options.join('');
+				scheduleParentContentHeight();
+			}
+
+			function resetForm() {
+				idInput.value = '0';
+				nomeInput.value = '';
+				matriculaInput.value = '';
+				renderTurmaOptions(0);
+				nascimentoInput.value = '';
+				entradaInput.value = '';
+				dataSaidaInput.value = '';
+				rgInput.value = '';
+				cpfInput.value = '';
+				necessidadeDeficienciaInput.value = '';
+				responsavelInput.value = '';
+				telefoneInput.value = '';
+				emailInput.value = '';
+			}
+
+			function openFormModal() {
+				if (alunoModal) {
+					alunoModal.show();
+				}
+			}
+
+			function closeFormModal() {
+				if (alunoModal) {
+					alunoModal.hide();
+				}
+			}
+
+			function setImportButtonLoading(isLoading) {
+				if (!btnImportarAlunos) {
+					return;
+				}
+
+				btnImportarAlunos.disabled = isLoading;
+				btnImportarAlunos.innerHTML = isLoading
+					? '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Importando...'
+					: '<i class="las la-file-import me-1"></i>Importar planilha';
+			}
+
+			function setPreviewImportButtonLoading(isLoading) {
+				if (!btnConfirmarImportacaoPreview) {
+					return;
+				}
+
+				btnConfirmarImportacaoPreview.innerHTML = isLoading
+					? '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Importando selecionados...'
+					: 'Importar selecionados';
+
+				if (isLoading) {
+					btnConfirmarImportacaoPreview.disabled = true;
+					return;
+				}
+
+				updateImportPreviewSummary();
+			}
+
+			function escapeAttribute(value) {
+				return String(value)
+					.replace(/&/g, '&amp;')
+					.replace(/"/g, '&quot;')
+					.replace(/</g, '&lt;')
+					.replace(/>/g, '&gt;');
+			}
+
+			function normalizeDigits(value) {
+				return String(value || '').replace(/\D+/g, '');
+			}
+
+			function formatCpfValue(value) {
+				var digits = normalizeDigits(value);
+				if (digits.length !== 11) {
+					return String(value || '').trim();
+				}
+
+				return digits.slice(0, 3) + '.' + digits.slice(3, 6) + '.' + digits.slice(6, 9) + '-' + digits.slice(9, 11);
+			}
+
+			function normalizeImportedDateValue(value) {
+				var rawValue = String(value || '').trim();
+				if (rawValue === '') {
+					return '';
+				}
+
+				if (/^\d{4}-\d{2}-\d{2}$/.test(rawValue)) {
+					return rawValue;
+				}
+
+				var dateParts = rawValue.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+				if (dateParts) {
+					var day = dateParts[1].padStart(2, '0');
+					var month = dateParts[2].padStart(2, '0');
+					return dateParts[3] + '-' + month + '-' + day;
+				}
+
+				if (/^\d+(?:\.\d+)?$/.test(rawValue)) {
+					var serial = Number(rawValue);
+					if (!Number.isNaN(serial) && serial > 0) {
+						var excelEpoch = new Date(Date.UTC(1899, 11, 30));
+						excelEpoch.setUTCDate(excelEpoch.getUTCDate() + Math.floor(serial));
+						return excelEpoch.toISOString().slice(0, 10);
+					}
+				}
+
+				return rawValue;
+			}
+
+			function sanitizePreviewFieldValue(field, value) {
+				var textValue = String(value == null ? '' : value).trim();
+
+				if (field === 'data_nascimento' || field === 'data_entrada' || field === 'data_saida') {
+					return normalizeImportedDateValue(textValue);
+				}
+
+				if (field === 'cpf') {
+					return formatCpfValue(textValue);
+				}
+
+				return textValue;
+			}
+
+			function normalizeImportMapping(mappingCandidate) {
+				var normalizedMapping = {};
+
+				importPreviewFieldDefinitions.forEach(function (fieldDefinition) {
+					var rawIndex = mappingCandidate && Object.prototype.hasOwnProperty.call(mappingCandidate, fieldDefinition.key)
+						? mappingCandidate[fieldDefinition.key]
+						: null;
+					var parsedIndex = rawIndex === null || rawIndex === '' ? null : Number(rawIndex);
+					normalizedMapping[fieldDefinition.key] = Number.isInteger(parsedIndex) && parsedIndex >= 0 ? parsedIndex : null;
+				});
+
+				return normalizedMapping;
+			}
+
+			function buildImportPreviewMappingOptions(selectedIndex) {
+				var options = ['<option value="">Não importar</option>'];
+
+				previewImportHeaders.forEach(function (header, index) {
+					var selectedAttr = selectedIndex === index ? ' selected' : '';
+					options.push('<option value="' + index + '"' + selectedAttr + '>Coluna ' + (index + 1) + ': ' + escapeHtml(String(header || '')) + '</option>');
+				});
+
+				return options.join('');
+			}
+
+			function renderImportPreviewMappingControls() {
+				if (!importPreviewMappingFields) {
+					return;
+				}
+
+				if (!previewImportHeaders.length) {
+					importPreviewMappingFields.innerHTML = '<div class="small text-secondary">Carregue uma planilha para configurar o mapeamento.</div>';
+					return;
+				}
+
+				importPreviewMappingFields.innerHTML = importPreviewFieldDefinitions.map(function (fieldDefinition) {
+					var selectedIndex = Object.prototype.hasOwnProperty.call(previewImportMapping, fieldDefinition.key)
+						? previewImportMapping[fieldDefinition.key]
+						: null;
+
+					return [
+						'<div>',
+						'<label class="form-label" for="importPreviewMap_' + fieldDefinition.key + '">' + escapeHtml(fieldDefinition.label) + '</label>',
+						'<select class="form-select form-select-sm js-import-preview-mapping" id="importPreviewMap_' + fieldDefinition.key + '" data-field="' + fieldDefinition.key + '">',
+						buildImportPreviewMappingOptions(selectedIndex),
+						'</select>',
+						'</div>'
+					].join('');
+				}).join('');
+			}
+
+			function mapRawRowToPreviewRow(rawRow) {
+				var rowValues = rawRow && Array.isArray(rawRow.values) ? rawRow.values : [];
+				var mappedRow = {
+					line: Number(rawRow && rawRow.line || 0),
+					selected: true
+				};
+
+				importPreviewFieldDefinitions.forEach(function (fieldDefinition) {
+					var columnIndex = Object.prototype.hasOwnProperty.call(previewImportMapping, fieldDefinition.key)
+						? previewImportMapping[fieldDefinition.key]
+						: null;
+					var value = columnIndex === null || !Object.prototype.hasOwnProperty.call(rowValues, columnIndex)
+						? ''
+						: rowValues[columnIndex];
+					mappedRow[fieldDefinition.key] = sanitizePreviewFieldValue(fieldDefinition.key, value);
+				});
+
+				return mappedRow;
+			}
+
+			function rebuildPreviewImportRows() {
+				previewImportRows = previewImportRawRows.map(function (rawRow) {
+					return mapRawRowToPreviewRow(rawRow);
+				});
+				renderImportPreviewMappingControls();
+				renderImportPreviewRows();
+			}
+
+			function findTurmaByName(name) {
+				var key = normalize(name);
+				if (key === '') {
+					return null;
+				}
+
+				for (var index = 0; index < turmasDisponiveis.length; index += 1) {
+					var turma = turmasDisponiveis[index];
+					if (normalize(turma && turma.nome) === key) {
+						return turma;
+					}
+				}
+
+				return null;
+			}
+
+			function findAlunoByMatricula(matricula) {
+				var normalizedMatricula = String(matricula || '').trim();
+				if (normalizedMatricula === '') {
+					return null;
+				}
+
+				for (var index = 0; index < alunos.length; index += 1) {
+					var aluno = alunos[index];
+					if (String(aluno && aluno.matricula || '').trim() === normalizedMatricula) {
+						return aluno;
+					}
+				}
+
+				return null;
+			}
+
+			function analyzePreviewRow(row) {
+				var messages = [];
+				var nome = String(row && row.nome || '').trim();
+				var matricula = String(row && row.matricula || '').trim();
+				var turmaNome = String(row && row.turma || '').trim();
+				var turmaInfo = findTurmaByName(turmaNome);
+				var dataEntrada = String(row && row.data_entrada || '').trim();
+				var dataSaida = String(row && row.data_saida || '').trim();
+				var cpf = String(row && row.cpf || '').trim();
+				var email = String(row && row.email || '').trim();
+				var existing = findAlunoByMatricula(matricula);
+
+				if (nome === '') {
+					messages.push('Informe o nome.');
+				}
+
+				if (matricula === '') {
+					messages.push('Informe a matrícula.');
+				}
+
+				if (turmaNome === '') {
+					messages.push('Informe a turma.');
+				} else if (!turmaInfo) {
+					messages.push('Turma não encontrada no cadastro.');
+				}
+
+				if (dataEntrada !== '' && dataSaida !== '' && dataSaida < dataEntrada) {
+					messages.push('Saída anterior à entrada.');
+				}
+
+				if (cpf !== '' && normalizeDigits(cpf).length !== 11) {
+					messages.push('CPF inválido.');
+				}
+
+				if (email !== '' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+					messages.push('E-mail inválido.');
+				}
+
+				return {
+					messages: messages,
+					canImport: messages.length === 0,
+					action: messages.length > 0 ? 'review' : (existing ? 'update' : 'create'),
+					turmaId: turmaInfo ? Number(turmaInfo.id || 0) : 0,
+					turmaNome: turmaInfo ? String(turmaInfo.nome || turmaNome) : turmaNome,
+					existingId: existing ? Number(existing.id || 0) : 0,
+					existingNome: existing ? String(existing.nome || '') : ''
+				};
+			}
+
+			function getPreviewActionBadge(action) {
+				if (action === 'create') {
+					return '<span class="badge text-bg-success">Novo</span>';
+				}
+
+				if (action === 'update') {
+					return '<span class="badge text-bg-info">Atualizar</span>';
+				}
+
+				return '<span class="badge text-bg-warning">Revisar</span>';
+			}
+
+			function buildImportPreviewTurmaOptions(selectedTurmaName) {
+				var selectedKey = normalize(selectedTurmaName);
+				var options = ['<option value="">Selecione</option>'];
+
+				turmasDisponiveis.forEach(function (turma) {
+					var turmaNome = String(turma && turma.nome || '').trim();
+					var selectedAttr = normalize(turmaNome) === selectedKey ? ' selected' : '';
+					options.push('<option value="' + escapeAttribute(turmaNome) + '"' + selectedAttr + '>' + escapeHtml(turmaNome) + '</option>');
+				});
+
+				return options.join('');
+			}
+
+			function updateImportPreviewSummary() {
+				if (!importPreviewSummary) {
+					return;
+				}
+
+				var summary = {
+					total: previewImportRows.length,
+					create: 0,
+					update: 0,
+					review: 0,
+					selected: 0
+				};
+
+				previewImportRows.forEach(function (row) {
+					var state = analyzePreviewRow(row);
+					summary[state.action] += 1;
+					if (row.selected && state.canImport) {
+						summary.selected += 1;
+					}
+				});
+
+				importPreviewSummary.innerHTML = [
+					'<span class="badge text-bg-secondary">Total: ' + summary.total + '</span>',
+					'<span class="badge text-bg-success">Novos: ' + summary.create + '</span>',
+					'<span class="badge text-bg-info">Atualizar: ' + summary.update + '</span>',
+					'<span class="badge text-bg-warning">Revisão: ' + summary.review + '</span>',
+					'<span class="badge text-bg-dark">Selecionados: ' + summary.selected + '</span>'
+				].join('');
+
+				if (btnConfirmarImportacaoPreview) {
+					btnConfirmarImportacaoPreview.disabled = summary.selected === 0 || importInProgress;
+					btnConfirmarImportacaoPreview.textContent = summary.selected > 0
+						? ('Importar selecionados (' + summary.selected + ')')
+						: 'Importar selecionados';
+				}
+
+				if (importPreviewSelectAll) {
+					var selectableRows = previewImportRows.filter(function (row) {
+						return analyzePreviewRow(row).canImport;
+					});
+					var selectedCount = selectableRows.filter(function (row) {
+						return row.selected;
+					}).length;
+					importPreviewSelectAll.disabled = selectableRows.length === 0;
+					importPreviewSelectAll.checked = selectableRows.length > 0 && selectedCount === selectableRows.length;
+					importPreviewSelectAll.indeterminate = selectedCount > 0 && selectedCount < selectableRows.length;
+				}
+			}
+
+			function updateImportPreviewRowPresentation(rowIndex) {
+				if (!importPreviewBody) {
+					return;
+				}
+
+				var row = previewImportRows[rowIndex];
+				var tableRow = importPreviewBody.querySelector('tr[data-row-index="' + rowIndex + '"]');
+				if (!row || !tableRow) {
+					return;
+				}
+
+				var state = analyzePreviewRow(row);
+				row.action = state.action;
+				row.can_import = state.canImport;
+				row.turma_id = state.turmaId;
+				row.existing_id = state.existingId;
+				row.existing_nome = state.existingNome;
+				row.messages = state.messages.slice();
+
+				if (!state.canImport) {
+					row.selected = false;
+				}
+
+				tableRow.classList.remove('is-create', 'is-update', 'is-review');
+				tableRow.classList.add(state.action === 'create' ? 'is-create' : (state.action === 'update' ? 'is-update' : 'is-review'));
+
+				var checkbox = tableRow.querySelector('.js-import-preview-select');
+				if (checkbox) {
+					checkbox.checked = Boolean(row.selected && state.canImport);
+					checkbox.disabled = !state.canImport;
+				}
+
+				var statusCell = tableRow.querySelector('.js-import-preview-status');
+				if (statusCell) {
+					statusCell.innerHTML = getPreviewActionBadge(state.action)
+						+ (state.action === 'update' && state.existingNome ? '<div class="small text-secondary mt-1">Já existe: ' + escapeHtml(state.existingNome) + '</div>' : '');
+				}
+
+				var messagesCell = tableRow.querySelector('.js-import-preview-messages');
+				if (messagesCell) {
+					messagesCell.innerHTML = state.messages.length
+						? state.messages.map(function (message) { return '<div>' + escapeHtml(message) + '</div>'; }).join('')
+						: '<span class="text-success">Pronto para importar.</span>';
+				}
+
+				updateImportPreviewSummary();
+			}
+
+			function renderImportPreviewRows() {
+				if (!importPreviewBody) {
+					return;
+				}
+
+				if (!previewImportRows.length) {
+					importPreviewBody.innerHTML = '<tr><td colspan="16" class="muted-empty">Nenhuma pré-visualização carregada.</td></tr>';
+					updateImportPreviewSummary();
+					return;
+				}
+
+				importPreviewBody.innerHTML = previewImportRows.map(function (row, index) {
+					var state = analyzePreviewRow(row);
+					row.action = state.action;
+					row.can_import = state.canImport;
+					row.turma_id = state.turmaId;
+					row.existing_id = state.existingId;
+					row.existing_nome = state.existingNome;
+					row.messages = state.messages.slice();
+					if (typeof row.selected !== 'boolean') {
+						row.selected = state.canImport;
+					}
+
+					return [
+						'<tr class="import-preview-row ' + (state.action === 'create' ? 'is-create' : (state.action === 'update' ? 'is-update' : 'is-review')) + '" data-row-index="' + index + '">',
+						'<td><input type="checkbox" class="form-check-input js-import-preview-select" data-row-index="' + index + '"' + (row.selected && state.canImport ? ' checked' : '') + (state.canImport ? '' : ' disabled') + '></td>',
+						'<td class="import-preview-status js-import-preview-status">' + getPreviewActionBadge(state.action) + (state.action === 'update' && state.existingNome ? '<div class="small text-secondary mt-1">Já existe: ' + escapeHtml(state.existingNome) + '</div>' : '') + '</td>',
+						'<td>' + escapeHtml(String(row.line || '')) + '</td>',
+						'<td><input type="text" class="form-control form-control-sm js-import-preview-field" data-row-index="' + index + '" data-field="nome" value="' + escapeAttribute(row.nome || '') + '"></td>',
+						'<td><input type="text" class="form-control form-control-sm js-import-preview-field" data-row-index="' + index + '" data-field="matricula" value="' + escapeAttribute(row.matricula || '') + '"></td>',
+						'<td><select class="form-select form-select-sm js-import-preview-field" data-row-index="' + index + '" data-field="turma">' + buildImportPreviewTurmaOptions(row.turma || '') + '</select></td>',
+						'<td><input type="date" class="form-control form-control-sm js-import-preview-field" data-row-index="' + index + '" data-field="data_nascimento" value="' + escapeAttribute(row.data_nascimento || '') + '"></td>',
+						'<td><input type="date" class="form-control form-control-sm js-import-preview-field" data-row-index="' + index + '" data-field="data_entrada" value="' + escapeAttribute(row.data_entrada || '') + '"></td>',
+						'<td><input type="date" class="form-control form-control-sm js-import-preview-field" data-row-index="' + index + '" data-field="data_saida" value="' + escapeAttribute(row.data_saida || '') + '"></td>',
+						'<td><input type="text" class="form-control form-control-sm js-import-preview-field" data-row-index="' + index + '" data-field="rg" value="' + escapeAttribute(row.rg || '') + '"></td>',
+						'<td><input type="text" class="form-control form-control-sm js-import-preview-field" data-row-index="' + index + '" data-field="cpf" value="' + escapeAttribute(row.cpf || '') + '"></td>',
+						'<td><textarea class="form-control form-control-sm js-import-preview-field" data-row-index="' + index + '" data-field="necessidade_deficiencia" rows="2">' + escapeHtml(row.necessidade_deficiencia || '') + '</textarea></td>',
+						'<td><input type="text" class="form-control form-control-sm js-import-preview-field" data-row-index="' + index + '" data-field="responsavel" value="' + escapeAttribute(row.responsavel || '') + '"></td>',
+						'<td><input type="text" class="form-control form-control-sm js-import-preview-field" data-row-index="' + index + '" data-field="telefone" value="' + escapeAttribute(row.telefone || '') + '"></td>',
+						'<td><input type="email" class="form-control form-control-sm js-import-preview-field" data-row-index="' + index + '" data-field="email" value="' + escapeAttribute(row.email || '') + '"></td>',
+						'<td class="import-preview-messages js-import-preview-messages">' + (state.messages.length ? state.messages.map(function (message) { return '<div>' + escapeHtml(message) + '</div>'; }).join('') : '<span class="text-success">Pronto para importar.</span>') + '</td>',
+						'</tr>'
+					].join('');
+				}).join('');
+
+				updateImportPreviewSummary();
+				scheduleParentContentHeight();
+			}
+
+			function isAnyModalOpen() {
+				return Boolean(
+					(modalElement && modalElement.classList.contains('show'))
+					|| (confirmModalElement && confirmModalElement.classList.contains('show'))
+					|| (previewModalElement && previewModalElement.classList.contains('show'))
+				);
+			}
+
+			function render() {
+				var term = normalize(buscaInput.value);
+				var filtered = alunos.filter(function (item) {
+					var haystack = normalize(
+						item.nome + ' ' +
+						item.matricula + ' ' +
+						item.turma + ' ' +
+						(item.rg || '') + ' ' +
+						(item.cpf || '') + ' ' +
+						(item.necessidade_deficiencia || '') + ' ' +
+						(item.responsavel || '') + ' ' +
+						(item.telefone || '') + ' ' +
+						(item.email || '')
+					);
+
+					return term === '' || haystack.indexOf(term) !== -1;
+				});
+				filteredAlunoIds = filtered.map(function (item) { return Number(item.id || 0); }).filter(function (id) { return id > 0; });
+
+				if (!filtered.length) {
+					body.innerHTML = '<tr><td colspan="12" class="muted-empty">Nenhum aluno encontrado.</td></tr>';
+					updateBulkSelectionState();
+					return;
+				}
+
+				body.innerHTML = filtered.map(function (item) {
+					var itemId = Number(item.id || 0);
+					var checkedAttr = selectedAlunoIdsForDelete.indexOf(itemId) !== -1 ? ' checked' : '';
+					return [
+						'<tr>',
+						'<td><input type="checkbox" class="form-check-input js-aluno-select" data-select-id="' + itemId + '"' + checkedAttr + '></td>',
+						'<td>' + escapeHtml(item.nome) + '</td>',
+						'<td>' + escapeHtml(item.matricula) + '</td>',
+						'<td>' + escapeHtml(item.turma) + '</td>',
+						'<td>' + escapeHtml(formatDateToView(item.data_nascimento)) + '</td>',
+						'<td>' + escapeHtml(formatDateToView(item.data_entrada)) + '</td>',
+						'<td>' + escapeHtml(formatDateToView(item.data_saida)) + '</td>',
+						'<td>' + escapeHtml(item.rg || '-') + '</td>',
+						'<td>' + escapeHtml(item.cpf || '-') + '</td>',
+						'<td>' + escapeHtml(item.necessidade_deficiencia || '-') + '</td>',
+						'<td>' + escapeHtml(item.responsavel || '-') + '</td>',
+						'<td class="text-end">',
+						'<button type="button" class="btn btn-outline-secondary btn-sm me-1" data-copy="' + item.id + '"><i class="las la-copy me-1"></i>Copiar</button>',
+						'<button type="button" class="btn btn-outline-primary btn-sm me-1" data-edit="' + item.id + '"><i class="las la-pen me-1"></i>Editar</button>',
+						'<button type="button" class="btn btn-outline-danger btn-sm" data-delete="' + item.id + '"><i class="las la-trash-alt me-1"></i>Excluir</button>',
+						'</td>',
+						'</tr>'
+					].join('');
+				}).join('');
+
+				updateBulkSelectionState();
+				scheduleParentContentHeight();
+			}
+
+			function updateBulkSelectionState() {
+				if (btnExcluirSelecionados) {
+					var selectedCount = selectedAlunoIdsForDelete.length;
+					btnExcluirSelecionados.disabled = selectedCount === 0;
+					btnExcluirSelecionados.innerHTML = selectedCount > 0
+						? ('<i class="las la-trash-alt me-1"></i>Excluir selecionados (' + selectedCount + ')')
+						: '<i class="las la-trash-alt me-1"></i>Excluir selecionados';
+				}
+
+				if (!selectAllAlunos) {
+					return;
+				}
+
+				var visibleIds = filteredAlunoIds;
+				if (!visibleIds.length) {
+					selectAllAlunos.checked = false;
+					selectAllAlunos.indeterminate = false;
+					selectAllAlunos.disabled = true;
+					return;
+				}
+
+				selectAllAlunos.disabled = false;
+				var selectedVisibleCount = visibleIds.filter(function (id) {
+					return selectedAlunoIdsForDelete.indexOf(id) !== -1;
+				}).length;
+
+				selectAllAlunos.checked = selectedVisibleCount === visibleIds.length;
+				selectAllAlunos.indeterminate = selectedVisibleCount > 0 && selectedVisibleCount < visibleIds.length;
+			}
+
+			function escapeHtml(value) {
+				return String(value)
+					.replace(/&/g, '&amp;')
+					.replace(/</g, '&lt;')
+					.replace(/>/g, '&gt;')
+					.replace(/"/g, '&quot;')
+					.replace(/'/g, '&#039;');
+			}
+
+			function loadFromServer(options) {
+				var config = options && typeof options === 'object' ? options : {};
+				var silent = Boolean(config.silent);
+
+				return fetch(buildEndpoint('/institucional/alunos/listar'), {
+					headers: {
+						'X-Requested-With': 'XMLHttpRequest'
+					}
+				})
+					.then(function (response) {
+						return response.json().then(function (payload) {
+							if (!response.ok || !payload.ok) {
+								throw new Error(payload.message || 'Falha ao carregar alunos.');
+							}
+
+							return payload;
+						});
+					})
+					.then(function (payload) {
+						var serverData = Array.isArray(payload.data) ? payload.data : [];
+						var signature = JSON.stringify(serverData);
+
+						if (signature === lastAlunosSignature) {
+							return;
+						}
+
+						lastAlunosSignature = signature;
+						alunos = serverData;
+						var validIds = alunos.map(function (item) { return Number(item.id || 0); });
+						selectedAlunoIdsForDelete = selectedAlunoIdsForDelete.filter(function (id) {
+							return validIds.indexOf(id) !== -1;
+						});
+						render();
+					})
+					.catch(function (error) {
+						if (!silent) {
+							showStatus(error && error.message ? error.message : 'Erro ao carregar alunos.', true);
+						}
+					});
+			}
+
+			function loadTurmasOptions(options) {
+				var config = options && typeof options === 'object' ? options : {};
+				var silent = Boolean(config.silent);
+
+				return fetch(buildEndpoint('/institucional/turmas/listar'), {
+					headers: {
+						'X-Requested-With': 'XMLHttpRequest'
+					}
+				})
+					.then(function (response) {
+						return response.json().then(function (payload) {
+							if (!response.ok || !payload.ok) {
+								throw new Error(payload.message || 'Falha ao carregar turmas.');
+							}
+
+							return payload;
+						});
+					})
+					.then(function (payload) {
+						var serverData = Array.isArray(payload.data) ? payload.data : [];
+						var signature = JSON.stringify(serverData);
+
+						if (signature === lastTurmasSignature) {
+							return;
+						}
+
+						lastTurmasSignature = signature;
+						turmasDisponiveis = serverData;
+						renderTurmaOptions(Number(turmaInput.value || 0));
+					})
+					.catch(function (error) {
+						if (!silent) {
+							showStatus(error && error.message ? error.message : 'Erro ao carregar turmas.', true);
+						}
+					});
+			}
+
+			function startRealtimeSync() {
+				if (pollTimer) {
+					window.clearInterval(pollTimer);
+					pollTimer = null;
+				}
+
+				pollTimer = window.setInterval(function () {
+					if (document.hidden || syncInProgress || isAnyModalOpen()) {
+						return;
+					}
+
+					syncInProgress = true;
+
+			var openModalCount = 0;
+
+			function notifyParentModalState(isOpen) {
+				if (window.parent === window) {
+					return;
+				}
+
+				try {
+					window.parent.postMessage({ type: 'cemil:iframe-modal-state', isOpen: Boolean(isOpen) }, '*');
+				} catch (error) {
+				}
+			}
+
+			function onLocalModalShown() {
+				openModalCount += 1;
+				if (openModalCount === 1) {
+					notifyParentModalState(true);
+				}
+			}
+
+			function onLocalModalHidden() {
+				openModalCount = Math.max(0, openModalCount - 1);
+				if (openModalCount === 0) {
+					notifyParentModalState(false);
+				}
+			}
+
+			[modalElement, confirmModalElement, previewModalElement].forEach(function (modalNode) {
+				if (!modalNode) {
+					return;
+				}
+
+				modalNode.addEventListener('show.bs.modal', onLocalModalShown);
+				modalNode.addEventListener('hidden.bs.modal', onLocalModalHidden);
+				modalNode.addEventListener('shown.bs.modal', scheduleParentContentHeight);
+				modalNode.addEventListener('hidden.bs.modal', scheduleParentContentHeight);
+			});
+
+			window.addEventListener('beforeunload', function () {
+				if (openModalCount > 0) {
+					notifyParentModalState(false);
+				}
+			});
+
+			window.addEventListener('load', scheduleParentContentHeight);
+			window.addEventListener('resize', scheduleParentContentHeight);
+					Promise.all([
+						loadTurmasOptions({ silent: true }),
+						loadFromServer({ silent: true })
+					])
+						.finally(function () {
+							syncInProgress = false;
+						});
+				}, pollIntervalMs);
+			}
+
+			form.addEventListener('submit', function (event) {
+				event.preventDefault();
+
+				if (!form.checkValidity()) {
+					form.classList.add('was-validated');
+					return;
+				}
+
+				var payload = new FormData();
+				payload.append('id', String(Number(idInput.value || 0)));
+				payload.append('nome', nomeInput.value.trim());
+				payload.append('matricula', matriculaInput.value.trim());
+				payload.append('turma_id', String(Number(turmaInput.value || 0)));
+				payload.append('nascimento', nascimentoInput.value);
+				payload.append('entrada', entradaInput.value);
+				payload.append('data_saida', dataSaidaInput.value);
+				payload.append('rg', rgInput.value.trim());
+				payload.append('cpf', cpfInput.value.trim());
+				payload.append('necessidade_deficiencia', necessidadeDeficienciaInput.value.trim());
+				payload.append('responsavel', responsavelInput.value.trim());
+				payload.append('telefone', telefoneInput.value.trim());
+				payload.append('email', emailInput.value.trim());
+
+				fetch(buildEndpoint('/institucional/alunos/salvar'), {
+					method: 'POST',
+					body: payload,
+					headers: {
+						'X-Requested-With': 'XMLHttpRequest'
+					}
+				})
+					.then(function (response) {
+						return response.json().then(function (result) {
+							if (!response.ok || !result.ok) {
+								throw new Error(result.message || 'Falha ao salvar aluno.');
+							}
+
+							return result;
+						});
+					})
+					.then(function (result) {
+						showStatus(result.message || 'Aluno salvo com sucesso.', false);
+						resetForm();
+						form.classList.remove('was-validated');
+						closeFormModal();
+						return loadFromServer();
+					})
+					.catch(function (error) {
+						showStatus(error && error.message ? error.message : 'Erro ao salvar aluno.', true);
+					});
+			});
+
+			btnNovoAluno.addEventListener('click', function () {
+				resetForm();
+				form.classList.remove('was-validated');
+				if (modalTitulo) {
+					modalTitulo.textContent = 'Novo aluno';
+				}
+				openFormModal();
+				nomeInput.focus();
+			});
+
+			if (btnImportarAlunos && importarArquivoInput) {
+				btnImportarAlunos.addEventListener('click', function () {
+					if (importInProgress) {
+						return;
+					}
+
+					importarArquivoInput.value = '';
+					importarArquivoInput.click();
+				});
+
+				importarArquivoInput.addEventListener('change', function () {
+					var selectedFile = importarArquivoInput.files && importarArquivoInput.files[0] ? importarArquivoInput.files[0] : null;
+					if (!selectedFile || importInProgress) {
+						return;
+					}
+
+					if (!/\.xlsx$/i.test(String(selectedFile.name || ''))) {
+						showStatus('Selecione uma planilha .xlsx válida.', true);
+						importarArquivoInput.value = '';
+						return;
+					}
+
+					var payload = new FormData();
+					payload.append('planilha', selectedFile);
+
+					importInProgress = true;
+					setImportButtonLoading(true);
+
+					fetch(buildEndpoint('/institucional/alunos/importar/preview'), {
+						method: 'POST',
+						body: payload,
+						headers: {
+							'X-Requested-With': 'XMLHttpRequest'
+						}
+					})
+						.then(function (response) {
+							return response.json().then(function (result) {
+								if (!response.ok || !result.ok) {
+									throw new Error(result.message || 'Falha ao analisar a planilha de alunos.');
+								}
+
+								return result;
+							});
+						})
+						.then(function (result) {
+							previewImportHeaders = Array.isArray(result.headers) ? result.headers : [];
+							previewImportRawRows = Array.isArray(result.raw_rows) ? result.raw_rows : [];
+							previewImportAutoMapping = normalizeImportMapping(result.auto_mapping || {});
+							previewImportMapping = normalizeImportMapping(previewImportAutoMapping);
+							if (importPreviewFileName) {
+								importPreviewFileName.textContent = String(selectedFile.name || 'Planilha selecionada');
+							}
+							rebuildPreviewImportRows();
+							if (importPreviewModal) {
+								importPreviewModal.show();
+							}
+						})
+						.catch(function (error) {
+							showStatus(error && error.message ? error.message : 'Erro ao analisar a planilha.', true);
+						})
+						.finally(function () {
+							importInProgress = false;
+							setImportButtonLoading(false);
+							importarArquivoInput.value = '';
+						});
+				});
+			}
+
+			if (previewModalElement) {
+				previewModalElement.addEventListener('hidden.bs.modal', function () {
+					previewImportAutoMapping = {};
+					previewImportHeaders = [];
+					previewImportRawRows = [];
+					previewImportMapping = {};
+					previewImportRows = [];
+					if (importPreviewFileName) {
+						importPreviewFileName.textContent = 'Selecione uma planilha para visualizar os dados.';
+					}
+					renderImportPreviewMappingControls();
+					renderImportPreviewRows();
+				});
+			}
+
+			if (importPreviewMappingFields) {
+				importPreviewMappingFields.addEventListener('change', function (event) {
+					var target = event.target;
+					if (!(target instanceof HTMLElement) || !target.classList.contains('js-import-preview-mapping')) {
+						return;
+					}
+
+					var field = String(target.getAttribute('data-field') || '');
+					if (field === '') {
+						return;
+					}
+
+					previewImportMapping[field] = target.value === '' ? null : Number(target.value);
+					rebuildPreviewImportRows();
+				});
+			}
+
+			if (btnImportPreviewAutoMap) {
+				btnImportPreviewAutoMap.addEventListener('click', function () {
+					previewImportMapping = normalizeImportMapping(previewImportAutoMapping);
+					rebuildPreviewImportRows();
+				});
+			}
+
+			if (importPreviewBody) {
+				importPreviewBody.addEventListener('input', function (event) {
+					var target = event.target;
+					if (!(target instanceof HTMLElement) || !target.classList.contains('js-import-preview-field')) {
+						return;
+					}
+
+					var rowIndex = Number(target.getAttribute('data-row-index') || -1);
+					var field = String(target.getAttribute('data-field') || '');
+					if (rowIndex < 0 || !previewImportRows[rowIndex] || field === '') {
+						return;
+					}
+
+					previewImportRows[rowIndex][field] = target.value;
+					if (field === 'cpf') {
+						previewImportRows[rowIndex][field] = formatCpfValue(target.value);
+						target.value = previewImportRows[rowIndex][field];
+					}
+					updateImportPreviewRowPresentation(rowIndex);
+				});
+
+				importPreviewBody.addEventListener('change', function (event) {
+					var target = event.target;
+					if (!(target instanceof HTMLElement)) {
+						return;
+					}
+
+					if (target.classList.contains('js-import-preview-select')) {
+						var checkboxRowIndex = Number(target.getAttribute('data-row-index') || -1);
+						if (checkboxRowIndex >= 0 && previewImportRows[checkboxRowIndex]) {
+							previewImportRows[checkboxRowIndex].selected = Boolean(target.checked);
+							updateImportPreviewSummary();
+						}
+					}
+				});
+			}
+
+			if (importPreviewSelectAll) {
+				importPreviewSelectAll.addEventListener('change', function () {
+					previewImportRows.forEach(function (row, index) {
+						if (analyzePreviewRow(row).canImport) {
+							row.selected = Boolean(importPreviewSelectAll.checked);
+							updateImportPreviewRowPresentation(index);
+						}
+					});
+					updateImportPreviewSummary();
+				});
+			}
+
+			if (btnConfirmarImportacaoPreview) {
+				btnConfirmarImportacaoPreview.addEventListener('click', function () {
+					if (importInProgress) {
+						return;
+					}
+
+					var selectedRows = previewImportRows.filter(function (row) {
+						var state = analyzePreviewRow(row);
+						return Boolean(row.selected && state.canImport);
+					}).map(function (row) {
+						return {
+							line: Number(row.line || 0),
+							selected: true,
+							nome: String(row.nome || '').trim(),
+							matricula: String(row.matricula || '').trim(),
+							turma: String(row.turma || '').trim(),
+							data_nascimento: String(row.data_nascimento || '').trim(),
+							data_entrada: String(row.data_entrada || '').trim(),
+							data_saida: String(row.data_saida || '').trim(),
+							rg: String(row.rg || '').trim(),
+							cpf: formatCpfValue(row.cpf || ''),
+							necessidade_deficiencia: String(row.necessidade_deficiencia || '').trim(),
+							responsavel: String(row.responsavel || '').trim(),
+							telefone: String(row.telefone || '').trim(),
+							email: String(row.email || '').trim()
+						};
+					});
+
+					if (!selectedRows.length) {
+						showStatus('Selecione ao menos um aluno válido para importar.', true);
+						return;
+					}
+
+					var payload = new FormData();
+					payload.append('rows_json', JSON.stringify(selectedRows));
+
+					importInProgress = true;
+					setImportButtonLoading(true);
+					setPreviewImportButtonLoading(true);
+
+					fetch(buildEndpoint('/institucional/alunos/importar'), {
+						method: 'POST',
+						body: payload,
+						headers: {
+							'X-Requested-With': 'XMLHttpRequest'
+						}
+					})
+						.then(function (response) {
+							return response.json().then(function (result) {
+								if (!response.ok || !result.ok) {
+									throw new Error(result.message || 'Falha ao importar os alunos selecionados.');
+								}
+
+								return result;
+							});
+						})
+						.then(function (result) {
+							showStatus(result.message || 'Importação concluída com sucesso.', false);
+							if (importPreviewModal) {
+								importPreviewModal.hide();
+							}
+							return Promise.all([
+								loadTurmasOptions({ silent: true }),
+								loadFromServer({ silent: true })
+							]);
+						})
+						.catch(function (error) {
+							showStatus(error && error.message ? error.message : 'Erro ao importar os alunos selecionados.', true);
+						})
+						.finally(function () {
+							importInProgress = false;
+							setImportButtonLoading(false);
+							setPreviewImportButtonLoading(false);
+						});
+				});
+			}
+
+			btnCancelarAluno.addEventListener('click', function () {
+				resetForm();
+				form.classList.remove('was-validated');
+				closeFormModal();
+			});
+
+			if (modalElement) {
+				modalElement.addEventListener('hidden.bs.modal', function () {
+					resetForm();
+					form.classList.remove('was-validated');
+					if (modalTitulo) {
+						modalTitulo.textContent = 'Aluno';
+					}
+				});
+			}
+
+			if (confirmModalElement) {
+				confirmModalElement.addEventListener('hidden.bs.modal', function () {
+					pendingDeleteAlunoIds = [];
+				});
+			}
+
+			function excluirAlunoPorId(alunoId) {
+				var payload = new FormData();
+				payload.append('id', String(alunoId));
+
+				return fetch(buildEndpoint('/institucional/alunos/excluir'), {
+					method: 'POST',
+					body: payload,
+					headers: {
+						'X-Requested-With': 'XMLHttpRequest'
+					}
+				})
+					.then(function (response) {
+						return response.json().then(function (result) {
+							if (!response.ok || !result.ok) {
+								throw new Error(result.message || 'Falha ao excluir aluno.');
+							}
+
+							return result;
+						});
+					});
+			}
+
+			function excluirAlunosPorIds(ids) {
+				var uniqueIds = Array.isArray(ids)
+					? ids.map(function (id) { return Number(id || 0); }).filter(function (id) { return id > 0; })
+					: [];
+
+				if (!uniqueIds.length) {
+					return;
+				}
+
+				Promise.all(uniqueIds.map(function (id) { return excluirAlunoPorId(id); }))
+					.then(function () {
+						selectedAlunoIdsForDelete = selectedAlunoIdsForDelete.filter(function (id) {
+							return uniqueIds.indexOf(id) === -1;
+						});
+						showStatus(uniqueIds.length > 1 ? 'Alunos excluídos com sucesso.' : 'Aluno excluído com sucesso.', false);
+						return loadFromServer();
+					})
+					.catch(function (error) {
+						showStatus(error && error.message ? error.message : 'Erro ao excluir aluno(s).', true);
+					});
+			}
+
+			if (btnConfirmarExclusao) {
+				btnConfirmarExclusao.addEventListener('click', function () {
+					var ids = Array.isArray(pendingDeleteAlunoIds) ? pendingDeleteAlunoIds.slice() : [];
+					if (!ids.length) {
+						return;
+					}
+
+					pendingDeleteAlunoIds = [];
+					if (confirmarExclusaoModal) {
+						confirmarExclusaoModal.hide();
+					}
+					excluirAlunosPorIds(ids);
+				});
+			}
+
+			if (btnExcluirSelecionados) {
+				btnExcluirSelecionados.addEventListener('click', function () {
+					if (!selectedAlunoIdsForDelete.length) {
+						return;
+					}
+
+					pendingDeleteAlunoIds = selectedAlunoIdsForDelete.slice();
+					if (mensagemConfirmacao) {
+						mensagemConfirmacao.textContent = 'Deseja realmente excluir os ' + pendingDeleteAlunoIds.length + ' alunos selecionados?';
+					}
+					if (confirmarExclusaoModal) {
+						confirmarExclusaoModal.show();
+					}
+				});
+			}
+
+			if (selectAllAlunos) {
+				selectAllAlunos.addEventListener('change', function () {
+					var visibleIds = filteredAlunoIds;
+					if (!visibleIds.length) {
+						return;
+					}
+
+					if (selectAllAlunos.checked) {
+						visibleIds.forEach(function (id) {
+							if (selectedAlunoIdsForDelete.indexOf(id) === -1) {
+								selectedAlunoIdsForDelete.push(id);
+							}
+						});
+					} else {
+						selectedAlunoIdsForDelete = selectedAlunoIdsForDelete.filter(function (id) {
+							return visibleIds.indexOf(id) === -1;
+						});
+					}
+
+					render();
+				});
+			}
+
+			buscaInput.addEventListener('input', render);
+
+			body.addEventListener('click', function (event) {
+				var target = event.target;
+				var selectId = Number(target.getAttribute('data-select-id') || 0);
+				var copyId = Number(target.getAttribute('data-copy') || 0);
+				var editId = Number(target.getAttribute('data-edit') || 0);
+				var deleteId = Number(target.getAttribute('data-delete') || 0);
+
+				if (selectId > 0) {
+					if (target.checked) {
+						if (selectedAlunoIdsForDelete.indexOf(selectId) === -1) {
+							selectedAlunoIdsForDelete.push(selectId);
+						}
+					} else {
+						selectedAlunoIdsForDelete = selectedAlunoIdsForDelete.filter(function (id) { return id !== selectId; });
+					}
+
+					updateBulkSelectionState();
+					return;
+				}
+
+				if (copyId > 0) {
+					var alunoCopiado = alunos.find(function (item) { return Number(item.id) === copyId; });
+					if (!alunoCopiado) {
+						return;
+					}
+
+					idInput.value = '0';
+					nomeInput.value = alunoCopiado.nome || '';
+					matriculaInput.value = alunoCopiado.matricula || '';
+					renderTurmaOptions(Number(alunoCopiado.turma_id || 0));
+					nascimentoInput.value = alunoCopiado.data_nascimento || '';
+					entradaInput.value = alunoCopiado.data_entrada || '';
+					dataSaidaInput.value = alunoCopiado.data_saida || '';
+					rgInput.value = alunoCopiado.rg || '';
+					cpfInput.value = alunoCopiado.cpf || '';
+					necessidadeDeficienciaInput.value = alunoCopiado.necessidade_deficiencia || '';
+					responsavelInput.value = alunoCopiado.responsavel || '';
+					telefoneInput.value = alunoCopiado.telefone || '';
+					emailInput.value = alunoCopiado.email || '';
+					if (modalTitulo) {
+						modalTitulo.textContent = 'Copiar aluno';
+					}
+
+					openFormModal();
+					nomeInput.focus();
+					return;
+				}
+
+				if (editId > 0) {
+					var aluno = alunos.find(function (item) { return Number(item.id) === editId; });
+					if (!aluno) {
+						return;
+					}
+
+					idInput.value = String(aluno.id || 0);
+					nomeInput.value = aluno.nome || '';
+					matriculaInput.value = aluno.matricula || '';
+					renderTurmaOptions(Number(aluno.turma_id || 0));
+					nascimentoInput.value = aluno.data_nascimento || '';
+					entradaInput.value = aluno.data_entrada || '';
+					dataSaidaInput.value = aluno.data_saida || '';
+					rgInput.value = aluno.rg || '';
+					cpfInput.value = aluno.cpf || '';
+					necessidadeDeficienciaInput.value = aluno.necessidade_deficiencia || '';
+					responsavelInput.value = aluno.responsavel || '';
+					telefoneInput.value = aluno.telefone || '';
+					emailInput.value = aluno.email || '';
+					if (modalTitulo) {
+						modalTitulo.textContent = 'Editar aluno';
+					}
+
+					openFormModal();
+					nomeInput.focus();
+					return;
+				}
+
+				if (deleteId > 0) {
+					pendingDeleteAlunoIds = [deleteId];
+					if (mensagemConfirmacao) {
+						mensagemConfirmacao.textContent = 'Deseja realmente excluir este aluno?';
+					}
+					if (confirmarExclusaoModal) {
+						confirmarExclusaoModal.show();
+					}
+				}
+			});
+
+			loadTurmasOptions().then(function () {
+				loadFromServer();
+				startRealtimeSync();
+			});
+			}
+
+			if (window.bootstrap && window.bootstrap.Modal) {
+				startPage();
+				return;
+			}
+
+			var bootstrapWaitAttempts = 0;
+			var bootstrapWaitTimer = window.setInterval(function () {
+				bootstrapWaitAttempts += 1;
+
+				if (window.bootstrap && window.bootstrap.Modal) {
+					window.clearInterval(bootstrapWaitTimer);
+					startPage();
+					return;
+				}
+
+				if (bootstrapWaitAttempts >= 200) {
+					window.clearInterval(bootstrapWaitTimer);
+					console.error('Bootstrap nao ficou disponivel para inicializar Cadastro de Alunos.');
+				}
+			}, 25);
+		})();
+	</script>

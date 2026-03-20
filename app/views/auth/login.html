@@ -1,0 +1,347 @@
+<?php
+$forgotPasswordError = (string) ($forgotPasswordError ?? '');
+$forgotPasswordSuccess = (string) ($forgotPasswordSuccess ?? '');
+$forgotPasswordEmail = (string) ($forgotPasswordEmail ?? '');
+$showForgotPasswordForm = !empty($showForgotPasswordForm);
+$showResetPasswordForm = !empty($showResetPasswordForm);
+$passwordResetInfo = (string) ($passwordResetInfo ?? '');
+$passwordResetInfoIsError = !empty($passwordResetInfoIsError);
+$passwordResetEmail = (string) ($passwordResetEmail ?? '');
+?>
+<section class="construction-section login-section py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6 col-xl-5">
+                <div class="card border-0 shadow login-card">
+                    <div class="login-card-top text-center">
+                        <div class="login-icon-wrap mx-auto mb-3">
+                            <i class="las la-user-shield"></i>
+                        </div>
+                        <h1 class="h4 fw-bold mb-1">Área de acesso</h1>
+                        <p class="mb-0 opacity-75"><?= htmlspecialchars($schoolName, ENT_QUOTES, 'UTF-8'); ?></p>
+                    </div>
+
+                    <div class="card-body p-4 p-lg-4">
+
+                        <div id="loginAsyncStatus" class="alert d-none mb-4" role="status" aria-live="polite"></div>
+
+                        <?php if (!empty($error)): ?>
+                            <div class="alert alert-danger mb-4" role="alert">
+                                <i class="las la-exclamation-circle me-1"></i><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if ($passwordResetInfo !== ''): ?>
+                            <div class="alert <?= $passwordResetInfoIsError ? 'alert-danger' : 'alert-warning'; ?> mb-4" role="alert">
+                                <i class="las <?= $passwordResetInfoIsError ? 'la-exclamation-circle' : 'la-key'; ?> me-1"></i><?= htmlspecialchars($passwordResetInfo, ENT_QUOTES, 'UTF-8'); ?>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if ($forgotPasswordSuccess !== ''): ?>
+                            <div class="alert alert-success mb-4" role="alert">
+                                <i class="las la-check-circle me-1"></i><?= htmlspecialchars($forgotPasswordSuccess, ENT_QUOTES, 'UTF-8'); ?>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if ($forgotPasswordError !== ''): ?>
+                            <div class="alert alert-danger mb-4" role="alert">
+                                <i class="las la-exclamation-circle me-1"></i><?= htmlspecialchars($forgotPasswordError, ENT_QUOTES, 'UTF-8'); ?>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if ($showResetPasswordForm): ?>
+                        <form action="<?= rtrim(BASE_URL, '/'); ?>/redefinir-senha" method="post" class="login-form">
+                            <?php if (!empty($csrfToken)): ?>
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) $csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                            <?php endif; ?>
+
+                            <div class="mb-3">
+                                <label for="passwordResetEmail" class="form-label fw-semibold">Conta validada</label>
+                                <div class="input-group login-input-group">
+                                    <span class="input-group-text"><i class="las la-envelope"></i></span>
+                                    <input
+                                        type="text"
+                                        class="form-control"
+                                        id="passwordResetEmail"
+                                        value="<?= htmlspecialchars($passwordResetEmail, ENT_QUOTES, 'UTF-8'); ?>"
+                                        readonly
+                                    >
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="nova_senha" class="form-label fw-semibold">Nova senha</label>
+                                <div class="input-group login-input-group">
+                                    <span class="input-group-text"><i class="las la-lock"></i></span>
+                                    <input
+                                        type="password"
+                                        class="form-control"
+                                        id="nova_senha"
+                                        name="nova_senha"
+                                        placeholder="Digite a nova senha"
+                                        autocomplete="new-password"
+                                        minlength="8"
+                                        required
+                                    >
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="confirmar_nova_senha" class="form-label fw-semibold">Confirmar nova senha</label>
+                                <div class="input-group login-input-group">
+                                    <span class="input-group-text"><i class="las la-shield-alt"></i></span>
+                                    <input
+                                        type="password"
+                                        class="form-control"
+                                        id="confirmar_nova_senha"
+                                        name="confirmar_nova_senha"
+                                        placeholder="Repita a nova senha"
+                                        autocomplete="new-password"
+                                        minlength="8"
+                                        required
+                                    >
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-danger w-100 login-submit-btn">
+                                <i class="las la-save me-1"></i>Salvar nova senha e entrar
+                            </button>
+                            <p class="login-note text-center text-secondary mb-0 mt-3 small">A nova senha deve ter pelo menos 8 caracteres.</p>
+                        </form>
+                        <?php else: ?>
+                        <form action="<?= rtrim(BASE_URL, '/'); ?>/entrar" method="post" class="login-form">
+                            <?php if (!empty($csrfToken)): ?>
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) $csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                            <?php endif; ?>
+
+                            <div class="mb-3">
+                                <label for="email" class="form-label fw-semibold">Usuário ou e-mail</label>
+                                <div class="input-group login-input-group">
+                                    <span class="input-group-text"><i class="las la-envelope"></i></span>
+                                    <input
+                                        type="text"
+                                        class="form-control"
+                                        id="email"
+                                        name="email"
+                                        value="<?= htmlspecialchars((string) ($oldEmail ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                        placeholder="usuario ou seuemail@exemplo.com"
+                                        autocomplete="username"
+                                        autofocus
+                                        required
+                                    >
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="senha" class="form-label fw-semibold">Senha</label>
+                                <div class="input-group login-input-group">
+                                    <span class="input-group-text"><i class="las la-lock"></i></span>
+                                    <input
+                                        type="password"
+                                        class="form-control"
+                                        id="senha"
+                                        name="senha"
+                                        placeholder="Digite sua senha"
+                                        autocomplete="current-password"
+                                        required
+                                    >
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-danger w-100 login-submit-btn">
+                                <i class="las la-sign-in-alt me-1"></i>Entrar
+                            </button>
+                            <button
+                                type="button"
+                                class="btn btn-outline-secondary w-100 mt-2 login-secondary-btn"
+                                data-bs-toggle="modal"
+                                data-bs-target="#loginForgotPasswordModal"
+                            >
+                                <i class="las la-key me-1"></i>Esqueci minha senha
+                            </button>
+                            <p class="login-note text-center text-secondary mb-0 mt-3 small">Em caso de dificuldade de acesso, entre em contato com a coordenação pedagógica.</p>
+                        </form>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<?php if (!$showResetPasswordForm): ?>
+<div class="modal fade" id="loginForgotPasswordModal" tabindex="-1"
+    data-open-on-load="<?= $showForgotPasswordForm ? '1' : '0'; ?>"
+    aria-labelledby="loginForgotPasswordModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content site-modal-content login-recovery-modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title fs-5" id="loginForgotPasswordModalLabel">Recuperar senha</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="login-recovery-feedback alert d-none mb-3" role="alert"></div>
+                <div class="login-recovery-modal-overlay d-none" aria-hidden="true">
+                    <div class="login-recovery-modal-overlay-box">
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span>Enviando senha temporaria...</span>
+                    </div>
+                </div>
+
+                <p class="text-secondary small mb-3">Informe seu e-mail cadastrado para receber uma senha temporaria.</p>
+
+                <form action="<?= rtrim(BASE_URL, '/'); ?>/esqueci-minha-senha" method="post" class="login-form" id="loginForgotPasswordForm" novalidate>
+                    <?php if (!empty($csrfToken)): ?>
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) $csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                    <?php endif; ?>
+
+                    <div class="mb-3">
+                        <label for="recovery_email" class="form-label fw-semibold">E-mail cadastrado</label>
+                        <div class="input-group login-input-group">
+                            <span class="input-group-text"><i class="las la-envelope-open"></i></span>
+                            <input
+                                type="email"
+                                class="form-control"
+                                id="recovery_email"
+                                name="recovery_email"
+                                value="<?= htmlspecialchars($forgotPasswordEmail, ENT_QUOTES, 'UTF-8'); ?>"
+                                placeholder="seuemail@exemplo.com"
+                                autocomplete="email"
+                                required
+                            >
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-danger w-100 login-submit-btn" id="loginForgotPasswordSubmitButton">
+                        <i class="las la-paper-plane me-1"></i>Enviar senha temporaria
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var forgotPasswordModalElement = document.getElementById('loginForgotPasswordModal');
+    var openForgotPasswordOnLoad = forgotPasswordModalElement && forgotPasswordModalElement.getAttribute('data-open-on-load') === '1';
+    var forgotPasswordForm = document.getElementById('loginForgotPasswordForm');
+    var forgotPasswordSubmitButton = document.getElementById('loginForgotPasswordSubmitButton');
+    var modalFeedbackElement = forgotPasswordModalElement ? forgotPasswordModalElement.querySelector('.login-recovery-feedback') : null;
+    var modalOverlayElement = forgotPasswordModalElement ? forgotPasswordModalElement.querySelector('.login-recovery-modal-overlay') : null;
+    var recoveryEmailInput = document.getElementById('recovery_email');
+    var asyncStatusElement = document.getElementById('loginAsyncStatus');
+    var defaultSubmitButtonHtml = forgotPasswordSubmitButton ? forgotPasswordSubmitButton.innerHTML : '';
+
+    function showAsyncStatus(message, isError) {
+        if (!asyncStatusElement) {
+            return;
+        }
+
+        if (!message) {
+            asyncStatusElement.className = 'alert d-none mb-4';
+            asyncStatusElement.textContent = '';
+            return;
+        }
+
+        asyncStatusElement.className = 'alert mb-4 ' + (isError ? 'alert-danger' : 'alert-success');
+        asyncStatusElement.innerHTML = '<i class="las ' + (isError ? 'la-exclamation-circle' : 'la-check-circle') + ' me-1"></i>' + String(message || '');
+    }
+
+    function showModalFeedback(message, isError) {
+        if (!modalFeedbackElement) {
+            return;
+        }
+
+        if (!message) {
+            modalFeedbackElement.className = 'login-recovery-feedback alert d-none mb-3';
+            modalFeedbackElement.textContent = '';
+            return;
+        }
+
+        modalFeedbackElement.className = 'login-recovery-feedback alert mb-3 ' + (isError ? 'alert-danger' : 'alert-success');
+        modalFeedbackElement.textContent = String(message);
+    }
+
+    function setLoadingState(isLoading) {
+        if (forgotPasswordSubmitButton) {
+            forgotPasswordSubmitButton.disabled = isLoading;
+            forgotPasswordSubmitButton.innerHTML = isLoading
+                ? '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Enviando...'
+                : defaultSubmitButtonHtml;
+        }
+
+        if (recoveryEmailInput) {
+            recoveryEmailInput.disabled = isLoading;
+        }
+
+        if (modalOverlayElement) {
+            modalOverlayElement.classList.toggle('d-none', !isLoading);
+        }
+    }
+
+    if (!forgotPasswordModalElement || typeof bootstrap === 'undefined' || !bootstrap.Modal) {
+        return;
+    }
+
+    var forgotPasswordModalInstance = bootstrap.Modal.getOrCreateInstance(forgotPasswordModalElement);
+
+    forgotPasswordModalElement.addEventListener('hidden.bs.modal', function () {
+        setLoadingState(false);
+        showModalFeedback('', false);
+    });
+
+    if (forgotPasswordForm) {
+        forgotPasswordForm.addEventListener('submit', function (event) {
+            event.preventDefault();
+            showModalFeedback('', false);
+            showAsyncStatus('', false);
+            var formData = new FormData(forgotPasswordForm);
+            setLoadingState(true);
+
+            fetch(forgotPasswordForm.action, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                body: formData
+            })
+                .then(function (response) {
+                    return response.json().catch(function () {
+                        return {
+                            ok: false,
+                            message: 'Nao foi possivel concluir a recuperacao agora.'
+                        };
+                    }).then(function (payload) {
+                        return {
+                            ok: response.ok && !!payload.ok,
+                            message: payload && payload.message ? payload.message : 'Nao foi possivel concluir a recuperacao agora.'
+                        };
+                    });
+                })
+                .then(function (result) {
+                    if (!result.ok) {
+                        showModalFeedback(result.message, true);
+                        return;
+                    }
+
+                    forgotPasswordForm.reset();
+                    showAsyncStatus(result.message, false);
+                    forgotPasswordModalInstance.hide();
+                })
+                .catch(function () {
+                    showModalFeedback('Nao foi possivel enviar a senha temporaria agora. Tente novamente em instantes.', true);
+                })
+                .finally(function () {
+                    setLoadingState(false);
+                });
+        });
+    }
+
+    if (openForgotPasswordOnLoad) {
+        forgotPasswordModalInstance.show();
+    }
+});
+</script>
+<?php endif; ?>

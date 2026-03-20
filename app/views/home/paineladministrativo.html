@@ -1,0 +1,133 @@
+<section class="py-1">
+    <div class="container app-wide-container">
+
+        <div class="row justify-content-center mb-4">
+            <div class="col-lg-10 col-xl-8 text-center">
+                <div class="inst-hero">
+                    <div class="inst-hero-icon"><i class="las la-user-shield"></i></div>
+                    <h1 class="inst-hero-title">Painel Administrativo</h1>
+                    <p class="inst-hero-subtitle">Selecione uma área para gerenciar o sistema</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="inst-search-wrap mb-4">
+            <i class="las la-search inst-search-icon"></i>
+            <input
+                type="search"
+                id="adminPanelSearch"
+                class="inst-search-input"
+                placeholder="Buscar área do painel..."
+                autocomplete="off"
+            >
+        </div>
+
+        <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3">
+
+            <div class="col js-admin-panel-item" data-search-text="Gerenciamento de Usuarios">
+                <div class="inst-service-card">
+                    <button type="button" class="inst-service-trigger inst-service-trigger--direct js-admin-modal-trigger"
+                        data-bs-toggle="modal" data-bs-target="#adminPanelModal"
+                        data-modal-title="Gerenciamento de Usuários" data-modal-view="gerenciamento_usuarios">
+                        <span class="inst-service-icon-wrap"><i class="las la-users-cog"></i></span>
+                        <span class="inst-service-name">Gerenciamento de Usuários</span>
+                        <i class="las la-angle-right inst-service-arrow"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="col js-admin-panel-item" data-search-text="Gerenciamento de Serviços e Sub-serviços">
+                <div class="inst-service-card">
+                    <button type="button" class="inst-service-trigger inst-service-trigger--direct js-admin-modal-trigger"
+                        data-bs-toggle="modal" data-bs-target="#adminPanelModal"
+                        data-modal-title="Gerenciamento de Serviços e Sub-serviços" data-modal-view="gerenciamento_servicos_subservicos">
+                        <span class="inst-service-icon-wrap"><i class="las la-sitemap"></i></span>
+                        <span class="inst-service-name">Gerenciamento de Serviços e Sub-serviços</span>
+                        <i class="las la-angle-right inst-service-arrow"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="col js-admin-panel-item" data-search-text="Ferramentas Administrativas">
+                <div class="inst-service-card">
+                    <button type="button" class="inst-service-trigger inst-service-trigger--direct js-admin-modal-trigger"
+                        data-bs-toggle="modal" data-bs-target="#adminPanelModal"
+                        data-modal-title="Ferramentas Administrativas" data-modal-view="ferramentas_administrativas">
+                        <span class="inst-service-icon-wrap"><i class="las la-tools"></i></span>
+                        <span class="inst-service-name">Ferramentas Administrativas</span>
+                        <i class="las la-angle-right inst-service-arrow"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="col js-admin-panel-item" data-search-text="Gerenciamento de Informações Comunicados Publicações">
+                <div class="inst-service-card">
+                    <button type="button" class="inst-service-trigger inst-service-trigger--direct js-admin-modal-trigger"
+                        data-bs-toggle="modal" data-bs-target="#adminPanelModal"
+                        data-modal-title="Gerenciamento de Publicações" data-modal-view="gerenciamento_informacoes">
+                        <span class="inst-service-icon-wrap"><i class="las la-bullhorn"></i></span>
+                        <span class="inst-service-name">Gerenciamento de Publicações</span>
+                        <i class="las la-angle-right inst-service-arrow"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="col js-admin-panel-item" data-search-text="Gerenciamento de Avaliações Gabaritos Turmas">
+                <div class="inst-service-card">
+                    <button type="button" class="inst-service-trigger inst-service-trigger--direct js-admin-modal-trigger"
+                        data-bs-toggle="modal" data-bs-target="#adminPanelModal"
+                        data-modal-title="Gerenciamento de Avaliações" data-modal-view="gerenciamento_avaliacoes">
+                        <span class="inst-service-icon-wrap"><i class="las la-clipboard-list"></i></span>
+                        <span class="inst-service-name">Gerenciamento de Avaliações</span>
+                        <i class="las la-angle-right inst-service-arrow"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="col js-admin-panel-item" data-search-text="Gerenciamento de Turmas Cadastro de Turmas">
+                <div class="inst-service-card">
+                    <button type="button" class="inst-service-trigger inst-service-trigger--direct js-admin-modal-trigger"
+                        data-bs-toggle="modal" data-bs-target="#adminPanelModal"
+                        data-modal-title="Gerenciamento de Turmas" data-modal-view="gerenciamento_turmas">
+                        <span class="inst-service-icon-wrap"><i class="las la-school"></i></span>
+                        <span class="inst-service-name">Gerenciamento de Turmas</span>
+                        <i class="las la-angle-right inst-service-arrow"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="col js-admin-panel-item" data-search-text="Gerenciamento de Alunos Cadastro de Alunos">
+                <div class="inst-service-card">
+                    <button type="button" class="inst-service-trigger inst-service-trigger--direct js-admin-modal-trigger"
+                        data-bs-toggle="modal" data-bs-target="#adminPanelModal"
+                        data-modal-title="Gerenciamento de Alunos" data-modal-view="gerenciamento_alunos">
+                        <span class="inst-service-icon-wrap"><i class="las la-user-graduate"></i></span>
+                        <span class="inst-service-name">Gerenciamento de Alunos</span>
+                        <i class="las la-angle-right inst-service-arrow"></i>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <div id="adminPanelSearchEmpty" class="inst-empty-state d-none mt-4" role="alert">
+            <i class="las la-search"></i>
+            <p>Nenhuma área encontrada.</p>
+        </div>
+
+        <div class="modal fade" id="adminPanelModal" tabindex="-1" data-bs-backdrop="static" data-content-endpoint="<?= rtrim(BASE_URL, '/'); ?>/paineladministrativo/modal-conteudo" aria-labelledby="adminPanelModalLabel" aria-hidden="true">
+            <div class="modal-dialog admin-panel-modal-dialog modal-dialog-centered">
+                <div class="modal-content site-modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="adminPanelModalLabel">Painel Administrativo</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                    </div>
+                    <div class="modal-body" id="adminPanelModalBody">
+                        <p class="text-secondary mb-0">Área em configuração.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</section>
