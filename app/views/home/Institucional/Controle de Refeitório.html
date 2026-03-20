@@ -526,6 +526,11 @@
 			</button>
 		</li>
 		<li class="nav-item" role="presentation">
+			<button class="nav-link" id="tab-gerenc-btn" data-bs-toggle="tab" data-bs-target="#tabGerenc" type="button" role="tab">
+				<i class="las la-edit me-1"></i>Gerenciamento
+			</button>
+		</li>
+		<li class="nav-item" role="presentation">
 			<button class="nav-link" id="tab-dash-btn" data-bs-toggle="tab" data-bs-target="#tabDash" type="button" role="tab">
 				<i class="las la-chart-bar me-1"></i>Dashboard &amp; Relatórios
 			</button>
@@ -709,14 +714,74 @@
 		</div>
 
 		<!-- ========================================
-		     ABA 4 — Dashboard & Relatórios
+		     ABA 4 — Gerenciamento de Registros
+		     ======================================== -->
+		<div class="tab-pane fade" id="tabGerenc" role="tabpanel">
+
+			<!-- Filtros -->
+			<div class="card border-0 shadow-sm mb-3 no-print">
+				<div class="card-body">
+					<div class="row g-2 align-items-end">
+						<div class="col-sm-auto">
+							<label class="form-label form-label-sm mb-1">Período</label>
+							<div class="d-flex gap-2">
+								<input type="date" id="gerencDataInicio" class="form-control form-control-sm" style="max-width:150px">
+								<span class="align-self-center text-muted">até</span>
+								<input type="date" id="gerencDataFim" class="form-control form-control-sm" style="max-width:150px">
+							</div>
+						</div>
+						<div class="col-sm-auto">
+							<label class="form-label form-label-sm mb-1">Refeição</label>
+							<select id="gerencTipo" class="form-select form-select-sm" style="max-width:180px">
+								<option value="">Todas</option>
+							</select>
+						</div>
+						<div class="col-sm-auto">
+							<label class="form-label form-label-sm mb-1">Turma</label>
+							<select id="gerencTurma" class="form-select form-select-sm" style="max-width:180px">
+								<option value="">Todas</option>
+							</select>
+						</div>
+						<div class="col-sm-auto">
+							<button id="btnGerencFiltrar" class="btn btn-danger btn-sm" type="button">
+								<i class="las la-filter me-1"></i>Filtrar
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Tabela de registros -->
+			<div class="card border-0 shadow-sm">
+				<div class="card-header bg-white border-0 fw-semibold d-flex align-items-center justify-content-between">
+					<span>Registros</span>
+					<span id="gerencTotal" class="badge bg-danger">0</span>
+				</div>
+				<div class="table-scroll-only">
+					<table class="table table-sm mb-0">
+						<thead>
+							<tr>
+								<th>Data</th>
+								<th>Horário</th>
+								<th>Aluno</th>
+								<th>Turma</th>
+								<th>Refeição</th>
+								<th class="text-end">Ações</th>
+							</tr>
+						</thead>
+						<tbody id="gerencBody">
+							<tr><td colspan="6" class="muted-empty">Use o filtro para carregar os registros.</td></tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+
+		</div><!-- /tabGerenc -->
+
+		<!-- ========================================
+		     ABA 5 — Dashboard & Relatórios
 		     ======================================== -->
 		<div class="tab-pane fade" id="tabDash" role="tabpanel">
-
-			<!-- Resumo hoje -->
-			<div id="dashResumoHoje" class="row g-3 mb-4">
-				<!-- preenchido via JS -->
-			</div>
 
 			<!-- Filtros relatório -->
 			<div class="card border-0 shadow-sm mb-3 no-print">
@@ -773,7 +838,7 @@
 							</tr>
 						</thead>
 						<tbody id="relBody">
-							<tr><td colspan="6" class="muted-empty">Use o filtro para carregar os registros.</td></tr>
+							<tr><td colspan="5" class="muted-empty">Use o filtro para carregar os registros.</td></tr>
 						</tbody>
 					</table>
 				</div>
@@ -783,6 +848,53 @@
 	</div><!-- /tab-content -->
 </div><!-- /ref-wrap -->
 </div><!-- /institutional-page-root -->
+
+<!-- =========================================================
+     MODAL — Editar registro do refeitório
+     ========================================================= -->
+<div class="modal fade" id="modalEditarRegistro" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content site-modal-content">
+			<div class="modal-header">
+				<h2 class="modal-title fs-5">Editar Registro</h2>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+			</div>
+			<form id="formEditarRegistro" novalidate>
+				<div class="modal-body">
+					<input type="hidden" id="editRegId" value="0">
+					<div class="row g-3">
+						<div class="col-12">
+							<label class="form-label">Aluno</label>
+							<input type="text" id="editRegAluno" class="form-control" readonly>
+						</div>
+						<div class="col-6">
+							<label class="form-label" for="editRegData">Data <span class="text-danger">*</span></label>
+							<input type="date" id="editRegData" class="form-control" required>
+						</div>
+						<div class="col-6">
+							<label class="form-label" for="editRegHorario">Horário <span class="text-danger">*</span></label>
+							<input type="time" id="editRegHorario" class="form-control" required>
+						</div>
+						<div class="col-12">
+							<label class="form-label" for="editRegTipo">Refeição <span class="text-danger">*</span></label>
+							<select id="editRegTipo" class="form-select" required></select>
+						</div>
+						<div class="col-12">
+							<label class="form-label" for="editRegObs">Observação</label>
+							<input type="text" id="editRegObs" class="form-control" maxlength="255" placeholder="Opcional">
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+					<button type="submit" class="btn btn-danger btn-sm" id="btnSalvarRegistro">
+						<i class="las la-save me-1"></i>Salvar
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
 
 <!-- =========================================================
      MODAL — Novo / Editar tipo de refeição
@@ -857,7 +969,6 @@
 	var state = {
 		tipos:        [],
 		turmas:       [],
-		resumoHoje:   [],
 		scanAtivo:    false,
 		stream:       null,
 		alunoAtual:   null,
@@ -934,12 +1045,7 @@
 	}
 
 	function applyPollData(res) {
-		var resumo  = res.resumo_hoje      || [];
 		var ultimas = res.ultimas_entradas || [];
-
-		// Atualiza cards do dashboard
-		state.resumoHoje = resumo;
-		renderDashResumoHoje();
 
 		// Atualiza contador do badge
 		document.getElementById('totalHojeContador').textContent = ultimas.length;
@@ -966,22 +1072,22 @@
 	   Inicialização — carrega dados base
 	   -------------------------------------------------------- */
 	function init() {
-		// datas padrão do relatório
+		// datas padrão do relatório e gerenciamento
 		var today = new Date().toISOString().slice(0, 10);
-		document.getElementById('relDataInicio').value = today;
-		document.getElementById('relDataFim').value   = today;
+		['relDataInicio', 'relDataFim', 'gerencDataInicio', 'gerencDataFim'].forEach(function (id) {
+			var el = document.getElementById(id);
+			if (el) el.value = today;
+		});
 
 		get('/institucional/refeitorio/dados', function (res) {
 			if (!res.ok) { showStatus(res.message || 'Erro ao carregar dados.', 'error'); return; }
 
 			state.tipos      = res.tipos      || [];
 			state.turmas     = res.turmas     || [];
-			state.resumoHoje = res.resumo     || [];
 
 			preencherSelectTipo();
 			preencherSelectsTurma();
 			renderTiposTabela();
-			renderDashResumoHoje();
 
 			// Carrega entradas de hoje imediatamente e inicia polling
 			pollServidor();
@@ -998,22 +1104,28 @@
 	function preencherSelectTipo() {
 		var sel   = document.getElementById('selecionarTipo');
 		var relT  = document.getElementById('relTipo');
+		var gerT  = document.getElementById('gerencTipo');
+		var edT   = document.getElementById('editRegTipo');
 		var html  = '<option value="">— Selecione uma refeição —</option>';
 		var rhtml = '<option value="">Todas</option>';
+		var ehtml = '';
 
 		state.tipos.forEach(function (t) {
 			if (t.ativo == 1) {
 				html  += '<option value="' + esc(t.id) + '">' + esc(t.nome) + '</option>';
+				ehtml += '<option value="' + esc(t.id) + '">' + esc(t.nome) + '</option>';
 			}
 			rhtml += '<option value="' + esc(t.id) + '">' + esc(t.nome) + '</option>';
 		});
 
 		sel.innerHTML  = html;
 		relT.innerHTML = rhtml;
+		gerT.innerHTML = rhtml;
+		edT.innerHTML  = ehtml;
 	}
 
 	function preencherSelectsTurma() {
-		['filtroTurmaQr', 'relTurma'].forEach(function (id) {
+		['filtroTurmaQr', 'relTurma', 'gerencTurma'].forEach(function (id) {
 			var sel = document.getElementById(id);
 			var html = '<option value="">Todas</option>';
 			state.turmas.forEach(function (t) {
@@ -1049,28 +1161,6 @@
 			'</tr>';
 		});
 		tbody.innerHTML = html;
-	}
-
-	/* --------------------------------------------------------
-	   Dashboard — resumo hoje
-	   -------------------------------------------------------- */
-	function renderDashResumoHoje() {
-		var wrap = document.getElementById('dashResumoHoje');
-		if (!state.resumoHoje.length) { wrap.innerHTML = ''; return; }
-
-		var html = '';
-		state.resumoHoje.forEach(function (item) {
-			html += '<div class="col-sm-6 col-md-4 col-xl-3">' +
-				'<div class="dash-stat-card" style="background:' + esc(item.cor || '#4a90d9') + '">' +
-					'<div class="stat-icon"><i class="las la-utensils"></i></div>' +
-					'<div>' +
-						'<div class="stat-total">' + Number(item.total || 0) + '</div>' +
-						'<div class="stat-label">' + esc(item.nome) + ' — hoje</div>' +
-					'</div>' +
-				'</div>' +
-			'</div>';
-		});
-		wrap.innerHTML = html;
 	}
 
 	/* --------------------------------------------------------
@@ -1451,11 +1541,9 @@
 			if (!res.ok) return;
 			state.tipos      = res.tipos  || [];
 			state.turmas     = res.turmas || [];
-			state.resumoHoje = res.resumo || [];
 			renderTiposTabela();
 			preencherSelectTipo();
 			preencherSelectsTurma();
-			renderDashResumoHoje();
 		});
 	}
 
@@ -1473,7 +1561,7 @@
 		          (tipo  ? '&tipo_id='  + encodeURIComponent(tipo)  : '') +
 		          (turma ? '&turma_id=' + encodeURIComponent(turma) : '');
 
-		document.getElementById('relBody').innerHTML = '<tr><td colspan="6" class="muted-empty"><span class="spinner-border spinner-border-sm me-1"></span>Carregando…</td></tr>';
+document.getElementById('relBody').innerHTML = '<tr><td colspan="5" class="muted-empty"><span class="spinner-border spinner-border-sm me-1"></span>Carregando…</td></tr>';
 
 		get(url, function (res) {
 			if (!res.ok) { showStatus(res.message || 'Erro ao carregar relatório.', 'error'); return; }
@@ -1495,7 +1583,7 @@
 			document.getElementById('relTotal').textContent = registros.length;
 
 			if (!registros.length) {
-				document.getElementById('relBody').innerHTML = '<tr><td colspan="6" class="muted-empty">Nenhum registro encontrado para o período selecionado.</td></tr>';
+				document.getElementById('relBody').innerHTML = '<tr><td colspan="5" class="muted-empty">Nenhum registro encontrado para o período selecionado.</td></tr>';
 				return;
 			}
 
@@ -1505,12 +1593,98 @@
 					'<td>' + esc(formatData(r.data)) + '</td>' +
 					'<td>' + esc(formatHora(r.horario)) + '</td>' +
 					'<td class="fw-semibold">' + esc(r.aluno_nome) + '</td>' +
-					'<td>' + esc(r.matricula) + '</td>' +
 					'<td>' + esc(r.turma) + '</td>' +
 					'<td><span class="tipo-badge" style="background:' + esc(r.refeicao_cor || '#ccc') + '"></span>' + esc(r.refeicao_nome) + '</td>' +
 				'</tr>';
 			});
 			document.getElementById('relBody').innerHTML = html;
+		});
+	}
+
+	/* --------------------------------------------------------
+	   Gerenciamento manual de registros
+	   -------------------------------------------------------- */
+	function filtrarGerenc() {
+		var ini   = document.getElementById('gerencDataInicio').value;
+		var fim   = document.getElementById('gerencDataFim').value;
+		var tipo  = document.getElementById('gerencTipo').value;
+		var turma = document.getElementById('gerencTurma').value;
+
+		var url = '/institucional/refeitorio/relatorio?data_inicio=' + encodeURIComponent(ini) +
+		          '&data_fim=' + encodeURIComponent(fim) +
+		          (tipo  ? '&tipo_id='  + encodeURIComponent(tipo)  : '') +
+		          (turma ? '&turma_id=' + encodeURIComponent(turma) : '');
+
+		document.getElementById('gerencBody').innerHTML = '<tr><td colspan="6" class="muted-empty"><span class="spinner-border spinner-border-sm me-1"></span>Carregando…</td></tr>';
+
+		get(url, function (res) {
+			if (!res.ok) { showStatus(res.message || 'Erro ao carregar.', 'error'); return; }
+			var registros = res.registros || [];
+			document.getElementById('gerencTotal').textContent = registros.length;
+			if (!registros.length) {
+				document.getElementById('gerencBody').innerHTML = '<tr><td colspan="6" class="muted-empty">Nenhum registro encontrado.</td></tr>';
+				return;
+			}
+			var html = '';
+			registros.forEach(function (r) {
+				html += '<tr>' +
+					'<td>' + esc(formatData(r.data)) + '</td>' +
+					'<td>' + esc(formatHora(r.horario)) + '</td>' +
+					'<td class="fw-semibold">' + esc(r.aluno_nome) + '</td>' +
+					'<td>' + esc(r.turma) + '</td>' +
+					'<td><span class="tipo-badge" style="background:' + esc(r.refeicao_cor || '#ccc') + '"></span>' + esc(r.refeicao_nome) + '</td>' +
+					'<td class="text-end">' +
+						'<button class="btn btn-outline-primary btn-sm me-1" onclick="gerencEditar(' + r.id + ')" title="Editar"><i class="las la-pen"></i></button>' +
+						'<button class="btn btn-outline-danger btn-sm" onclick="gerencExcluir(' + r.id + ',\'' + esc(r.aluno_nome).replace(/'/g, '') + '\')" title="Excluir"><i class="las la-trash"></i></button>' +
+					'</td>' +
+				'</tr>';
+			});
+			document.getElementById('gerencBody').innerHTML = html;
+		});
+	}
+
+	window.gerencEditar = function (id) {
+		get('/institucional/refeitorio/registro?id=' + id, function (res) {
+			if (!res.ok) { showStatus(res.message || 'Erro ao carregar registro.', 'error'); return; }
+			var r = res.registro;
+			document.getElementById('editRegId').value      = r.id;
+			document.getElementById('editRegAluno').value   = r.aluno_nome;
+			document.getElementById('editRegData').value    = r.data;
+			document.getElementById('editRegHorario').value = (r.horario || '').substring(0, 5);
+			document.getElementById('editRegObs').value     = r.obs || '';
+			document.getElementById('editRegTipo').value    = r.tipo_refeicao_id;
+			bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEditarRegistro')).show();
+		});
+	};
+
+	window.gerencExcluir = function (id, nome) {
+		if (!confirm('Excluir o registro de "' + nome + '"? Esta ação não pode ser desfeita.')) return;
+		post('/institucional/refeitorio/registro/excluir', { id: id }, function (res) {
+			if (!res.ok) { showStatus(res.message || 'Erro ao excluir.', 'error'); return; }
+			showStatus('Registro excluído.', 'success');
+			filtrarGerenc();
+		});
+	};
+
+	function salvarRegistroEditado(e) {
+		e.preventDefault();
+		var btn = document.getElementById('btnSalvarRegistro');
+		btn.disabled = true;
+		btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Salvando…';
+
+		post('/institucional/refeitorio/registro/salvar', {
+			id:               document.getElementById('editRegId').value,
+			data:             document.getElementById('editRegData').value,
+			horario:          document.getElementById('editRegHorario').value,
+			tipo_refeicao_id: document.getElementById('editRegTipo').value,
+			obs:              document.getElementById('editRegObs').value,
+		}, function (res) {
+			btn.disabled = false;
+			btn.innerHTML = '<i class="las la-save me-1"></i>Salvar';
+			if (!res.ok) { showStatus(res.message || 'Erro ao salvar.', 'error'); return; }
+			showStatus('Registro atualizado com sucesso.', 'success');
+			bootstrap.Modal.getInstance(document.getElementById('modalEditarRegistro')).hide();
+			filtrarGerenc();
 		});
 	}
 
@@ -1632,9 +1806,18 @@
 		// Relatório
 		document.getElementById('btnRelatorioFiltrar').addEventListener('click', filtrarRelatorio);
 
+		// Gerenciamento
+		document.getElementById('btnGerencFiltrar').addEventListener('click', filtrarGerenc);
+		document.getElementById('formEditarRegistro').addEventListener('submit', salvarRegistroEditado);
+
 		// Ao mudar aba de dashboard, recarregar resumo
 		document.getElementById('tab-dash-btn').addEventListener('shown.bs.tab', function () {
 			filtrarRelatorio();
+		});
+
+		// Ao abrir aba de gerenciamento, filtrar
+		document.getElementById('tab-gerenc-btn').addEventListener('shown.bs.tab', function () {
+			filtrarGerenc();
 		});
 
 		// Parar câmera ao mudar de aba

@@ -5983,4 +5983,85 @@ class InstitucionalController extends HomeController
 
 		$this->respondJson(['ok' => true, 'alunos' => $alunos]);
 	}
+
+	public function refeitorioRegistroBuscar(): void
+	{
+		if (!$this->canAccessSubservice('controle_refeitorio')) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		$id = (int) ($_GET['id'] ?? 0);
+		if ($id <= 0) {
+			$this->respondJson(['ok' => false, 'message' => 'ID inválido.'], 422);
+		}
+
+		$model = new RefeitorioModel();
+		$model->ensureTableStructure();
+
+		$registro = $model->buscarRegistroPorId($id);
+		if (!$registro) {
+			$this->respondJson(['ok' => false, 'message' => 'Registro não encontrado.'], 404);
+		}
+
+		$this->respondJson(['ok' => true, 'registro' => $registro]);
+	}
+
+	public function refeitorioRegistroSalvar(): void
+	{
+		if (!$this->canAccessSubservice('controle_refeitorio')) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+			$this->respondJson(['ok' => false, 'message' => 'Método não permitido.'], 405);
+		}
+
+		$id      = (int)    ($_POST['id']               ?? 0);
+		$data    = trim((string) ($_POST['data']         ?? ''));
+		$horario = trim((string) ($_POST['horario']      ?? ''));
+		$tipoId  = (int)    ($_POST['tipo_refeicao_id']  ?? 0);
+		$obs     = trim((string) ($_POST['obs']          ?? ''));
+
+		if ($id <= 0 || $data === '' || $horario === '' || $tipoId <= 0) {
+			$this->respondJson(['ok' => false, 'message' => 'Dados incompletos.'], 422);
+		}
+
+		$model = new RefeitorioModel();
+		$model->ensureTableStructure();
+
+		try {
+			$model->salvarRegistro($id, $data, $horario, $tipoId, $obs);
+		} catch (Throwable $e) {
+			$this->respondJson(['ok' => false, 'message' => $e->getMessage()], 409);
+		}
+
+		$this->respondJson(['ok' => true, 'message' => 'Registro atualizado com sucesso.']);
+	}
+
+	public function refeitorioRegistroExcluir(): void
+	{
+		if (!$this->canAccessSubservice('controle_refeitorio')) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+			$this->respondJson(['ok' => false, 'message' => 'Método não permitido.'], 405);
+		}
+
+		$id = (int) ($_POST['id'] ?? 0);
+		if ($id <= 0) {
+			$this->respondJson(['ok' => false, 'message' => 'ID inválido.'], 422);
+		}
+
+		$model = new RefeitorioModel();
+		$model->ensureTableStructure();
+
+		try {
+			$model->excluirRegistro($id);
+		} catch (Throwable $e) {
+			$this->respondJson(['ok' => false, 'message' => $e->getMessage()], 409);
+		}
+
+		$this->respondJson(['ok' => true, 'message' => 'Registro excluído com sucesso.']);
+	}
 }

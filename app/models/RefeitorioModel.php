@@ -367,4 +367,51 @@ class RefeitorioModel
         $stmt->execute($params);
         return $stmt->fetchAll();
     }
+
+    // ------------------------------------------------------------------
+    // Gerenciamento manual de registros
+    // ------------------------------------------------------------------
+
+    public function buscarRegistroPorId(int $id): ?array
+    {
+        $pdo  = Database::connection();
+        $stmt = $pdo->prepare(
+            "SELECT r.id, r.data, r.horario, r.obs, r.tipo_refeicao_id,
+                    a.nome AS aluno_nome
+               FROM refeitorio_registros r
+               JOIN alunos a ON a.id = r.aluno_id
+              WHERE r.id = :id
+              LIMIT 1"
+        );
+        $stmt->execute(['id' => $id]);
+        $row = $stmt->fetch();
+        return $row ?: null;
+    }
+
+    public function salvarRegistro(int $id, string $data, string $horario, int $tipoId, string $obs): void
+    {
+        $pdo  = Database::connection();
+        $stmt = $pdo->prepare(
+            'UPDATE refeitorio_registros
+                SET data             = :data,
+                    horario          = :horario,
+                    tipo_refeicao_id = :tipo,
+                    obs              = :obs
+              WHERE id = :id'
+        );
+        $stmt->execute([
+            'data'    => $data,
+            'horario' => $horario,
+            'tipo'    => $tipoId,
+            'obs'     => $obs,
+            'id'      => $id,
+        ]);
+    }
+
+    public function excluirRegistro(int $id): void
+    {
+        $pdo  = Database::connection();
+        $stmt = $pdo->prepare('DELETE FROM refeitorio_registros WHERE id = :id');
+        $stmt->execute(['id' => $id]);
+    }
 }
