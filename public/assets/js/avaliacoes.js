@@ -887,6 +887,15 @@
         backdrop: false,
         keyboard: false,
       });
+      correcaoModalElement.addEventListener('hidden.bs.modal', function () {
+        stopCorrecaoCamera();
+        closeCorrecaoRevisaoModal();
+        closeCorrecaoDiscursivaModal();
+        if (dashboardModalElement) {
+          dashboardModalElement.classList.remove('admin-avaliacao-dashboard-modal-underlay');
+        }
+        setCorrecaoBackdropIsolation(false);
+      });
     }
 
     if (correcaoDiscursivaModalElement && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
@@ -1107,6 +1116,7 @@
         correta: '',
         tipo: 'multipla',
         anulada: false,
+        peso: 1,
         disciplina: '',
         habilidade: '',
       };
@@ -1158,6 +1168,7 @@
         correta: correta,
         tipo: tipo,
         anulada: anulada,
+        peso: sanitizeQuestaoPeso(item.peso, 1),
         disciplina: String(item.disciplina || '').trim(),
         habilidade: String(item.habilidade || '').trim(),
       };
@@ -1205,6 +1216,11 @@
       return clampInt(Math.max.apply(null, itens.map(function (item) {
         return Array.isArray(item.alternativas) ? item.alternativas.length : 0;
       })), 2, 10, 4);
+    }
+
+    function getConfiguredAlternativasCount() {
+      var itensCount = getMaxAlternativasFromQuestoesItens(gabaritoQuestoesItens);
+      return clampInt(Math.max(itensCount, Number(gabaritoAlternativasConfiguradas || 0)), 2, 10, 4);
     }
 
     function buildRespostasFromQuestoesItens(itens) {
@@ -1257,11 +1273,13 @@
         var endQ = Math.min(startQ + rowsPerCol, questoes);
 
         for (var qi = startQ; qi < endQ; qi += 1) {
-          var item = gabaritoQuestoesItens[qi];
+          var item = sanitizeQuestaoItem(gabaritoQuestoesItens[qi]);
+          gabaritoQuestoesItens[qi] = item;
           var tipo = item.tipo || 'multipla';
           var anulada = item.anulada === true;
           var correta = String(item.correta || '').trim().toUpperCase();
           var alts = Array.isArray(item.alternativas) ? item.alternativas : [];
+          var peso = sanitizeQuestaoPeso(item.peso, 1);
 
           var row = document.createElement('div');
           row.style.display = 'flex';
@@ -1340,6 +1358,27 @@
               row.appendChild(bub);
             });
           }
+
+          var pesoWrap = document.createElement('label');
+          pesoWrap.style.cssText = 'display:inline-flex;align-items:center;gap:4px;margin-left:6px;';
+
+          var pesoLabel = document.createElement('span');
+          pesoLabel.style.cssText = 'font-size:0.68rem;color:#6c757d;font-weight:600;white-space:nowrap;';
+          pesoLabel.textContent = 'Peso';
+          pesoWrap.appendChild(pesoLabel);
+
+          var pesoInput = document.createElement('input');
+          pesoInput.type = 'number';
+          pesoInput.className = 'form-control form-control-sm js-admin-gabarito-peso';
+          pesoInput.setAttribute('data-question-index', String(qi));
+          pesoInput.setAttribute('min', '0.01');
+          pesoInput.setAttribute('step', '0.01');
+          pesoInput.setAttribute('inputmode', 'decimal');
+          pesoInput.value = String(peso).replace(/\.00$/, '');
+          pesoInput.style.cssText = 'width:4.75rem;min-width:4.75rem;padding:1px 4px;font-size:0.72rem;line-height:1.2;height:1.8rem;';
+          pesoWrap.appendChild(pesoInput);
+
+          row.appendChild(pesoWrap);
 
           // --- Action buttons (right) ---
           var actWrap = document.createElement('div');
@@ -6262,134 +6301,148 @@
         return group * groupBlockH + headerHeight + localRow * rowHeight + Math.round(rowHeight * 0.55);
       }
 
-      // Renderiza a 2x para manter qualidade quando a imagem for reduzida no editor A4
-      var dpr = 2;
-      var canvasW = width * dpr;
-      var canvasH = height * dpr;
-
-      if (gabaritoPreviewCanvas.width !== canvasW) {
-        gabaritoPreviewCanvas.width = canvasW;
-      }
-
-      if (gabaritoPreviewCanvas.height !== canvasH) {
-        gabaritoPreviewCanvas.height = canvasH;
-      }
-
-      var ctx = gabaritoPreviewCanvas.getContext('2d');
-      if (!ctx) {
-        return;
-      }
-
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.clearRect(0, 0, canvasW, canvasH);
-      ctx.scale(dpr, dpr);
-
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, width, height);
-
-      ctx.fillStyle = '#111111';
-      ctx.fillRect(borderMargin, borderMargin, markerSize, markerSize);
-      ctx.fillRect(width - borderMargin - markerSize, borderMargin, markerSize, markerSize);
-      ctx.fillRect(borderMargin, height - borderMargin - markerSize, markerSize, markerSize);
-      ctx.fillRect(width - borderMargin - markerSize, height - borderMargin - markerSize, markerSize, markerSize);
-
-      var safeLeft = safePadding;
-      var safeRight = width - safePadding;
-      var safeTop = safePadding;
-      var safeBottom = height - safePadding;
-      var availableInnerWidth = (safeRight - safeLeft) - (innerHorizontalPadding * 2);
-      var contentHorizontalOffset = Math.max(0, Math.round((availableInnerWidth - contentWidth) / 2));
-
-      ctx.strokeStyle = '#dadada';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(safeLeft, safeTop, safeRight - safeLeft, safeBottom - safeTop);
-
-      var contentTop = safeTop + titleAreaHeight;
-
-      // --- Cabeçalhos de alternativas (A B C D E...) por coluna e por grupo de 5 ---
-      var headerFontSize = Math.round(13 * scale);
-      ctx.font = 'bold ' + headerFontSize + 'px Arial, sans-serif';
-      ctx.fillStyle = '#555555';
-      ctx.textAlign = 'center';
-      for (var hCol = 0; hCol < columnCount; hCol += 1) {
-        var hBaseX = safeLeft + innerHorizontalPadding + contentHorizontalOffset + (hCol * (columnWidth + columnGap));
-        var hBubblesStartX = hBaseX + numberLabelWidth + numberToBubblesGap + bubbleRadius;
-        var maxAltInCol = alternativas;
-        for (var qi = hCol * rowsPerColumn; qi < Math.min((hCol + 1) * rowsPerColumn, questoes); qi += 1) {
-          var qItem = gabaritoQuestoesItens[qi];
-          if (qItem && Array.isArray(qItem.alternativas)) {
-            maxAltInCol = Math.max(maxAltInCol, qItem.alternativas.length);
-          }
+      function drawGabaritoTemplate(canvasElement, includeSelections, captureHitboxes) {
+        if (!(canvasElement instanceof HTMLCanvasElement)) {
+          return '';
         }
-        maxAltInCol = clampInt(maxAltInCol, 2, 10, alternativas);
 
-        // Desenha cabeçalho (A B C D...) no início de cada grupo de 5 linhas dentro da coluna.
-        // O cabeçalho fica no bloco de headerHeight px que precede cada grupo de rowHeight*groupSize px.
-        for (var hRow = 0; hRow < rowsPerColumn; hRow += groupSize) {
-          var hG = Math.floor(hRow / groupSize);
-          var hGroupBlockH = headerHeight + groupSize * rowHeight;
-          var hGroupY = contentTop + hG * hGroupBlockH + Math.round(headerHeight * 0.75);
-          for (var hAlt = 0; hAlt < maxAltInCol; hAlt += 1) {
-            var hX = hBubblesStartX + (hAlt * bubbleSpacing);
-            ctx.fillText(getAlternativeLetter(hAlt), hX, hGroupY);
-          }
+        var dpr = 2;
+        var canvasW = width * dpr;
+        var canvasH = height * dpr;
+
+        if (canvasElement.width !== canvasW) {
+          canvasElement.width = canvasW;
         }
-      }
 
-      ctx.textAlign = 'left';
-      ctx.strokeStyle = '#111111';
-      ctx.fillStyle = '#111111';
-      ctx.lineWidth = 2.5;
-      ctx.font = Math.round(17 * scale) + 'px Arial, sans-serif';
+        if (canvasElement.height !== canvasH) {
+          canvasElement.height = canvasH;
+        }
 
-      for (var questionIndex = 1; questionIndex <= questoes; questionIndex += 1) {
-        var questaoItem = gabaritoQuestoesItens[questionIndex - 1] || createDefaultQuestaoItem(alternativas);
-        var alternativasDaQuestao = Array.isArray(questaoItem.alternativas) ? questaoItem.alternativas.length : alternativas;
-        alternativasDaQuestao = clampInt(alternativasDaQuestao, 2, 10, alternativas);
-        var col = Math.floor((questionIndex - 1) / rowsPerColumn);
-        var row = (questionIndex - 1) % rowsPerColumn;
-        var baseX = safeLeft + innerHorizontalPadding + contentHorizontalOffset + (col * (columnWidth + columnGap));
-        var baseY = contentTop + getRowY(row);
+        var ctx = canvasElement.getContext('2d');
+        if (!ctx) {
+          return '';
+        }
 
-        var label = String(questionIndex).padStart(2, '0') + '.';
+        if (captureHitboxes) {
+          gabaritoBubbleHitboxes = [];
+        }
+
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvasW, canvasH);
+        ctx.scale(dpr, dpr);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, width, height);
+
         ctx.fillStyle = '#111111';
-        ctx.fillText(label, baseX, baseY);
+        ctx.fillRect(borderMargin, borderMargin, markerSize, markerSize);
+        ctx.fillRect(width - borderMargin - markerSize, borderMargin, markerSize, markerSize);
+        ctx.fillRect(borderMargin, height - borderMargin - markerSize, markerSize, markerSize);
+        ctx.fillRect(width - borderMargin - markerSize, height - borderMargin - markerSize, markerSize, markerSize);
 
-        var bubblesStartX = baseX + numberLabelWidth + numberToBubblesGap + bubbleRadius;
-        var selectedLetter = String(gabaritoRespostasCorretas[String(questionIndex)] || '').trim().toUpperCase();
+        var safeLeft = safePadding;
+        var safeRight = width - safePadding;
+        var safeTop = safePadding;
+        var safeBottom = height - safePadding;
+        var availableInnerWidth = (safeRight - safeLeft) - (innerHorizontalPadding * 2);
+        var contentHorizontalOffset = Math.max(0, Math.round((availableInnerWidth - contentWidth) / 2));
 
-        for (var altIndex = 0; altIndex < alternativasDaQuestao; altIndex += 1) {
-          var bubbleCenterX = bubblesStartX + (altIndex * bubbleSpacing);
-          var bubbleCenterY = baseY - Math.round(4 * scale);
-          var letter = getAlternativeLetter(altIndex);
-          var isSelected = selectedLetter !== '' && selectedLetter === letter;
+        ctx.strokeStyle = '#dadada';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(safeLeft, safeTop, safeRight - safeLeft, safeBottom - safeTop);
 
-          ctx.beginPath();
-          ctx.arc(bubbleCenterX, bubbleCenterY, bubbleRadius, 0, Math.PI * 2);
-          if (isSelected) {
-            ctx.fillStyle = '#111111';
-            ctx.fill();
-            ctx.fillStyle = '#111111';
+        var contentTop = safeTop + titleAreaHeight;
+
+        ctx.font = 'bold ' + Math.round(13 * scale) + 'px Arial, sans-serif';
+        ctx.fillStyle = '#555555';
+        ctx.textAlign = 'center';
+        for (var hCol = 0; hCol < columnCount; hCol += 1) {
+          var hBaseX = safeLeft + innerHorizontalPadding + contentHorizontalOffset + (hCol * (columnWidth + columnGap));
+          var hBubblesStartX = hBaseX + numberLabelWidth + numberToBubblesGap + bubbleRadius;
+          var maxAltInCol = alternativas;
+          for (var qi = hCol * rowsPerColumn; qi < Math.min((hCol + 1) * rowsPerColumn, questoes); qi += 1) {
+            var qItem = gabaritoQuestoesItens[qi];
+            if (qItem && Array.isArray(qItem.alternativas)) {
+              maxAltInCol = Math.max(maxAltInCol, qItem.alternativas.length);
+            }
           }
-          ctx.strokeStyle = '#111111';
-          ctx.lineWidth = 2.5;
-          ctx.stroke();
+          maxAltInCol = clampInt(maxAltInCol, 2, 10, alternativas);
 
-          gabaritoBubbleHitboxes.push({
-            questao: questionIndex,
-            alternativa: letter,
-            x: bubbleCenterX,
-            y: bubbleCenterY,
-            r: bubbleRadius,
-          });
+          for (var hRow = 0; hRow < rowsPerColumn; hRow += groupSize) {
+            var hG = Math.floor(hRow / groupSize);
+            var hGroupBlockH = headerHeight + groupSize * rowHeight;
+            var hGroupY = contentTop + hG * hGroupBlockH + Math.round(headerHeight * 0.75);
+            for (var hAlt = 0; hAlt < maxAltInCol; hAlt += 1) {
+              var hX = hBubblesStartX + (hAlt * bubbleSpacing);
+              ctx.fillText(getAlternativeLetter(hAlt), hX, hGroupY);
+            }
+          }
         }
+
+        ctx.textAlign = 'left';
+        ctx.strokeStyle = '#111111';
+        ctx.fillStyle = '#111111';
+        ctx.lineWidth = 2.5;
+        ctx.font = Math.round(17 * scale) + 'px Arial, sans-serif';
+
+        for (var questionIndex = 1; questionIndex <= questoes; questionIndex += 1) {
+          var questaoItem = gabaritoQuestoesItens[questionIndex - 1] || createDefaultQuestaoItem(alternativas);
+          var alternativasDaQuestao = Array.isArray(questaoItem.alternativas) ? questaoItem.alternativas.length : alternativas;
+          alternativasDaQuestao = clampInt(alternativasDaQuestao, 2, 10, alternativas);
+          var col = Math.floor((questionIndex - 1) / rowsPerColumn);
+          var row = (questionIndex - 1) % rowsPerColumn;
+          var baseX = safeLeft + innerHorizontalPadding + contentHorizontalOffset + (col * (columnWidth + columnGap));
+          var baseY = contentTop + getRowY(row);
+
+          ctx.fillStyle = '#111111';
+          ctx.fillText(String(questionIndex).padStart(2, '0') + '.', baseX, baseY);
+
+          var bubblesStartX = baseX + numberLabelWidth + numberToBubblesGap + bubbleRadius;
+          var selectedLetter = includeSelections
+            ? String(gabaritoRespostasCorretas[String(questionIndex)] || '').trim().toUpperCase()
+            : '';
+
+          for (var altIndex = 0; altIndex < alternativasDaQuestao; altIndex += 1) {
+            var bubbleCenterX = bubblesStartX + (altIndex * bubbleSpacing);
+            var bubbleCenterY = baseY - Math.round(4 * scale);
+            var letter = getAlternativeLetter(altIndex);
+            var isSelected = selectedLetter !== '' && selectedLetter === letter;
+
+            ctx.beginPath();
+            ctx.arc(bubbleCenterX, bubbleCenterY, bubbleRadius, 0, Math.PI * 2);
+            if (isSelected) {
+              ctx.fillStyle = '#111111';
+              ctx.fill();
+              ctx.fillStyle = '#111111';
+            }
+            ctx.strokeStyle = '#111111';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+            if (captureHitboxes) {
+              gabaritoBubbleHitboxes.push({
+                questao: questionIndex,
+                alternativa: letter,
+                x: bubbleCenterX,
+                y: bubbleCenterY,
+                r: bubbleRadius,
+              });
+            }
+          }
+        }
+
+        return canvasElement.toDataURL('image/png');
       }
 
       gabaritoPreviewLogicalWidth = width;
       gabaritoPreviewLogicalHeight = height;
 
-      gabaritoPreviewImage.setAttribute('src', gabaritoPreviewCanvas.toDataURL('image/png'));
-      gabaritoTemplateImage.src = gabaritoPreviewCanvas.toDataURL('image/png');
+      var previewDataUrl = drawGabaritoTemplate(gabaritoPreviewCanvas, true, true);
+      var templateCanvas = document.createElement('canvas');
+      var templateDataUrl = drawGabaritoTemplate(templateCanvas, false, false);
+
+      gabaritoPreviewImage.setAttribute('src', previewDataUrl);
+      gabaritoTemplateImage.src = templateDataUrl || previewDataUrl;
       gabaritoTemplateImage.onload = renderA4LayoutEditor;
       if (gabaritoTemplateImage.complete) {
         renderA4LayoutEditor();
@@ -7922,6 +7975,41 @@
       correcaoDiscursivaModalInstance.hide();
     }
 
+    function submitCorrecaoDiscursivaModal() {
+      if (!correcaoDiscursivaResolver) {
+        closeCorrecaoDiscursivaModal();
+        return;
+      }
+
+      try {
+        var scores = collectCorrecaoDiscursivaScoresFromModal();
+        var resolver = correcaoDiscursivaResolver;
+        correcaoDiscursivaResolver = null;
+        correcaoDiscursivaRejecter = null;
+        if (correcaoDiscursivaError) {
+          correcaoDiscursivaError.textContent = '';
+          correcaoDiscursivaError.classList.add('d-none');
+        }
+        resolver(scores);
+        closeCorrecaoDiscursivaModal();
+      } catch (error) {
+        if (correcaoDiscursivaError) {
+          correcaoDiscursivaError.textContent = error && error.message ? error.message : 'Não foi possível validar as notas.';
+          correcaoDiscursivaError.classList.remove('d-none');
+        }
+      }
+    }
+
+    function cancelCorrecaoDiscursivaModal() {
+      if (correcaoDiscursivaRejecter) {
+        var rejecter = correcaoDiscursivaRejecter;
+        correcaoDiscursivaResolver = null;
+        correcaoDiscursivaRejecter = null;
+        rejecter(buildCorrecaoFlowError('correcao-discursiva-cancelled', 'Lançamento das notas discursivas cancelado.'));
+      }
+      closeCorrecaoDiscursivaModal();
+    }
+
     function openCorrecaoRevisaoModal(reviewPayload) {
       if (!correcaoRevisaoModalInstance || !correcaoRevisaoList) {
         return Promise.resolve(true);
@@ -8027,6 +8115,26 @@
       }
 
       correcaoRevisaoModalInstance.hide();
+    }
+
+    function confirmCorrecaoRevisaoModal() {
+      if (correcaoRevisaoResolver) {
+        var resolver = correcaoRevisaoResolver;
+        correcaoRevisaoResolver = null;
+        correcaoRevisaoRejecter = null;
+        resolver(true);
+      }
+      closeCorrecaoRevisaoModal();
+    }
+
+    function cancelCorrecaoRevisaoModal() {
+      if (correcaoRevisaoRejecter) {
+        var rejecter = correcaoRevisaoRejecter;
+        correcaoRevisaoResolver = null;
+        correcaoRevisaoRejecter = null;
+        rejecter(buildCorrecaoFlowError('correcao-review-cancelled', 'Revisão cancelada pelo usuário.'));
+      }
+      closeCorrecaoRevisaoModal();
     }
 
     function openFormModal() {
@@ -8143,7 +8251,72 @@
 
     function sanitizeQuestaoPeso(value, fallbackValue) {
       var safeFallback = clampFloat(fallbackValue, 0, Number.MAX_VALUE, 1);
-      return clampFloat(value, 0, Number.MAX_VALUE, safeFallback);
+      var parsed = clampFloat(value, 0, Number.MAX_VALUE, safeFallback);
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        return safeFallback > 0 ? safeFallback : 1;
+      }
+      return Math.round(parsed * 100) / 100;
+    }
+
+    function normalizeQuestaoTipo(value) {
+      var normalized = String(value || '').trim().toLowerCase();
+      if (normalized === 'discursiva' || normalized === 'discursivo') {
+        return 'discursiva';
+      }
+      if (normalized === 'vf' || normalized === 'v/f' || normalized === 'verdadeiro-falso' || normalized === 'verdadeiro_falso') {
+        return 'vf';
+      }
+      return 'multipla';
+    }
+
+    function isQuestaoObjetiva(value) {
+      var tipo = normalizeQuestaoTipo(value);
+      return tipo === 'multipla' || tipo === 'vf';
+    }
+
+    function getQuestaoTipoLabel(value) {
+      var tipo = normalizeQuestaoTipo(value);
+      if (tipo === 'discursiva') {
+        return 'Discursiva';
+      }
+      if (tipo === 'vf') {
+        return 'V/F';
+      }
+      return 'Múltipla escolha';
+    }
+
+    function sanitizeQuestaoMetaField(value) {
+      if (value === null || value === undefined) {
+        return '';
+      }
+
+      var normalized = richTextToPlainText(String(value));
+      return normalized.replace(/\s+/g, ' ').trim();
+    }
+
+    function getQuestaoAlternativaLabels(item, fallbackAlternativasCount) {
+      var safeItem = sanitizeQuestaoItem(item);
+      var tipo = normalizeQuestaoTipo(safeItem.tipo);
+      if (!isQuestaoObjetiva(tipo)) {
+        return [];
+      }
+
+      var totalAlternativas = tipo === 'vf'
+        ? 2
+        : clampInt(
+          Array.isArray(safeItem.alternativas) && safeItem.alternativas.length
+            ? safeItem.alternativas.length
+            : fallbackAlternativasCount,
+          2,
+          10,
+          4
+        );
+      var labels = [];
+      for (var altIndex = 0; altIndex < totalAlternativas; altIndex += 1) {
+        labels.push(getQuestaoAltLabel(tipo, altIndex));
+      }
+
+      return labels;
     }
 
     function sanitizeHexColor(rawColor, fallbackColor) {
@@ -9902,9 +10075,14 @@
     function closeCorrecaoModal() {
       if (!correcaoModalInstance) {
         stopCorrecaoCamera();
+        if (dashboardModalElement) {
+          dashboardModalElement.classList.remove('admin-avaliacao-dashboard-modal-underlay');
+        }
+        setCorrecaoBackdropIsolation(false);
         return;
       }
 
+      stopCorrecaoScanLoop();
       correcaoModalInstance.hide();
     }
 
@@ -14320,6 +14498,80 @@
       correcaoEdicaoModalInstance.hide();
     }
 
+    function submitCorrecaoEdicaoModal() {
+      var row = correcaoEdicaoCurrentRowData && typeof correcaoEdicaoCurrentRowData === 'object'
+        ? correcaoEdicaoCurrentRowData
+        : null;
+
+      if (!row) {
+        if (correcaoEdicaoError) {
+          correcaoEdicaoError.textContent = 'Correção não carregada.';
+          correcaoEdicaoError.classList.remove('d-none');
+        }
+        return Promise.resolve(false);
+      }
+
+      if (correcaoEdicaoSaveBtn) {
+        correcaoEdicaoSaveBtn.setAttribute('disabled', 'disabled');
+      }
+
+      if (correcaoEdicaoError) {
+        correcaoEdicaoError.textContent = '';
+        correcaoEdicaoError.classList.add('d-none');
+      }
+
+      var respostas;
+      try {
+        respostas = collectCorrecaoEdicaoPayload();
+      } catch (error) {
+        if (correcaoEdicaoError) {
+          correcaoEdicaoError.textContent = error && error.message ? error.message : 'Não foi possível validar as respostas informadas.';
+          correcaoEdicaoError.classList.remove('d-none');
+        }
+        if (correcaoEdicaoSaveBtn) {
+          correcaoEdicaoSaveBtn.removeAttribute('disabled');
+        }
+        return Promise.resolve(false);
+      }
+
+      var comparison = buildCorrecaoCorrections(respostas, {}, {});
+      var resultPayload = {
+        avaliacao_id: Number(row.avaliacao_id || row.avaliacaoId || activeDashboardAvaliacaoId || 0),
+        aluno_id: Number(row.aluno_id || row.alunoId || 0),
+        turma_id: Number(row.turma_id || row.turmaId || 0),
+        numeracao: String(row.numeracao || ''),
+        qr_payload: String(row.qr_payload || row.qrPayload || ''),
+        respostas: respostas,
+        correcoes: comparison.corrections,
+        acertos: comparison.score,
+        total_questoes: comparison.total,
+        pontuacao: comparison.earnedPoints.toFixed(2),
+        pontuacao_total: comparison.totalPoints.toFixed(2),
+        percentual: comparison.totalPoints > 0 ? ((comparison.earnedPoints / comparison.totalPoints) * 100).toFixed(2) : '0.00',
+      };
+
+      var request = Number(correcaoEdicaoCurrentRowId || 0) > 0
+        ? updateCorrecaoResult(correcaoEdicaoCurrentRowId, resultPayload)
+        : saveCorrecaoResult(resultPayload);
+
+      return request.then(function (payload) {
+        renderCorrecoesTable(payload.rows || [], payload.stats || getCorrecoesSummaryStats(payload.rows || []));
+        closeCorrecaoEdicaoModal();
+        showGlobalStatus(Number(correcaoEdicaoCurrentRowId || 0) > 0 ? 'Correção atualizada com sucesso.' : 'Correção lançada com sucesso.', false);
+        return true;
+      }).catch(function (error) {
+        if (correcaoEdicaoError) {
+          correcaoEdicaoError.textContent = error && error.message ? error.message : 'Não foi possível salvar a correção.';
+          correcaoEdicaoError.classList.remove('d-none');
+        }
+        return false;
+      }).finally(function () {
+        if (correcaoEdicaoSaveBtn) {
+          correcaoEdicaoSaveBtn.removeAttribute('disabled');
+        }
+      });
+    }
+
     function openCorrecaoEdicaoModal(correcaoRow) {
       if (!correcaoEdicaoModalInstance || !correcaoEdicaoList) {
         return;
@@ -16411,6 +16663,44 @@
           return;
         }
       });
+
+      questoesListContainer.addEventListener('input', function (event) {
+        var target = event.target;
+        if (!(target instanceof HTMLInputElement) || !target.classList.contains('js-admin-gabarito-peso')) {
+          return;
+        }
+
+        var qi = parseInt(target.getAttribute('data-question-index'), 10);
+        if (isNaN(qi) || qi < 0 || qi >= gabaritoQuestoesItens.length) {
+          return;
+        }
+
+        var rawValue = String(target.value || '').trim().replace(',', '.');
+        if (rawValue === '') {
+          return;
+        }
+
+        gabaritoQuestoesItens[qi].peso = sanitizeQuestaoPeso(rawValue, gabaritoQuestoesItens[qi].peso || 1);
+        markGabaritoPendingChanges();
+      });
+
+      questoesListContainer.addEventListener('change', function (event) {
+        var target = event.target;
+        if (!(target instanceof HTMLInputElement) || !target.classList.contains('js-admin-gabarito-peso')) {
+          return;
+        }
+
+        var qi = parseInt(target.getAttribute('data-question-index'), 10);
+        if (isNaN(qi) || qi < 0 || qi >= gabaritoQuestoesItens.length) {
+          return;
+        }
+
+        var normalizedPeso = sanitizeQuestaoPeso(String(target.value || '').replace(',', '.'), gabaritoQuestoesItens[qi].peso || 1);
+        gabaritoQuestoesItens[qi].peso = normalizedPeso;
+        target.value = String(normalizedPeso).replace(/\.00$/, '');
+        renderDisciplinasHabilidadesEditor();
+        markGabaritoPendingChanges();
+      });
     }
 
     // ---- Control inputs: questões, alternativas, por coluna, restaurar ----
@@ -16886,6 +17176,59 @@
           renderGabaritoPreview();
         }
       });
+    }
+
+    window.__adminAvaliacoesCorrecaoApi = {
+      beginCorrecaoFlow: beginCorrecaoFlow,
+      closeCorrecaoModal: closeCorrecaoModal,
+      proceedCorrecaoToGabarito: proceedCorrecaoToGabarito,
+      goToNextCorrecaoQr: goToNextCorrecaoQr,
+      retryCorrecaoForCurrentTarget: retryCorrecaoForCurrentTarget,
+      processGabaritoManually: processGabaritoManually,
+      loadCorrecoesList: loadCorrecoesList,
+      startCorrecoesPolling: startCorrecoesPolling,
+      stopCorrecoesPolling: stopCorrecoesPolling,
+      renderCorrecoesRoster: renderCorrecoesRoster,
+      getCorrecaoRowById: getCorrecaoRowById,
+      openCorrecaoEdicaoModal: openCorrecaoEdicaoModal,
+      deleteCorrecaoById: deleteCorrecaoById,
+      submitCorrecaoDiscursivaModal: submitCorrecaoDiscursivaModal,
+      cancelCorrecaoDiscursivaModal: cancelCorrecaoDiscursivaModal,
+      confirmCorrecaoRevisaoModal: confirmCorrecaoRevisaoModal,
+      cancelCorrecaoRevisaoModal: cancelCorrecaoRevisaoModal,
+      submitCorrecaoEdicaoModal: submitCorrecaoEdicaoModal,
+      closeCorrecaoEdicaoModal: closeCorrecaoEdicaoModal,
+      getElements: function () {
+        return {
+          dashboardModalElement: dashboardModalElement,
+          dashboardTabsElement: document.getElementById('adminAvaliacaoDashboardTabs'),
+          dashboardCorrecaoTab: dashboardCorrecaoTab,
+          correcaoPane: correcaoPane,
+          correcaoStartBtn: correcaoStartBtn,
+          correcaoStopBtn: correcaoStopBtn,
+          correcaoConfirmBtn: correcaoConfirmBtn,
+          correcaoNextBtn: correcaoNextBtn,
+          correcaoRetryBtn: correcaoRetryBtn,
+          correcaoProcessBtn: correcaoProcessBtn,
+          correcaoRefreshBtn: correcaoRefreshBtn,
+          correcaoTableBody: correcaoTableBody,
+          correcaoRosterBody: correcaoRosterBody,
+          correcaoRosterSearchInput: correcaoRosterSearchInput,
+          correcaoDiscursivaModalElement: correcaoDiscursivaModalElement,
+          correcaoDiscursivaSaveBtn: correcaoDiscursivaSaveBtn,
+          correcaoDiscursivaCancelBtn: correcaoDiscursivaCancelBtn,
+          correcaoRevisaoModalElement: correcaoRevisaoModalElement,
+          correcaoRevisaoSaveBtn: correcaoRevisaoSaveBtn,
+          correcaoRevisaoCancelBtn: correcaoRevisaoCancelBtn,
+          correcaoEdicaoModalElement: correcaoEdicaoModalElement,
+          correcaoEdicaoSaveBtn: correcaoEdicaoSaveBtn,
+          correcaoEdicaoCancelBtn: correcaoEdicaoCancelBtn,
+        };
+      },
+    };
+
+    if (typeof window.__initAdminAvaliacaoCorrecaoModule === 'function') {
+      window.__initAdminAvaliacaoCorrecaoModule(window.__adminAvaliacoesCorrecaoApi);
     }
 
   };

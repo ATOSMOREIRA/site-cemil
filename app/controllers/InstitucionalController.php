@@ -3142,6 +3142,7 @@ class InstitucionalController extends HomeController
 			}
 		}
 
+		$disciplina = $this->resolveInstitutionalDisciplinaLabel($disciplina);
 		$disciplinaNorm = $this->normalizeInstitutionalSearch($disciplina);
 		$questoesDisciplina = [];
 		foreach ($itens as $index => $item) {
@@ -3150,7 +3151,7 @@ class InstitucionalController extends HomeController
 			}
 
 			$questionNumber = $index + 1;
-			$itemDisciplina = trim((string) ($item['disciplina'] ?? ''));
+			$itemDisciplina = $this->resolveInstitutionalDisciplinaLabel((string) ($item['disciplina'] ?? ''));
 			if ($this->normalizeInstitutionalSearch($itemDisciplina) !== $disciplinaNorm) {
 				continue;
 			}
@@ -3259,6 +3260,7 @@ class InstitucionalController extends HomeController
 		}
 
 		$itens = $this->extractAvaliacaoQuestionItems($avaliacao);
+		$disciplina = $this->resolveInstitutionalDisciplinaLabel($disciplina);
 		$disciplinaNorm = $this->normalizeInstitutionalSearch($disciplina);
 		$respostasCompletas = is_array($correcao['respostas'] ?? null) ? $correcao['respostas'] : [];
 
@@ -3267,7 +3269,7 @@ class InstitucionalController extends HomeController
 				continue;
 			}
 
-			$itemDisciplina = trim((string) ($item['disciplina'] ?? ''));
+			$itemDisciplina = $this->resolveInstitutionalDisciplinaLabel((string) ($item['disciplina'] ?? ''));
 			if ($this->normalizeInstitutionalSearch($itemDisciplina) !== $disciplinaNorm) {
 				continue;
 			}
@@ -5076,6 +5078,30 @@ class InstitucionalController extends HomeController
 
 		$text = preg_replace('/[^a-z0-9]+/i', ' ', $text) ?? '';
 		return trim($text);
+	}
+
+	private function resolveInstitutionalDisciplinaLabel(string $value): string
+	{
+		$label = trim($value);
+		if ($label === '') {
+			return '';
+		}
+
+		if (ctype_digit($label)) {
+			try {
+				$disciplinaModel = new DisciplinaModel();
+				$disciplina = $disciplinaModel->findById((int) $label);
+				if (is_array($disciplina)) {
+					$nome = trim((string) ($disciplina['nome'] ?? ''));
+					if ($nome !== '') {
+						return $nome;
+					}
+				}
+			} catch (Throwable) {
+			}
+		}
+
+		return $label;
 	}
 
 	private function normalizeInstitutionalQuestionType(string $value): string

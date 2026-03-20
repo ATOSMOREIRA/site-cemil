@@ -218,14 +218,20 @@
     var notasHbSelectorSelected = [];
     var notasHbAvaliadasSelected = [];
 
+    var AUTO_REFRESH_INTERVAL = 5000;
     var loadToken = 0;
     var state = { data: null, entriesById: {}, scopePairs: {}, disciplinasCatalog: [] };
     var boletimScrollSyncing = false;
     var formFromOrigemContext = null;
     var origemLancamentoHighlight = { id: '', until: 0 };
     var origemBimestreSelecionado = {};
+    var origemModalContext = null;
     var correcaoDisciplinaState = { payload: null, context: null };
     var confirmAction = null;
+    var autoRefreshTimer = 0;
+    var lastDashboardSignature = '';
+    var pendingDashboardData = null;
+    var pendingDashboardSignature = '';
 
     function syncBoletimXScroll() {
       if (!boletimContainer || !boletimTable || !boletimXScroll || !boletimXScrollTrack) return;
@@ -239,6 +245,73 @@
       if (!boletimScrollSyncing) {
         boletimXScroll.scrollLeft = boletimContainer.scrollLeft;
       }
+    }
+
+    function isModalShown(element) {
+      return !!(element && element.classList && element.classList.contains('show'));
+    }
+
+    function captureDashboardViewState() {
+      return {
+        boletimScrollTop: boletimContainer ? boletimContainer.scrollTop : 0,
+        boletimScrollLeft: boletimContainer ? boletimContainer.scrollLeft : 0,
+        boletimXScrollLeft: boletimXScroll ? boletimXScroll.scrollLeft : 0,
+      };
+    }
+
+    function restoreDashboardViewState(viewState) {
+      if (!viewState || !boletimContainer) {
+        setTimeout(syncBoletimXScroll, 0);
+        return;
+      }
+
+      boletimContainer.scrollTop = Number(viewState.boletimScrollTop || 0);
+      boletimContainer.scrollLeft = Number(viewState.boletimScrollLeft || 0);
+      if (boletimXScroll) {
+        boletimXScroll.scrollLeft = Number(viewState.boletimXScrollLeft || viewState.boletimScrollLeft || 0);
+      }
+
+      setTimeout(syncBoletimXScroll, 0);
+    }
+
+    function buildDashboardSignature(data) {
+      try {
+        return JSON.stringify(data || {});
+      } catch (_) {
+        return String(Date.now());
+      }
+    }
+
+    function hasBlockingAutoRefreshInteraction() {
+      if (isModalShown(formModalEl) || isModalShown(correcaoDisciplinaModalEl) || isModalShown(confirmModalEl)) {
+        return true;
+      }
+
+      var active = document.activeElement;
+      if (!(active instanceof HTMLElement)) {
+        return false;
+      }
+
+      if (active.closest('#notasDesempenhoFormModal, #notasDesempenhoCorrecaoDisciplinaModal')) {
+        return true;
+      }
+
+      return false;
+    }
+
+    function applyPendingDashboardUpdate() {
+      if (!pendingDashboardData || !pendingDashboardSignature) {
+        return;
+      }
+      if (hasBlockingAutoRefreshInteraction()) {
+        return;
+      }
+
+      var nextData = pendingDashboardData;
+      var nextSignature = pendingDashboardSignature;
+      pendingDashboardData = null;
+      pendingDashboardSignature = '';
+      applyDashboardData(nextData, nextSignature, { preserveView: true, syncOrigemModal: true });
     }
 
     function selectedValues(selectElement) {
@@ -683,6 +756,14 @@
       var permiteProdTextual = isDisciplinaLinguaPortuguesa(disc);
       var mediaFormulaLabel = permiteProdTextual ? '(50+30+20)' : '(50+50)';
 
+      function resolveAvaliacaoAutoValue(grade) {
+        var d = grade && typeof grade === 'object' ? grade : {};
+        if (d.avaliacao != null) return d.avaliacao;
+        if (d.avaliacao_ciclo_2 != null) return d.avaliacao_ciclo_2;
+        if (d.simulado != null) return d.simulado;
+        return null;
+      }
+
       function origemAttrs(currentRow, label) {
         return ' class="text-center js-notas-boletim-origem" data-aluno-id="' + esc(currentRow.aluno_id) + '" data-disc="' + esc(disc) + '" title="Clique para ver origem de ' + esc(label) + '"';
       }
@@ -708,12 +789,13 @@
       var rows = '';
       boletim.forEach(function (row, idx) {
         var d = (row.disciplinas && row.disciplinas[disc]) ? row.disciplinas[disc] : {};
+        var avaliacaoAuto = resolveAvaliacaoAutoValue(d);
         rows += '<tr>';
         rows += '<td class="text-center small">' + (idx + 1) + '</td>';
         rows += '<td><strong>' + esc(row.aluno_nome) + '</strong></td>';
 
         // Avaliação (auto – não editável)
-        rows += '<td class="text-center js-notas-boletim-origem" data-aluno-id="' + esc(row.aluno_id) + '" data-disc="' + esc(disc) + '" title="Clique para ver origem da nota">' + fmtNota(d.avaliacao) + '</td>';
+        rows += '<td class="text-center js-notas-boletim-origem" data-aluno-id="' + esc(row.aluno_id) + '" data-disc="' + esc(disc) + '" title="Clique para ver origem da nota">' + fmtNota(avaliacaoAuto) + '</td>';
 
         rows += '<td' + origemAttrs(row, 'Subjetiva') + '>' + fmtNota(d.subjetiva) + '</td>';
 
@@ -860,6 +942,11 @@
 
     function renderBoletimOrigemModal(alunoId, disciplina) {
       if (!boletimOrigemModalBody) return;
+
+      origemModalContext = {
+        alunoId: String(alunoId || '').trim(),
+        disciplina: String(disciplina || '').trim(),
+      };
 
       var payload = getBoletimDisciplinaData(alunoId, disciplina);
       if (!payload) {
@@ -1701,9 +1788,24 @@
       }
     }
 
-    function loadDashboard() {
+    function applyDashboardData(data, signature, options) {
+      var opts = options || {};
+      var viewState = opts.preserveView === false ? null : captureDashboardViewState();
+      renderDashboard(data || {});
+      lastDashboardSignature = signature || buildDashboardSignature(data || {});
+      restoreDashboardViewState(viewState);
+
+      if (opts.syncOrigemModal !== false && origemModalContext && isModalShown(boletimOrigemModalEl)) {
+        renderBoletimOrigemModal(origemModalContext.alunoId, origemModalContext.disciplina);
+      }
+    }
+
+    function loadDashboard(options) {
+      var opts = options || {};
       var token = ++loadToken;
-      showStatus('Carregando...');
+      if (!opts.silent) {
+        showStatus('Carregando...');
+      }
       var qs = queryString(collectFilters());
       var url = buildEndpoint('/institucional/notas-desempenho/dados') + (qs ? '?' + qs : '');
 
@@ -1715,8 +1817,27 @@
         .then(function (payload) {
           if (token !== loadToken) return null;
           if (!payload || payload.ok !== true) throw new Error(payload && payload.message ? payload.message : 'Erro.');
-          renderDashboard(payload.data || {});
-          return payload.data || {};
+          var data = payload.data || {};
+          var signature = buildDashboardSignature(data);
+          var changed = signature !== lastDashboardSignature;
+
+          if (!changed && opts.renderIfUnchanged === false) {
+            return state.data || data;
+          }
+
+          if (opts.deferIfBusy && changed && hasBlockingAutoRefreshInteraction()) {
+            pendingDashboardData = data;
+            pendingDashboardSignature = signature;
+            return data;
+          }
+
+          pendingDashboardData = null;
+          pendingDashboardSignature = '';
+          applyDashboardData(data, signature, {
+            preserveView: opts.preserveView !== false,
+            syncOrigemModal: true,
+          });
+          return data;
         })
         .catch(function (err) {
           if (token !== loadToken) return null;
@@ -1765,6 +1886,7 @@
         var disc = String(cell.getAttribute('data-disc') || '').trim();
         if (!alunoId || !disc) return;
 
+        origemModalContext = { alunoId: alunoId, disciplina: disc };
         renderBoletimOrigemModal(alunoId, disc);
       });
     }
@@ -1847,9 +1969,24 @@
         }
 
         origemBimestreSelecionado[alunoId + '|' + disciplina] = bimestre;
+        origemModalContext = { alunoId: alunoId, disciplina: disciplina };
         renderBoletimOrigemModal(alunoId, disciplina);
       });
     }
+
+    if (boletimOrigemModalEl) {
+      boletimOrigemModalEl.addEventListener('hidden.bs.modal', function () {
+        origemModalContext = null;
+        applyPendingDashboardUpdate();
+      });
+    }
+
+    [formModalEl, correcaoDisciplinaModalEl, confirmModalEl].forEach(function (modalElement) {
+      if (!modalElement) return;
+      modalElement.addEventListener('hidden.bs.modal', applyPendingDashboardUpdate);
+    });
+
+    window.addEventListener('focus', applyPendingDashboardUpdate);
 
     if (correcaoDisciplinaSalvarBtn) {
       correcaoDisciplinaSalvarBtn.addEventListener('click', function () {
@@ -2847,6 +2984,10 @@
       return s;
     }
 
+    function notasHbNormalizeDocumento(value) {
+      return String(value || '').trim().toUpperCase();
+    }
+
     function notasHbRenderList(cache, disciplinaAtual) {
       if (!notasHbSelectorList) return;
       if (!cache) {
@@ -2855,12 +2996,13 @@
       }
 
       var searchValue = notasHbNormalize(notasHbSelectorSearch ? notasHbSelectorSearch.value : '');
-      var filterDoc = notasHbSelectorActiveFilter;
+      var filterDoc = notasHbNormalizeDocumento(notasHbSelectorActiveFilter || 'todos');
       var disciplinaNorm = notasHbNormalize(disciplinaAtual || '');
 
       var filtered = cache.habilidades.filter(function (h) {
-        if (filterDoc !== 'todos') {
-          if (String(h.documento || '').toUpperCase() !== filterDoc.toUpperCase()) return false;
+        var documento = notasHbNormalizeDocumento(h.documento || '');
+        if (filterDoc !== 'TODOS') {
+          if (documento !== filterDoc) return false;
         }
         if (disciplinaNorm !== '') {
           var discNome = notasHbNormalize(cache.disciplinasMap[String(h.disciplina_id)] || '');
@@ -2878,20 +3020,22 @@
         return;
       }
 
-      var maxRender = 200;
+      var maxRender = filtered.length;
       var html = '';
       var rendered = Math.min(filtered.length, maxRender);
       for (var i = 0; i < rendered; i++) {
         var h = filtered[i];
         var codigo = String(h.codigo || '').trim();
         var descricao = String(h.descricao || '').trim();
-        var documento = String(h.documento || '').toUpperCase();
+        var documento = notasHbNormalizeDocumento(h.documento || '');
         var isChecked = notasHbSelectorSelected.indexOf(codigo) !== -1;
         var safeId = 'notasHbSel_' + i;
         var docBadge = documento === 'BNCC'
           ? '<span class="badge text-bg-primary ms-1" style="font-size:.65rem">BNCC</span>'
           : documento === 'DCT'
             ? '<span class="badge text-bg-success ms-1" style="font-size:.65rem">DCT</span>'
+            : documento === 'MATRIZ'
+              ? '<span class="badge text-bg-warning text-dark ms-1" style="font-size:.65rem">Matriz</span>'
             : '';
         var descCutAt = descricao.length > 90 ? (function () { var sp = descricao.lastIndexOf(' ', 90); return sp > 54 ? sp : 90; }()) : 90;
         var descTrunc = descricao.length > 90
@@ -2905,9 +3049,6 @@
           + '</div></label></div>';
       }
 
-      if (filtered.length > maxRender) {
-        html += '<div class="text-center text-secondary py-2 small">Mostrando ' + maxRender + ' de ' + filtered.length + ' resultados. Refine a busca.</div>';
-      }
       notasHbSelectorList.innerHTML = html;
     }
 
@@ -3170,6 +3311,140 @@
       });
     }
 
+    if (formEl) {
+      formEl.addEventListener('click', function (event) {
+        var target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+
+        var openBtn = target.closest('.js-notas-hb-select-btn');
+        if (openBtn instanceof HTMLElement) {
+          event.preventDefault();
+          event.stopPropagation();
+          notasHbOpenSelector(String(openBtn.getAttribute('data-hb-field') || 'avaliadas').trim() || 'avaliadas');
+          return;
+        }
+
+        var removeBtn = target.closest('.js-notas-hb-tag-remove');
+        if (!(removeBtn instanceof HTMLElement)) {
+          return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        var removeValue = String(removeBtn.getAttribute('data-hb-value') || '').trim();
+        if (!removeValue) {
+          return;
+        }
+
+        notasHbAvaliadasSelected = notasHbAvaliadasSelected.filter(function (item) {
+          return item !== removeValue;
+        });
+        notasHbRenderTags('avaliadas');
+      });
+    }
+
+    if (notasHbSelectorList) {
+      notasHbSelectorList.addEventListener('change', function (event) {
+        var target = event.target;
+        if (!(target instanceof HTMLInputElement) || !target.classList.contains('js-notas-hb-check')) {
+          return;
+        }
+
+        var value = String(target.value || '').trim();
+        if (!value) {
+          return;
+        }
+
+        if (target.checked) {
+          if (notasHbSelectorSelected.indexOf(value) === -1) {
+            notasHbSelectorSelected.push(value);
+          }
+        } else {
+          notasHbSelectorSelected = notasHbSelectorSelected.filter(function (item) {
+            return item !== value;
+          });
+        }
+
+        notasHbUpdateCount();
+      });
+
+      notasHbSelectorList.addEventListener('click', function (event) {
+        var target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+
+        var toggleBtn = target.closest('.js-notas-hb-toggle-desc');
+        if (!(toggleBtn instanceof HTMLElement)) {
+          return;
+        }
+
+        event.preventDefault();
+        var restWrap = toggleBtn.closest('.js-notas-hb-desc-rest');
+        if (!(restWrap instanceof HTMLElement)) {
+          return;
+        }
+
+        var fullText = restWrap.querySelector('.js-notas-hb-desc-full');
+        if (!(fullText instanceof HTMLElement)) {
+          return;
+        }
+
+        var expanded = !fullText.classList.contains('d-none');
+        fullText.classList.toggle('d-none', expanded);
+        toggleBtn.textContent = expanded ? 'ver mais' : 'ver menos';
+      });
+    }
+
+    if (notasHbSelectorSearch) {
+      notasHbSelectorSearch.addEventListener('input', function () {
+        var disciplinaAtual = formDisciplinaInput ? String(formDisciplinaInput.value || '').trim() : '';
+        notasHbRenderList(notasHbSelectorCache, disciplinaAtual);
+      });
+    }
+
+    Array.prototype.forEach.call(notasHbSelectorFilterBtns, function (btn) {
+      btn.addEventListener('click', function () {
+        notasHbSelectorActiveFilter = String(btn.getAttribute('data-notas-hb-filter') || 'todos').trim() || 'todos';
+        Array.prototype.forEach.call(notasHbSelectorFilterBtns, function (innerBtn) {
+          innerBtn.classList.toggle('active', innerBtn === btn);
+        });
+        var disciplinaAtual = formDisciplinaInput ? String(formDisciplinaInput.value || '').trim() : '';
+        notasHbRenderList(notasHbSelectorCache, disciplinaAtual);
+      });
+    });
+
+    if (notasHbSelectorCustomInput) {
+      notasHbSelectorCustomInput.addEventListener('keydown', function (event) {
+        if (event.key !== 'Enter') {
+          return;
+        }
+        event.preventDefault();
+        notasHbAddCustom();
+      });
+    }
+
+    if (notasHbSelectorCustomAddBtn) {
+      notasHbSelectorCustomAddBtn.addEventListener('click', function (event) {
+        event.preventDefault();
+        notasHbAddCustom();
+      });
+    }
+
+    if (notasHbSelectorConfirmBtn) {
+      notasHbSelectorConfirmBtn.addEventListener('click', function (event) {
+        event.preventDefault();
+        notasHbConfirm();
+      });
+    }
+
+    if (notasHbSelectorModalEl) {
+      notasHbSelectorModalEl.addEventListener('hidden.bs.modal', function () {
+        if (formModalEl && formModalEl.classList.contains('show')) {
+          document.body.classList.add('modal-open');
+        }
+      });
+    }
+
     syncFormCicloFieldVisibility();
 
     if (entriesBody) {
@@ -3213,7 +3488,16 @@
      *  Start
      * ==================================================================== */
 
-    loadDashboard();
+    autoRefreshTimer = window.setInterval(function () {
+      loadDashboard({
+        silent: true,
+        preserveView: true,
+        deferIfBusy: true,
+        renderIfUnchanged: false,
+      });
+    }, AUTO_REFRESH_INTERVAL);
+
+    loadDashboard({ preserveView: true });
     setTimeout(syncBoletimXScroll, 0);
   });
 })();

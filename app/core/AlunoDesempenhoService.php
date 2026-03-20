@@ -28,6 +28,8 @@ class AlunoDesempenhoService
     private TurmaModel $turmaModel;
     private AvaliacaoModel $avaliacaoModel;
     private AvaliacaoCorrecaoModel $correcaoModel;
+    private ?array $disciplinaCatalogOptions = null;
+    private ?array $disciplinaIdNameMap = null;
 
     public function __construct()
     {
@@ -55,7 +57,8 @@ class AlunoDesempenhoService
         $categoriaFiltro = trim((string) ($filters['categoria'] ?? ''));
 
         $singleAno = count($anosLetivos) === 1 ? (int) $anosLetivos[0] : (int) date('Y');
-        $singleBimestre = count($bimestres) === 1 ? (int) $bimestres[0] : 0;
+        $selectedBimestres = $bimestres !== [] ? array_values($bimestres) : [1, 2, 3, 4];
+        $singleBimestre = count($selectedBimestres) === 1 ? (int) $selectedBimestres[0] : 0;
 
         $alunos = !empty($turmaIds)
             ? $this->loadAlunosByTurmas($turmaIds)
@@ -77,18 +80,13 @@ class AlunoDesempenhoService
         }
 
         $corrections    = $this->loadCorrections($alunoIds, $bimestres, $anosLetivos);
-        $disciplinaModel = new DisciplinaModel();
-        try {
-            $dbDisciplinas = $disciplinaModel->getSimpleOptions();
-        } catch (Throwable) {
-            $dbDisciplinas = [];
-        }
+        $dbDisciplinas = $this->getDisciplinaCatalogOptions();
         $disciplinasDiversificadas = [];
         foreach ($dbDisciplinas as $d) {
             if (!is_array($d)) {
                 continue;
             }
-            $nome = $this->normalizeLabel((string) ($d['nome'] ?? ''));
+            $nome = $this->resolveDisciplinaLabel((string) ($d['nome'] ?? ''));
             if ($nome === '') {
                 continue;
             }
@@ -134,7 +132,7 @@ class AlunoDesempenhoService
                 if ($qn <= 0) continue;
 
                 $meta       = $questionMeta[$qn] ?? ['disciplina' => '', 'habilidade' => '', 'peso' => 1];
-                $disciplina = $this->normalizeLabel((string) ($meta['disciplina'] ?? ''));
+                $disciplina = $this->resolveDisciplinaLabel((string) ($meta['disciplina'] ?? ''));
                 if ($disciplina === '') continue;
                 if (isset($disciplinasDiversificadas[$this->normalizeSearch($disciplina)])) continue;
 
@@ -190,6 +188,7 @@ class AlunoDesempenhoService
                     if (!isset($perStudentDisciplineRecoverySources[$key][$avaliacaoId])) {
                         $perStudentDisciplineRecoverySources[$key][$avaliacaoId] = [
                             'avaliacao_id' => $avaliacaoId,
+                            'bimestre' => (int) ($avaliacao['bimestre'] ?? 0),
                             'aplicacao' => $aplicacao,
                             'corretas' => 0,
                             'total' => 0,
@@ -217,10 +216,14 @@ class AlunoDesempenhoService
             }
         }
 
-        $disciplinasList = array_keys($allDisciplinas);
+        $disciplinasList = array_values(array_filter(array_map(function ($disciplina): string {
+            return $this->normalizeLabel((string) $disciplina);
+        }, array_keys($allDisciplinas)), static function (string $disciplina): bool {
+            return $disciplina !== '';
+        }));
         sort($disciplinasList, SORT_LOCALE_STRING);
         foreach ($dbDisciplinas as $d) {
-            $nome = trim((string) ($d['nome'] ?? ''));
+            $nome = $this->resolveDisciplinaLabel((string) ($d['nome'] ?? ''));
             if ($nome === '') {
                 continue;
             }
@@ -253,33 +256,13 @@ class AlunoDesempenhoService
             $somaNotas    = 0.0;
             $countNotas   = 0;
 
-            foreach ($disciplinasList as $disc) {
-                $gradeKey       = $aId . '|' . $disc;
-                $notaAvaliacao  = null;
-                $notaAvaliacaoCiclo2 = null;
-                $notaSimulado = null;
-
-                if (isset($perStudentDisciplineGrades[$gradeKey])) {
-                    $g = $perStudentDisciplineGrades[$gradeKey];
-                    $notaAvaliacao = $g['total'] > 0
-                        ? round(($g['corretas'] / $g['total']) * 10, 2)
-                        : null;
+            foreach ($disciplinasList as $disciplinaItem) {
+                $disc = $this->normalizeLabel((string) $disciplinaItem);
+                if ($disc === '') {
+                    continue;
                 }
 
-                if (isset($perStudentDisciplineCycle2Grades[$gradeKey])) {
-                    $g2 = $perStudentDisciplineCycle2Grades[$gradeKey];
-                    $notaAvaliacaoCiclo2 = $g2['total'] > 0
-                        ? round(($g2['corretas'] / $g2['total']) * 10, 2)
-                        : null;
-                }
-
-                if (isset($perStudentDisciplineSimuladoGrades[$gradeKey])) {
-                    $gs = $perStudentDisciplineSimuladoGrades[$gradeKey];
-                    $notaSimulado = $gs['total'] > 0
-                        ? round(($gs['corretas'] / $gs['total']) * 10, 2)
-                        : null;
-                }
-
+                $gradeKey = $aId . '|' . $disc;
                 $avaliacaoFontes = [];
                 if (isset($perStudentDisciplineSources[$gradeKey]) && is_array($perStudentDisciplineSources[$gradeKey])) {
                     foreach ($perStudentDisciplineSources[$gradeKey] as $src) {
@@ -318,42 +301,21 @@ class AlunoDesempenhoService
                 });
 
                 $disciplinaEhPortugues = $this->isDisciplinaLinguaPortuguesa($disc);
-                $manual       = $this->getManualDisciplineGrade($notasManuais, $singleAno, $singleBimestre, $disc);
-                $subjetivaCiclo1 = $manual['subjetiva_ciclo_1'] ?? $manual['subjetiva'];
-                $subjetivaCiclo2 = $manual['subjetiva_ciclo_2'];
-                $prodTextual  = $manual['prod_textual'];
-                if (!$disciplinaEhPortugues) {
-                    $prodTextual = null;
-                }
-                $recuperacaoAuto = $this->extractLatestRecoveryGrade($perStudentDisciplineRecoverySources[$gradeKey] ?? []);
-                $recuperacaoManualSoma = $this->sumManualRecoveryFromRecords($records, $singleAno, $singleBimestre, $disc);
-                $recuperacao  = $recuperacaoManualSoma !== null
-                    ? $recuperacaoManualSoma
-                    : ($manual['recuperacao'] !== null ? $manual['recuperacao'] : $recuperacaoAuto);
+                $studentDiscs[$disc] = $this->buildDashboardDisciplineSnapshot(
+                    $aId,
+                    $disc,
+                    $singleAno,
+                    $selectedBimestres,
+                    $disciplinaEhPortugues,
+                    $notasManuais,
+                    $records,
+                    $avaliacaoFontes,
+                    $perStudentDisciplineRecoverySources[$gradeKey] ?? []
+                );
+                $studentDiscs[$disc]['avaliacao_fontes'] = $avaliacaoFontes;
 
-                $ciclo1 = $this->computePrimeiroCiclo($subjetivaCiclo1, $notaAvaliacao, $prodTextual, $disciplinaEhPortugues);
-                $ciclo2 = $this->computeSegundoCiclo($subjetivaCiclo2, $notaAvaliacaoCiclo2, $notaSimulado);
-                $media = $this->computeMediaCiclos($ciclo1, $ciclo2);
-                $notaFinal    = $this->computeNotaBimestral($media, $recuperacao);
-                $proficiencia = $this->classificarProficiencia($notaFinal);
-
-                $studentDiscs[$disc] = [
-                    'avaliacao'    => $notaAvaliacao,
-                    'avaliacao_ciclo_1' => $notaAvaliacao,
-                    'avaliacao_ciclo_2' => $notaAvaliacaoCiclo2,
-                    'simulado' => $notaSimulado,
-                    'avaliacao_fontes' => $avaliacaoFontes,
-                    'subjetiva'    => $subjetivaCiclo1,
-                    'subjetiva_ciclo_1' => $subjetivaCiclo1,
-                    'subjetiva_ciclo_2' => $subjetivaCiclo2,
-                    'prod_textual' => $prodTextual,
-                    'ciclo_1'      => $ciclo1,
-                    'ciclo_2'      => $ciclo2,
-                    'media'        => $media,
-                    'recuperacao'  => $recuperacao,
-                    'nota_final'   => $notaFinal,
-                    'proficiencia' => $proficiencia,
-                ];
+                $notaFinal = $studentDiscs[$disc]['nota_final'];
+                $proficiencia = $studentDiscs[$disc]['proficiencia'];
 
                 if ($notaFinal !== null) {
                     $somaNotas += $notaFinal;
@@ -905,6 +867,189 @@ class AlunoDesempenhoService
         return round(($mediaCiclos + $recuperacao) / 2, 2);
     }
 
+    private function buildDashboardDisciplineSnapshot(
+        int $alunoId,
+        string $disciplina,
+        int $anoLetivo,
+        array $selectedBimestres,
+        bool $disciplinaEhPortugues,
+        array $notasManuais,
+        array $records,
+        array $avaliacaoFontes,
+        array $recoverySources
+    ): array {
+        $bimestres = [];
+        foreach ($selectedBimestres as $bimestre) {
+            $bimestre = (int) $bimestre;
+            if ($bimestre >= 1 && $bimestre <= 4) {
+                $bimestres[] = $bimestre;
+            }
+        }
+
+        if ($bimestres === []) {
+            $bimestres = [1, 2, 3, 4];
+        }
+
+        $snapshots = [];
+        foreach ($bimestres as $bimestre) {
+            $snapshots[] = $this->buildDashboardDisciplineSnapshotForBimestre(
+                $alunoId,
+                $disciplina,
+                $anoLetivo,
+                $bimestre,
+                $disciplinaEhPortugues,
+                $notasManuais,
+                $records,
+                $avaliacaoFontes,
+                $recoverySources
+            );
+        }
+
+        if (count($snapshots) === 1) {
+            return $snapshots[0];
+        }
+
+        return $this->averageDashboardDisciplineSnapshots($snapshots, count($bimestres));
+    }
+
+    private function buildDashboardDisciplineSnapshotForBimestre(
+        int $alunoId,
+        string $disciplina,
+        int $anoLetivo,
+        int $bimestre,
+        bool $disciplinaEhPortugues,
+        array $notasManuais,
+        array $records,
+        array $avaliacaoFontes,
+        array $recoverySources
+    ): array {
+        $manual = $this->getManualDisciplineGrade($notasManuais, $anoLetivo, $bimestre, $disciplina);
+        $subjetivaCiclo1 = $manual['subjetiva_ciclo_1'] ?? $manual['subjetiva'];
+        $subjetivaCiclo2 = $manual['subjetiva_ciclo_2'];
+        $prodTextual = $disciplinaEhPortugues ? $manual['prod_textual'] : null;
+        $avaliacaoCiclo1 = $this->extractGradeFromSources($avaliacaoFontes, $bimestre, 1, false);
+        $avaliacaoCiclo2 = $this->extractGradeFromSources($avaliacaoFontes, $bimestre, 2, false);
+        $simulado = $this->extractGradeFromSources($avaliacaoFontes, $bimestre, 2, true);
+        $recuperacaoAuto = $this->extractLatestRecoveryGrade($recoverySources, $bimestre);
+        $recuperacaoManual = $this->sumManualRecoveryFromRecords($records, $anoLetivo, $bimestre, $disciplina);
+        $recuperacao = $recuperacaoManual !== null
+            ? $recuperacaoManual
+            : ($manual['recuperacao'] !== null ? $manual['recuperacao'] : $recuperacaoAuto);
+
+        $ciclo1 = $this->computePrimeiroCiclo($subjetivaCiclo1, $avaliacaoCiclo1, $prodTextual, $disciplinaEhPortugues);
+        $ciclo2 = $this->computeSegundoCiclo($subjetivaCiclo2, $avaliacaoCiclo2, $simulado);
+        $media = $this->computeMediaCiclos($ciclo1, $ciclo2);
+        $notaFinal = $this->computeNotaBimestral($media, $recuperacao);
+
+        return [
+            'aluno_id' => $alunoId,
+            'bimestre' => $bimestre,
+            'avaliacao' => $avaliacaoCiclo1,
+            'avaliacao_ciclo_1' => $avaliacaoCiclo1,
+            'avaliacao_ciclo_2' => $avaliacaoCiclo2,
+            'simulado' => $simulado,
+            'subjetiva' => $subjetivaCiclo1,
+            'subjetiva_ciclo_1' => $subjetivaCiclo1,
+            'subjetiva_ciclo_2' => $subjetivaCiclo2,
+            'prod_textual' => $prodTextual,
+            'ciclo_1' => $ciclo1,
+            'ciclo_2' => $ciclo2,
+            'media' => $media,
+            'recuperacao' => $recuperacao,
+            'nota_final' => $notaFinal,
+            'proficiencia' => $this->classificarProficiencia($notaFinal),
+        ];
+    }
+
+    private function averageDashboardDisciplineSnapshots(array $snapshots, int $divisor): array
+    {
+        $fields = [
+            'avaliacao',
+            'avaliacao_ciclo_1',
+            'avaliacao_ciclo_2',
+            'simulado',
+            'subjetiva',
+            'subjetiva_ciclo_1',
+            'subjetiva_ciclo_2',
+            'prod_textual',
+            'ciclo_1',
+            'ciclo_2',
+            'media',
+            'recuperacao',
+            'nota_final',
+        ];
+
+        $result = [];
+        foreach ($fields as $field) {
+            $result[$field] = $this->averageSnapshotField($snapshots, $field, $divisor);
+        }
+
+        $result['proficiencia'] = $this->classificarProficiencia($result['nota_final']);
+
+        return $result;
+    }
+
+    private function averageSnapshotField(array $snapshots, string $field, int $divisor): ?float
+    {
+        if ($divisor <= 0 || $snapshots === []) {
+            return null;
+        }
+
+        $sum = 0.0;
+        $hasValue = false;
+
+        foreach ($snapshots as $snapshot) {
+            if (!is_array($snapshot)) {
+                continue;
+            }
+
+            $value = $snapshot[$field] ?? null;
+            if ($value === null || $value === '') {
+                continue;
+            }
+
+            $sum += (float) $value;
+            $hasValue = true;
+        }
+
+        if (!$hasValue) {
+            return null;
+        }
+
+        return round($sum / $divisor, 2);
+    }
+
+    private function extractGradeFromSources(array $sources, int $bimestre, int $ciclo, bool $isSimulado): ?float
+    {
+        $corretas = 0;
+        $total = 0;
+
+        foreach ($sources as $source) {
+            if (!is_array($source)) {
+                continue;
+            }
+
+            if ((int) ($source['bimestre'] ?? 0) !== $bimestre) {
+                continue;
+            }
+            if ((int) ($source['ciclo'] ?? 0) !== $ciclo) {
+                continue;
+            }
+            if (((bool) ($source['is_simulado'] ?? false)) !== $isSimulado) {
+                continue;
+            }
+
+            $corretas += (int) ($source['corretas'] ?? 0);
+            $total += (int) ($source['total'] ?? 0);
+        }
+
+        if ($total <= 0) {
+            return null;
+        }
+
+        return round(($corretas / $total) * 10, 2);
+    }
+
     private function classificarProficiencia(?float $nota): ?string
     {
         if ($nota === null) return null;
@@ -994,7 +1139,7 @@ class AlunoDesempenhoService
         foreach ($itens as $index => $item) {
             if (!is_array($item)) continue;
             $result[$index + 1] = [
-                'disciplina' => $this->normalizeLabel((string) ($item['disciplina'] ?? '')),
+                'disciplina' => $this->resolveDisciplinaLabel((string) ($item['disciplina'] ?? '')),
                 'habilidade' => $this->normalizeLabel((string) ($item['habilidade'] ?? '')),
                 'peso'       => round((float) ($item['peso'] ?? 1), 2),
             ];
@@ -1004,6 +1149,7 @@ class AlunoDesempenhoService
 
     private function getManualDisciplineGrade(array $notasManuais, int $anoLetivo, int $bimestre, string $disciplina): array
     {
+        $disciplina = $this->resolveDisciplinaLabel($disciplina);
         $default = [
             'subjetiva' => null,
             'subjetiva_ciclo_1' => null,
@@ -1022,7 +1168,7 @@ class AlunoDesempenhoService
                     continue;
                 }
 
-                $discData = $bimData[$disciplina] ?? null;
+                $discData = $this->findManualDisciplineData($bimData, $disciplina);
                 if (!is_array($discData)) {
                     continue;
                 }
@@ -1054,7 +1200,7 @@ class AlunoDesempenhoService
         $bimData = $yearData[(string) $bimestre] ?? null;
         if (!is_array($bimData)) return $default;
 
-        $discData = $bimData[$disciplina] ?? null;
+        $discData = $this->findManualDisciplineData($bimData, $disciplina);
         if (!is_array($discData)) return $default;
 
         return [
@@ -1116,7 +1262,7 @@ class AlunoDesempenhoService
                 continue;
             }
 
-            $disciplina = $this->normalizeLabel((string) ($record['disciplina'] ?? ''));
+            $disciplina = $this->resolveDisciplinaLabel((string) ($record['disciplina'] ?? ''));
             if ($disciplina === '') {
                 continue;
             }
@@ -1192,7 +1338,7 @@ class AlunoDesempenhoService
         return 0;
     }
 
-    private function extractLatestRecoveryGrade(array $sources): ?float
+    private function extractLatestRecoveryGrade(array $sources, int $targetBimestre = 0): ?float
     {
         if ($sources === []) {
             return null;
@@ -1201,6 +1347,10 @@ class AlunoDesempenhoService
         $latestSource = null;
         foreach ($sources as $source) {
             if (!is_array($source)) {
+                continue;
+            }
+
+            if ($targetBimestre >= 1 && $targetBimestre <= 4 && (int) ($source['bimestre'] ?? 0) !== $targetBimestre) {
                 continue;
             }
 
@@ -1245,6 +1395,7 @@ class AlunoDesempenhoService
             return null;
         }
 
+        $disciplina = $this->resolveDisciplinaLabel($disciplina);
         $disciplinaKey = $this->normalizeSearch($disciplina);
         if ($disciplinaKey === '') {
             return null;
@@ -1269,7 +1420,7 @@ class AlunoDesempenhoService
                 continue;
             }
 
-            $recordDisciplina = $this->normalizeSearch((string) ($record['disciplina'] ?? ''));
+            $recordDisciplina = $this->normalizeSearch($this->resolveDisciplinaLabel((string) ($record['disciplina'] ?? '')));
             if ($recordDisciplina !== $disciplinaKey) {
                 continue;
             }
@@ -1480,6 +1631,92 @@ class AlunoDesempenhoService
         return trim(preg_replace('/\s+/u', ' ', $value) ?? '');
     }
 
+    private function getDisciplinaCatalogOptions(): array
+    {
+        if (is_array($this->disciplinaCatalogOptions)) {
+            return $this->disciplinaCatalogOptions;
+        }
+
+        $disciplinaModel = new DisciplinaModel();
+        try {
+            $rows = $disciplinaModel->getSimpleOptions();
+        } catch (Throwable) {
+            $rows = [];
+        }
+
+        $this->disciplinaCatalogOptions = is_array($rows) ? $rows : [];
+        return $this->disciplinaCatalogOptions;
+    }
+
+    private function getDisciplinaIdNameMap(): array
+    {
+        if (is_array($this->disciplinaIdNameMap)) {
+            return $this->disciplinaIdNameMap;
+        }
+
+        $map = [];
+        foreach ($this->getDisciplinaCatalogOptions() as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+
+            $id = (int) ($row['id'] ?? 0);
+            $nome = $this->normalizeLabel((string) ($row['nome'] ?? ''));
+            if ($id <= 0 || $nome === '') {
+                continue;
+            }
+
+            $map[(string) $id] = $nome;
+        }
+
+        $this->disciplinaIdNameMap = $map;
+        return $this->disciplinaIdNameMap;
+    }
+
+    private function resolveDisciplinaLabel(string $value): string
+    {
+        $normalized = $this->normalizeLabel($value);
+        if ($normalized === '') {
+            return '';
+        }
+
+        if (ctype_digit($normalized)) {
+            $map = $this->getDisciplinaIdNameMap();
+            if (isset($map[$normalized])) {
+                return $map[$normalized];
+            }
+        }
+
+        return $normalized;
+    }
+
+    private function findManualDisciplineData(array $bimData, string $disciplina): ?array
+    {
+        if ($disciplina === '') {
+            return null;
+        }
+
+        if (isset($bimData[$disciplina]) && is_array($bimData[$disciplina])) {
+            return $bimData[$disciplina];
+        }
+
+        $disciplinaKey = $this->normalizeSearch($disciplina);
+        foreach ($bimData as $rawKey => $rawValue) {
+            if (!is_array($rawValue)) {
+                continue;
+            }
+
+            $resolvedKey = $this->resolveDisciplinaLabel((string) $rawKey);
+            if ($this->normalizeSearch($resolvedKey) !== $disciplinaKey) {
+                continue;
+            }
+
+            return $rawValue;
+        }
+
+        return null;
+    }
+
     private function normalizeSearch(string $value): string
     {
         $n = trim(mb_strtolower($value, 'UTF-8'));
@@ -1513,7 +1750,7 @@ class AlunoDesempenhoService
 
     private function isDisciplinaLinguaPortuguesa(string $disciplina): bool
     {
-        $normalized = $this->normalizeSearch($disciplina);
+        $normalized = $this->normalizeSearch($this->resolveDisciplinaLabel($disciplina));
         if ($normalized === '') {
             return false;
         }
