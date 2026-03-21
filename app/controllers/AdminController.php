@@ -2399,6 +2399,7 @@ class AdminController extends HomeController
         $qrPayload = trim((string) ($_POST['qr_payload'] ?? ''));
         $respostasJson = trim((string) ($_POST['respostas_json'] ?? ''));
         $correcoesJson = trim((string) ($_POST['correcoes_json'] ?? ''));
+        $status = trim((string) ($_POST['status'] ?? 'corrigida'));
         $acertos = (int) ($_POST['acertos'] ?? 0);
         $totalQuestoes = (int) ($_POST['total_questoes'] ?? 0);
         $pontuacao = (float) ($_POST['pontuacao'] ?? 0);
@@ -2411,6 +2412,10 @@ class AdminController extends HomeController
             }
 
             $this->redirect($this->getAvaliacoesRedirectPath());
+        }
+
+        if (!in_array($status, ['corrigida', 'gabarito_zerado', 'ausente'], true)) {
+            $status = 'corrigida';
         }
 
         $decodedRespostas = $respostasJson !== '' ? json_decode($respostasJson, true) : [];
@@ -2456,6 +2461,7 @@ class AdminController extends HomeController
             'qr_payload' => $qrPayload,
             'respostas_json' => $respostasJson !== '' ? json_encode($decodedRespostas, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : json_encode([], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             'correcoes_json' => $correcoesJson !== '' ? json_encode($decodedCorrecoes, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : json_encode([], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            'status' => $status,
             'acertos' => max(0, $acertos),
             'total_questoes' => max(0, $totalQuestoes),
             'pontuacao' => max(0, $pontuacao),
@@ -2472,7 +2478,7 @@ class AdminController extends HomeController
 
         try {
             $updatedCorrecao = $correcaoModel->findById($correcaoId);
-            if (is_array($updatedCorrecao)) {
+            if (is_array($updatedCorrecao) && (($updatedCorrecao['status'] ?? 'corrigida') !== 'ausente')) {
                 $this->syncAlunoDesempenhoFromCorrecao($avaliacao, $updatedCorrecao);
             }
         } catch (Throwable) {
@@ -2531,11 +2537,16 @@ class AdminController extends HomeController
         $qrPayload = trim((string) ($_POST['qr_payload'] ?? ''));
         $respostasJson = trim((string) ($_POST['respostas_json'] ?? ''));
         $correcoesJson = trim((string) ($_POST['correcoes_json'] ?? ''));
+        $status = trim((string) ($_POST['status'] ?? 'corrigida'));
         $acertos = (int) ($_POST['acertos'] ?? 0);
         $totalQuestoes = (int) ($_POST['total_questoes'] ?? 0);
         $pontuacao = (float) ($_POST['pontuacao'] ?? 0);
         $pontuacaoTotal = (float) ($_POST['pontuacao_total'] ?? 0);
         $percentual = (float) ($_POST['percentual'] ?? 0);
+
+        if (!in_array($status, ['corrigida', 'gabarito_zerado', 'ausente'], true)) {
+            $status = 'corrigida';
+        }
 
         if ($avaliacaoId <= 0 || $alunoId <= 0 || $turmaId <= 0) {
             if ($isAjax) {
@@ -2632,6 +2643,7 @@ class AdminController extends HomeController
                 'qr_payload' => $qrPayload,
                 'respostas_json' => $respostasJson !== '' ? json_encode($decodedRespostas, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : json_encode([], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                 'correcoes_json' => $correcoesJson !== '' ? json_encode($decodedCorrecoes, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : json_encode([], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                'status' => $status,
                 'acertos' => max(0, $acertos),
                 'total_questoes' => max(0, $totalQuestoes),
                 'pontuacao' => max(0, $pontuacao),
@@ -2642,7 +2654,7 @@ class AdminController extends HomeController
 
             try {
                 $savedCorrecao = $correcaoModel->findByComposite($avaliacaoId, $alunoId, $turmaId);
-                if (is_array($savedCorrecao)) {
+                if (is_array($savedCorrecao) && (($savedCorrecao['status'] ?? 'corrigida') !== 'ausente')) {
                     $this->syncAlunoDesempenhoFromCorrecao($avaliacao, $savedCorrecao);
                 }
             } catch (Throwable) {

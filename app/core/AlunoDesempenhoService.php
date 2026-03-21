@@ -12,7 +12,7 @@ declare(strict_types=1);
  *   Nota bimestral = (média dos ciclos + recuperação) / 2
  *
  * Faixas de proficiência:
- *   ≥ 8 → Avançado | ≥ 6 → Adequado | ≥ 4 → Básico | < 4 → Insuficiente
+ *   ≥ 9,5 → Avançado | ≥ 6 → Adequado | ≥ 4 → Insuficiente | < 4 → Crítico
  */
 class AlunoDesempenhoService
 {
@@ -20,9 +20,9 @@ class AlunoDesempenhoService
     private const PESO_SUBJETIVA = 0.5;
     private const PESO_AVALIACAO = 0.3;
     private const PESO_PROD_TEXTUAL = 0.2;
-    private const FAIXA_AVANCADO = 8.0;
+    private const FAIXA_AVANCADO = 9.5;
     private const FAIXA_ADEQUADO = 6.0;
-    private const FAIXA_BASICO = 4.0;
+    private const FAIXA_INSUFICIENTE = 4.0;
 
     private AlunoModel $alunoModel;
     private TurmaModel $turmaModel;
@@ -238,7 +238,7 @@ class AlunoDesempenhoService
 
         $boletim = [];
         $entries = [];
-        $faixas  = ['insuficiente' => 0, 'basico' => 0, 'adequado' => 0, 'avancado' => 0];
+        $faixas  = ['critico' => 0, 'insuficiente' => 0, 'adequado' => 0, 'avancado' => 0];
         $somaMediaGeral  = 0.0;
         $countMediaGeral = 0;
         $painelDisciplinas = [];
@@ -339,7 +339,7 @@ class AlunoDesempenhoService
                     if ($notaFinal >= self::FAIXA_ADEQUADO) {
                         $painelDisciplinas[$disc]['adequado_ou_acima']++;
                     }
-                    if ($notaFinal < self::FAIXA_BASICO) {
+                    if ($notaFinal < self::FAIXA_INSUFICIENTE) {
                         $painelDisciplinas[$disc]['insuficiente']++;
                     }
                 }
@@ -1055,16 +1055,16 @@ class AlunoDesempenhoService
         if ($nota === null) return null;
         if ($nota >= self::FAIXA_AVANCADO) return 'Avançado';
         if ($nota >= self::FAIXA_ADEQUADO) return 'Adequado';
-        if ($nota >= self::FAIXA_BASICO)   return 'Básico';
-        return 'Insuficiente';
+        if ($nota >= self::FAIXA_INSUFICIENTE) return 'Insuficiente';
+        return 'Crítico';
     }
 
     private function faixaKey(float $nota): string
     {
         if ($nota >= self::FAIXA_AVANCADO) return 'avancado';
         if ($nota >= self::FAIXA_ADEQUADO) return 'adequado';
-        if ($nota >= self::FAIXA_BASICO)   return 'basico';
-        return 'insuficiente';
+        if ($nota >= self::FAIXA_INSUFICIENTE) return 'insuficiente';
+        return 'critico';
     }
 
     /* ====================================================================

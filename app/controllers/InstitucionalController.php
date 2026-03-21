@@ -4592,7 +4592,7 @@ class InstitucionalController extends HomeController
 
 	public function institucionalHabilidadesListar(): void
 	{
-		if (!$this->canAccessSubservice('cadastro_de_habilidades')) {
+		if (!$this->canAccessSubservice('cadastro_de_habilidades') && !$this->canAccessNotasDesempenhoCatalog()) {
 			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
 		}
 
@@ -5558,17 +5558,17 @@ class InstitucionalController extends HomeController
 			return null;
 		}
 
-		if ($nota >= 8.0) {
+		if ($nota >= 9.5) {
 			return 'Avançado';
 		}
 		if ($nota >= 6.0) {
 			return 'Adequado';
 		}
 		if ($nota >= 4.0) {
-			return 'Básico';
+			return 'Insuficiente';
 		}
 
-		return 'Insuficiente';
+		return 'Crítico';
 	}
 
 	private function appendNotasDesempenhoScopePair(array &$turmaDisciplinaMap, int $turmaId, string $disciplinaNorm, string $disciplinaNome = ''): void

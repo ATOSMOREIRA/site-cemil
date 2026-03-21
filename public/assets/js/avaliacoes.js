@@ -206,12 +206,18 @@
     var correcaoTargetText = document.getElementById('adminAvaliacaoCorrecaoTargetText');
     var correcaoConfirmWrap = document.getElementById('adminAvaliacaoCorrecaoConfirmWrap');
     var correcaoConfirmBtn = document.getElementById('adminAvaliacaoCorrecaoConfirmBtn');
+    var correcaoZeroBtn = document.getElementById('adminAvaliacaoCorrecaoZeroBtn');
+    var correcaoAbsentBtn = document.getElementById('adminAvaliacaoCorrecaoAbsentBtn');
     var correcaoNextWrap = document.getElementById('adminAvaliacaoCorrecaoNextWrap');
     var correcaoNextBtn = document.getElementById('adminAvaliacaoCorrecaoNextBtn');
     var correcaoRetryBtn = document.getElementById('adminAvaliacaoCorrecaoRetryBtn');
     var correcaoProcessWrap = document.getElementById('adminAvaliacaoCorrecaoProcessWrap');
     var correcaoProcessBtn = document.getElementById('adminAvaliacaoCorrecaoProcessBtn');
     var correcaoProcessingOverlay = document.getElementById('adminAvaliacaoCorrecaoProcessingOverlay');
+    var correcaoProcessingContent = document.getElementById('adminAvaliacaoCorrecaoProcessingContent');
+    var correcaoProcessingSpinner = document.getElementById('adminAvaliacaoCorrecaoProcessingSpinner');
+    var correcaoProcessingTitle = document.getElementById('adminAvaliacaoCorrecaoProcessingTitle');
+    var correcaoProcessingSummary = document.getElementById('adminAvaliacaoCorrecaoProcessingSummary');
     var correcaoRefreshBtn = document.getElementById('adminAvaliacaoCorrecaoRefreshBtn');
     var correcaoListStatus = document.getElementById('adminAvaliacaoCorrecaoListStatus');
     var correcaoTableBody = document.getElementById('adminAvaliacaoCorrecaoTableBody');
@@ -518,6 +524,7 @@
     var correcoesRows = [];
     var correcaoCameraStream = null;
     var correcaoScanFrameId = 0;
+    var correcaoScanRetryTimeoutId = 0;
     var correcaoScannerStep = 'idle';
     var correcaoCurrentTarget = null;
     var correcaoBusy = false;
@@ -7654,6 +7661,14 @@
           action: proceedCorrecaoToGabarito,
         },
         {
+          element: correcaoZeroBtn,
+          action: function () { saveCorrecaoStatusForCurrentTarget('gabarito_zerado'); },
+        },
+        {
+          element: correcaoAbsentBtn,
+          action: function () { saveCorrecaoStatusForCurrentTarget('ausente'); },
+        },
+        {
           element: correcaoNextBtn,
           action: goToNextCorrecaoQr,
         },
@@ -9656,11 +9671,82 @@
       };
     }
 
+    function normalizeCorrecaoStatus(value) {
+      var normalized = String(value || '').trim().toLowerCase();
+      if (normalized === 'gabarito_zerado' || normalized === 'zerado') {
+        return 'gabarito_zerado';
+      }
+      if (normalized === 'ausente' || normalized === 'aluno_ausente') {
+        return 'ausente';
+      }
+      return 'corrigida';
+    }
+
+    function getCorrecaoStatusMeta(value) {
+      var status = normalizeCorrecaoStatus(value);
+      if (status === 'gabarito_zerado') {
+        return {
+          key: status,
+          label: 'Gabarito zerado',
+          badgeClass: 'text-bg-warning text-dark',
+          resultLabel: 'Gabarito zerado',
+        };
+      }
+      if (status === 'ausente') {
+        return {
+          key: status,
+          label: 'Aluno ausente',
+          badgeClass: 'text-bg-danger',
+          resultLabel: 'Aluno ausente',
+        };
+      }
+
+      return {
+        key: status,
+        label: 'Corrigida',
+        badgeClass: 'text-bg-success',
+        resultLabel: '',
+      };
+    }
+
+    function buildCorrecaoStatusCounts(rows) {
+      var counts = {
+        corrigida: 0,
+        gabarito_zerado: 0,
+        ausente: 0,
+      };
+
+      (Array.isArray(rows) ? rows : []).forEach(function (row) {
+        counts[normalizeCorrecaoStatus(row && row.status)] += 1;
+      });
+
+      return counts;
+    }
+
     function buildCorrecaoSnapshotFromRow(row) {
       var safeRow = row && typeof row === 'object' ? row : {};
+      var status = normalizeCorrecaoStatus(safeRow.status);
       var respostas = safeRow.respostas && typeof safeRow.respostas === 'object'
         ? safeRow.respostas
         : {};
+
+      if (status === 'ausente') {
+        return {
+          avaliacao_id: Number(safeRow.avaliacao_id || 0),
+          aluno_id: Number(safeRow.aluno_id || 0),
+          turma_id: Number(safeRow.turma_id || 0),
+          numeracao: String(safeRow.numeracao || ''),
+          qr_payload: String(safeRow.qr_payload || ''),
+          respostas: respostas,
+          correcoes: [],
+          acertos: 0,
+          total_questoes: 0,
+          pontuacao: 0,
+          pontuacao_total: 0,
+          percentual: 0,
+          status: status,
+        };
+      }
 
       if (Array.isArray(safeRow.correcoes) && safeRow.correcoes.length) {
         return {
@@ -9676,12 +9762,13 @@
           pontuacao: Number(safeRow.pontuacao || 0),
           pontuacao_total: Number(safeRow.pontuacao_total || 0),
           percentual: Number(safeRow.percentual || 0),
+          status: status,
         };
       }
 
       var comparison = buildCorrecaoCorrections(respostas, respostas, {});
 
-      return buildCorrecaoResultPayloadBase({
+      var resultPayload = buildCorrecaoResultPayloadBase({
         avaliacao_id: safeRow.avaliacao_id,
         aluno_id: safeRow.aluno_id,
         turma_id: safeRow.turma_id,
@@ -9689,15 +9776,21 @@
         qr_payload: safeRow.qr_payload,
         respostas: respostas,
       }, comparison);
+
+      resultPayload.status = status;
+      return resultPayload;
     }
 
     function getCorrecoesSummaryStats(rows) {
       var normalizedRows = getStatsNormalizedCorrecoesRows(rows);
       var total = normalizedRows.length;
-      var mediaPercentual = total > 0
-        ? normalizedRows.reduce(function (carry, row) {
+      var rowsForAverage = normalizedRows.filter(function (row) {
+        return normalizeCorrecaoStatus(row.status) !== 'ausente';
+      });
+      var mediaPercentual = rowsForAverage.length > 0
+        ? rowsForAverage.reduce(function (carry, row) {
           return carry + Number(row.percentual || 0);
-        }, 0) / total
+        }, 0) / rowsForAverage.length
         : 0;
 
       return {
@@ -9748,6 +9841,248 @@
       }
 
       return totalDifference / (leftSignature.length * 255);
+    }
+
+    function getCorrecaoFrameExposureStats(captureCanvas) {
+      if (!(captureCanvas instanceof HTMLCanvasElement)) {
+        return null;
+      }
+
+      var analysisWidth = 40;
+      var analysisHeight = 30;
+      correcaoAnalysisCanvas.width = analysisWidth;
+      correcaoAnalysisCanvas.height = analysisHeight;
+      var ctx = getCanvas2DContext(correcaoAnalysisCanvas, { willReadFrequently: true });
+      if (!ctx) {
+        return null;
+      }
+
+      ctx.clearRect(0, 0, analysisWidth, analysisHeight);
+      ctx.drawImage(captureCanvas, 0, 0, analysisWidth, analysisHeight);
+      var imageData = ctx.getImageData(0, 0, analysisWidth, analysisHeight);
+      var totalPixels = analysisWidth * analysisHeight;
+      var brightnessTotal = 0;
+      var minBrightness = 255;
+      var maxBrightness = 0;
+      var darkPixels = 0;
+      var brightPixels = 0;
+
+      for (var index = 0; index < totalPixels; index += 1) {
+        var offset = index * 4;
+        var brightness = Math.round(
+          (imageData.data[offset] * 0.299)
+          + (imageData.data[offset + 1] * 0.587)
+          + (imageData.data[offset + 2] * 0.114)
+        );
+        brightnessTotal += brightness;
+        if (brightness < minBrightness) {
+          minBrightness = brightness;
+        }
+        if (brightness > maxBrightness) {
+          maxBrightness = brightness;
+        }
+        if (brightness <= 28) {
+          darkPixels += 1;
+        }
+        if (brightness >= 90) {
+          brightPixels += 1;
+        }
+      }
+
+      return {
+        averageBrightness: brightnessTotal / totalPixels,
+        dynamicRange: maxBrightness - minBrightness,
+        darkPixelRatio: darkPixels / totalPixels,
+        brightPixelRatio: brightPixels / totalPixels,
+      };
+    }
+
+    function isCorrecaoFrameObstructed(exposureStats) {
+      if (!exposureStats || typeof exposureStats !== 'object') {
+        return false;
+      }
+
+      return exposureStats.averageBrightness < 12
+        && exposureStats.darkPixelRatio > 0.96
+        && exposureStats.brightPixelRatio < 0.01
+        && exposureStats.dynamicRange < 22;
+    }
+
+    function getQuestaoDisciplinaNome(questionItem) {
+      var disciplinaId = String(questionItem && questionItem.disciplina || '').trim();
+      if (disciplinaId === '') {
+        return 'Sem disciplina';
+      }
+
+      var match = (disciplinasOptions || []).filter(function (disciplina) {
+        return String(disciplina && disciplina.id || '') === disciplinaId;
+      });
+
+      if (match.length > 0) {
+        return String(match[0].nome || disciplinaId).trim() || 'Sem disciplina';
+      }
+
+      return disciplinaId;
+    }
+
+    function buildCorrecaoSuccessSummary(comparison, currentTarget) {
+      var safeComparison = comparison && typeof comparison === 'object' ? comparison : null;
+      if (!safeComparison || !Array.isArray(safeComparison.corrections) || !safeComparison.corrections.length) {
+        return null;
+      }
+
+      var groups = {};
+      var order = [];
+
+      safeComparison.corrections.forEach(function (correction, index) {
+        var questionItem = Array.isArray(gabaritoQuestoesItens) ? (gabaritoQuestoesItens[index] || null) : null;
+        var disciplinaNome = getQuestaoDisciplinaNome(questionItem);
+
+        if (!groups[disciplinaNome]) {
+          groups[disciplinaNome] = {
+            nome: disciplinaNome,
+            acertos: 0,
+            total: 0,
+            pontuacao: 0,
+            pontuacaoTotal: 0,
+          };
+          order.push(disciplinaNome);
+        }
+
+        groups[disciplinaNome].total += 1;
+        if (correction && correction.isCorrect) {
+          groups[disciplinaNome].acertos += 1;
+        }
+        groups[disciplinaNome].pontuacao += Number(correction && correction.pontuacao || 0);
+        groups[disciplinaNome].pontuacaoTotal += Number(correction && correction.pontuacao_maxima || 0);
+      });
+
+      var disciplinas = order.map(function (nome) {
+        var item = groups[nome];
+        var percentual = item.pontuacaoTotal > 0
+          ? Math.round((item.pontuacao / item.pontuacaoTotal) * 100)
+          : (item.total > 0 ? Math.round((item.acertos / item.total) * 100) : 0);
+
+        return {
+          nome: item.nome,
+          acertos: item.acertos,
+          total: item.total,
+          pontuacao: item.pontuacao,
+          pontuacaoTotal: item.pontuacaoTotal,
+          percentual: percentual,
+        };
+      });
+
+      return {
+        alunoNome: String(currentTarget && currentTarget.alunoNome || '').trim(),
+        turmaNome: String(currentTarget && currentTarget.turmaNome || '').trim(),
+        acertos: Number(safeComparison.score || 0),
+        total: Number(safeComparison.total || safeComparison.corrections.length || 0),
+        pontuacao: Number(safeComparison.earnedPoints || 0),
+        pontuacaoTotal: Number(safeComparison.totalPoints || 0),
+        percentual: Number(safeComparison.totalPoints || 0) > 0
+          ? Math.round((Number(safeComparison.earnedPoints || 0) / Number(safeComparison.totalPoints || 0)) * 100)
+          : 0,
+        disciplinas: disciplinas,
+      };
+    }
+
+    function renderCorrecaoProcessingOverlay(mode, options) {
+      if (!correcaoProcessingOverlay) {
+        return;
+      }
+
+      var safeMode = String(mode || 'hidden').trim().toLowerCase();
+      var safeOptions = options && typeof options === 'object' ? options : {};
+      var title = typeof safeOptions.message === 'string' && safeOptions.message.trim() !== ''
+        ? safeOptions.message.trim()
+        : 'Processando...';
+
+      correcaoProcessingOverlay.dataset.state = safeMode;
+
+      if (safeMode === 'hidden') {
+        correcaoProcessingOverlay.classList.add('d-none');
+        correcaoProcessingOverlay.classList.remove('is-success', 'is-blocking');
+        if (correcaoProcessingContent) {
+          correcaoProcessingContent.classList.remove('is-success');
+        }
+        if (correcaoProcessingSpinner) {
+          correcaoProcessingSpinner.classList.remove('d-none');
+        }
+        if (correcaoProcessingTitle) {
+          correcaoProcessingTitle.textContent = 'Processando...';
+        }
+        if (correcaoProcessingSummary) {
+          correcaoProcessingSummary.innerHTML = '';
+          correcaoProcessingSummary.classList.add('d-none');
+        }
+        return;
+      }
+
+      correcaoProcessingOverlay.classList.remove('d-none');
+
+      if (safeMode === 'success') {
+        var summary = safeOptions.summary && typeof safeOptions.summary === 'object' ? safeOptions.summary : null;
+        correcaoProcessingOverlay.classList.remove('is-blocking');
+        correcaoProcessingOverlay.classList.add('is-success');
+        if (correcaoProcessingContent) {
+          correcaoProcessingContent.classList.add('is-success');
+        }
+        if (correcaoProcessingSpinner) {
+          correcaoProcessingSpinner.classList.add('d-none');
+        }
+        if (correcaoProcessingTitle) {
+          correcaoProcessingTitle.textContent = 'Correção concluída';
+        }
+        if (correcaoProcessingSummary) {
+          if (summary) {
+            var headerParts = [];
+            if (summary.alunoNome) {
+              headerParts.push(escapeHtml(summary.alunoNome));
+            }
+            if (summary.turmaNome) {
+              headerParts.push(escapeHtml(summary.turmaNome));
+            }
+
+            var disciplinasHtml = Array.isArray(summary.disciplinas) && summary.disciplinas.length
+              ? summary.disciplinas.map(function (item) {
+                return ''
+                  + '<div class="admin-avaliacao-correcao-processing-discipline-card">'
+                  + '<div class="admin-avaliacao-correcao-processing-discipline-name">' + escapeHtml(item.nome) + '</div>'
+                  + '<div class="admin-avaliacao-correcao-processing-discipline-score">' + escapeHtml(String(item.acertos)) + '/' + escapeHtml(String(item.total)) + ' acertos</div>'
+                  + '<div class="admin-avaliacao-correcao-processing-discipline-meta">' + escapeHtml(String(item.percentual)) + '% • ' + escapeHtml(formatCorrecaoScoreValue(item.pontuacao)) + '/' + escapeHtml(formatCorrecaoScoreValue(item.pontuacaoTotal)) + ' pts</div>'
+                  + '</div>';
+              }).join('')
+              : '<div class="admin-avaliacao-correcao-processing-empty">Resumo por disciplina indisponível.</div>';
+
+            correcaoProcessingSummary.innerHTML = ''
+              + (headerParts.length ? '<div class="admin-avaliacao-correcao-processing-student">' + headerParts.join(' • ') + '</div>' : '')
+              + '<div class="admin-avaliacao-correcao-processing-total">' + escapeHtml(String(summary.acertos)) + '/' + escapeHtml(String(summary.total)) + ' acertos</div>'
+              + '<div class="admin-avaliacao-correcao-processing-total-meta">' + escapeHtml(String(summary.percentual)) + '% de aproveitamento • ' + escapeHtml(formatCorrecaoScoreValue(summary.pontuacao)) + '/' + escapeHtml(formatCorrecaoScoreValue(summary.pontuacaoTotal)) + ' pontos</div>'
+              + '<div class="admin-avaliacao-correcao-processing-discipline-grid">' + disciplinasHtml + '</div>';
+          } else {
+            correcaoProcessingSummary.innerHTML = '<div class="admin-avaliacao-correcao-processing-empty">Correção salva com sucesso.</div>';
+          }
+          correcaoProcessingSummary.classList.remove('d-none');
+        }
+        return;
+      }
+
+      correcaoProcessingOverlay.classList.remove('is-success');
+      correcaoProcessingOverlay.classList.add('is-blocking');
+      if (correcaoProcessingContent) {
+        correcaoProcessingContent.classList.remove('is-success');
+      }
+      if (correcaoProcessingSpinner) {
+        correcaoProcessingSpinner.classList.remove('d-none');
+      }
+      if (correcaoProcessingTitle) {
+        correcaoProcessingTitle.textContent = title;
+      }
+      if (correcaoProcessingSummary) {
+        correcaoProcessingSummary.innerHTML = '';
+        correcaoProcessingSummary.classList.add('d-none');
+      }
     }
 
     function setCorrecaoScannerStep(step, message) {
@@ -9803,7 +10138,14 @@
       }
 
       if (correcaoProcessingOverlay) {
-        correcaoProcessingOverlay.classList.toggle('d-none', correcaoScannerStep !== 'processing');
+        var hasSuccessOverlay = correcaoProcessingOverlay.dataset.state === 'success';
+        if (correcaoScannerStep === 'processing' || correcaoScannerStep === 'saving') {
+          renderCorrecaoProcessingOverlay('processing', { message: safeMessage });
+        } else if (correcaoScannerStep === 'success' && hasSuccessOverlay) {
+          correcaoProcessingOverlay.classList.remove('d-none');
+        } else {
+          renderCorrecaoProcessingOverlay('hidden');
+        }
       }
 
       if (correcaoStopBtn) {
@@ -10047,20 +10389,22 @@
           var strokeColor = confidence === 'high'
             ? '#2ecc71'
             : (confidence === 'medium' ? '#f1c40f' : '#e67e22');
-          var radius = Math.max(6, Number(marker.r || 0) * center.scale * 0.6);
+          var radius = Math.max(10, Number(marker.r || 0) * center.scale * 1.5);
+          var strokeWidth = Math.max(4, Math.round(radius * 0.18));
+          var fontSize = Math.max(18, Math.round(radius * 1.05));
           createSvgNode('circle', {
             cx: Math.round(center.x),
             cy: Math.round(center.y),
             r: Math.round(radius),
             fill: 'rgba(0, 0, 0, 0.12)',
             stroke: strokeColor,
-            'stroke-width': 3,
+            'stroke-width': strokeWidth,
           });
           createSvgNode('text', {
             x: Math.round(center.x),
-            y: Math.round(center.y + 4),
+            y: Math.round(center.y + Math.max(6, radius * 0.24)),
             fill: '#ffffff',
-            'font-size': 14,
+            'font-size': fontSize,
             'font-weight': 700,
             'text-anchor': 'middle',
           }).textContent = String(marker.alternativa || '').toUpperCase();
@@ -10180,6 +10524,7 @@
           return {
             correcaoCameraStream: correcaoCameraStream,
             correcaoScanFrameId: correcaoScanFrameId,
+            correcaoScanRetryTimeoutId: correcaoScanRetryTimeoutId,
             correcaoScannerStep: correcaoScannerStep,
             correcaoCurrentTarget: correcaoCurrentTarget,
             correcaoBusy: correcaoBusy,
@@ -10202,6 +10547,9 @@
           }
           if (Object.prototype.hasOwnProperty.call(safePatch, 'correcaoScanFrameId')) {
             correcaoScanFrameId = safePatch.correcaoScanFrameId;
+          }
+          if (Object.prototype.hasOwnProperty.call(safePatch, 'correcaoScanRetryTimeoutId')) {
+            correcaoScanRetryTimeoutId = safePatch.correcaoScanRetryTimeoutId;
           }
           if (Object.prototype.hasOwnProperty.call(safePatch, 'correcaoScannerStep')) {
             correcaoScannerStep = safePatch.correcaoScannerStep;
@@ -10269,11 +10617,13 @@
           getCorrecaoDiscursivaQuestoes: getCorrecaoDiscursivaQuestoes,
           openCorrecaoDiscursivaModal: openCorrecaoDiscursivaModal,
           buildCorrecaoCorrections: buildCorrecaoCorrections,
+          buildCorrecaoSuccessSummary: buildCorrecaoSuccessSummary,
           shouldOpenCorrecaoReviewModal: shouldOpenCorrecaoReviewModal,
           openCorrecaoRevisaoModal: openCorrecaoRevisaoModal,
           saveCorrecaoResult: saveCorrecaoResult,
           renderCorrecoesTable: renderCorrecoesTable,
           resumeCorrecaoForNextSheet: resumeCorrecaoForNextSheet,
+          resumeCorrecaoForNextSheetWithSummary: resumeCorrecaoForNextSheetWithSummary,
         },
       };
     }
@@ -10371,6 +10721,7 @@
           totalQuestoes: snapshot ? Number(snapshot.total_questoes || 0) : Number(safeRow.total_questoes || 0),
           respostas: respostas,
           correcoes: correcoes,
+          status: normalizeCorrecaoStatus(safeRow.status),
           corrigidoEm: String(safeRow.corrigido_em || safeRow.created_at || '').trim(),
           numeracao: String(safeRow.numeracao || '').trim(),
         };
@@ -11808,24 +12159,27 @@
       renderCorrecoesRoster();
 
       var normalizedRows = getStatsNormalizedCorrecoesRows(correcoesRows);
-      var summaryStats = stats && typeof stats === 'object' ? stats : getCorrecoesSummaryStats(correcoesRows);
+      var summaryStats = getCorrecoesSummaryStats(correcoesRows);
 
       if (correcaoTableBody) {
         if (!normalizedRows.length) {
           correcaoTableBody.innerHTML = '<tr><td colspan="7" class="text-center text-secondary py-4">Nenhuma prova corrigida ainda.</td></tr>';
         } else {
           correcaoTableBody.innerHTML = normalizedRows.map(function (row) {
+            var statusMeta = getCorrecaoStatusMeta(row.status);
             var earnedScore = Number(row.pontuacao);
             var totalScore = Number(row.pontuacaoTotal);
-            var resultLabel = Number.isFinite(earnedScore) && Number.isFinite(totalScore) && totalScore > 0
-              ? (formatCorrecaoScoreValue(earnedScore) + '/' + formatCorrecaoScoreValue(totalScore))
-              : (String(row.acertos || 0) + '/' + String(row.totalQuestoes || 0));
+            var resultLabel = statusMeta.resultLabel !== ''
+              ? statusMeta.resultLabel
+              : (Number.isFinite(earnedScore) && Number.isFinite(totalScore) && totalScore > 0
+                ? (formatCorrecaoScoreValue(earnedScore) + '/' + formatCorrecaoScoreValue(totalScore))
+                : (String(row.acertos || 0) + '/' + String(row.totalQuestoes || 0)));
             return '<tr>'
-              + '<td>' + escapeHtml(row.alunoNome || '-') + '</td>'
+              + '<td>' + escapeHtml(row.alunoNome || '-') + (statusMeta.key !== 'corrigida' ? ' <span class="badge ' + escapeHtml(statusMeta.badgeClass) + '">' + escapeHtml(statusMeta.label) + '</span>' : '') + '</td>'
               + '<td>' + escapeHtml(row.turmaNome || '-') + '</td>'
               + '<td>' + escapeHtml(row.numeracao || '-') + '</td>'
               + '<td>' + escapeHtml(resultLabel) + '</td>'
-              + '<td>' + escapeHtml(String(Number(row.percentual || 0).toFixed(2)).replace('.', ',') + '%') + '</td>'
+              + '<td>' + escapeHtml(statusMeta.key === 'ausente' ? '-' : (String(Number(row.percentual || 0).toFixed(2)).replace('.', ',') + '%')) + '</td>'
               + '<td>' + escapeHtml(formatDateTimePtBr(row.corrigidoEm || '')) + '</td>'
               + '<td class="text-end">'
               + '<button type="button" class="btn btn-outline-primary btn-sm me-2 js-admin-correcao-edit" data-id="' + escapeHtml(String(row.id || 0)) + '">Editar</button>'
@@ -11839,6 +12193,7 @@
       if (correcaoListStatus) {
         var total = Number(summaryStats.total);
         var media = Number(summaryStats.media_percentual);
+        var statusCounts = buildCorrecaoStatusCounts(correcoesRows);
         if (!Number.isFinite(total)) {
           total = normalizedRows.length;
         }
@@ -11846,7 +12201,7 @@
           media = 0;
         }
         correcaoListStatus.textContent = total > 0
-          ? (String(total) + ' prova(s) corrigida(s) | média ' + String(media.toFixed(2)).replace('.', ',') + '%')
+          ? (String(total) + ' registro(s) | ' + String(statusCounts.corrigida) + ' corrigida(s) | ' + String(statusCounts.gabarito_zerado) + ' zerado(s) | ' + String(statusCounts.ausente) + ' ausente(s) | média ' + String(media.toFixed(2)).replace('.', ',') + '%')
           : 'Nenhuma prova corrigida ainda.';
       }
     }
@@ -11901,6 +12256,7 @@
           numeracaoLabel: String(safeRecord.numeracaoLabel || '').trim(),
           correction: correction,
           snapshot: snapshot,
+          correctionStatus: normalizeCorrecaoStatus(correction && correction.status),
         };
       });
     }
@@ -11931,13 +12287,16 @@
         var hasCorrection = !!item.correction;
         var resultLabel = '-';
         var correctedAt = '-';
+        var statusMeta = getCorrecaoStatusMeta(item.correctionStatus);
 
         if (item.snapshot) {
           var earnedScore = Number(item.snapshot.pontuacao || 0);
           var totalScore = Number(item.snapshot.pontuacao_total || 0);
-          resultLabel = totalScore > 0
-            ? (formatCorrecaoScoreValue(earnedScore) + '/' + formatCorrecaoScoreValue(totalScore) + ' (' + String(Number(item.snapshot.percentual || 0).toFixed(2)).replace('.', ',') + '%)')
-            : (String(item.snapshot.acertos || 0) + '/' + String(item.snapshot.total_questoes || 0));
+          resultLabel = statusMeta.resultLabel !== ''
+            ? statusMeta.resultLabel
+            : (totalScore > 0
+              ? (formatCorrecaoScoreValue(earnedScore) + '/' + formatCorrecaoScoreValue(totalScore) + ' (' + String(Number(item.snapshot.percentual || 0).toFixed(2)).replace('.', ',') + '%)')
+              : (String(item.snapshot.acertos || 0) + '/' + String(item.snapshot.total_questoes || 0)));
         }
 
         if (item.correction) {
@@ -11955,7 +12314,7 @@
           item.turmaNome,
           item.numeracao,
           item.numeracaoLabel,
-          hasCorrection ? 'corrigida' : 'pendente',
+          hasCorrection ? statusMeta.label : 'pendente',
           resultLabel,
           correctedAt
         ].join(' '));
@@ -11976,12 +12335,13 @@
         var hasCorrection = !!item.correction;
         var resultLabel = typeof item.__resultLabel === 'string' ? item.__resultLabel : '-';
         var correctedAt = typeof item.__correctedAt === 'string' ? item.__correctedAt : '-';
+        var statusMeta = getCorrecaoStatusMeta(item.correctionStatus);
 
         return '<tr>'
           + '<td><strong>' + escapeHtml(item.alunoNome) + '</strong></td>'
           + '<td>' + escapeHtml(item.turmaNome) + '</td>'
           + '<td>' + (hasCorrection
-            ? '<span class="badge text-bg-success">Corrigida</span>'
+            ? '<span class="badge ' + escapeHtml(statusMeta.badgeClass) + '">' + escapeHtml(statusMeta.label) + '</span>'
             : '<span class="badge text-bg-secondary">Pendente</span>') + '</td>'
           + '<td>' + escapeHtml(resultLabel) + '</td>'
           + '<td>' + escapeHtml(correctedAt) + '</td>'
@@ -14424,6 +14784,11 @@
         throw new Error('A imagem da câmera ainda não está pronta.');
       }
 
+      var exposureStats = getCorrecaoFrameExposureStats(captureCanvas);
+      if (isCorrecaoFrameObstructed(exposureStats)) {
+        throw buildCorrecaoFlowError('correcao-camera-obstruida', 'Imagem muito escura. Afaste a mão da câmera e enquadre somente o gabarito.');
+      }
+
       if (captureCanvas._userTransform) {
         return Promise.resolve(captureCanvas);
       }
@@ -14532,6 +14897,7 @@
       body.set('qr_payload', String(resultPayload.qr_payload || ''));
       body.set('respostas_json', JSON.stringify(resultPayload.respostas || {}));
       body.set('correcoes_json', JSON.stringify(resultPayload.correcoes || []));
+      body.set('status', String(normalizeCorrecaoStatus(resultPayload.status) || 'corrigida'));
       body.set('acertos', String(resultPayload.acertos || 0));
       body.set('total_questoes', String(resultPayload.total_questoes || 0));
       body.set('pontuacao', String(resultPayload.pontuacao || 0));
@@ -14571,6 +14937,7 @@
       body.set('id', String(safeId));
       body.set('respostas_json', JSON.stringify(resultPayload.respostas || {}));
       body.set('correcoes_json', JSON.stringify(resultPayload.correcoes || []));
+      body.set('status', String(normalizeCorrecaoStatus(resultPayload.status) || 'corrigida'));
       body.set('acertos', String(resultPayload.acertos || 0));
       body.set('total_questoes', String(resultPayload.total_questoes || 0));
       body.set('pontuacao', String(resultPayload.pontuacao || 0));
@@ -14675,6 +15042,7 @@
         qr_payload: String(row.qr_payload || row.qrPayload || ''),
         respostas: respostas,
         correcoes: comparison.corrections,
+        status: normalizeCorrecaoStatus(row.status),
         acertos: comparison.score,
         total_questoes: comparison.total,
         pontuacao: comparison.earnedPoints.toFixed(2),
@@ -14928,7 +15296,96 @@
     }
 
     function resumeCorrecaoForNextSheet() {
-      setCorrecaoScannerStep('success', 'Prova corrigida com sucesso. Use o botão abaixo para ir ao próximo QR Code.');
+      renderCorrecaoProcessingOverlay('hidden');
+      setCorrecaoScannerStep('success', 'Correção concluída. Use o botão abaixo para ir ao próximo QR Code.');
+    }
+
+    function resumeCorrecaoForNextSheetWithSummary(summary) {
+      renderCorrecaoProcessingOverlay('success', { summary: summary });
+      setCorrecaoScannerStep('success', 'Correção concluída. Use o botão abaixo para ir ao próximo QR Code.');
+    }
+
+    function saveCorrecaoStatusForCurrentTarget(status) {
+      if (!correcaoCurrentTarget || correcaoBusy) {
+        return Promise.resolve(false);
+      }
+
+      var normalizedStatus = normalizeCorrecaoStatus(status);
+      var numeracaoText = getCurrentGabaritoNumeracaoLabel();
+      var numeracaoValue = correcaoCurrentTarget.numeracao || numeracaoText;
+      if (!numeracaoValue || numeracaoValue === 'Numeracao por aluno/turma') {
+        numeracaoValue = String(correcaoCurrentTarget.numeracaoLabel || '').replace(/^Nº\s*/i, '').trim();
+      }
+
+      var resultPayload;
+      if (normalizedStatus === 'gabarito_zerado') {
+        var comparison = buildCorrecaoCorrections({}, {}, {});
+        resultPayload = {
+          avaliacao_id: correcaoCurrentTarget.avaliacaoId,
+          aluno_id: correcaoCurrentTarget.alunoId,
+          turma_id: correcaoCurrentTarget.turmaId,
+          numeracao: numeracaoValue,
+          qr_payload: correcaoCurrentTarget.qrPayload,
+          respostas: {},
+          correcoes: comparison.corrections,
+          acertos: comparison.score,
+          total_questoes: comparison.total,
+          pontuacao: comparison.earnedPoints.toFixed(2),
+          pontuacao_total: comparison.totalPoints.toFixed(2),
+          percentual: comparison.totalPoints > 0 ? ((comparison.earnedPoints / comparison.totalPoints) * 100).toFixed(2) : '0.00',
+          status: normalizedStatus,
+        };
+      } else {
+        resultPayload = {
+          avaliacao_id: correcaoCurrentTarget.avaliacaoId,
+          aluno_id: correcaoCurrentTarget.alunoId,
+          turma_id: correcaoCurrentTarget.turmaId,
+          numeracao: numeracaoValue,
+          qr_payload: correcaoCurrentTarget.qrPayload,
+          respostas: {},
+          correcoes: [],
+          acertos: 0,
+          total_questoes: 0,
+          pontuacao: '0.00',
+          pontuacao_total: '0.00',
+          percentual: '0.00',
+          status: normalizedStatus,
+        };
+      }
+
+      correcaoBusy = true;
+      setCorrecaoScannerStep('saving', normalizedStatus === 'ausente' ? 'Registrando aluno ausente...' : 'Registrando gabarito zerado...');
+
+      return saveCorrecaoResult(resultPayload).then(function (payload) {
+        renderCorrecoesTable(payload.rows || [], payload.stats || getCorrecoesSummaryStats(payload.rows || []));
+
+        var match = null;
+        if (Array.isArray(payload.rows)) {
+          for (var rowIndex = 0; rowIndex < payload.rows.length; rowIndex += 1) {
+            var row = payload.rows[rowIndex];
+            if (row && Number(row.aluno_id || 0) === Number(correcaoCurrentTarget.alunoId || 0)
+              && Number(row.turma_id || 0) === Number(correcaoCurrentTarget.turmaId || 0)
+              && Number(row.avaliacao_id || 0) === Number(correcaoCurrentTarget.avaliacaoId || 0)) {
+              match = row;
+              break;
+            }
+          }
+        }
+
+        if (match) {
+          correcaoCurrentTarget.existingCorrection = match;
+        }
+
+        correcaoLastSuccessPayload = String(correcaoCurrentTarget.qrPayload || '');
+        correcaoLastSuccessAt = Date.now();
+        resumeCorrecaoForNextSheet();
+        return true;
+      }).catch(function (error) {
+        setCorrecaoScannerStep('confirm-target', error && error.message ? error.message : 'Não foi possível registrar este status.');
+        return false;
+      }).finally(function () {
+        correcaoBusy = false;
+      });
     }
 
     function findCorrecaoRowForCurrentTarget() {
@@ -16939,6 +17396,7 @@
       proceedCorrecaoToGabarito: proceedCorrecaoToGabarito,
       goToNextCorrecaoQr: goToNextCorrecaoQr,
       retryCorrecaoForCurrentTarget: retryCorrecaoForCurrentTarget,
+      saveCorrecaoStatusForCurrentTarget: saveCorrecaoStatusForCurrentTarget,
       processGabaritoManually: processGabaritoManually,
       loadCorrecoesList: loadCorrecoesList,
       startCorrecoesPolling: startCorrecoesPolling,
@@ -16964,6 +17422,8 @@
           correcaoStopBtn: correcaoStopBtn,
           correcaoCaptureBtn: correcaoCaptureBtn,
           correcaoConfirmBtn: correcaoConfirmBtn,
+          correcaoZeroBtn: correcaoZeroBtn,
+          correcaoAbsentBtn: correcaoAbsentBtn,
           correcaoNextBtn: correcaoNextBtn,
           correcaoRetryBtn: correcaoRetryBtn,
           correcaoProcessBtn: correcaoProcessBtn,

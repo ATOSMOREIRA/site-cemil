@@ -22,6 +22,7 @@ class AvaliacaoCorrecaoModel
                     qr_payload TEXT NULL,
                     respostas_json LONGTEXT NULL,
                     correcoes_json LONGTEXT NULL,
+                    status VARCHAR(32) NOT NULL DEFAULT "corrigida",
                     acertos INT NOT NULL DEFAULT 0,
                     total_questoes INT NOT NULL DEFAULT 0,
                     pontuacao DECIMAL(8,2) NOT NULL DEFAULT 0,
@@ -53,6 +54,7 @@ class AvaliacaoCorrecaoModel
             'qr_payload' => 'ADD COLUMN qr_payload TEXT NULL',
             'respostas_json' => 'ADD COLUMN respostas_json LONGTEXT NULL',
             'correcoes_json' => 'ADD COLUMN correcoes_json LONGTEXT NULL',
+            'status' => 'ADD COLUMN status VARCHAR(32) NOT NULL DEFAULT "corrigida"',
             'acertos' => 'ADD COLUMN acertos INT NOT NULL DEFAULT 0',
             'total_questoes' => 'ADD COLUMN total_questoes INT NOT NULL DEFAULT 0',
             'pontuacao' => 'ADD COLUMN pontuacao DECIMAL(8,2) NOT NULL DEFAULT 0',
@@ -96,7 +98,7 @@ class AvaliacaoCorrecaoModel
 
         $pdo = Database::connection();
         $statement = $pdo->prepare(
-            'SELECT id, avaliacao_id, aluno_id, turma_id, avaliacao_nome, aluno_nome, turma_nome, numeracao, qr_payload, respostas_json, correcoes_json, acertos, total_questoes, pontuacao, pontuacao_total, percentual, corrigido_em, created_at, updated_at
+            'SELECT id, avaliacao_id, aluno_id, turma_id, avaliacao_nome, aluno_nome, turma_nome, numeracao, qr_payload, respostas_json, correcoes_json, status, acertos, total_questoes, pontuacao, pontuacao_total, percentual, corrigido_em, created_at, updated_at
              FROM avaliacao_correcoes
              WHERE avaliacao_id = :avaliacao_id
              ORDER BY turma_nome ASC, aluno_nome ASC, id ASC'
@@ -115,7 +117,7 @@ class AvaliacaoCorrecaoModel
 
         $pdo = Database::connection();
         $statement = $pdo->prepare(
-            'SELECT id, avaliacao_id, aluno_id, turma_id, avaliacao_nome, aluno_nome, turma_nome, numeracao, qr_payload, respostas_json, correcoes_json, acertos, total_questoes, pontuacao, pontuacao_total, percentual, corrigido_em, created_at, updated_at
+            'SELECT id, avaliacao_id, aluno_id, turma_id, avaliacao_nome, aluno_nome, turma_nome, numeracao, qr_payload, respostas_json, correcoes_json, status, acertos, total_questoes, pontuacao, pontuacao_total, percentual, corrigido_em, created_at, updated_at
              FROM avaliacao_correcoes
              WHERE avaliacao_id = :avaliacao_id AND aluno_id = :aluno_id AND turma_id = :turma_id
              LIMIT 1'
@@ -139,7 +141,7 @@ class AvaliacaoCorrecaoModel
 
         $pdo = Database::connection();
         $statement = $pdo->prepare(
-            'SELECT id, avaliacao_id, aluno_id, turma_id, avaliacao_nome, aluno_nome, turma_nome, numeracao, qr_payload, respostas_json, correcoes_json, acertos, total_questoes, pontuacao, pontuacao_total, percentual, corrigido_em, created_at, updated_at
+            'SELECT id, avaliacao_id, aluno_id, turma_id, avaliacao_nome, aluno_nome, turma_nome, numeracao, qr_payload, respostas_json, correcoes_json, status, acertos, total_questoes, pontuacao, pontuacao_total, percentual, corrigido_em, created_at, updated_at
              FROM avaliacao_correcoes
              WHERE id = :id
              LIMIT 1'
@@ -156,8 +158,8 @@ class AvaliacaoCorrecaoModel
 
         $pdo = Database::connection();
         $statement = $pdo->prepare(
-              'INSERT INTO avaliacao_correcoes (avaliacao_id, aluno_id, turma_id, avaliacao_nome, aluno_nome, turma_nome, numeracao, qr_payload, respostas_json, correcoes_json, acertos, total_questoes, pontuacao, pontuacao_total, percentual, corrigido_em)
-               VALUES (:avaliacao_id, :aluno_id, :turma_id, :avaliacao_nome, :aluno_nome, :turma_nome, :numeracao, :qr_payload, :respostas_json, :correcoes_json, :acertos, :total_questoes, :pontuacao, :pontuacao_total, :percentual, :corrigido_em)'
+            'INSERT INTO avaliacao_correcoes (avaliacao_id, aluno_id, turma_id, avaliacao_nome, aluno_nome, turma_nome, numeracao, qr_payload, respostas_json, correcoes_json, status, acertos, total_questoes, pontuacao, pontuacao_total, percentual, corrigido_em)
+             VALUES (:avaliacao_id, :aluno_id, :turma_id, :avaliacao_nome, :aluno_nome, :turma_nome, :numeracao, :qr_payload, :respostas_json, :correcoes_json, :status, :acertos, :total_questoes, :pontuacao, :pontuacao_total, :percentual, :corrigido_em)'
         );
         $statement->execute([
             'avaliacao_id' => (int) ($payload['avaliacao_id'] ?? 0),
@@ -170,6 +172,7 @@ class AvaliacaoCorrecaoModel
             'qr_payload' => $payload['qr_payload'] ?? null,
             'respostas_json' => $payload['respostas_json'] ?? null,
             'correcoes_json' => $payload['correcoes_json'] ?? null,
+            'status' => trim((string) ($payload['status'] ?? 'corrigida')),
             'acertos' => (int) ($payload['acertos'] ?? 0),
             'total_questoes' => (int) ($payload['total_questoes'] ?? 0),
             'pontuacao' => (float) ($payload['pontuacao'] ?? 0),
@@ -197,6 +200,7 @@ class AvaliacaoCorrecaoModel
                  qr_payload = :qr_payload,
                  respostas_json = :respostas_json,
                  correcoes_json = :correcoes_json,
+                 status = :status,
                  acertos = :acertos,
                  total_questoes = :total_questoes,
                  pontuacao = :pontuacao,
@@ -212,6 +216,7 @@ class AvaliacaoCorrecaoModel
             'qr_payload' => $payload['qr_payload'] ?? null,
             'respostas_json' => $payload['respostas_json'] ?? null,
             'correcoes_json' => $payload['correcoes_json'] ?? null,
+            'status' => trim((string) ($payload['status'] ?? 'corrigida')),
             'acertos' => (int) ($payload['acertos'] ?? 0),
             'total_questoes' => (int) ($payload['total_questoes'] ?? 0),
             'pontuacao' => (float) ($payload['pontuacao'] ?? 0),
@@ -253,6 +258,7 @@ class AvaliacaoCorrecaoModel
             'qr_payload' => trim((string) ($row['qr_payload'] ?? '')),
             'respostas' => $this->decodeJsonArray($row['respostas_json'] ?? null),
             'correcoes' => $this->decodeJsonArray($row['correcoes_json'] ?? null),
+            'status' => trim((string) ($row['status'] ?? 'corrigida')),
             'acertos' => (int) ($row['acertos'] ?? 0),
             'total_questoes' => (int) ($row['total_questoes'] ?? 0),
             'pontuacao' => round((float) ($row['pontuacao'] ?? 0), 2),

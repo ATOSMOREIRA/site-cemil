@@ -793,10 +793,18 @@ $isAdminViewer = (($isAdmin ?? false) === true);
                                                 <div class="admin-avaliacao-correcao-overlay-actions-layer">
                                                     <div class="admin-avaliacao-correcao-overlay-actions d-none"
                                                         id="adminAvaliacaoCorrecaoConfirmWrap">
-                                                        <button type="button" class="btn btn-success btn-sm"
+                                                        <button type="button" class="btn btn-success btn-sm mb-2"
                                                             id="adminAvaliacaoCorrecaoConfirmBtn">
                                                             <i class="las la-arrow-right me-1"></i>Continuar para
                                                             leitura do gabarito
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-warning btn-sm mb-2"
+                                                            id="adminAvaliacaoCorrecaoZeroBtn">
+                                                            <i class="las la-ban me-1"></i>Gabarito zerado
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-danger btn-sm"
+                                                            id="adminAvaliacaoCorrecaoAbsentBtn">
+                                                            <i class="las la-user-times me-1"></i>Aluno ausente
                                                         </button>
                                                     </div>
                                                     <div class="admin-avaliacao-correcao-overlay-actions d-none"
@@ -808,24 +816,30 @@ $isAdminViewer = (($isAdmin ?? false) === true);
                                                     </div>
                                                     <div class="admin-avaliacao-correcao-overlay-actions d-none"
                                                         id="adminAvaliacaoCorrecaoNextWrap">
-                                                        <button type="button" class="btn btn-outline-danger btn-sm mb-2"
-                                                            id="adminAvaliacaoCorrecaoRetryBtn">
-                                                            <i class="las la-undo-alt me-1"></i>Corrigir novamente
-                                                        </button>
-                                                        <button type="button" class="btn btn-primary btn-sm"
+                                                        <button type="button" class="btn btn-primary btn-sm mb-2"
                                                             id="adminAvaliacaoCorrecaoNextBtn">
                                                             <i class="las la-qrcode me-1"></i>Ir para próximo QR Code
                                                         </button>
+                                                        <button type="button" class="btn btn-outline-danger btn-sm"
+                                                            id="adminAvaliacaoCorrecaoRetryBtn">
+                                                            <i class="las la-undo-alt me-1"></i>Corrigir novamente
+                                                        </button>
+                                                        
                                                     </div>
                                                 </div>
                                             </div>
                                             <div class="admin-avaliacao-correcao-processing-overlay d-none"
                                                 id="adminAvaliacaoCorrecaoProcessingOverlay">
-                                                <div class="admin-avaliacao-correcao-processing-content">
-                                                    <div class="spinner-border text-light mb-3" role="status">
+                                                <div class="admin-avaliacao-correcao-processing-content"
+                                                    id="adminAvaliacaoCorrecaoProcessingContent">
+                                                    <div class="spinner-border text-light mb-3" role="status"
+                                                        id="adminAvaliacaoCorrecaoProcessingSpinner">
                                                         <span class="visually-hidden">Processando...</span>
                                                     </div>
-                                                    <div class="text-white fw-semibold">Processando...</div>
+                                                    <div class="text-white fw-semibold"
+                                                        id="adminAvaliacaoCorrecaoProcessingTitle">Processando...</div>
+                                                    <div class="admin-avaliacao-correcao-processing-summary d-none"
+                                                        id="adminAvaliacaoCorrecaoProcessingSummary"></div>
                                                 </div>
                                             </div>
                                             <div class="visually-hidden" id="adminAvaliacaoCorrecaoStatus">Nenhuma

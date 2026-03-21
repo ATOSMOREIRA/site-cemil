@@ -157,9 +157,13 @@
 			if (state.correcaoScanFrameId) {
 				window.cancelAnimationFrame(state.correcaoScanFrameId);
 			}
+			if (state.correcaoScanRetryTimeoutId) {
+				window.clearTimeout(state.correcaoScanRetryTimeoutId);
+			}
 
 			setState({
 				correcaoScanFrameId: 0,
+				correcaoScanRetryTimeoutId: 0,
 				correcaoLastAutoCaptureAt: 0,
 				correcaoQrValidatedAt: 0,
 				correcaoGabaritoStableFrames: 0,
@@ -400,10 +404,72 @@
 			runCorrecaoGabaritoLoopLegacy();
 		}
 
+		function cropCanvasToGuideBox(captureCanvas) {
+			if (!(captureCanvas instanceof HTMLCanvasElement)) {
+				return null;
+			}
+
+			var cropCanvas = captureCanvas;
+			var guideBoxEl = document.querySelector('.admin-avaliacao-correcao-align-guide-box');
+			if (!(guideBoxEl instanceof HTMLElement) || !(elements.correcaoVideo instanceof HTMLVideoElement)) {
+				return cropCanvas;
+			}
+
+			var videoRect = elements.correcaoVideo.getBoundingClientRect();
+			var guideRect = guideBoxEl.getBoundingClientRect();
+			if (videoRect.width <= 0 || videoRect.height <= 0 || guideRect.width <= 0 || guideRect.height <= 0) {
+				return cropCanvas;
+			}
+
+			var vidAspect = captureCanvas.width / captureCanvas.height;
+			var elAspect = videoRect.width / videoRect.height;
+			var scaleToVideo;
+			var offX;
+			var offY;
+
+			if (elAspect > vidAspect) {
+				scaleToVideo = captureCanvas.width / videoRect.width;
+				offX = 0;
+				offY = (captureCanvas.height - videoRect.height * scaleToVideo) / 2;
+			} else {
+				scaleToVideo = captureCanvas.height / videoRect.height;
+				offX = (captureCanvas.width - videoRect.width * scaleToVideo) / 2;
+				offY = 0;
+			}
+
+			var gx = (guideRect.left - videoRect.left) * scaleToVideo + offX;
+			var gy = (guideRect.top - videoRect.top) * scaleToVideo + offY;
+			var gw = guideRect.width * scaleToVideo;
+			var gh = guideRect.height * scaleToVideo;
+			var cx = Math.max(0, Math.round(gx));
+			var cy = Math.max(0, Math.round(gy));
+			var cw = Math.min(captureCanvas.width - cx, Math.round(gw));
+			var ch = Math.min(captureCanvas.height - cy, Math.round(gh));
+
+			if (cw <= 50 || ch <= 50) {
+				return cropCanvas;
+			}
+
+			cropCanvas = document.createElement('canvas');
+			cropCanvas.width = cw;
+			cropCanvas.height = ch;
+			var cropCtx = cropCanvas.getContext('2d');
+			if (!cropCtx) {
+				return captureCanvas;
+			}
+			cropCtx.drawImage(captureCanvas, cx, cy, cw, ch, 0, 0, cw, ch);
+			return cropCanvas;
+		}
+
 		function processGabaritoManually() {
 			var state = getState();
-			if (state.correcaoScannerStep !== 'scan-gabarito' || !state.correcaoCurrentTarget || state.correcaoBusy) {
+			if (state.correcaoScannerStep !== 'scan-gabarito' || !state.correcaoCurrentTarget) {
 				return;
+			}
+
+			stopCorrecaoScanLoop();
+			if (state.correcaoBusy) {
+				setState({ correcaoBusy: false });
 			}
 
 			var captureCanvas = typeof helpers.captureCorrecaoFrame === 'function' ? helpers.captureCorrecaoFrame() : null;
@@ -414,42 +480,7 @@
 				return;
 			}
 
-			var cropCanvas = captureCanvas;
-			var guideBoxEl = document.querySelector('.admin-avaliacao-correcao-align-guide-box');
-			if (guideBoxEl && elements.correcaoVideo instanceof HTMLVideoElement) {
-				var videoRect = elements.correcaoVideo.getBoundingClientRect();
-				var guideRect = guideBoxEl.getBoundingClientRect();
-				if (videoRect.width > 0 && videoRect.height > 0) {
-					var vidAspect = captureCanvas.width / captureCanvas.height;
-					var elAspect = videoRect.width / videoRect.height;
-					var scaleToVideo;
-					var offX;
-					var offY;
-					if (elAspect > vidAspect) {
-						scaleToVideo = captureCanvas.width / videoRect.width;
-						offX = 0;
-						offY = (captureCanvas.height - videoRect.height * scaleToVideo) / 2;
-					} else {
-						scaleToVideo = captureCanvas.height / videoRect.height;
-						offX = (captureCanvas.width - videoRect.width * scaleToVideo) / 2;
-						offY = 0;
-					}
-					var gx = (guideRect.left - videoRect.left) * scaleToVideo + offX;
-					var gy = (guideRect.top - videoRect.top) * scaleToVideo + offY;
-					var gw = guideRect.width * scaleToVideo;
-					var gh = guideRect.height * scaleToVideo;
-					var cx = Math.max(0, Math.round(gx));
-					var cy = Math.max(0, Math.round(gy));
-					var cw = Math.min(captureCanvas.width - cx, Math.round(gw));
-					var ch = Math.min(captureCanvas.height - cy, Math.round(gh));
-					if (cw > 50 && ch > 50) {
-						cropCanvas = document.createElement('canvas');
-						cropCanvas.width = cw;
-						cropCanvas.height = ch;
-						cropCanvas.getContext('2d').drawImage(captureCanvas, cx, cy, cw, ch, 0, 0, cw, ch);
-					}
-				}
-			}
+			var cropCanvas = cropCanvasToGuideBox(captureCanvas);
 
 			var frozenCanvas = document.createElement('canvas');
 			frozenCanvas.width = cropCanvas.width;
@@ -538,12 +569,18 @@
 					return;
 				}
 
+				var guidedCanvas = cropCanvasToGuideBox(captureCanvas);
+				if (!(guidedCanvas instanceof HTMLCanvasElement)) {
+					setState({ correcaoScanFrameId: window.requestAnimationFrame(processFrame) });
+					return;
+				}
+
 				setState({ correcaoBusy: true });
-				Promise.resolve(typeof helpers.validateCorrecaoFrameForReading === 'function' ? helpers.validateCorrecaoFrameForReading(captureCanvas) : null)
+				Promise.resolve(typeof helpers.validateCorrecaoFrameForReading === 'function' ? helpers.validateCorrecaoFrameForReading(guidedCanvas) : null)
 					.then(function (validatedCanvas) {
 						setState({ correcaoBusy: false });
 						if (typeof helpers.renderCorrecaoDiagnosticsOverlay === 'function') {
-							helpers.renderCorrecaoDiagnosticsOverlay(getState().correcaoLastDiagnostics, captureCanvas.width, captureCanvas.height);
+							helpers.renderCorrecaoDiagnosticsOverlay(getState().correcaoLastDiagnostics, validatedCanvas.width, validatedCanvas.height);
 						}
 
 						var latestState = getState();
@@ -569,9 +606,16 @@
 						}
 					})
 					.catch(function (error) {
-						setState({ correcaoBusy: false, correcaoGabaritoStableFrames: 0 });
+						var retryDelayAfterObstruction = error && error.code === 'correcao-camera-obstruida';
+						var retryTimeoutId = 0;
+						setState({
+							correcaoBusy: false,
+							correcaoScanFrameId: 0,
+							correcaoGabaritoStableFrames: 0,
+							correcaoQrValidatedAt: 0,
+						});
 						if (typeof helpers.renderCorrecaoDiagnosticsOverlay === 'function') {
-							helpers.renderCorrecaoDiagnosticsOverlay(getState().correcaoLastDiagnostics, captureCanvas.width, captureCanvas.height);
+							helpers.renderCorrecaoDiagnosticsOverlay(getState().correcaoLastDiagnostics, guidedCanvas.width, guidedCanvas.height);
 						}
 
 						var latestState = getState();
@@ -581,6 +625,19 @@
 
 						if (error && error.message && typeof helpers.setCorrecaoScannerStep === 'function') {
 							helpers.setCorrecaoScannerStep('scan-gabarito', error.message);
+						}
+
+						if (retryDelayAfterObstruction) {
+							retryTimeoutId = window.setTimeout(function () {
+								setState({ correcaoScanRetryTimeoutId: 0 });
+								var retryState = getState();
+								if (retryState.correcaoScannerStep !== 'scan-gabarito' || !retryState.correcaoCurrentTarget || retryState.correcaoBusy) {
+									return;
+								}
+								setState({ correcaoScanFrameId: window.requestAnimationFrame(processFrame) });
+							}, 1000);
+							setState({ correcaoScanRetryTimeoutId: retryTimeoutId });
+							return;
 						}
 
 						setState({ correcaoScanFrameId: window.requestAnimationFrame(processFrame) });
@@ -746,6 +803,9 @@
 						var comparison = typeof helpers.buildCorrecaoCorrections === 'function'
 							? helpers.buildCorrecaoCorrections(studentAnswers, discursiveScores, objectiveReading.diagnosticsByQuestion || {})
 							: { corrections: [], score: 0, total: 0, earnedPoints: 0, totalPoints: 0 };
+						var successSummary = isAutoMode && typeof helpers.buildCorrecaoSuccessSummary === 'function'
+							? helpers.buildCorrecaoSuccessSummary(comparison, currentTarget)
+							: null;
 						var percentual = comparison.totalPoints > 0 ? ((comparison.earnedPoints / comparison.totalPoints) * 100) : 0;
 						var resultPayload = {
 							avaliacao_id: currentTarget.avaliacaoId,
@@ -770,11 +830,17 @@
 								comparison: comparison,
 								alunoNome: currentTarget && currentTarget.alunoNome ? currentTarget.alunoNome : '',
 							}).then(function () {
-								return helpers.saveCorrecaoResult(resultPayload);
+								return helpers.saveCorrecaoResult(resultPayload).then(function (payload) {
+									payload.__correcaoSuccessSummary = successSummary;
+									return payload;
+								});
 							});
 						}
 
-						return helpers.saveCorrecaoResult(resultPayload);
+						return helpers.saveCorrecaoResult(resultPayload).then(function (payload) {
+							payload.__correcaoSuccessSummary = successSummary;
+							return payload;
+						});
 					});
 				})
 				.then(function (payload) {
@@ -811,7 +877,9 @@
 						setState({ correcaoCurrentTarget: currentTarget });
 					}
 
-					if (typeof helpers.resumeCorrecaoForNextSheet === 'function') {
+					if (payload && payload.__correcaoSuccessSummary && typeof helpers.resumeCorrecaoForNextSheetWithSummary === 'function') {
+						helpers.resumeCorrecaoForNextSheetWithSummary(payload.__correcaoSuccessSummary);
+					} else if (typeof helpers.resumeCorrecaoForNextSheet === 'function') {
 						helpers.resumeCorrecaoForNextSheet();
 					}
 				})
@@ -893,6 +961,8 @@
 		var correcaoStopBtn = elements.correcaoStopBtn;
 		var correcaoCaptureBtn = elements.correcaoCaptureBtn;
 		var correcaoConfirmBtn = elements.correcaoConfirmBtn;
+		var correcaoZeroBtn = elements.correcaoZeroBtn;
+		var correcaoAbsentBtn = elements.correcaoAbsentBtn;
 		var correcaoNextBtn = elements.correcaoNextBtn;
 		var correcaoRetryBtn = elements.correcaoRetryBtn;
 		var correcaoProcessBtn = elements.correcaoProcessBtn;
@@ -923,6 +993,16 @@
 		});
 		bindPressOnce(correcaoConfirmBtn, 'Confirm', function () {
 			api.proceedCorrecaoToGabarito();
+		});
+		bindPressOnce(correcaoZeroBtn, 'Zero', function () {
+			if (typeof api.saveCorrecaoStatusForCurrentTarget === 'function') {
+				api.saveCorrecaoStatusForCurrentTarget('gabarito_zerado');
+			}
+		});
+		bindPressOnce(correcaoAbsentBtn, 'Absent', function () {
+			if (typeof api.saveCorrecaoStatusForCurrentTarget === 'function') {
+				api.saveCorrecaoStatusForCurrentTarget('ausente');
+			}
 		});
 		bindPressOnce(correcaoNextBtn, 'Next', function () {
 			api.goToNextCorrecaoQr();

@@ -72,17 +72,17 @@
     var p = String(prof).toLowerCase();
     if (p.indexOf('avan') === 0) return 'bg-success';
     if (p.indexOf('adequ') === 0) return 'bg-primary';
-    if (p.indexOf('bas') === 0 || p.indexOf('bás') === 0) return 'bg-warning text-dark';
+    if (p.indexOf('insu') === 0) return 'bg-warning text-dark';
     return 'bg-danger';
   }
 
   function classificarProficienciaPorNota(nota) {
     var n = Number(nota);
     if (!isFinite(n)) return null;
-    if (n >= 8) return 'Avançado';
+    if (n >= 9.5) return 'Avançado';
     if (n >= 6) return 'Adequado';
-    if (n >= 4) return 'Básico';
-    return 'Insuficiente';
+    if (n >= 4) return 'Insuficiente';
+    return 'Crítico';
   }
 
   function profCellStyle(prof) {
@@ -90,7 +90,7 @@
     var p = String(prof).toLowerCase();
     if (p.indexOf('avan') === 0) return 'background:#d1e7dd;';
     if (p.indexOf('adequ') === 0) return 'background:#cfe2ff;';
-    if (p.indexOf('bas') === 0 || p.indexOf('bás') === 0) return 'background:#fff3cd;';
+    if (p.indexOf('insu') === 0) return 'background:#fff3cd;';
     return 'background:#f8d7da;';
   }
 
@@ -647,7 +647,7 @@
       // faixas bar
       if (faixasBar) {
         var fx = ov.faixas || {};
-        var total = (fx.avancado || 0) + (fx.adequado || 0) + (fx.basico || 0) + (fx.insuficiente || 0);
+        var total = (fx.avancado || 0) + (fx.adequado || 0) + (fx.insuficiente || 0) + (fx.critico || 0);
         if (total <= 0) {
           faixasBar.innerHTML = '<small class="text-secondary">Sem dados</small>';
           return;
@@ -655,8 +655,8 @@
         var segments = [
           { label: 'Avançado', count: fx.avancado || 0, bg: '#198754' },
           { label: 'Adequado', count: fx.adequado || 0, bg: '#0d6efd' },
-          { label: 'Básico', count: fx.basico || 0, bg: '#ffc107' },
-          { label: 'Insuficiente', count: fx.insuficiente || 0, bg: '#dc3545' },
+          { label: 'Insuficiente', count: fx.insuficiente || 0, bg: '#ffc107' },
+          { label: 'Crítico', count: fx.critico || 0, bg: '#dc3545' },
         ];
         var barHtml = '<div class="d-flex rounded overflow-hidden" style="height:18px;">';
         segments.forEach(function (s) {
