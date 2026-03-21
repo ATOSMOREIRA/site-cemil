@@ -6291,6 +6291,28 @@
       var safeHeight = titleAreaHeight + contentHeight + Math.round(6 * scale);
       var height = Math.max(100, safeHeight + (safePadding * 2));
 
+      gabaritoTemplateMarkers = {
+        kind: 'legacy',
+        width: width,
+        height: height,
+        topLeft: {
+          x: borderMargin + (markerSize / 2),
+          y: borderMargin + (markerSize / 2),
+        },
+        topRight: {
+          x: width - borderMargin - (markerSize / 2),
+          y: borderMargin + (markerSize / 2),
+        },
+        bottomLeft: {
+          x: borderMargin + (markerSize / 2),
+          y: height - borderMargin - (markerSize / 2),
+        },
+        bottomRight: {
+          x: width - borderMargin - (markerSize / 2),
+          y: height - borderMargin - (markerSize / 2),
+        },
+      };
+
       // Retorna o Y base (relativo a contentTop) para texto/bolinha de uma linha.
       // Cada grupo ocupa (headerHeight + groupSize * rowHeight) px: headerHeight para o cabeçalho A B C D,
       // seguido de groupSize linhas de rowHeight cada.
@@ -7498,6 +7520,7 @@
 
 
     function prepareModalOpen() {
+      bindCorrecaoControlFallback();
       normalizeHiddenModalsDisplayState();
       cleanupOrphanedBackdrops();
     }
@@ -7565,6 +7588,57 @@
         && clientY <= rect.bottom;
     }
 
+    function applyCorrecaoGuideBoxLayout(guideBox, templateWidth, templateHeight) {
+      if (!(guideBox instanceof HTMLElement)) {
+        return;
+      }
+
+      var safeTemplateWidth = Number(templateWidth || 0);
+      var safeTemplateHeight = Number(templateHeight || 0);
+      if (!Number.isFinite(safeTemplateWidth) || safeTemplateWidth <= 0 || !Number.isFinite(safeTemplateHeight) || safeTemplateHeight <= 0) {
+        safeTemplateWidth = a4CanvasWidth;
+        safeTemplateHeight = a4CanvasHeight;
+      }
+
+      var guideContainer = guideBox.parentElement;
+      var containerWidth = guideContainer ? guideContainer.clientWidth : window.innerWidth;
+      var containerHeight = guideContainer ? guideContainer.clientHeight : window.innerHeight;
+      var horizontalPadding = containerWidth <= 767 ? 24 : 56;
+      var verticalPadding = containerHeight <= 767 ? 96 : 140;
+      var maxWidthByContainer = Math.max(220, containerWidth - horizontalPadding);
+      var maxHeightByContainer = Math.max(280, containerHeight - verticalPadding);
+      var maxWidthByHeight = maxHeightByContainer * (safeTemplateWidth / safeTemplateHeight);
+      var resolvedWidth = Math.min(maxWidthByContainer, maxWidthByHeight);
+      var resolvedHeight = resolvedWidth * (safeTemplateHeight / safeTemplateWidth);
+
+      guideBox.style.width = Math.max(220, Math.round(resolvedWidth)) + 'px';
+      guideBox.style.height = Math.max(280, Math.round(resolvedHeight)) + 'px';
+      guideBox.style.aspectRatio = safeTemplateWidth + ' / ' + safeTemplateHeight;
+    }
+
+    function getCorrecaoGuideTemplateSize() {
+      ensureGabaritoLayoutInBounds();
+
+      if (gabaritoLayoutRect && gabaritoLayoutRect.width > 0 && gabaritoLayoutRect.height > 0) {
+        return {
+          width: gabaritoLayoutRect.width,
+          height: gabaritoLayoutRect.height,
+        };
+      }
+
+      if (gabaritoTemplateMarkers && gabaritoTemplateMarkers.width > 0 && gabaritoTemplateMarkers.height > 0) {
+        return {
+          width: gabaritoTemplateMarkers.width,
+          height: gabaritoTemplateMarkers.height,
+        };
+      }
+
+      return {
+        width: a4CanvasWidth,
+        height: a4CanvasHeight,
+      };
+    }
+
     function triggerCorrecaoControlFallback(event) {
       if (!(correcaoModalElement instanceof HTMLElement) || !correcaoModalElement.classList.contains('show')) {
         return;
@@ -7618,6 +7692,19 @@
         control.action();
         return;
       }
+    }
+
+    function bindCorrecaoControlFallback() {
+      if (document.documentElement && document.documentElement.dataset.correcaoControlFallbackBound === '1') {
+        return;
+      }
+
+      if (document.documentElement) {
+        document.documentElement.dataset.correcaoControlFallbackBound = '1';
+      }
+
+      document.addEventListener('pointerup', triggerCorrecaoControlFallback, true);
+      document.addEventListener('click', triggerCorrecaoControlFallback, true);
     }
 
     function formatCorrecaoScoreValue(value) {
@@ -9741,10 +9828,13 @@
       if (alignGuideEl) {
         var isGabarito = correcaoScannerStep === 'scan-gabarito';
         alignGuideEl.classList.toggle('d-none', !isGabarito);
+        var guideBox = alignGuideEl.querySelector('.admin-avaliacao-correcao-align-guide-box');
+        if (guideBox) {
+          var guideTemplateSize = getCorrecaoGuideTemplateSize();
+          applyCorrecaoGuideBoxLayout(guideBox, guideTemplateSize.width, guideTemplateSize.height);
+        }
         if (isGabarito && gabaritoTemplateMarkers && gabaritoTemplateMarkers.width && gabaritoTemplateMarkers.height) {
-          var guideBox = alignGuideEl.querySelector('.admin-avaliacao-correcao-align-guide-box');
           if (guideBox) {
-            guideBox.style.aspectRatio = gabaritoTemplateMarkers.width + ' / ' + gabaritoTemplateMarkers.height;
             var tmW = gabaritoTemplateMarkers.width;
             var tmH = gabaritoTemplateMarkers.height;
             var markerPositions = [
@@ -10057,66 +10147,163 @@
       }
     }
 
-    function openCorrecaoModal() {
-      if (!correcaoModalInstance) {
-        return;
+    function getCorrecaoCameraModule() {
+      if (window.__adminAvaliacoesCorrecaoCameraModule) {
+        return window.__adminAvaliacoesCorrecaoCameraModule;
       }
 
-      prepareModalOpen();
-      if (dashboardModalElement) {
-        dashboardModalElement.classList.add('admin-avaliacao-dashboard-modal-underlay');
+      if (typeof window.__createAdminAvaliacaoCorrecaoCameraModule !== 'function' || !window.__adminAvaliacoesCorrecaoApi) {
+        return null;
       }
-      correcaoModalInstance.show();
-      setTimeout(function () {
-        setCorrecaoBackdropIsolation(true);
-      }, 0);
+
+      window.__adminAvaliacoesCorrecaoCameraModule = window.__createAdminAvaliacaoCorrecaoCameraModule(window.__adminAvaliacoesCorrecaoApi);
+      return window.__adminAvaliacoesCorrecaoCameraModule;
+    }
+
+    function getCorrecaoCameraDeps() {
+      return {
+        elements: {
+          dashboardModalElement: dashboardModalElement,
+          correcaoModalElement: correcaoModalElement,
+          correcaoModalInstance: correcaoModalInstance,
+          correcaoVideo: correcaoVideo,
+          correcaoVideoPlaceholder: correcaoVideoPlaceholder,
+          idInput: idInput,
+        },
+        getActiveDashboardAvaliacaoId: function () {
+          return Number(activeDashboardAvaliacaoId || 0);
+        },
+        getGabaritoQuestoesItens: function () {
+          return Array.isArray(gabaritoQuestoesItens) ? gabaritoQuestoesItens : [];
+        },
+        getState: function () {
+          return {
+            correcaoCameraStream: correcaoCameraStream,
+            correcaoScanFrameId: correcaoScanFrameId,
+            correcaoScannerStep: correcaoScannerStep,
+            correcaoCurrentTarget: correcaoCurrentTarget,
+            correcaoBusy: correcaoBusy,
+            correcaoLastAutoCaptureAt: correcaoLastAutoCaptureAt,
+            correcaoQrValidatedAt: correcaoQrValidatedAt,
+            correcaoLastSuccessPayload: correcaoLastSuccessPayload,
+            correcaoLastSuccessAt: correcaoLastSuccessAt,
+            correcaoGabaritoStableFrames: correcaoGabaritoStableFrames,
+            correcaoQrReferenceSignature: correcaoQrReferenceSignature,
+            correcaoLastDiagnostics: correcaoLastDiagnostics,
+            correcaoAutoReadFingerprint: correcaoAutoReadFingerprint,
+            correcaoAutoReadStableReads: correcaoAutoReadStableReads,
+            correcaoFrozenCanvas: correcaoFrozenCanvas,
+          };
+        },
+        setState: function (patch) {
+          var safePatch = patch && typeof patch === 'object' ? patch : {};
+          if (Object.prototype.hasOwnProperty.call(safePatch, 'correcaoCameraStream')) {
+            correcaoCameraStream = safePatch.correcaoCameraStream;
+          }
+          if (Object.prototype.hasOwnProperty.call(safePatch, 'correcaoScanFrameId')) {
+            correcaoScanFrameId = safePatch.correcaoScanFrameId;
+          }
+          if (Object.prototype.hasOwnProperty.call(safePatch, 'correcaoScannerStep')) {
+            correcaoScannerStep = safePatch.correcaoScannerStep;
+          }
+          if (Object.prototype.hasOwnProperty.call(safePatch, 'correcaoCurrentTarget')) {
+            correcaoCurrentTarget = safePatch.correcaoCurrentTarget;
+          }
+          if (Object.prototype.hasOwnProperty.call(safePatch, 'correcaoBusy')) {
+            correcaoBusy = safePatch.correcaoBusy;
+          }
+          if (Object.prototype.hasOwnProperty.call(safePatch, 'correcaoLastAutoCaptureAt')) {
+            correcaoLastAutoCaptureAt = safePatch.correcaoLastAutoCaptureAt;
+          }
+          if (Object.prototype.hasOwnProperty.call(safePatch, 'correcaoQrValidatedAt')) {
+            correcaoQrValidatedAt = safePatch.correcaoQrValidatedAt;
+          }
+          if (Object.prototype.hasOwnProperty.call(safePatch, 'correcaoLastSuccessPayload')) {
+            correcaoLastSuccessPayload = safePatch.correcaoLastSuccessPayload;
+          }
+          if (Object.prototype.hasOwnProperty.call(safePatch, 'correcaoLastSuccessAt')) {
+            correcaoLastSuccessAt = safePatch.correcaoLastSuccessAt;
+          }
+          if (Object.prototype.hasOwnProperty.call(safePatch, 'correcaoGabaritoStableFrames')) {
+            correcaoGabaritoStableFrames = safePatch.correcaoGabaritoStableFrames;
+          }
+          if (Object.prototype.hasOwnProperty.call(safePatch, 'correcaoQrReferenceSignature')) {
+            correcaoQrReferenceSignature = safePatch.correcaoQrReferenceSignature;
+          }
+          if (Object.prototype.hasOwnProperty.call(safePatch, 'correcaoLastDiagnostics')) {
+            correcaoLastDiagnostics = safePatch.correcaoLastDiagnostics;
+          }
+          if (Object.prototype.hasOwnProperty.call(safePatch, 'correcaoAutoReadFingerprint')) {
+            correcaoAutoReadFingerprint = safePatch.correcaoAutoReadFingerprint;
+          }
+          if (Object.prototype.hasOwnProperty.call(safePatch, 'correcaoAutoReadStableReads')) {
+            correcaoAutoReadStableReads = safePatch.correcaoAutoReadStableReads;
+          }
+          if (Object.prototype.hasOwnProperty.call(safePatch, 'correcaoFrozenCanvas')) {
+            correcaoFrozenCanvas = safePatch.correcaoFrozenCanvas;
+          }
+        },
+        helpers: {
+          prepareModalOpen: prepareModalOpen,
+          setCorrecaoBackdropIsolation: setCorrecaoBackdropIsolation,
+          closeCorrecaoRevisaoModal: closeCorrecaoRevisaoModal,
+          closeCorrecaoDiscursivaModal: closeCorrecaoDiscursivaModal,
+          resetCorrecaoAutoReadStability: resetCorrecaoAutoReadStability,
+          renderCorrecaoTarget: renderCorrecaoTarget,
+          setCorrecaoScannerStep: setCorrecaoScannerStep,
+          buildCorrecaoFrameSignature: buildCorrecaoFrameSignature,
+          captureCorrecaoFrame: captureCorrecaoFrame,
+          clearCorrecaoDiagnosticsOverlay: clearCorrecaoDiagnosticsOverlay,
+          decodeQrFromCurrentFrame: decodeQrFromCurrentFrame,
+          handleCorrecaoQrPayload: handleCorrecaoQrPayload,
+          buildCorrecaoMarkerTransform: buildCorrecaoMarkerTransform,
+          renderCorrecaoDiagnosticsOverlay: renderCorrecaoDiagnosticsOverlay,
+          validateCorrecaoFrameForReading: validateCorrecaoFrameForReading,
+          normalizeQuestaoTipo: normalizeQuestaoTipo,
+          showGlobalStatus: showGlobalStatus,
+          isQuestaoObjetiva: isQuestaoObjetiva,
+          detectAnswersFromCorrecaoCanvas: detectAnswersFromCorrecaoCanvas,
+          buildCorrecaoAnswersFingerprint: buildCorrecaoAnswersFingerprint,
+          buildCorrecaoFlowError: buildCorrecaoFlowError,
+          getCurrentGabaritoNumeracaoLabel: getCurrentGabaritoNumeracaoLabel,
+          getCorrecaoDiscursivaQuestoes: getCorrecaoDiscursivaQuestoes,
+          openCorrecaoDiscursivaModal: openCorrecaoDiscursivaModal,
+          buildCorrecaoCorrections: buildCorrecaoCorrections,
+          shouldOpenCorrecaoReviewModal: shouldOpenCorrecaoReviewModal,
+          openCorrecaoRevisaoModal: openCorrecaoRevisaoModal,
+          saveCorrecaoResult: saveCorrecaoResult,
+          renderCorrecoesTable: renderCorrecoesTable,
+          resumeCorrecaoForNextSheet: resumeCorrecaoForNextSheet,
+        },
+      };
+    }
+
+    function openCorrecaoModal() {
+      var cameraModule = getCorrecaoCameraModule();
+      if (cameraModule && typeof cameraModule.openCorrecaoModal === 'function') {
+        cameraModule.openCorrecaoModal();
+      }
     }
 
     function closeCorrecaoModal() {
-      if (!correcaoModalInstance) {
-        stopCorrecaoCamera();
-        if (dashboardModalElement) {
-          dashboardModalElement.classList.remove('admin-avaliacao-dashboard-modal-underlay');
-        }
-        setCorrecaoBackdropIsolation(false);
-        return;
+      var cameraModule = getCorrecaoCameraModule();
+      if (cameraModule && typeof cameraModule.closeCorrecaoModal === 'function') {
+        cameraModule.closeCorrecaoModal();
       }
-
-      stopCorrecaoScanLoop();
-      correcaoModalInstance.hide();
     }
 
     function goToNextCorrecaoQr() {
-      correcaoCurrentTarget = null;
-      closeCorrecaoRevisaoModal();
-      closeCorrecaoDiscursivaModal();
-      resetCorrecaoAutoReadStability();
-      resumeVideoAfterProcess();
-      renderCorrecaoTarget();
-      setCorrecaoScannerStep('scan-qr', 'Aponte a câmera para o QR Code da próxima folha.');
-      runCorrecaoQrLoop();
+      var cameraModule = getCorrecaoCameraModule();
+      if (cameraModule && typeof cameraModule.goToNextCorrecaoQr === 'function') {
+        cameraModule.goToNextCorrecaoQr();
+      }
     }
 
     function proceedCorrecaoToGabarito() {
-      if (!correcaoCurrentTarget) {
-        return;
+      var cameraModule = getCorrecaoCameraModule();
+      if (cameraModule && typeof cameraModule.proceedCorrecaoToGabarito === 'function') {
+        cameraModule.proceedCorrecaoToGabarito();
       }
-
-      stopCorrecaoScanLoop();
-      correcaoQrValidatedAt = Date.now();
-      correcaoGabaritoStableFrames = 0;
-      resetCorrecaoAutoReadStability();
-      correcaoQrReferenceSignature = buildCorrecaoFrameSignature(captureCorrecaoFrame());
-      setCorrecaoScannerStep('scan-gabarito', 'QR confirmado. Enquadre o gabarito com os 4 quadrados e clique em PROCESSAR.');
-
-      window.setTimeout(function () {
-        if (correcaoScannerStep !== 'scan-gabarito' || !correcaoCurrentTarget) {
-          return;
-        }
-
-        setCorrecaoScannerStep('scan-gabarito', 'Enquadre o gabarito na tela e clique em PROCESSAR GABARITO.');
-        runCorrecaoGabaritoLoop();
-      }, 500);
     }
 
     function formatStatsPercent(value) {
@@ -12087,96 +12274,25 @@
     }
 
     function stopCorrecaoScanLoop() {
-      if (correcaoScanFrameId) {
-        window.cancelAnimationFrame(correcaoScanFrameId);
-        correcaoScanFrameId = 0;
+      var cameraModule = getCorrecaoCameraModule();
+      if (cameraModule && typeof cameraModule.stopCorrecaoScanLoop === 'function') {
+        cameraModule.stopCorrecaoScanLoop();
       }
-
-      correcaoLastAutoCaptureAt = 0;
-      correcaoQrValidatedAt = 0;
-      correcaoGabaritoStableFrames = 0;
-      correcaoQrReferenceSignature = null;
     }
 
     function stopCorrecaoCamera() {
-      stopCorrecaoScanLoop();
-      clearCorrecaoDiagnosticsOverlay();
-      if (correcaoCameraStream) {
-        correcaoCameraStream.getTracks().forEach(function (track) {
-          track.stop();
-        });
-        correcaoCameraStream = null;
+      var cameraModule = getCorrecaoCameraModule();
+      if (cameraModule && typeof cameraModule.stopCorrecaoCamera === 'function') {
+        cameraModule.stopCorrecaoCamera();
       }
-
-      if (correcaoVideo instanceof HTMLVideoElement) {
-        correcaoVideo.pause();
-        correcaoVideo.srcObject = null;
-        correcaoVideo.classList.add('d-none');
-      }
-
-      if (correcaoVideoPlaceholder) {
-        correcaoVideoPlaceholder.classList.remove('d-none');
-      }
-
-      correcaoCurrentTarget = null;
-      renderCorrecaoTarget();
-      setCorrecaoScannerStep('idle', 'Nenhuma correção em andamento.');
     }
 
     function startCorrecaoCamera() {
-      if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
-        return Promise.reject(new Error('A câmera não é suportada neste navegador.'));
+      var cameraModule = getCorrecaoCameraModule();
+      if (cameraModule && typeof cameraModule.startCorrecaoCamera === 'function') {
+        return cameraModule.startCorrecaoCamera();
       }
-
-      if (correcaoCameraStream && correcaoVideo instanceof HTMLVideoElement) {
-        return Promise.resolve(correcaoVideo);
-      }
-
-      return navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 1280, min: 640 },
-          height: { ideal: 720, min: 480 },
-          frameRate: { ideal: 30, max: 30 },
-        },
-        audio: false,
-      }).then(function (stream) {
-        correcaoCameraStream = stream;
-        if (!(correcaoVideo instanceof HTMLVideoElement)) {
-          throw new Error('Elemento de vídeo da correção não encontrado.');
-        }
-
-        // Tenta desativar auto-focus (nem todos os dispositivos suportam)
-        var videoTrack = stream.getVideoTracks()[0];
-        if (videoTrack && typeof videoTrack.applyConstraints === 'function') {
-          var capabilities = typeof videoTrack.getCapabilities === 'function' ? videoTrack.getCapabilities() : {};
-          var advancedConstraints = {};
-          if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
-            advancedConstraints.focusMode = 'continuous';
-          }
-          if (capabilities.exposureMode && capabilities.exposureMode.includes('continuous')) {
-            advancedConstraints.exposureMode = 'continuous';
-          }
-          if (capabilities.whiteBalanceMode && capabilities.whiteBalanceMode.includes('continuous')) {
-            advancedConstraints.whiteBalanceMode = 'continuous';
-          }
-          if (Object.keys(advancedConstraints).length > 0) {
-            videoTrack.applyConstraints({ advanced: [advancedConstraints] }).catch(function () {
-              // Ignora erros - nem todos os dispositivos suportam
-            });
-          }
-        }
-
-        correcaoVideo.srcObject = stream;
-        correcaoVideo.classList.remove('d-none');
-        if (correcaoVideoPlaceholder) {
-          correcaoVideoPlaceholder.classList.add('d-none');
-        }
-
-        return correcaoVideo.play().then(function () {
-          return correcaoVideo;
-        });
-      });
+      return Promise.reject(new Error('Módulo de câmera da correção não está disponível.'));
     }
 
     function decodeQrFromCurrentFrame() {
@@ -13972,21 +14088,21 @@
           var localBrightnessAgainstSiblings = option.centerBrightnessDrop - siblingAverageBrightnessDrop;
 
           return (
-            option.decisionScore >= 0.05
-            || option.roiMarkStrength >= 0.07
-            || option.legacyBubbleScore >= 0.08
-            || option.centerDarkGain >= 0.05
-            || option.centerBrightnessDrop >= 10
-            || option.roiAdaptiveDarkGain >= 0.05
-            || option.roiBrightnessDrop >= 8
+            option.decisionScore >= 0.045
+            || option.roiMarkStrength >= 0.06
+            || option.legacyBubbleScore >= 0.075
+            || option.centerDarkGain >= 0.045
+            || option.centerBrightnessDrop >= 8
+            || option.roiAdaptiveDarkGain >= 0.04
+            || option.roiBrightnessDrop >= 6
             || option.score.centerDarkRatio >= 0.18
           ) && (
               relativeStrength >= 0.18
-              || localStrengthAgainstSiblings >= 0.015
-              || localRoiAgainstSiblings >= 0.025
-              || localBrightnessAgainstSiblings >= 4
-              || option.legacyBubbleScore >= 0.12
-              || option.roiAdaptiveDarkGain >= 0.07
+              || localStrengthAgainstSiblings >= 0.012
+              || localRoiAgainstSiblings >= 0.018
+              || localBrightnessAgainstSiblings >= 3
+              || option.legacyBubbleScore >= 0.10
+              || option.roiAdaptiveDarkGain >= 0.055
             ) && option.ringPenalty <= 0.12;
         });
 
@@ -14058,31 +14174,38 @@
             hasSingleMarkedCandidate
             && (best.score.centerDarkRatio >= 0.18 || best.roiMarkStrength >= 0.08)
             && (localStrengthGain >= 0.01 || localBrightnessDropGain >= 2 || best.roiAdaptiveDarkGain >= 0.04)
+          ) || (
+            hasSingleMarkedCandidate
+            && best.legacyBubbleScore >= 0.08
+            && best.roiMarkStrength >= 0.065
+            && best.roiAdaptiveDarkGain >= 0.04
+            && best.roiBrightnessDrop >= 6
+            && (localRoiMarkGain >= 0.012 || localStrengthGain >= 0.008 || localBrightnessDropGain >= 1.5)
           )
         );
         var passesLocalDominanceCheck = !secondAlsoMarked && (
           (
-            best.decisionScore >= 0.05
-            && strengthGap >= 0.03
-            && localStrengthGain >= 0.015
+            best.decisionScore >= 0.045
+            && strengthGap >= 0.025
+            && localStrengthGain >= 0.012
             && localCenterDarkRatioGain >= 0.02
           ) || (
-            best.roiMarkStrength >= 0.07
-            && best.roiAdaptiveDarkGain >= 0.04
-            && localRoiAdaptiveDarkGain >= 0.02
+            best.roiMarkStrength >= 0.06
+            && best.roiAdaptiveDarkGain >= 0.038
+            && localRoiAdaptiveDarkGain >= 0.015
           ) || (
-            best.legacyBubbleScore >= 0.09
-            && strengthGap >= 0.02
-            && (localRoiMarkGain >= 0.015 || localStrengthGain >= 0.01)
+            best.legacyBubbleScore >= 0.08
+            && strengthGap >= 0.018
+            && (localRoiMarkGain >= 0.012 || localStrengthGain >= 0.008)
           ) || (
-            best.centerBrightnessDrop >= 7
-            && localBrightnessDropGain >= 2.5
-            && strengthGap >= 0.03
+            best.centerBrightnessDrop >= 6
+            && localBrightnessDropGain >= 2
+            && strengthGap >= 0.025
           ) || (
             hasSingleMarkedCandidate
-            && (best.decisionScore >= 0.05 || best.roiMarkStrength >= 0.06)
-            && (best.score.centerDarkRatio >= 0.16 || best.roiAdaptiveDarkGain >= 0.04)
-            && (localStrengthGain >= 0.008 || localBrightnessDropGain >= 2 || best.roiBrightnessDrop >= 6)
+            && (best.decisionScore >= 0.045 || best.roiMarkStrength >= 0.055 || best.legacyBubbleScore >= 0.075)
+            && (best.score.centerDarkRatio >= 0.15 || best.roiAdaptiveDarkGain >= 0.038)
+            && (localStrengthGain >= 0.006 || localBrightnessDropGain >= 1.5 || best.roiBrightnessDrop >= 5)
           )
         );
         // Método absoluto: usa score bruto alto e separação real da segunda opção.
@@ -14090,6 +14213,12 @@
           best.score.centerDarkRatio >= 0.50
           && best.score.combined >= 0.40
           && best.score.centerDarkRatio - second.score.centerDarkRatio >= 0.20
+        ) || (
+          best.legacyBubbleScore >= 0.15
+          && best.roiMarkStrength >= 0.11
+          && best.roiAdaptiveDarkGain >= 0.055
+          && best.roiBrightnessDrop >= 10
+          && strengthGap >= 0.025
         );
         if ((passesRelativeCheck || passesAdaptiveSingleCheck || passesLocalDominanceCheck || passesAbsoluteCheck) && !secondAlsoMarked) {
           var confidenceLevel = getCorrecaoAnswerConfidenceLevel(best);
@@ -14172,8 +14301,11 @@
 
         // Validação pós-processamento mais tolerante: não descartar respostas individuais válidas
         // apenas porque são poucas ou não atingem médias globais altas
-        var passesRelativePostValidation = averageAcceptedStrength >= 0.04 && averageAcceptedCenterGain >= 0.02 && maxAcceptedBrightnessDrop >= 6;
-        var passesAbsolutePostValidation = hasStrongDetection && maxAcceptedAbsoluteScore >= 0.25;
+        var maxAcceptedLegacyScore = acceptedAnswerDiagnostics.reduce(function (maxValue, item) {
+          return Math.max(maxValue, Number(item.legacyBubbleScore || 0), Number(item.roiMarkStrength || 0));
+        }, 0);
+        var passesRelativePostValidation = averageAcceptedStrength >= 0.035 && averageAcceptedCenterGain >= 0.018 && maxAcceptedBrightnessDrop >= 5;
+        var passesAbsolutePostValidation = hasStrongDetection && (maxAcceptedAbsoluteScore >= 0.22 || maxAcceptedLegacyScore >= 0.11);
         if (!passesRelativePostValidation && !passesAbsolutePostValidation) {
           studentAnswers = {};
           acceptedAnswerDiagnostics = [];
@@ -14860,7 +14992,7 @@
         renderCorrecoesTable(payload.rows || [], payload.stats || getCorrecoesSummaryStats(payload.rows || []));
         correcaoCurrentTarget.existingCorrection = null;
         resumeVideoAfterProcess();
-        setCorrecaoScannerStep('confirm-target', 'Correção excluída. Confirme o aluno e leia o gabarito novamente.');
+        proceedCorrecaoToGabarito();
       }).catch(function (error) {
         setCorrecaoScannerStep('success', error && error.message ? error.message : 'Não foi possível excluir a correção atual.');
       }).finally(function () {
@@ -14929,146 +15061,26 @@
     }
 
     function runCorrecaoQrLoop() {
-      stopCorrecaoScanLoop();
-      if (correcaoScannerStep !== 'scan-qr') {
-        return;
+      var cameraModule = getCorrecaoCameraModule();
+      if (cameraModule && typeof cameraModule.runCorrecaoQrLoop === 'function') {
+        cameraModule.runCorrecaoQrLoop();
       }
-
-      correcaoScanFrameId = window.requestAnimationFrame(function processFrame() {
-        if (correcaoScannerStep !== 'scan-qr' || correcaoBusy) {
-          correcaoScanFrameId = window.requestAnimationFrame(processFrame);
-          return;
-        }
-
-        correcaoBusy = true;
-        decodeQrFromCurrentFrame().then(function (rawPayload) {
-          if (rawPayload) {
-            return handleCorrecaoQrPayload(rawPayload);
-          }
-          return null;
-        }).finally(function () {
-          correcaoBusy = false;
-          if (correcaoScannerStep === 'scan-qr') {
-            correcaoScanFrameId = window.requestAnimationFrame(processFrame);
-          }
-        });
-      });
     }
 
     function runCorrecaoGabaritoLoop() {
-      stopCorrecaoScanLoop();
-      if (correcaoScannerStep !== 'scan-gabarito' || !correcaoCurrentTarget) {
-        return;
+      var cameraModule = getCorrecaoCameraModule();
+      if (cameraModule && typeof cameraModule.runCorrecaoGabaritoLoop === 'function') {
+        cameraModule.runCorrecaoGabaritoLoop();
       }
-      // Loop apenas para manter overlay ativo - processamento é manual via botão "Processar"
-      correcaoScanFrameId = window.requestAnimationFrame(function keepAlive() {
-        if (correcaoScannerStep !== 'scan-gabarito' || !correcaoCurrentTarget) {
-          return;
-        }
-        correcaoScanFrameId = window.requestAnimationFrame(keepAlive);
-      });
     }
 
     var correcaoFrozenCanvas = null;
 
     function processGabaritoManually() {
-      if (correcaoScannerStep !== 'scan-gabarito' || !correcaoCurrentTarget || correcaoBusy) {
-        return;
+      var cameraModule = getCorrecaoCameraModule();
+      if (cameraModule && typeof cameraModule.processGabaritoManually === 'function') {
+        cameraModule.processGabaritoManually();
       }
-
-      // Captura o frame atual
-      var captureCanvas = captureCorrecaoFrame();
-      if (!(captureCanvas instanceof HTMLCanvasElement)) {
-        setCorrecaoScannerStep('scan-gabarito', 'A imagem da câmera ainda não está pronta. Tente novamente.');
-        return;
-      }
-
-      // Calcula a região do guia de alinhamento em pixels de câmera (object-fit: cover)
-      var cropCanvas = captureCanvas;
-      var guideBoxEl = document.querySelector('.admin-avaliacao-correcao-align-guide-box');
-      if (guideBoxEl && correcaoVideo instanceof HTMLVideoElement) {
-        var videoRect = correcaoVideo.getBoundingClientRect();
-        var guideRect = guideBoxEl.getBoundingClientRect();
-        if (videoRect.width > 0 && videoRect.height > 0) {
-          // Mapeia coordenadas de tela para pixels de câmera (object-fit: cover)
-          var vidAspect = captureCanvas.width / captureCanvas.height;
-          var elAspect = videoRect.width / videoRect.height;
-          var scaleToVideo, offX, offY;
-          if (elAspect > vidAspect) {
-            // letterbox vertical: vídeo ocupa toda a largura
-            scaleToVideo = captureCanvas.width / videoRect.width;
-            offX = 0;
-            offY = (captureCanvas.height - videoRect.height * scaleToVideo) / 2;
-          } else {
-            // letterbox horizontal: vídeo ocupa toda a altura
-            scaleToVideo = captureCanvas.height / videoRect.height;
-            offX = (captureCanvas.width - videoRect.width * scaleToVideo) / 2;
-            offY = 0;
-          }
-          var gx = (guideRect.left - videoRect.left) * scaleToVideo + offX;
-          var gy = (guideRect.top - videoRect.top) * scaleToVideo + offY;
-          var gw = guideRect.width * scaleToVideo;
-          var gh = guideRect.height * scaleToVideo;
-          // Garante que está dentro dos limites
-          var cx = Math.max(0, Math.round(gx));
-          var cy = Math.max(0, Math.round(gy));
-          var cw = Math.min(captureCanvas.width - cx, Math.round(gw));
-          var ch = Math.min(captureCanvas.height - cy, Math.round(gh));
-          if (cw > 50 && ch > 50) {
-            cropCanvas = document.createElement('canvas');
-            cropCanvas.width = cw;
-            cropCanvas.height = ch;
-            cropCanvas.getContext('2d').drawImage(captureCanvas, cx, cy, cw, ch, 0, 0, cw, ch);
-          }
-        }
-      }
-
-      // Salva uma cópia do canvas (recortado) para processamento
-      correcaoFrozenCanvas = document.createElement('canvas');
-      correcaoFrozenCanvas.width = cropCanvas.width;
-      correcaoFrozenCanvas.height = cropCanvas.height;
-      var frozenCtx = correcaoFrozenCanvas.getContext('2d');
-      if (frozenCtx) {
-        frozenCtx.drawImage(cropCanvas, 0, 0);
-      }
-
-      // Pausa o vídeo e mostra a imagem congelada
-      if (correcaoVideo instanceof HTMLVideoElement) {
-        try {
-          correcaoVideo.pause();
-          var posterUrl = correcaoFrozenCanvas.toDataURL('image/jpeg', 0.92);
-          correcaoVideo.style.backgroundImage = 'url(' + posterUrl + ')';
-          correcaoVideo.style.backgroundSize = 'contain';
-          correcaoVideo.style.backgroundPosition = 'center';
-        } catch (_freezeError) { }
-      }
-
-      correcaoBusy = true;
-      setCorrecaoScannerStep('processing', 'Detectando os 4 marcadores automaticamente...');
-
-      // Tenta detecção automática dos 4 quadrados
-      setTimeout(function () {
-        try {
-          var autoTransform = buildCorrecaoMarkerTransform(correcaoFrozenCanvas);
-          if (autoTransform) {
-            // Sucesso: processa direto sem cliques manuais
-            correcaoFrozenCanvas._userTransform = autoTransform;
-            renderCorrecaoDiagnosticsOverlay(correcaoLastDiagnostics, correcaoFrozenCanvas.width, correcaoFrozenCanvas.height);
-            setCorrecaoScannerStep('processing', 'Marcadores detectados. Lendo respostas...');
-            setTimeout(function () {
-              correcaoBusy = false;
-              correcaoScannerStep = 'scan-gabarito';
-              captureAndCorrectCurrentSheet(false, correcaoFrozenCanvas);
-            }, 60);
-            return;
-          }
-        } catch (_autoErr) { }
-
-        // Falha na detecção automática: libera para tentar novamente
-        correcaoBusy = false;
-        setCorrecaoScannerStep('scan-gabarito', 'Não foi possível reconhecer os 4 pontos. Ajuste o enquadramento e clique em PROCESSAR novamente.');
-        resumeVideoAfterProcess();
-      }, 80);
     }
 
 
@@ -15104,289 +15116,31 @@
     }
 
     function resumeVideoAfterProcess() {
-      correcaoFrozenCanvas = null;
-      if (correcaoVideo instanceof HTMLVideoElement) {
-        correcaoVideo.style.backgroundImage = '';
-        correcaoVideo.style.backgroundSize = '';
-        correcaoVideo.style.backgroundPosition = '';
-        if (correcaoVideo.paused && correcaoCameraStream) {
-          correcaoVideo.play().catch(function () { });
-        }
-      }
-      if (correcaoScannerStep === 'scan-gabarito') {
-        runCorrecaoGabaritoLoop();
+      var cameraModule = getCorrecaoCameraModule();
+      if (cameraModule && typeof cameraModule.resumeVideoAfterProcess === 'function') {
+        cameraModule.resumeVideoAfterProcess();
       }
     }
 
     function runCorrecaoGabaritoLoopLegacy() {
-      // Loop antigo mantido como referência - não é mais usado
-      stopCorrecaoScanLoop();
-      if (correcaoScannerStep !== 'scan-gabarito' || !correcaoCurrentTarget) {
-        return;
+      var cameraModule = getCorrecaoCameraModule();
+      if (cameraModule && typeof cameraModule.runCorrecaoGabaritoLoopLegacy === 'function') {
+        cameraModule.runCorrecaoGabaritoLoopLegacy();
       }
-
-      correcaoScanFrameId = window.requestAnimationFrame(function processFrame() {
-        if (correcaoScannerStep !== 'scan-gabarito' || !correcaoCurrentTarget) {
-          return;
-        }
-
-        if (correcaoBusy) {
-          correcaoScanFrameId = window.requestAnimationFrame(processFrame);
-          return;
-        }
-
-        var now = Date.now();
-        if ((now - correcaoQrValidatedAt) < 1200) {
-          correcaoScanFrameId = window.requestAnimationFrame(processFrame);
-          return;
-        }
-
-        if ((now - correcaoLastAutoCaptureAt) < 650) {
-          correcaoScanFrameId = window.requestAnimationFrame(processFrame);
-          return;
-        }
-
-        var captureCanvas = captureCorrecaoFrame();
-        if (!(captureCanvas instanceof HTMLCanvasElement)) {
-          correcaoScanFrameId = window.requestAnimationFrame(processFrame);
-          return;
-        }
-
-        correcaoBusy = true;
-        validateCorrecaoFrameForReading(captureCanvas).then(function (validatedCanvas) {
-          correcaoBusy = false;
-          renderCorrecaoDiagnosticsOverlay(correcaoLastDiagnostics, captureCanvas.width, captureCanvas.height);
-
-          if (correcaoScannerStep !== 'scan-gabarito' || !correcaoCurrentTarget) {
-            return;
-          }
-
-          correcaoGabaritoStableFrames += 1;
-          if (correcaoGabaritoStableFrames < 2) {
-            setCorrecaoScannerStep('scan-gabarito', 'Gabarito identificado. Mantenha a câmera estável para concluir a leitura.');
-            correcaoScanFrameId = window.requestAnimationFrame(processFrame);
-            return;
-          }
-
-          correcaoLastAutoCaptureAt = now;
-          captureAndCorrectCurrentSheet(true, validatedCanvas);
-
-          if (correcaoScannerStep === 'scan-gabarito') {
-            correcaoScanFrameId = window.requestAnimationFrame(processFrame);
-          }
-        }).catch(function (error) {
-          correcaoBusy = false;
-          correcaoGabaritoStableFrames = 0;
-          renderCorrecaoDiagnosticsOverlay(correcaoLastDiagnostics, captureCanvas.width, captureCanvas.height);
-
-          if (correcaoScannerStep !== 'scan-gabarito') {
-            return;
-          }
-
-          if (error && error.message) {
-            setCorrecaoScannerStep('scan-gabarito', error.message);
-          }
-
-          correcaoScanFrameId = window.requestAnimationFrame(processFrame);
-        });
-      });
     }
 
     function beginCorrecaoFlow() {
-      var avaliacaoId = Number(activeDashboardAvaliacaoId || (idInput ? idInput.value : 0) || 0);
-      if (avaliacaoId <= 0) {
-        showGlobalStatus('Selecione uma avaliação válida antes de corrigir.', true);
-        return;
+      var cameraModule = getCorrecaoCameraModule();
+      if (cameraModule && typeof cameraModule.beginCorrecaoFlow === 'function') {
+        cameraModule.beginCorrecaoFlow();
       }
-
-      var questoesSemResposta = (Array.isArray(gabaritoQuestoesItens) ? gabaritoQuestoesItens : []).filter(function (item) {
-        var tipo = normalizeQuestaoTipo(item && item.tipo);
-        if (tipo === 'discursiva') {
-          return false;
-        }
-        var correta = String(item && item.correta || '').trim();
-        return correta === '' && !(item && item.anulada === true);
-      });
-
-      if (questoesSemResposta.length > 0) {
-        var numeros = questoesSemResposta.map(function (_item, _index) {
-          return String((Array.isArray(gabaritoQuestoesItens) ? gabaritoQuestoesItens : []).indexOf(_item) + 1);
-        }).join(', ');
-        showGlobalStatus(
-          'Não é possível iniciar a correção: ' + questoesSemResposta.length + ' questão(ões) sem resposta correta marcada (nº ' + numeros + '). Acesse Configurações → Questões e Respostas e marque a alternativa correta de cada questão.',
-          true
-        );
-        return;
-      }
-
-      closeCorrecaoRevisaoModal();
-      closeCorrecaoDiscursivaModal();
-      stopCorrecaoScanLoop();
-      resetCorrecaoAutoReadStability();
-      clearCorrecaoDiagnosticsOverlay();
-      correcaoCurrentTarget = null;
-      renderCorrecaoTarget();
-      setCorrecaoScannerStep('idle', 'Abrindo câmera...');
-      openCorrecaoModal();
-      startCorrecaoCamera().then(function () {
-        setCorrecaoScannerStep('scan-qr', 'Aponte a câmera para o QR Code da folha.');
-        runCorrecaoQrLoop();
-      }).catch(function (error) {
-        setCorrecaoScannerStep('idle', error && error.message ? error.message : 'Não foi possível abrir a câmera.');
-      });
     }
 
     function captureAndCorrectCurrentSheet(autoMode, providedCanvas) {
-      if (correcaoScannerStep !== 'scan-gabarito' || !correcaoCurrentTarget) {
-        return;
+      var cameraModule = getCorrecaoCameraModule();
+      if (cameraModule && typeof cameraModule.captureAndCorrectCurrentSheet === 'function') {
+        cameraModule.captureAndCorrectCurrentSheet(autoMode, providedCanvas);
       }
-
-      var isAutoMode = autoMode === true;
-      var discursivas = [];
-      var objectiveReading = {
-        answers: {},
-        diagnosticsByQuestion: {},
-        acceptedAnswerDiagnostics: [],
-        confidenceStats: {
-          low: 0,
-          medium: 0,
-          high: 0,
-        },
-      };
-
-      if (correcaoBusy) {
-        return;
-      }
-
-      var captureCanvas = providedCanvas instanceof HTMLCanvasElement ? providedCanvas : captureCorrecaoFrame();
-      if (!(captureCanvas instanceof HTMLCanvasElement)) {
-        if (!isAutoMode) {
-          setCorrecaoScannerStep('scan-gabarito', 'A imagem da câmera ainda não está pronta. Tente novamente.');
-        }
-        return;
-      }
-
-      correcaoBusy = true;
-
-      var validationPromise = validateCorrecaoFrameForReading(captureCanvas);
-
-      validationPromise.then(function (validatedCanvas) {
-        setCorrecaoScannerStep('saving', 'Lendo gabarito e calculando correção...');
-        var hasObjectiveQuestions = gabaritoQuestoesItens.some(function (item) {
-          return isQuestaoObjetiva(item && item.tipo);
-        });
-        objectiveReading = hasObjectiveQuestions
-          ? detectAnswersFromCorrecaoCanvas(validatedCanvas)
-          : objectiveReading;
-
-        var studentAnswers = objectiveReading.answers || {};
-        if (isAutoMode && hasObjectiveQuestions) {
-          var readingFingerprint = buildCorrecaoAnswersFingerprint(objectiveReading);
-          if (readingFingerprint === correcaoAutoReadFingerprint) {
-            correcaoAutoReadStableReads += 1;
-          } else {
-            correcaoAutoReadFingerprint = readingFingerprint;
-            correcaoAutoReadStableReads = 1;
-          }
-
-          if (correcaoAutoReadStableReads < 2) {
-            throw buildCorrecaoFlowError('correcao-stability-pending', 'Leitura preliminar pronta. Mantenha a folha estável para confirmar a mesma leitura.');
-          }
-        } else if (!isAutoMode) {
-          resetCorrecaoAutoReadStability();
-        }
-
-        var numeracaoText = getCurrentGabaritoNumeracaoLabel();
-        var numeracaoValue = correcaoCurrentTarget.numeracao || numeracaoText;
-        if (!numeracaoValue || numeracaoValue === 'Numeracao por aluno/turma') {
-          numeracaoValue = String(correcaoCurrentTarget.numeracaoLabel || '').replace(/^Nº\s*/i, '').trim();
-        }
-
-        discursivas = getCorrecaoDiscursivaQuestoes();
-        var scorePromise = discursivas.length
-          ? (function () {
-            stopCorrecaoScanLoop();
-            setCorrecaoScannerStep('discursiva', 'Informe as notas das questões discursivas para concluir a correção.');
-            return openCorrecaoDiscursivaModal(discursivas);
-          })()
-          : Promise.resolve({});
-
-        return scorePromise.then(function (discursiveScores) {
-          var comparison = buildCorrecaoCorrections(studentAnswers, discursiveScores, objectiveReading.diagnosticsByQuestion || {});
-          var percentual = comparison.totalPoints > 0 ? ((comparison.earnedPoints / comparison.totalPoints) * 100) : 0;
-          var resultPayload = {
-            avaliacao_id: correcaoCurrentTarget.avaliacaoId,
-            aluno_id: correcaoCurrentTarget.alunoId,
-            turma_id: correcaoCurrentTarget.turmaId,
-            numeracao: numeracaoValue,
-            qr_payload: correcaoCurrentTarget.qrPayload,
-            respostas: studentAnswers,
-            correcoes: comparison.corrections,
-            acertos: comparison.score,
-            total_questoes: comparison.total,
-            pontuacao: comparison.earnedPoints.toFixed(2),
-            pontuacao_total: comparison.totalPoints.toFixed(2),
-            percentual: percentual.toFixed(2),
-          };
-
-          if (shouldOpenCorrecaoReviewModal(isAutoMode, comparison)) {
-            setCorrecaoScannerStep('review', 'Revise os itens destacados antes do salvamento final.');
-            return openCorrecaoRevisaoModal({
-              comparison: comparison,
-              alunoNome: correcaoCurrentTarget && correcaoCurrentTarget.alunoNome ? correcaoCurrentTarget.alunoNome : '',
-            }).then(function () {
-              return saveCorrecaoResult(resultPayload);
-            });
-          }
-
-          return saveCorrecaoResult(resultPayload);
-        });
-      }).then(function (payload) {
-        resetCorrecaoAutoReadStability();
-        correcaoLastSuccessPayload = String(correcaoCurrentTarget && correcaoCurrentTarget.qrPayload || '');
-        correcaoLastSuccessAt = Date.now();
-        renderCorrecoesTable(payload.rows || [], {
-          total: Array.isArray(payload.rows) ? payload.rows.length : 0,
-          media_percentual: Array.isArray(payload.rows) && payload.rows.length
-            ? (payload.rows.reduce(function (sum, item) { return sum + Number(item.percentual || 0); }, 0) / payload.rows.length)
-            : 0,
-        });
-        if (correcaoCurrentTarget && Array.isArray(payload.rows)) {
-          var match = null;
-          for (var rowIndex = 0; rowIndex < payload.rows.length; rowIndex += 1) {
-            var row = payload.rows[rowIndex];
-            if (row && Number(row.aluno_id || 0) === Number(correcaoCurrentTarget.alunoId || 0)
-              && Number(row.turma_id || 0) === Number(correcaoCurrentTarget.turmaId || 0)
-              && Number(row.avaliacao_id || 0) === Number(correcaoCurrentTarget.avaliacaoId || 0)) {
-              match = row;
-              break;
-            }
-          }
-          correcaoCurrentTarget.existingCorrection = match;
-        }
-        resumeCorrecaoForNextSheet();
-      }).catch(function (error) {
-        if (error && error.code === 'correcao-review-cancelled') {
-          resetCorrecaoAutoReadStability();
-        }
-
-        if (!(correcaoModalElement instanceof HTMLElement) || !correcaoModalElement.classList.contains('show')) {
-          return;
-        }
-
-        var errorMessage = error && error.message
-          ? error.message
-          : (isAutoMode
-            ? 'QR identificado. Posicione a câmera sobre o gabarito para leitura automática.'
-            : 'Falha ao ler o gabarito. Tente novamente com a câmera mais alinhada.');
-
-        setCorrecaoScannerStep('scan-gabarito', errorMessage);
-        if (correcaoScannerStep === 'scan-gabarito' && correcaoCurrentTarget) {
-          runCorrecaoGabaritoLoop();
-        }
-      }).finally(function () {
-        correcaoBusy = false;
-      });
     }
 
     function getGabaritoTitleBoxSize(ctx, availablePageWidth, titleText) {
@@ -17181,6 +16935,7 @@
     window.__adminAvaliacoesCorrecaoApi = {
       beginCorrecaoFlow: beginCorrecaoFlow,
       closeCorrecaoModal: closeCorrecaoModal,
+      captureAndCorrectCurrentSheet: captureAndCorrectCurrentSheet,
       proceedCorrecaoToGabarito: proceedCorrecaoToGabarito,
       goToNextCorrecaoQr: goToNextCorrecaoQr,
       retryCorrecaoForCurrentTarget: retryCorrecaoForCurrentTarget,
@@ -17198,6 +16953,7 @@
       cancelCorrecaoRevisaoModal: cancelCorrecaoRevisaoModal,
       submitCorrecaoEdicaoModal: submitCorrecaoEdicaoModal,
       closeCorrecaoEdicaoModal: closeCorrecaoEdicaoModal,
+      getCameraDeps: getCorrecaoCameraDeps,
       getElements: function () {
         return {
           dashboardModalElement: dashboardModalElement,
@@ -17206,6 +16962,7 @@
           correcaoPane: correcaoPane,
           correcaoStartBtn: correcaoStartBtn,
           correcaoStopBtn: correcaoStopBtn,
+          correcaoCaptureBtn: correcaoCaptureBtn,
           correcaoConfirmBtn: correcaoConfirmBtn,
           correcaoNextBtn: correcaoNextBtn,
           correcaoRetryBtn: correcaoRetryBtn,

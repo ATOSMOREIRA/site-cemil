@@ -875,6 +875,11 @@ body {
   pointer-events: none !important;
 }
 
+.admin-avaliacao-dashboard-modal-underlay,
+.admin-avaliacao-dashboard-modal-underlay * {
+  pointer-events: none !important;
+}
+
 .login-section {
   padding-top: 2rem;
   padding-bottom: 2.5rem;
@@ -3363,6 +3368,7 @@ iframe.iframe-modal-active {
   border-radius: 0;
   position: relative;
   z-index: 1;
+  isolation: isolate;
 }
 
 .admin-avaliacao-correcao-video {
@@ -3401,10 +3407,10 @@ iframe.iframe-modal-active {
 }
 
 .admin-avaliacao-correcao-overlay-topbar {
-  position: fixed;
-  top: 1rem;
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 1rem);
   right: 1rem;
-  z-index: 3200;
+  z-index: 50;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -3448,6 +3454,12 @@ iframe.iframe-modal-active {
 .admin-avaliacao-correcao-align-guide-box {
   position: relative;
   width: min(72vw, 52vh);
+  height: min(82vh, calc(min(72vw, 52vh) * 1.414));
+  max-width: calc(100vw - 2rem);
+  max-height: calc(100vh - 8rem);
+  min-width: 220px;
+  min-height: 280px;
+  aspect-ratio: 794 / 1123;
   /* aspect-ratio é definido dinamicamente via JS com base no gabaritoTemplateMarkers */
   box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.40);
   border: 2px solid rgba(255, 255, 255, 0.60);
@@ -3658,7 +3670,7 @@ iframe.iframe-modal-active {
   }
 
   .admin-avaliacao-correcao-overlay-topbar {
-    top: 0.75rem;
+    top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
     left: 0.75rem;
     right: 0.75rem;
     max-width: none;
