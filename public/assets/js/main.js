@@ -622,7 +622,7 @@ document.addEventListener('DOMContentLoaded', function () {
   function bindAdminInstitutionalFramesModalContent() {
     var frameBindings = [
       { id: 'adminGerenciamentoTurmasFrame', key: 'cadastro_de_turmas' },
-      { id: 'adminGerenciamentoAlunosFrame', key: 'cadastro_de_alunos' },
+      { id: 'adminGerenciamentoEstudantesFrame', key: 'cadastro_de_estudantes' },
     ];
 
     var buildEndpoint = typeof window.appBuildEndpoint === 'function'

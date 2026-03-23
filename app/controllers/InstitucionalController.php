@@ -15,13 +15,13 @@ class InstitucionalController extends HomeController
 		]);
 	}
 
-	public function institucionalAlunos(): void
+	public function institucionalEstudantes(): void
 	{
-		if (!$this->canAccessSubservice('cadastro_de_alunos')) {
+		if (!$this->canAccessSubservice('cadastro_de_estudantes')) {
 			$this->redirect('/404');
 		}
 
-		$this->render('home/Institucional/Cadastro de Alunos', [
+		$this->render('home/Institucional/Cadastro de Estudantes', [
 			'schoolName' => SCHOOL_NAME,
 		]);
 	}
@@ -59,9 +59,9 @@ class InstitucionalController extends HomeController
 		]);
 	}
 
-	public function institucionalAlunosListar(): void
+	public function institucionalEstudantesListar(): void
 	{
-		if (!$this->canAccessSubservice('cadastro_de_alunos')) {
+		if (!$this->canAccessSubservice('cadastro_de_estudantes')) {
 			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
 		}
 
@@ -79,9 +79,9 @@ class InstitucionalController extends HomeController
 		]);
 	}
 
-	public function institucionalAlunosSalvar(): void
+	public function institucionalEstudantesSalvar(): void
 	{
-		if (!$this->canAccessSubservice('cadastro_de_alunos')) {
+		if (!$this->canAccessSubservice('cadastro_de_estudantes')) {
 			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
 		}
 
@@ -225,9 +225,9 @@ class InstitucionalController extends HomeController
 		]);
 	}
 
-	public function institucionalAlunosExcluir(): void
+	public function institucionalEstudantesExcluir(): void
 	{
-		if (!$this->canAccessSubservice('cadastro_de_alunos')) {
+		if (!$this->canAccessSubservice('cadastro_de_estudantes')) {
 			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
 		}
 
@@ -261,9 +261,9 @@ class InstitucionalController extends HomeController
 		$this->respondJson(['ok' => true, 'message' => 'Aluno excluído com sucesso.']);
 	}
 
-	public function institucionalAlunosImportarPreview(): void
+	public function institucionalEstudantesImportarPreview(): void
 	{
-		if (!$this->canAccessSubservice('cadastro_de_alunos')) {
+		if (!$this->canAccessSubservice('cadastro_de_estudantes')) {
 			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
 		}
 
@@ -315,9 +315,9 @@ class InstitucionalController extends HomeController
 		]);
 	}
 
-	public function institucionalAlunosImportar(): void
+	public function institucionalEstudantesImportar(): void
 	{
-		if (!$this->canAccessSubservice('cadastro_de_alunos')) {
+		if (!$this->canAccessSubservice('cadastro_de_estudantes')) {
 			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
 		}
 
@@ -4111,8 +4111,8 @@ class InstitucionalController extends HomeController
 			return;
 		}
 
-		if ($subserviceKey === 'cadastro_de_alunos') {
-			$this->institucionalAlunos();
+		if ($subserviceKey === 'cadastro_de_estudantes') {
+			$this->institucionalEstudantes();
 			return;
 		}
 
@@ -4985,7 +4985,7 @@ class InstitucionalController extends HomeController
 	private function canAccessTurmasCatalog(): bool
 	{
 		return $this->canAccessSubservice('cadastro_de_turmas')
-			|| $this->canAccessSubservice('cadastro_de_alunos')
+			|| $this->canAccessSubservice('cadastro_de_estudantes')
 			|| $this->canAccessSubservice('avaliacoes');
 	}
 

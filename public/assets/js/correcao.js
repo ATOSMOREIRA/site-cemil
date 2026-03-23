@@ -977,6 +977,8 @@
 		var correcaoRevisaoSaveBtn = elements.correcaoRevisaoSaveBtn;
 		var correcaoRevisaoCancelBtn = elements.correcaoRevisaoCancelBtn;
 		var correcaoEdicaoModalElement = elements.correcaoEdicaoModalElement;
+		var correcaoEdicaoBlankBtn = elements.correcaoEdicaoBlankBtn;
+		var correcaoEdicaoAbsentBtn = elements.correcaoEdicaoAbsentBtn;
 		var correcaoEdicaoSaveBtn = elements.correcaoEdicaoSaveBtn;
 		var correcaoEdicaoCancelBtn = elements.correcaoEdicaoCancelBtn;
 
@@ -1095,6 +1097,12 @@
 		bindOnce(correcaoEdicaoSaveBtn, 'click', 'EditSave', function () {
 			api.submitCorrecaoEdicaoModal();
 		});
+		bindOnce(correcaoEdicaoBlankBtn, 'click', 'EditBlank', function () {
+			api.submitCorrecaoEdicaoQuickStatus('corrigida');
+		});
+		bindOnce(correcaoEdicaoAbsentBtn, 'click', 'EditAbsent', function () {
+			api.submitCorrecaoEdicaoQuickStatus('ausente');
+		});
 		bindOnce(correcaoEdicaoCancelBtn, 'click', 'EditCancel', function () {
 			api.closeCorrecaoEdicaoModal();
 		});
@@ -1110,12 +1118,27 @@
 			api.stopCorrecoesPolling();
 		});
 
+		bindOnce(dashboardModalElement, 'shown.bs.modal', 'DashboardShown', function () {
+			api.loadCorrecoesList(false);
+
+			if (correcaoPane instanceof HTMLElement && correcaoPane.classList.contains('show')) {
+				api.startCorrecoesPolling();
+				return;
+			}
+
+			api.stopCorrecoesPolling();
+		});
+
 		bindOnce(dashboardTabsElement, 'shown.bs.tab', 'TabsShown', function (event) {
 			var targetId = event && event.target ? String(event.target.getAttribute('data-bs-target') || '') : '';
 			if (targetId === '#adminAvaliacaoDashboardPaneCorrecao') {
 				api.loadCorrecoesList(false);
 				api.startCorrecoesPolling();
 				return;
+			}
+
+			if (targetId === '#adminAvaliacaoDashboardPaneEstatisticas') {
+				api.loadCorrecoesList(false);
 			}
 
 			api.stopCorrecoesPolling();

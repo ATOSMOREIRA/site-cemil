@@ -1144,7 +1144,7 @@
 										<div class="input-group">
 											<input type="text" id="inputBuscaAluno" class="form-control"
 												placeholder="Buscar por nome ou turma…" maxlength="80"
-												autocomplete="off" aria-label="Buscar aluno">
+												autocomplete="off" aria-label="Buscar estudante">
 											<button class="btn btn-outline-danger" id="btnBuscarAlunoManual"
 												type="button" aria-label="Buscar">
 												<i class="las la-search"></i>
@@ -1191,7 +1191,7 @@
 										<thead>
 											<tr>
 												<th>Horário</th>
-												<th>Aluno</th>
+												<th>Estudante</th>
 												<th>Turma</th>
 												<th>Refeição</th>
 											</tr>
@@ -1333,7 +1333,7 @@
 										</th>
 										<th>Data</th>
 										<th>Horário</th>
-										<th>Aluno</th>
+										<th>Estudante</th>
 										<th>Turma</th>
 										<th>Refeição</th>
 										<th class="text-end">Ações</th>
@@ -1511,7 +1511,7 @@
 							<input type="hidden" id="editRegId" value="0">
 							<div class="row g-3">
 								<div class="col-12">
-									<label class="form-label">Aluno</label>
+									<label class="form-label">Estudante</label>
 									<input type="text" id="editRegAluno" class="form-control" readonly>
 								</div>
 								<div class="col-6">
@@ -2069,9 +2069,9 @@
 					'<div class="dashboard-hero-subtitle">Visão consolidada de ' + esc(tipoLabel) + ' para ' + esc(turmaLabel) + ', com indicadores prontos para apresentação e impressão.</div>' +
 					'<div class="row g-3 justify-content-center mt-3">' +
 					'<div class="col-6 col-md-3"><div class="dashboard-hero-metric"><div class="dashboard-hero-metric-value">' + formatDecimal(mediaPorDia) + '</div><div class="dashboard-hero-metric-label">média por dia</div></div></div>' +
-					'<div class="col-6 col-md-3"><div class="dashboard-hero-metric"><div class="dashboard-hero-metric-value">' + formatNumero(alunosAtendidos) + '</div><div class="dashboard-hero-metric-label">alunos atendidos</div></div></div>' +
+					'<div class="col-6 col-md-3"><div class="dashboard-hero-metric"><div class="dashboard-hero-metric-value">' + formatNumero(alunosAtendidos) + '</div><div class="dashboard-hero-metric-label">estudantes atendidos</div></div></div>' +
 					'<div class="col-6 col-md-3"><div class="dashboard-hero-metric"><div class="dashboard-hero-metric-value">' + formatNumero(turmasAtendidas) + '</div><div class="dashboard-hero-metric-label">turmas com consumo</div></div></div>' +
-					'<div class="col-6 col-md-3"><div class="dashboard-hero-metric"><div class="dashboard-hero-metric-value">' + formatDecimal(mediaPorAluno) + '</div><div class="dashboard-hero-metric-label">média por aluno</div></div></div>' +
+					'<div class="col-6 col-md-3"><div class="dashboard-hero-metric"><div class="dashboard-hero-metric-value">' + formatDecimal(mediaPorAluno) + '</div><div class="dashboard-hero-metric-label">média por estudante</div></div></div>' +
 					'</div></div></div>';
 
 				document.getElementById('relDestaquesWrap').innerHTML =
@@ -2112,7 +2112,7 @@
 
 				document.getElementById('relInsightsWrap').innerHTML =
 					'<div class="dashboard-insight-item"><div class="dashboard-insight-icon"><i class="las la-calendar-day"></i></div><div class="dashboard-insight-text"><strong>Ritmo diário</strong><span>' + formatDecimal(mediaPorDia) + ' refeições em média por dia com movimento, distribuídas em ' + formatNumero(diasComMovimento) + ' dia(s).</span></div></div>' +
-					'<div class="dashboard-insight-item"><div class="dashboard-insight-icon"><i class="las la-users"></i></div><div class="dashboard-insight-text"><strong>Capilaridade</strong><span>' + formatNumero(alunosAtendidos) + ' aluno(s) diferentes participaram, com média de ' + formatDecimal(mediaPorAluno) + ' refeição(ões) por aluno.</span></div></div>' +
+					'<div class="dashboard-insight-item"><div class="dashboard-insight-icon"><i class="las la-users"></i></div><div class="dashboard-insight-text"><strong>Capilaridade</strong><span>' + formatNumero(alunosAtendidos) + ' estudante(s) diferentes participaram, com média de ' + formatDecimal(mediaPorAluno) + ' refeição(ões) por estudante.</span></div></div>' +
 					'<div class="dashboard-insight-item"><div class="dashboard-insight-icon"><i class="las la-school"></i></div><div class="dashboard-insight-text"><strong>Concentração por turma</strong><span>' + (topoTurma ? ('A turma ' + esc(topoTurma.label) + ' lidera com ' + formatNumero(topoTurma.total) + ' registros.') : 'Nenhuma turma se destacou neste período.') + '</span></div></div>' +
 					'<div class="dashboard-insight-item"><div class="dashboard-insight-icon"><i class="las la-chart-line"></i></div><div class="dashboard-insight-text"><strong>Padrão semanal</strong><span>' + (rankingSemana[0] ? (esc(rankingSemana[0].label) + ' foi o dia mais movimentado, com ' + formatNumero(rankingSemana[0].total) + ' refeições.') : 'Ainda não há um padrão semanal identificável.') + '</span></div></div>' +
 					'<div class="dashboard-insight-item"><div class="dashboard-insight-icon"><i class="las la-clock"></i></div><div class="dashboard-insight-text"><strong>Pico horário</strong><span>' + (picoHora ? ('A faixa ' + esc(picoHora.label) + ' concentrou ' + formatNumero(picoHora.total) + ' refeições, representando o maior fluxo do período.') : 'Não houve volume suficiente para identificar uma faixa horária de pico.') + '</span></div></div>';
@@ -2528,7 +2528,7 @@
 			}
 
 			/* --------------------------------------------------------
-			   Buscar aluno (por matrícula)
+			   Buscar estudante (por matrícula)
 			   -------------------------------------------------------- */
 			function buscarAluno(matricula) {
 				var tipoId = document.getElementById('selecionarTipo').value;
@@ -2540,7 +2540,7 @@
 
 				get('/institucional/refeitorio/buscar-aluno?matricula=' + encodeURIComponent(matricula) + '&tipo_id=' + encodeURIComponent(tipoId), function (res) {
 					if (!res.ok) {
-						showStatus(res.message || 'Aluno não encontrado.', 'error');
+						showStatus(res.message || 'Estudante não encontrado.', 'error');
 						_bloqueioScan = false;
 						return;
 					}
@@ -2673,13 +2673,13 @@
 				grid.innerHTML = '<p class="text-muted small">Carregando…</p>';
 
 				get('/institucional/refeitorio/qrcodes' + (turmaId ? '?turma_id=' + encodeURIComponent(turmaId) : ''), function (res) {
-					if (!res.ok) { showStatus(res.message || 'Erro ao carregar alunos.', 'error'); return; }
+					if (!res.ok) { showStatus(res.message || 'Erro ao carregar estudantes.', 'error'); return; }
 
 					var alunos = res.alunos || [];
-					document.getElementById('qrContador').textContent = alunos.length + ' aluno(s)';
+					document.getElementById('qrContador').textContent = alunos.length + ' estudante(s)';
 
 					if (!alunos.length) {
-						grid.innerHTML = '<p class="text-muted small">Nenhum aluno encontrado.</p>';
+						grid.innerHTML = '<p class="text-muted small">Nenhum estudante encontrado.</p>';
 						return;
 					}
 
@@ -3143,7 +3143,7 @@
 					if (!res.ok) { lista.classList.add('d-none'); return; }
 					var alunos = res.alunos || [];
 					if (!alunos.length) {
-						lista.innerHTML = '<div class="px-3 py-2 text-muted small">Nenhum aluno encontrado.</div>';
+						lista.innerHTML = '<div class="px-3 py-2 text-muted small">Nenhum estudante encontrado.</div>';
 						return;
 					}
 					var html = '';

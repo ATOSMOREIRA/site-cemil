@@ -421,7 +421,7 @@ class HomeController extends Controller
             'tipo' => $authType,
             'servicos' => $rawServices,
             'can_view_institucional' => $this->canAccessInstitutionalAreaByRules($authType, $rawServices),
-            'can_access_cadastro_de_alunos' => $this->canAccessSubserviceByRules($authType, $rawServices, 'cadastro_de_alunos'),
+            'can_access_cadastro_de_estudantes' => $this->canAccessSubserviceByRules($authType, $rawServices, 'cadastro_de_estudantes'),
             'can_access_corretor_de_gabaritos' => $this->canAccessSubserviceByRules($authType, $rawServices, 'corretor_de_gabaritos'),
         ];
 
@@ -1434,7 +1434,7 @@ class HomeController extends Controller
         ];
 
         // Alunos
-        if ($isAdmin || !empty($user['can_access_cadastro_de_alunos'])) {
+        if ($isAdmin || !empty($user['can_access_cadastro_de_estudantes'])) {
             $desc = 'Lista alunos cadastrados.';
             if ($turmasVinculadas !== []) {
                 $desc .= ' Filtrado automaticamente para as turmas vinculadas ao usuário.';

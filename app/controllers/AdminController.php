@@ -168,7 +168,7 @@ class AdminController extends HomeController
             'gerenciamento_informacoes' => 'gerenciamento-informacoes.html',
             'gerenciamento_avaliacoes' => 'gerenciamento-avaliacoes.html',
             'gerenciamento_turmas' => 'gerenciamento-turmas.html',
-            'gerenciamento_alunos' => 'gerenciamento-alunos.html',
+            'gerenciamento_estudantes' => 'gerenciamento-estudantes.html',
             'ferramentas_administrativas' => 'ferramentas-administrativas.html',
         ];
 

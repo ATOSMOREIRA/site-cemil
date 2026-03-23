@@ -157,7 +157,7 @@
               <th>Turno</th>
               <th>Capacidade</th>
               <th>Anos esc.</th>
-              <th>Alunos</th>
+              <th>Estudantes</th>
               <th class="text-end">Ações</th>
             </tr>
           </thead>
@@ -230,11 +230,11 @@
               </div>
 
               <div class="col-12">
-                <label class="form-label">Alunos relacionados</label>
+                <label class="form-label">Estudantes relacionados</label>
                 <div class="border rounded p-2 institutional-list-scroll-180" id="turmaAlunosRelacionadosList">
-                  <div class="small text-secondary">Carregando alunos...</div>
+                  <div class="small text-secondary">Carregando estudantes...</div>
                 </div>
-                <div class="form-text">Selecione os alunos que pertencem a esta turma.</div>
+                <div class="form-text">Selecione os estudantes que pertencem a esta turma.</div>
               </div>
             </div>
           </div>
@@ -560,7 +560,7 @@
         }
 
         if (!alunosDisponiveis.length) {
-          alunosRelacionadosListElement.innerHTML = '<div class="small text-secondary">Nenhum aluno cadastrado.</div>';
+          alunosRelacionadosListElement.innerHTML = '<div class="small text-secondary">Nenhum estudante cadastrado.</div>';
           return;
         }
 
@@ -584,7 +584,7 @@
           ].join('');
         }).join('');
 
-        alunosRelacionadosListElement.innerHTML = html !== '' ? html : '<div class="small text-secondary">Nenhum aluno cadastrado.</div>';
+        alunosRelacionadosListElement.innerHTML = html !== '' ? html : '<div class="small text-secondary">Nenhum estudante cadastrado.</div>';
 
         alunosRelacionadosListElement.querySelectorAll('.js-turma-aluno-checkbox').forEach(function (checkbox) {
           checkbox.addEventListener('change', function () {
@@ -607,7 +607,7 @@
       }
 
       function loadAlunosOptions() {
-        return fetch(buildEndpoint('/institucional/alunos/listar'), {
+        return fetch(buildEndpoint('/institucional/estudantes/listar'), {
           headers: {
             'X-Requested-With': 'XMLHttpRequest'
           }
@@ -615,7 +615,7 @@
           .then(function (response) {
             return response.json().then(function (payload) {
               if (!response.ok || !payload.ok) {
-                throw new Error(payload.message || 'Falha ao carregar alunos.');
+                throw new Error(payload.message || 'Falha ao carregar estudantes.');
               }
 
               return payload;
@@ -626,7 +626,7 @@
             renderAlunosRelacionadosList();
           })
           .catch(function (error) {
-            showStatus(error && error.message ? error.message : 'Erro ao carregar alunos.', true);
+            showStatus(error && error.message ? error.message : 'Erro ao carregar estudantes.', true);
           });
       }
 

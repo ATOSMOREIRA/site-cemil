@@ -12,6 +12,14 @@ $canManageAvaliacoes = (($canManageAvaliacoes ?? false) === true) || (($isAdmin 
 $canEditAvaliacoes = (($canEditAvaliacoes ?? false) === true) || (($isAdmin ?? false) === true);
 $currentUserId = (int) ($currentUserId ?? 0);
 $isAdminViewer = (($isAdmin ?? false) === true);
+$turmasMap = [];
+foreach ($turmas as $turmaOption) {
+    $turmaOptionId = (int) ($turmaOption['id'] ?? 0);
+    $turmaOptionNome = trim((string) ($turmaOption['nome'] ?? $turmaOption['turma'] ?? ''));
+    if ($turmaOptionId > 0 && $turmaOptionNome !== '') {
+        $turmasMap[$turmaOptionId] = $turmaOptionNome;
+    }
+}
 ?>
 
 <section class="py-4 h-100 institutional-avaliacoes-shell">
@@ -38,9 +46,31 @@ $isAdminViewer = (($isAdmin ?? false) === true);
                         </div>
                     </div>
 
-                    <div class="mb-3 institutional-avaliacoes-search-wrap">
-                        <input type="search" class="form-control form-control-sm" id="adminAvaliacoesTableSearch"
-                            placeholder="Buscar avaliação" autocomplete="off">
+                    <div class="institutional-avaliacoes-toolbar mb-3">
+                        <div class="institutional-avaliacoes-toolbar-top">
+                            <div class="institutional-avaliacoes-search-wrap">
+                                <input type="search" class="form-control form-control-sm"
+                                    id="adminAvaliacoesTableSearch" placeholder="Buscar avaliação" autocomplete="off">
+                            </div>
+                            <div class="institutional-avaliacoes-toolbar-actions">
+                                <button type="button" class="btn btn-outline-secondary btn-sm"
+                                    id="adminAvaliacoesFiltersButton">
+                                    <i class="las la-filter me-1"></i>Filtros
+                                </button>
+                                <div class="institutional-avaliacoes-page-size-wrap">
+                                    
+                                    <select class="form-select form-select-sm" id="adminAvaliacoesPageSize">
+                                        <option value="all">Todas</option>
+                                        <option value="10">10</option>
+                                        <option value="30">30</option>
+                                        <option value="50">50</option>
+                                        <option value="100">100</option>
+                                        <option value="200">200</option>
+                                        <option value="500">500</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div id="avaliacoesListContainer"
@@ -110,6 +140,31 @@ $isAdminViewer = (($isAdmin ?? false) === true);
                                             $descricaoResumo = mb_strimwidth($descricaoResumo, 0, 120, '...', 'UTF-8');
                                         }
 
+                                        $rowTurmaFilterValues = [];
+                                        $rowTurmaFilterLabels = [];
+                                        foreach ($turmasRelacionadasIds as $turmaRelacionadaId) {
+                                            $turmaRelacionadaId = (int) $turmaRelacionadaId;
+                                            if ($turmaRelacionadaId <= 0 || !isset($turmasMap[$turmaRelacionadaId])) {
+                                                continue;
+                                            }
+
+                                            $turmaToken = 'id:' . $turmaRelacionadaId;
+                                            if (!isset($rowTurmaFilterValues[$turmaToken])) {
+                                                $rowTurmaFilterValues[$turmaToken] = $turmaToken;
+                                                $rowTurmaFilterLabels[$turmaToken] = $turmasMap[$turmaRelacionadaId];
+                                            }
+                                        }
+
+                                        $turmaLegadaNome = trim((string) ($avaliacao['turma'] ?? ''));
+                                        if ($rowTurmaFilterValues === [] && $turmaLegadaNome !== '') {
+                                            $turmaLegadaToken = 'legacy:' . substr(sha1(strtolower($turmaLegadaNome)), 0, 12);
+                                            $rowTurmaFilterValues[$turmaLegadaToken] = $turmaLegadaToken;
+                                            $rowTurmaFilterLabels[$turmaLegadaToken] = $turmaLegadaNome;
+                                        }
+
+                                        $rowTurmaFilterValues = array_values($rowTurmaFilterValues);
+                                        $rowTurmaFilterLabels = array_values($rowTurmaFilterLabels);
+
                                         $cicloDisplay = '-';
                                         if ($ciclo === 1) {
                                             $cicloDisplay = '1º ciclo';
@@ -117,10 +172,13 @@ $isAdminViewer = (($isAdmin ?? false) === true);
                                             $cicloDisplay = '2º ciclo';
                                         }
 
-                                        $searchText = implode(' ', [$nome, $cicloDisplay, $aplicacao, $autorNome, $aplicadorNome, $descricao, $isRecuperacao ? 'recuperacao recuperação' : '']);
+                                        $searchText = implode(' ', [$nome, $cicloDisplay, implode(' ', $rowTurmaFilterLabels), $aplicacao, $autorNome, $aplicadorNome, $descricao, $isRecuperacao ? 'recuperacao recuperação' : '']);
                                     ?>
                                     <tr class="js-admin-avaliacoes-row" data-avaliacao-id="<?= $id; ?>"
-                                        data-search-text="<?= htmlspecialchars($searchText, ENT_QUOTES, 'UTF-8'); ?>">
+                                        data-search-text="<?= htmlspecialchars($searchText, ENT_QUOTES, 'UTF-8'); ?>"
+                                        data-filter-cycle="<?= htmlspecialchars($ciclo > 0 ? (string) $ciclo : '', ENT_QUOTES, 'UTF-8'); ?>"
+                                        data-filter-turmas="<?= htmlspecialchars(implode('||', $rowTurmaFilterValues), ENT_QUOTES, 'UTF-8'); ?>"
+                                        data-filter-turmas-labels="<?= htmlspecialchars(implode('||', $rowTurmaFilterLabels), ENT_QUOTES, 'UTF-8'); ?>">
                                         <?php if ($canEditAvaliacoes): ?>
                                         <td class="institutional-avaliacoes-col-select"><input type="checkbox"
                                                 class="form-check-input js-admin-avaliacao-select"
@@ -226,11 +284,59 @@ $isAdminViewer = (($isAdmin ?? false) === true);
                                 </tbody>
                             </table>
                         </div>
+                        <div class="institutional-avaliacoes-pagination-wrap mt-3" id="adminAvaliacoesPaginationWrap">
+                            <div class="small text-secondary" id="adminAvaliacoesPaginationInfo"></div>
+                            <div class="institutional-avaliacoes-pagination-controls">
+                                <button type="button" class="btn btn-outline-secondary btn-sm"
+                                    id="adminAvaliacoesPrevPageBtn">Anterior</button>
+                                <div class="institutional-avaliacoes-page-buttons" id="adminAvaliacoesPaginationPages">
+                                </div>
+                                <button type="button" class="btn btn-outline-secondary btn-sm"
+                                    id="adminAvaliacoesNextPageBtn">Próxima</button>
+                            </div>
+                        </div>
                         <?php endif; ?>
                     </div>
 
                     <div id="adminAvaliacoesTableEmpty" class="alert alert-light border mt-3 d-none" role="alert">
                         Nenhuma avaliação encontrada para a busca.
+                    </div>
+
+                    <div class="modal fade admin-info-form-modal admin-avaliacao-selector-modal"
+                        id="adminAvaliacoesFiltersModal" tabindex="-1"
+                        aria-labelledby="adminAvaliacoesFiltersModalLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered modal-lg">
+                            <div class="modal-content site-modal-content">
+                                <div class="modal-header">
+                                    <div>
+                                        <div class="small text-secondary">Filtros da listagem</div>
+                                        <h2 class="h6 mb-0" id="adminAvaliacoesFiltersModalLabel">Selecionar filtros</h2>
+                                    </div>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                        aria-label="Fechar"></button>
+                                </div>
+                                <div class="modal-body institutional-avaliacoes-filters-modal-body">
+                                    <div class="institutional-avaliacoes-filters-wrap institutional-avaliacoes-filters-modal-wrap">
+                                        <div class="institutional-avaliacoes-filter-group">
+                                            <span class="institutional-avaliacoes-filter-label">Ciclos</span>
+                                            <div class="institutional-avaliacoes-filter-chip-list" id="adminAvaliacoesCycleFilters">
+                                            </div>
+                                        </div>
+                                        <div class="institutional-avaliacoes-filter-group">
+                                            <span class="institutional-avaliacoes-filter-label">Turmas</span>
+                                            <div class="institutional-avaliacoes-filter-chip-list" id="adminAvaliacoesTurmaFilters">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                                        id="adminAvaliacoesClearFiltersButton">Limpar filtros</button>
+                                    <button type="button" class="btn btn-primary btn-sm"
+                                        data-bs-dismiss="modal">Fechar</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -380,28 +486,28 @@ $isAdminViewer = (($isAdmin ?? false) === true);
                                         </div>
                                     </div>
                                     <div class="form-text">Selecione uma ou mais turmas para vincular à avaliação. Os
-                                        alunos dessas turmas serão selecionados automaticamente.</div>
+                                        estudantes dessas turmas serão selecionados automaticamente.</div>
                                 </div>
                                 <div class="col-12">
-                                    <label class="form-label">Alunos que farão a avaliação</label>
+                                    <label class="form-label">Estudantes que farão a avaliação</label>
                                     <div class="admin-avaliacao-selector-summary-card">
                                         <div id="adminAvaliacaoAlunosSummary"
                                             class="admin-avaliacao-selector-summary-body">
                                             <div class="small text-secondary">Selecione as turmas para vincular os
-                                                alunos automaticamente.</div>
+                                                estudantes automaticamente.</div>
                                         </div>
                                         <div class="d-flex flex-wrap gap-2 mt-3">
                                             <button type="button" class="btn btn-outline-primary btn-sm"
                                                 id="adminAvaliacaoOpenAlunosModalBtn" disabled>
-                                                <i class="las la-user-friends me-1"></i>Ver alunos selecionados
+                                                <i class="las la-user-friends me-1"></i>Ver estudantes selecionados
                                             </button>
                                             <button type="button" class="btn btn-outline-secondary btn-sm"
                                                 id="adminAvaliacaoClearAlunosBtn">
-                                                <i class="las la-user-minus me-1"></i>Limpar alunos
+                                                <i class="las la-user-minus me-1"></i>Limpar estudantes
                                             </button>
                                         </div>
                                     </div>
-                                    <div class="form-text">Os alunos das turmas selecionadas serão vinculados
+                                    <div class="form-text">Os estudantes das turmas selecionadas serão vinculados
                                         automaticamente. Se precisar, você ainda pode revisar manualmente a lista.</div>
                                 </div>
                                 <div class="col-12">
@@ -434,7 +540,7 @@ $isAdminViewer = (($isAdmin ?? false) === true);
                                                 aria-label="Fechar"></button>
                                         </div>
                                         <div class="modal-body">
-                                            <p class="small text-secondary mb-3">Ao marcar uma turma, todos os alunos
+                                            <p class="small text-secondary mb-3">Ao marcar uma turma, todos os estudantes
                                                 dela serão vinculados automaticamente à avaliação.</p>
                                             <div class="mb-3">
                                                 <input type="search" class="form-control form-control-sm"
@@ -483,9 +589,9 @@ $isAdminViewer = (($isAdmin ?? false) === true);
                                     <div class="modal-content site-modal-content">
                                         <div class="modal-header">
                                             <div>
-                                                <div class="small text-secondary">Seleção de alunos</div>
+                                                <div class="small text-secondary">Seleção de estudantes</div>
                                                 <h2 class="h6 mb-0" id="adminAvaliacaoAlunosModalLabel">Escolha os
-                                                    alunos das turmas selecionadas</h2>
+                                                    estudantes das turmas selecionadas</h2>
                                             </div>
                                             <button type="button" class="btn-close" data-bs-dismiss="modal"
                                                 aria-label="Fechar"></button>
@@ -495,7 +601,7 @@ $isAdminViewer = (($isAdmin ?? false) === true);
                                                 <div class="col-md-7">
                                                     <input type="search" class="form-control form-control-sm"
                                                         id="adminAvaliacaoAlunosSearch"
-                                                        placeholder="Buscar aluno por nome" autocomplete="off">
+                                                        placeholder="Buscar estudante por nome" autocomplete="off">
                                                 </div>
                                                 <div class="col-md-5">
                                                     <select class="form-select form-select-sm"
@@ -507,7 +613,7 @@ $isAdminViewer = (($isAdmin ?? false) === true);
                                             <div class="border rounded p-2 admin-avaliacao-turmas-list admin-avaliacao-alunos-modal-list"
                                                 id="adminAvaliacaoAlunosRelacionadosWrap">
                                                 <div class="small text-secondary">Selecione primeiro uma turma para
-                                                    listar os alunos.</div>
+                                                    listar os estudantes.</div>
                                             </div>
                                         </div>
                                     </div>
@@ -686,17 +792,17 @@ $isAdminViewer = (($isAdmin ?? false) === true);
                                             <div
                                                 class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
                                                 <div>
-                                                    <div class="small fw-semibold text-dark">Alunos previstos para a
+                                                    <div class="small fw-semibold text-dark">Estudantes previstos para a
                                                         avaliação</div>
                                                     <div class="small text-secondary"
                                                         id="adminAvaliacaoCorrecaoRosterStatus">Carregando status dos
-                                                        alunos previstos...</div>
+                                                        estudantes previstos...</div>
                                                 </div>
                                             </div>
                                             <div class="admin-avaliacao-correcao-search-wrap mb-3">
                                                 <input type="search" class="form-control form-control-sm"
                                                     id="adminAvaliacaoCorrecaoSearch"
-                                                    placeholder="Buscar por aluno, turma, status, resultado ou data"
+                                                    placeholder="Buscar por estudante, turma, status, resultado ou data"
                                                     autocomplete="off">
                                             </div>
                                             <div
@@ -705,7 +811,7 @@ $isAdminViewer = (($isAdmin ?? false) === true);
                                                     id="adminAvaliacaoCorrecaoRosterTable">
                                                     <thead>
                                                         <tr>
-                                                            <th>Aluno</th>
+                                                            <th>Estudante</th>
                                                             <th>Turma</th>
                                                             <th>Status</th>
                                                             <th>Resultado</th>
@@ -716,7 +822,7 @@ $isAdminViewer = (($isAdmin ?? false) === true);
                                                     <tbody id="adminAvaliacaoCorrecaoRosterBody">
                                                         <tr>
                                                             <td colspan="6" class="text-center text-secondary py-4">
-                                                                Nenhum aluno relacionado a esta avaliação.</td>
+                                                                Nenhum estudante relacionado a esta avaliação.</td>
                                                         </tr>
                                                     </tbody>
                                                 </table>
@@ -740,7 +846,7 @@ $isAdminViewer = (($isAdmin ?? false) === true);
                                             <h2 class="visually-hidden" id="adminAvaliacaoCorrecaoModalLabel">Leitura de
                                                 QR e gabarito</h2>
                                             <div class="visually-hidden" id="adminAvaliacaoCorrecaoResumo">Leia o QR
-                                                Code da folha para identificar aluno, turma e avaliação.</div>
+                                                Code da folha para identificar estudante, turma e avaliação.</div>
                                             <div
                                                 class="admin-avaliacao-correcao-camera-wrap admin-avaliacao-correcao-camera-wrap-modal mb-3">
                                                 <video id="adminAvaliacaoCorrecaoVideo"
@@ -805,7 +911,7 @@ $isAdminViewer = (($isAdmin ?? false) === true);
                                                         </button>
                                                         <button type="button" class="btn btn-outline-danger btn-sm"
                                                             id="adminAvaliacaoCorrecaoAbsentBtn">
-                                                            <i class="las la-user-times me-1"></i>Aluno ausente
+                                                            <i class="las la-user-times me-1"></i>Estudante ausente
                                                         </button>
                                                     </div>
                                                     <div class="admin-avaliacao-correcao-overlay-actions d-none"
@@ -937,6 +1043,10 @@ $isAdminViewer = (($isAdmin ?? false) === true);
                                                 id="adminAvaliacaoCorrecaoEdicaoError"></div>
                                         </div>
                                         <div class="modal-footer admin-avaliacao-correcao-edicao-modal-footer">
+                                            <button type="button" class="btn btn-outline-secondary btn-sm d-none"
+                                                id="adminAvaliacaoCorrecaoEdicaoBlankBtn">Em Branco</button>
+                                            <button type="button" class="btn btn-outline-danger btn-sm d-none"
+                                                id="adminAvaliacaoCorrecaoEdicaoAbsentBtn">Estudante Ausente</button>
                                             <button type="button" class="btn btn-primary btn-sm"
                                                 id="adminAvaliacaoCorrecaoEdicaoSaveBtn">Salvar alterações</button>
                                             <button type="button" class="btn btn-outline-secondary btn-sm"
@@ -1326,7 +1436,7 @@ $isAdminViewer = (($isAdmin ?? false) === true);
                                                 </div>
                                                 <div class="form-text" id="adminAvaliacaoGabaritoEscalaValor">Use esta
                                                     página A4 para posicionar o bloco do gabarito. Áreas de dados do
-                                                    aluno e QR Code permanecem como referência visual.</div>
+                                                    estudante e QR Code permanecem como referência visual.</div>
                                             </div>
                                         </div>
                                     </div>
@@ -1343,7 +1453,7 @@ $isAdminViewer = (($isAdmin ?? false) === true);
                                         <div
                                             class="border rounded p-3 bg-light admin-avaliacao-impressao-controls-panel">
                                             <div class="small text-secondary" id="adminAvaliacaoImpressaoResumo">A
-                                                visualização A4 será montada com os alunos vinculados à avaliação.</div>
+                                                visualização A4 será montada com os estudantes vinculados à avaliação.</div>
                                             <div class="mt-3">
                                                 <div
                                                     class="d-flex align-items-center justify-content-between gap-2 mb-2">
@@ -1372,7 +1482,7 @@ $isAdminViewer = (($isAdmin ?? false) === true);
                                             </div>
                                             <div class="small text-secondary mt-3" id="adminAvaliacaoImpressaoStatus">
                                                 Cada folha será preenchida automaticamente com numeração por turma,
-                                                dados do aluno, turma e QR Code com os ids da avaliação, aluno e turma.
+                                                dados do estudante, turma e QR Code com os ids da avaliação, estudante e turma.
                                             </div>
                                         </div>
                                     </div>
@@ -1381,7 +1491,7 @@ $isAdminViewer = (($isAdmin ?? false) === true);
                                             <div class="admin-avaliacao-impressao-search-wrap mb-3">
                                                 <input type="search" class="form-control form-control-sm"
                                                     id="adminAvaliacaoImpressaoSearch"
-                                                    placeholder="Buscar por aluno, turma ou numeração"
+                                                    placeholder="Buscar por estudante, turma ou numeração"
                                                     autocomplete="off">
                                             </div>
                                             <div class="admin-avaliacao-impressao-preview-grid"
@@ -1461,12 +1571,12 @@ $isAdminViewer = (($isAdmin ?? false) === true);
                             <div class="col-12">
                                 <div class="admin-avaliacao-stats-filter-group">
                                     <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-                                        <label class="form-label form-label-sm mb-0">Aluno</label>
+                                        <label class="form-label form-label-sm mb-0">Estudante</label>
                                         <span class="small text-secondary">Selecione uma ou mais opções</span>
                                     </div>
                                     <input type="search"
                                         class="form-control form-control-sm admin-avaliacao-stats-filter-search"
-                                        id="adminAvaliacaoStatsFilterAlunoSearch" placeholder="Buscar aluno..."
+                                        id="adminAvaliacaoStatsFilterAlunoSearch" placeholder="Buscar estudante..."
                                         autocomplete="off">
                                     <div class="admin-avaliacao-stats-filter-card-wrap">
                                         <div class="admin-avaliacao-stats-filter-card-grid"

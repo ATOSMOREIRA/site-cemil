@@ -271,7 +271,7 @@ trait InstitutionalAccessTrait
             'avaliacoes', 'cadastro_de_avaliacoes', 'gerenciar_avaliacoes' => '/institucional/avaliacoes',
             'notas_e_desempenho', 'notas_desempenho' => '/institucional/notas-desempenho',
             'cadastro_de_turmas' => '/institucional/turmas',
-            'cadastro_de_alunos' => '/institucional/alunos',
+            'cadastro_de_estudantes' => '/institucional/estudantes',
             'modulacao' => '/institucional/modulacao',
             'modulacao_e_horarios' => '/institucional/modulacao',
             'agendamento' => '/institucional/agendamento',

@@ -712,7 +712,7 @@
       }
 
       // Header
-      var th = '<th class="text-center" style="min-width:40px;">#</th><th style="min-width:180px;">Aluno</th>';
+      var th = '<th class="text-center" style="min-width:40px;">#</th><th style="min-width:180px;">Estudante</th>';
       disciplinas.forEach(function (d) {
         th += '<th class="text-center" style="min-width:80px;font-size:0.75rem;">' + esc(d) + '</th>';
       });
@@ -720,7 +720,7 @@
       boletimHead.innerHTML = th;
 
       if (!boletim.length) {
-        boletimBody.innerHTML = '<tr><td colspan="' + (disciplinas.length + 3) + '" class="text-center text-secondary py-4">Nenhum aluno encontrado.</td></tr>';
+        boletimBody.innerHTML = '<tr><td colspan="' + (disciplinas.length + 3) + '" class="text-center text-secondary py-4">Nenhum estudante encontrado.</td></tr>';
         return;
       }
 
@@ -777,7 +777,7 @@
       }
 
       var th = '<th class="text-center" style="min-width:40px;">#</th>'
-        + '<th style="min-width:180px;">Aluno</th>'
+        + '<th style="min-width:180px;">Estudante</th>'
         + '<th class="text-center" style="min-width:80px;">Avaliação<div class="small fw-normal text-secondary">(auto)</div></th>'
         + '<th class="text-center" style="min-width:90px;">Subjetiva<div class="small fw-normal text-secondary">(0-10)</div></th>'
         + (permiteProdTextual
@@ -790,7 +790,7 @@
       boletimHead.innerHTML = th;
 
       if (!boletim.length) {
-        boletimBody.innerHTML = '<tr><td colspan="' + (permiteProdTextual ? '9' : '8') + '" class="text-center text-secondary py-4">Nenhum aluno encontrado.</td></tr>';
+        boletimBody.innerHTML = '<tr><td colspan="' + (permiteProdTextual ? '9' : '8') + '" class="text-center text-secondary py-4">Nenhum estudante encontrado.</td></tr>';
         return;
       }
 
@@ -1145,11 +1145,11 @@
               + '</tr>';
           }).join('')
           + '</tbody></table></div>'
-        : '<div class="small text-secondary">Sem lançamentos manuais para este aluno/disciplina no recorte atual.</div>';
+        : '<div class="small text-secondary">Sem lançamentos manuais para este estudante/disciplina no recorte atual.</div>';
 
       boletimOrigemModalBody.innerHTML = ''
         + '<div class="mb-3">'
-        + '  <div><strong>Aluno:</strong> ' + esc(aluno.aluno_nome || '-') + '</div>'
+        + '  <div><strong>Estudante:</strong> ' + esc(aluno.aluno_nome || '-') + '</div>'
         + '  <div><strong>Turma:</strong> ' + esc(aluno.turma_nome || '-') + '</div>'
         + '  <div><strong>Disciplina:</strong> ' + esc(disciplina || '-') + '</div>'
         + '  <div class="small text-secondary mt-1">Fórmula aplicada: ' + esc(formula) + '</div>'
@@ -1370,7 +1370,7 @@
         }
 
         html += '<div class="row g-2 mt-1 mb-1">'
-          + '<div class="col-md-6"><div class="small"><strong>Resposta do aluno:</strong> <span class="js-notas-correcao-preview-aluno">' + esc(respostaAlunoLabel) + '</span></div></div>'
+          + '<div class="col-md-6"><div class="small"><strong>Resposta do estudante:</strong> <span class="js-notas-correcao-preview-aluno">' + esc(respostaAlunoLabel) + '</span></div></div>'
           + '<div class="col-md-6"><div class="small"><strong>Resposta correta:</strong> ' + respostaCorretaHtml + '</div></div>'
           + '</div>';
 
@@ -1728,7 +1728,7 @@
         return;
       }
 
-      var header = ['Aluno', 'Turma', 'Disciplina', 'Ciclo_1', 'Ciclo_2'];
+      var header = ['Estudante', 'Turma', 'Disciplina', 'Ciclo_1', 'Ciclo_2'];
       var lines = [header.join(';')];
       rows.forEach(function (row) {
         lines.push([
@@ -1775,7 +1775,7 @@
       var editHint = (bimestresCount === 1 && anosCount === 1)
         ? 'edição inline ativa'
         : 'selecione 1 ano e 1 bimestre para editar notas';
-      showStatus((ov.total_alunos ? ov.total_alunos + ' aluno(s)' : '0 aluno') + ' • '
+      showStatus((ov.total_alunos ? ov.total_alunos + ' estudante(s)' : '0 estudante') + ' • '
         + turmasCount + ' turma(s) • ' + bimestresCount + ' bimestre(s) • ' + anosCount + ' ano(s) • ' + editHint);
 
       updateSummary(turmaSelect, turmasSummaryEl, 'Todas as turmas', 2);
@@ -2493,7 +2493,7 @@
       });
 
       if (!selectedOptions.length) {
-        formAlunosSummaryEl.textContent = 'Nenhum aluno selecionado';
+        formAlunosSummaryEl.textContent = 'Nenhum estudante selecionado';
         return;
       }
 
@@ -2558,7 +2558,7 @@
         var aluno = alunosMap[alunoId] || {};
         var notaValue = existingNotas[alunoId] != null ? existingNotas[alunoId] : '';
         return '<tr>'
-          + '<td>' + esc(String(aluno.nome || 'Aluno')) + '</td>'
+          + '<td>' + esc(String(aluno.nome || 'Estudante')) + '</td>'
           + '<td>' + esc(String(aluno.turma || '-')) + '</td>'
           + '<td>'
           + '<div class="notas-bulk-nota-warn d-none text-warning small mb-1" data-warn-aluno-id="' + esc(alunoId) + '"><i class="las la-exclamation-triangle me-1"></i><span></span></div>'
@@ -2577,7 +2577,7 @@
 
       var alunoIds = getSelectedAlunoIdsFromForm();
       if (!alunoIds.length) {
-        throw new Error('Selecione pelo menos um aluno.');
+        throw new Error('Selecione pelo menos um estudante.');
       }
 
       var notasMap = {};
@@ -2590,7 +2590,7 @@
           var aluno = (Array.isArray(initialAlunos) ? initialAlunos : []).find(function (item) {
             return Number(item && item.id ? item.id : 0) === alunoId;
           });
-          throw new Error('Informe uma nota válida (1 casa decimal) para ' + String(aluno && aluno.nome ? aluno.nome : ('aluno #' + alunoId)) + '.');
+          throw new Error('Informe uma nota válida (1 casa decimal) para ' + String(aluno && aluno.nome ? aluno.nome : ('estudante #' + alunoId)) + '.');
         }
         notasMap[String(alunoId)] = normalizedNota;
       });
@@ -2806,7 +2806,7 @@
     if (formAlunosOpenBtn) {
       formAlunosOpenBtn.addEventListener('click', function () {
         if (!formTurmaSelect || String(formTurmaSelect.value || '').trim() === '') {
-          setFormError('Selecione a turma antes de escolher os alunos.');
+          setFormError('Selecione a turma antes de escolher os estudantes.');
           return;
         }
 
@@ -3206,7 +3206,7 @@
           if (isEdit) {
             var selectedIdsEdit = getSelectedAlunoIdsFromForm();
             if (selectedIdsEdit.length !== 1) {
-              throw new Error('Na edição, selecione apenas um aluno.');
+              throw new Error('Na edição, selecione apenas um estudante.');
             }
             formData.set('aluno_id', String(selectedIdsEdit[0]));
             var notaEdit = normalizeOneDecimalInputValue(formData.get('nota'));

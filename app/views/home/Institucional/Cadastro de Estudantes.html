@@ -227,10 +227,10 @@
 	<div class="container-fluid px-0 institutional-page-root">
 		<div class="p-2 p-md-3">
 			<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-				<h1 class="h4 fw-bold mb-0">Cadastro de Alunos</h1>
+				<h1 class="h4 fw-bold mb-0">Cadastro de Estudantes</h1>
 				<div class="d-flex gap-2 align-items-center">
 					<button id="btnImportarAlunos" class="btn btn-outline-primary btn-sm" type="button"><i class="las la-file-import me-1"></i>Importar planilha</button>
-					<button id="btnNovoAluno" class="btn btn-danger btn-sm" type="button"><i class="las la-plus me-1"></i>Novo aluno</button>
+					<button id="btnNovoAluno" class="btn btn-danger btn-sm" type="button"><i class="las la-plus me-1"></i>Novo estudante</button>
 					<button id="btnExcluirSelecionadosAlunos" class="btn btn-outline-danger btn-sm" type="button" disabled><i class="las la-trash-alt me-1"></i>Excluir selecionados</button>
 					<a id="btnVoltarAlunos" href="#" target="_top" class="btn btn-outline-secondary btn-sm">
 						<i class="las la-arrow-left me-1"></i>Voltar
@@ -245,7 +245,7 @@
 				<table class="table table-sm mb-0">
 					<thead>
 						<tr>
-							<th class="institutional-select-col"><input type="checkbox" id="selectAllAlunos" aria-label="Selecionar todos os alunos"></th>
+							<th class="institutional-select-col"><input type="checkbox" id="selectAllAlunos" aria-label="Selecionar todos os estudantes"></th>
 							<th>Nome</th>
 							<th>Matrícula</th>
 							<th>Turma</th>
@@ -261,7 +261,7 @@
 					</thead>
 					<tbody id="alunosBody">
 						<tr>
-							<td colspan="12" class="muted-empty">Nenhum aluno cadastrado.</td>
+							<td colspan="12" class="muted-empty">Nenhum estudante cadastrado.</td>
 						</tr>
 					</tbody>
 				</table>
@@ -273,7 +273,7 @@
 		<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
 			<div class="modal-content site-modal-content">
 				<div class="modal-header">
-					<h2 class="modal-title fs-5" id="modalAlunoTitulo">Aluno</h2>
+					<h2 class="modal-title fs-5" id="modalAlunoTitulo">Estudante</h2>
 					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
 				</div>
 				<form id="formAluno" novalidate>
@@ -283,7 +283,7 @@
 						<div class="row g-3">
 							<div class="col-md-4">
 								<label class="form-label" for="nomeAluno">Nome completo</label>
-								<input type="text" id="nomeAluno" class="form-control" maxlength="150" required placeholder="Nome do aluno">
+								<input type="text" id="nomeAluno" class="form-control" maxlength="150" required placeholder="Nome do estudante">
 							</div>
 
 							<div class="col-md-2">
@@ -315,7 +315,7 @@
 
 							<div class="col-md-3">
 								<label class="form-label" for="rgAluno">RG</label>
-								<input type="text" id="rgAluno" class="form-control" maxlength="20" placeholder="RG do aluno">
+								<input type="text" id="rgAluno" class="form-control" maxlength="20" placeholder="RG do estudante">
 							</div>
 
 							<div class="col-md-3">
@@ -340,7 +340,7 @@
 
 							<div class="col-md-4">
 								<label class="form-label" for="emailAluno">E-mail</label>
-								<input type="email" id="emailAluno" class="form-control" maxlength="180" placeholder="aluno@email.com">
+								<input type="email" id="emailAluno" class="form-control" maxlength="180" placeholder="estudante@email.com">
 							</div>
 						</div>
 					</div>
@@ -361,7 +361,7 @@
 					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
 				</div>
 				<div class="modal-body">
-					<p class="mb-0" id="mensagemConfirmacaoAluno">Deseja realmente excluir este aluno?</p>
+					<p class="mb-0" id="mensagemConfirmacaoAluno">Deseja realmente excluir este estudante?</p>
 				</div>
 				<div class="modal-footer">
 					<button type="button" class="btn btn-danger btn-sm" id="btnConfirmarExclusaoAluno">Excluir</button>
@@ -376,7 +376,7 @@
 			<div class="modal-content site-modal-content">
 				<div class="modal-header">
 					<div>
-						<h2 class="modal-title fs-5 mb-1">Conferir importação de alunos</h2>
+						<h2 class="modal-title fs-5 mb-1">Conferir importação de estudantes</h2>
 						<div class="small text-secondary" id="importPreviewFileName">Selecione uma planilha para visualizar os dados.</div>
 					</div>
 					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
@@ -1140,7 +1140,7 @@
 				filteredAlunoIds = filtered.map(function (item) { return Number(item.id || 0); }).filter(function (id) { return id > 0; });
 
 				if (!filtered.length) {
-					body.innerHTML = '<tr><td colspan="12" class="muted-empty">Nenhum aluno encontrado.</td></tr>';
+					body.innerHTML = '<tr><td colspan="12" class="muted-empty">Nenhum estudante encontrado.</td></tr>';
 					updateBulkSelectionState();
 					return;
 				}
@@ -1217,7 +1217,7 @@
 				var config = options && typeof options === 'object' ? options : {};
 				var silent = Boolean(config.silent);
 
-				return fetch(buildEndpoint('/institucional/alunos/listar'), {
+				return fetch(buildEndpoint('/institucional/estudantes/listar'), {
 					headers: {
 						'X-Requested-With': 'XMLHttpRequest'
 					}
@@ -1225,7 +1225,7 @@
 					.then(function (response) {
 						return response.json().then(function (payload) {
 							if (!response.ok || !payload.ok) {
-								throw new Error(payload.message || 'Falha ao carregar alunos.');
+								throw new Error(payload.message || 'Falha ao carregar estudantes.');
 							}
 
 							return payload;
@@ -1249,7 +1249,7 @@
 					})
 					.catch(function (error) {
 						if (!silent) {
-							showStatus(error && error.message ? error.message : 'Erro ao carregar alunos.', true);
+							showStatus(error && error.message ? error.message : 'Erro ao carregar estudantes.', true);
 						}
 					});
 			}
@@ -1383,7 +1383,7 @@
 				payload.append('telefone', telefoneInput.value.trim());
 				payload.append('email', emailInput.value.trim());
 
-				fetch(buildEndpoint('/institucional/alunos/salvar'), {
+				fetch(buildEndpoint('/institucional/estudantes/salvar'), {
 					method: 'POST',
 					body: payload,
 					headers: {
@@ -1393,21 +1393,21 @@
 					.then(function (response) {
 						return response.json().then(function (result) {
 							if (!response.ok || !result.ok) {
-								throw new Error(result.message || 'Falha ao salvar aluno.');
+								throw new Error(result.message || 'Falha ao salvar estudante.');
 							}
 
 							return result;
 						});
 					})
 					.then(function (result) {
-						showStatus(result.message || 'Aluno salvo com sucesso.', false);
+						showStatus(result.message || 'Estudante salvo com sucesso.', false);
 						resetForm();
 						form.classList.remove('was-validated');
 						closeFormModal();
 						return loadFromServer();
 					})
 					.catch(function (error) {
-						showStatus(error && error.message ? error.message : 'Erro ao salvar aluno.', true);
+						showStatus(error && error.message ? error.message : 'Erro ao salvar estudante.', true);
 					});
 			});
 
@@ -1415,7 +1415,7 @@
 				resetForm();
 				form.classList.remove('was-validated');
 				if (modalTitulo) {
-					modalTitulo.textContent = 'Novo aluno';
+					modalTitulo.textContent = 'Novo estudante';
 				}
 				openFormModal();
 				nomeInput.focus();
@@ -1449,7 +1449,7 @@
 					importInProgress = true;
 					setImportButtonLoading(true);
 
-					fetch(buildEndpoint('/institucional/alunos/importar/preview'), {
+					fetch(buildEndpoint('/institucional/estudantes/importar/preview'), {
 						method: 'POST',
 						body: payload,
 						headers: {
@@ -1459,7 +1459,7 @@
 						.then(function (response) {
 							return response.json().then(function (result) {
 								if (!response.ok || !result.ok) {
-									throw new Error(result.message || 'Falha ao analisar a planilha de alunos.');
+									throw new Error(result.message || 'Falha ao analisar a planilha de estudantes.');
 								}
 
 								return result;
@@ -1606,7 +1606,7 @@
 					});
 
 					if (!selectedRows.length) {
-						showStatus('Selecione ao menos um aluno válido para importar.', true);
+						showStatus('Selecione ao menos um estudante válido para importar.', true);
 						return;
 					}
 
@@ -1617,7 +1617,7 @@
 					setImportButtonLoading(true);
 					setPreviewImportButtonLoading(true);
 
-					fetch(buildEndpoint('/institucional/alunos/importar'), {
+					fetch(buildEndpoint('/institucional/estudantes/importar'), {
 						method: 'POST',
 						body: payload,
 						headers: {
@@ -1627,7 +1627,7 @@
 						.then(function (response) {
 							return response.json().then(function (result) {
 								if (!response.ok || !result.ok) {
-									throw new Error(result.message || 'Falha ao importar os alunos selecionados.');
+									throw new Error(result.message || 'Falha ao importar os estudantes selecionados.');
 								}
 
 								return result;
@@ -1644,7 +1644,7 @@
 							]);
 						})
 						.catch(function (error) {
-							showStatus(error && error.message ? error.message : 'Erro ao importar os alunos selecionados.', true);
+							showStatus(error && error.message ? error.message : 'Erro ao importar os estudantes selecionados.', true);
 						})
 						.finally(function () {
 							importInProgress = false;
@@ -1665,7 +1665,7 @@
 					resetForm();
 					form.classList.remove('was-validated');
 					if (modalTitulo) {
-						modalTitulo.textContent = 'Aluno';
+						modalTitulo.textContent = 'Estudante';
 					}
 				});
 			}
@@ -1680,7 +1680,7 @@
 				var payload = new FormData();
 				payload.append('id', String(alunoId));
 
-				return fetch(buildEndpoint('/institucional/alunos/excluir'), {
+				return fetch(buildEndpoint('/institucional/estudantes/excluir'), {
 					method: 'POST',
 					body: payload,
 					headers: {
@@ -1690,7 +1690,7 @@
 					.then(function (response) {
 						return response.json().then(function (result) {
 							if (!response.ok || !result.ok) {
-								throw new Error(result.message || 'Falha ao excluir aluno.');
+								throw new Error(result.message || 'Falha ao excluir estudante.');
 							}
 
 							return result;
@@ -1712,11 +1712,11 @@
 						selectedAlunoIdsForDelete = selectedAlunoIdsForDelete.filter(function (id) {
 							return uniqueIds.indexOf(id) === -1;
 						});
-						showStatus(uniqueIds.length > 1 ? 'Alunos excluídos com sucesso.' : 'Aluno excluído com sucesso.', false);
+						showStatus(uniqueIds.length > 1 ? 'Estudantes excluídos com sucesso.' : 'Estudante excluído com sucesso.', false);
 						return loadFromServer();
 					})
 					.catch(function (error) {
-						showStatus(error && error.message ? error.message : 'Erro ao excluir aluno(s).', true);
+						showStatus(error && error.message ? error.message : 'Erro ao excluir estudante(s).', true);
 					});
 			}
 
@@ -1743,7 +1743,7 @@
 
 					pendingDeleteAlunoIds = selectedAlunoIdsForDelete.slice();
 					if (mensagemConfirmacao) {
-						mensagemConfirmacao.textContent = 'Deseja realmente excluir os ' + pendingDeleteAlunoIds.length + ' alunos selecionados?';
+						mensagemConfirmacao.textContent = 'Deseja realmente excluir os ' + pendingDeleteAlunoIds.length + ' estudantes selecionados?';
 					}
 					if (confirmarExclusaoModal) {
 						confirmarExclusaoModal.show();
@@ -1816,7 +1816,7 @@
 					telefoneInput.value = alunoCopiado.telefone || '';
 					emailInput.value = alunoCopiado.email || '';
 					if (modalTitulo) {
-						modalTitulo.textContent = 'Copiar aluno';
+						modalTitulo.textContent = 'Copiar estudante';
 					}
 
 					openFormModal();
@@ -1844,7 +1844,7 @@
 					telefoneInput.value = aluno.telefone || '';
 					emailInput.value = aluno.email || '';
 					if (modalTitulo) {
-						modalTitulo.textContent = 'Editar aluno';
+						modalTitulo.textContent = 'Editar estudante';
 					}
 
 					openFormModal();
@@ -1855,7 +1855,7 @@
 				if (deleteId > 0) {
 					pendingDeleteAlunoIds = [deleteId];
 					if (mensagemConfirmacao) {
-						mensagemConfirmacao.textContent = 'Deseja realmente excluir este aluno?';
+						mensagemConfirmacao.textContent = 'Deseja realmente excluir este estudante?';
 					}
 					if (confirmarExclusaoModal) {
 						confirmarExclusaoModal.show();
@@ -1886,7 +1886,7 @@
 
 				if (bootstrapWaitAttempts >= 200) {
 					window.clearInterval(bootstrapWaitTimer);
-					console.error('Bootstrap nao ficou disponivel para inicializar Cadastro de Alunos.');
+					console.error('Bootstrap nao ficou disponivel para inicializar Cadastro de Estudantes.');
 				}
 			}, 25);
 		})();

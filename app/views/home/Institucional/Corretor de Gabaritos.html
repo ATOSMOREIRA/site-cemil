@@ -434,7 +434,7 @@
 
     async function processAllStudentFiles() {
       if (studentFiles.length === 0 || masterKey.length === 0) {
-        alert("Carregue as respostas mestre e os arquivos dos alunos primeiro.");
+        alert("Carregue as respostas mestre e os arquivos dos estudantes primeiro.");
         return;
       }
       if (!cvReady || !tesseractReady) {
@@ -445,7 +445,7 @@
       const shouldGeneratePdfs = generateIndividualPdfsCheckbox.checked; // Check the checkbox state
 
       document.getElementById('processStudents').disabled = true;
-      document.getElementById('studentFeedback').textContent = "Processando gabaritos dos alunos...";
+      document.getElementById('studentFeedback').textContent = "Processando gabaritos dos estudantes...";
       allStudentResults = []; // Clear previous results
 
       let processedCount = 0;
@@ -824,7 +824,7 @@
     function generateGeneralReportDisplay() {
       const resultsDiv = document.getElementById('generalResults');
       if (allStudentResults.length === 0) {
-        resultsDiv.textContent = "Nenhum resultado de aluno para exibir.";
+        resultsDiv.textContent = "Nenhum resultado de estudante para exibir.";
         return;
       }
 

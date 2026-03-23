@@ -239,6 +239,8 @@
     var correcaoEdicaoSummary = document.getElementById('adminAvaliacaoCorrecaoEdicaoSummary');
     var correcaoEdicaoList = document.getElementById('adminAvaliacaoCorrecaoEdicaoList');
     var correcaoEdicaoError = document.getElementById('adminAvaliacaoCorrecaoEdicaoError');
+    var correcaoEdicaoBlankBtn = document.getElementById('adminAvaliacaoCorrecaoEdicaoBlankBtn');
+    var correcaoEdicaoAbsentBtn = document.getElementById('adminAvaliacaoCorrecaoEdicaoAbsentBtn');
     var correcaoEdicaoCancelBtn = document.getElementById('adminAvaliacaoCorrecaoEdicaoCancelBtn');
     var correcaoEdicaoSaveBtn = document.getElementById('adminAvaliacaoCorrecaoEdicaoSaveBtn');
     var impressaoPane = document.getElementById('adminAvaliacaoDashboardPaneImpressao');
@@ -257,6 +259,17 @@
     var correcaoModalElement = document.getElementById('adminAvaliacaoCorrecaoModal');
     var alunosRelacionadosWrap = document.getElementById('adminAvaliacaoAlunosRelacionadosWrap');
     var tableSearchInput = document.getElementById('adminAvaliacoesTableSearch');
+    var tableFiltersButton = document.getElementById('adminAvaliacoesFiltersButton');
+    var tableFiltersModalElement = document.getElementById('adminAvaliacoesFiltersModal');
+    var tableClearFiltersButton = document.getElementById('adminAvaliacoesClearFiltersButton');
+    var tableCycleFiltersElement = document.getElementById('adminAvaliacoesCycleFilters');
+    var tableTurmaFiltersElement = document.getElementById('adminAvaliacoesTurmaFilters');
+    var tablePageSizeSelect = document.getElementById('adminAvaliacoesPageSize');
+    var tablePaginationWrap = document.getElementById('adminAvaliacoesPaginationWrap');
+    var tablePaginationInfo = document.getElementById('adminAvaliacoesPaginationInfo');
+    var tablePaginationPages = document.getElementById('adminAvaliacoesPaginationPages');
+    var tablePrevPageButton = document.getElementById('adminAvaliacoesPrevPageBtn');
+    var tableNextPageButton = document.getElementById('adminAvaliacoesNextPageBtn');
     var tableRows = document.querySelectorAll('.js-admin-avaliacoes-row');
     var tableEmpty = document.getElementById('adminAvaliacoesTableEmpty');
     var listContainer = document.getElementById('avaliacoesListContainer');
@@ -387,6 +400,7 @@
     var correcaoRevisaoModalInstance = null;
     var correcaoEdicaoModalInstance = null;
     var statsFiltersModalInstance = null;
+    var tableFiltersModalInstance = null;
     var pendingDeleteForms = [];
     var selectedAlunosRelacionadosIds = [];
     var lastSelectedTurmasIdsForAlunos = [];
@@ -397,6 +411,9 @@
     var gabaritoHasPendingChanges = false;
     var listSignature = listContainer ? String(listContainer.innerHTML || '').trim() : '';
     var selectedAvaliacaoIdsForDelete = [];
+    var activeTableCycleFilter = 'all';
+    var activeTableTurmaFilter = 'all';
+    var tableCurrentPage = 1;
     var statsFiltersDraftState = {
       panelKey: 'resumo',
       turmaValues: ['all'],
@@ -777,6 +794,15 @@
       document.body.appendChild(statsFiltersModalElement);
     }
 
+    if (tableFiltersModalElement && tableFiltersModalElement.parentElement !== document.body) {
+      var existingTableFiltersModal = document.body.querySelector('#adminAvaliacoesFiltersModal');
+      if (existingTableFiltersModal && existingTableFiltersModal !== tableFiltersModalElement) {
+        existingTableFiltersModal.remove();
+      }
+
+      document.body.appendChild(tableFiltersModalElement);
+    }
+
     if (formModalElement && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
       formModalInstance = bootstrap.Modal.getOrCreateInstance(formModalElement, {
         backdrop: 'static',
@@ -805,6 +831,10 @@
       statsFiltersModalInstance = bootstrap.Modal.getOrCreateInstance(statsFiltersModalElement, {
         backdrop: false,
       });
+    }
+
+    if (tableFiltersModalElement && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+      tableFiltersModalInstance = bootstrap.Modal.getOrCreateInstance(tableFiltersModalElement);
     }
 
     if (deleteConfirmModalElement && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
@@ -1982,7 +2012,7 @@
       var _discFontSize = Math.max(8, Math.round(_discLineH * 0.75));
 
       var infoBoxDefs = [
-        { key: 'aluno', box: gabaritoLayout.aluno_box, label: 'Dados do aluno e turma', color: '#8b949e' },
+        { key: 'aluno', box: gabaritoLayout.aluno_box, label: 'Dados do estudante e turma', color: '#8b949e' },
         { key: 'qr', box: gabaritoLayout.qr_box, label: 'QR Code', color: '#8b949e' },
         { key: 'title', box: gabaritoLayout.title_box, label: _avaliacaoTitle || 'Nome da avaliação', color: '#8b949e' },
         { key: 'numeracao', box: gabaritoLayout.numeracao_box, label: 'Nº 00', color: '#8b949e' },
@@ -6804,8 +6834,175 @@
 
       selectAllCheckbox = document.getElementById('adminAvaliacoesSelectAll');
       deleteSelectedButton = document.getElementById('adminAvaliacoesDeleteSelectedBtn');
+      rebuildTableFilterControls();
       bindRowSelectionCheckboxes();
-      syncBulkSelectionState();
+      filterTable();
+    }
+
+    function splitTableFilterValues(rawValue) {
+      return String(rawValue || '')
+        .split('||')
+        .map(function (value) { return String(value || '').trim(); })
+        .filter(Boolean);
+    }
+
+    function getTablePageSizeValue() {
+      if (!tablePageSizeSelect) {
+        return 0;
+      }
+
+      var rawValue = String(tablePageSizeSelect.value || 'all').trim().toLowerCase();
+      if (rawValue === 'all') {
+        return 0;
+      }
+
+      return clampInt(parseInt(rawValue, 10), 10, 500, 10);
+    }
+
+    function renderTableFilterButtons(targetElement, options, activeValue, emptyLabel) {
+      if (!targetElement) {
+        return;
+      }
+
+      var safeOptions = Array.isArray(options) ? options : [];
+      var html = '';
+      html += '<button type="button" class="btn btn-sm institutional-avaliacoes-filter-chip' + (activeValue === 'all' ? ' is-active' : '') + '" data-filter-value="all">Todas</button>';
+
+      safeOptions.forEach(function (option) {
+        var optionValue = String(option && option.value || '').trim();
+        var optionLabel = String(option && option.label || '').trim();
+        if (optionValue === '' || optionLabel === '') {
+          return;
+        }
+
+        html += '<button type="button" class="btn btn-sm institutional-avaliacoes-filter-chip' + (activeValue === optionValue ? ' is-active' : '') + '" data-filter-value="' + escapeHtml(optionValue) + '">' + escapeHtml(optionLabel) + '</button>';
+      });
+
+      if (safeOptions.length === 0 && String(emptyLabel || '').trim() !== '') {
+        html += '<span class="institutional-avaliacoes-filter-empty">' + escapeHtml(emptyLabel) + '</span>';
+      }
+
+      targetElement.innerHTML = html;
+    }
+
+    function rebuildTableFilterControls() {
+      var cycleMap = {};
+      var turmaMap = {};
+
+      tableRows.forEach(function (row) {
+        var cycleValue = String(row.getAttribute('data-filter-cycle') || '').trim();
+        if (cycleValue !== '' && !cycleMap[cycleValue]) {
+          cycleMap[cycleValue] = cycleValue === '1'
+            ? '1º ciclo'
+            : cycleValue === '2'
+              ? '2º ciclo'
+              : ('Ciclo ' + cycleValue);
+        }
+
+        var turmaValues = splitTableFilterValues(row.getAttribute('data-filter-turmas'));
+        var turmaLabels = splitTableFilterValues(row.getAttribute('data-filter-turmas-labels'));
+        turmaValues.forEach(function (value, index) {
+          if (value === '') {
+            return;
+          }
+
+          if (!turmaMap[value]) {
+            turmaMap[value] = turmaLabels[index] || value;
+          }
+        });
+      });
+
+      var cycleOptions = Object.keys(cycleMap)
+        .sort(function (left, right) { return Number(left) - Number(right); })
+        .map(function (value) {
+          return {
+            value: value,
+            label: cycleMap[value],
+          };
+        });
+
+      var turmaOptions = Object.keys(turmaMap)
+        .sort(function (left, right) {
+          return String(turmaMap[left] || '').localeCompare(String(turmaMap[right] || ''), 'pt-BR', { sensitivity: 'base' });
+        })
+        .map(function (value) {
+          return {
+            value: value,
+            label: turmaMap[value],
+          };
+        });
+
+      if (activeTableCycleFilter !== 'all' && !cycleMap[activeTableCycleFilter]) {
+        activeTableCycleFilter = 'all';
+      }
+
+      if (activeTableTurmaFilter !== 'all' && !turmaMap[activeTableTurmaFilter]) {
+        activeTableTurmaFilter = 'all';
+      }
+
+      renderTableFilterButtons(tableCycleFiltersElement, cycleOptions, activeTableCycleFilter, 'Nenhum ciclo disponível');
+      renderTableFilterButtons(tableTurmaFiltersElement, turmaOptions, activeTableTurmaFilter, 'Nenhuma turma disponível');
+    }
+
+    function getFilteredTableRows() {
+      var searchTerm = normalizeSearchValue(tableSearchInput ? tableSearchInput.value : '');
+
+      return Array.prototype.filter.call(tableRows, function (row) {
+        var searchText = normalizeSearchValue(row.getAttribute('data-search-text') || '');
+        var cycleValue = String(row.getAttribute('data-filter-cycle') || '').trim();
+        var turmaValues = splitTableFilterValues(row.getAttribute('data-filter-turmas'));
+
+        var matchesSearch = searchTerm === '' || searchText.indexOf(searchTerm) !== -1;
+        var matchesCycle = activeTableCycleFilter === 'all' || cycleValue === activeTableCycleFilter;
+        var matchesTurma = activeTableTurmaFilter === 'all' || turmaValues.indexOf(activeTableTurmaFilter) !== -1;
+
+        return matchesSearch && matchesCycle && matchesTurma;
+      });
+    }
+
+    function renderTablePagination(totalFilteredRows, totalPages, startIndex, endIndex) {
+      if (tablePaginationInfo) {
+        if (totalFilteredRows <= 0) {
+          tablePaginationInfo.textContent = 'Nenhuma avaliação encontrada para os filtros atuais.';
+        } else {
+          tablePaginationInfo.textContent = 'Mostrando ' + String(startIndex + 1) + ' a ' + String(endIndex) + ' de ' + String(totalFilteredRows) + ' avaliação(ões).';
+        }
+      }
+
+      if (tablePaginationWrap) {
+        tablePaginationWrap.classList.toggle('d-none', totalFilteredRows <= 0);
+      }
+
+      if (tablePrevPageButton) {
+        tablePrevPageButton.disabled = totalFilteredRows <= 0 || tableCurrentPage <= 1;
+      }
+
+      if (tableNextPageButton) {
+        tableNextPageButton.disabled = totalFilteredRows <= 0 || tableCurrentPage >= totalPages;
+      }
+
+      if (!tablePaginationPages) {
+        return;
+      }
+
+      if (totalFilteredRows <= 0) {
+        tablePaginationPages.innerHTML = '';
+        return;
+      }
+
+      var maxButtons = 5;
+      var windowStart = Math.max(1, tableCurrentPage - 2);
+      var windowEnd = Math.min(totalPages, windowStart + maxButtons - 1);
+      windowStart = Math.max(1, windowEnd - maxButtons + 1);
+
+      var pages = [];
+      for (var page = windowStart; page <= windowEnd; page += 1) {
+        pages.push(page);
+      }
+
+      tablePaginationPages.innerHTML = pages.map(function (page) {
+        return '<button type="button" class="btn btn-sm ' + (page === tableCurrentPage ? 'btn-danger' : 'btn-outline-secondary') + ' institutional-avaliacoes-page-btn" data-page="' + String(page) + '">' + String(page) + '</button>';
+      }).join('');
     }
 
     function getVisibleAvaliacaoIds() {
@@ -7179,26 +7376,45 @@
     }
 
     function filterTable() {
-      if (!tableSearchInput || !tableRows.length) {
+      if (!tableRows.length) {
+        if (tableEmpty) {
+          tableEmpty.classList.remove('d-none');
+        }
+        if (tablePaginationWrap) {
+          tablePaginationWrap.classList.add('d-none');
+        }
         return;
       }
 
-      var term = normalizeSearchValue(tableSearchInput.value);
-      var visibleCount = 0;
+      var filteredRows = getFilteredTableRows();
+      var pageSize = getTablePageSizeValue();
+      var totalFilteredRows = filteredRows.length;
+      var totalPages = pageSize > 0 ? Math.max(1, Math.ceil(totalFilteredRows / pageSize)) : (totalFilteredRows > 0 ? 1 : 0);
+
+      if (totalPages <= 0) {
+        tableCurrentPage = 1;
+      } else {
+        tableCurrentPage = clampInt(tableCurrentPage, 1, totalPages, 1);
+      }
+
+      var startIndex = pageSize > 0 ? ((tableCurrentPage - 1) * pageSize) : 0;
+      var endIndex = pageSize > 0 ? Math.min(totalFilteredRows, startIndex + pageSize) : totalFilteredRows;
+      var visibleLookup = {};
+
+      filteredRows.slice(startIndex, endIndex).forEach(function (row) {
+        visibleLookup[String(row.getAttribute('data-avaliacao-id') || '')] = true;
+      });
 
       tableRows.forEach(function (row) {
-        var text = normalizeSearchValue(row.getAttribute('data-search-text'));
-        var isMatch = term === '' || text.indexOf(term) !== -1;
-        row.classList.toggle('d-none', !isMatch);
-        if (isMatch) {
-          visibleCount += 1;
-        }
+        var rowId = String(row.getAttribute('data-avaliacao-id') || '');
+        row.classList.toggle('d-none', !visibleLookup[rowId]);
       });
 
       if (tableEmpty) {
-        tableEmpty.classList.toggle('d-none', !(term !== '' && visibleCount === 0));
+        tableEmpty.classList.toggle('d-none', totalFilteredRows > 0);
       }
 
+      renderTablePagination(totalFilteredRows, totalPages || 1, totalFilteredRows > 0 ? startIndex : 0, totalFilteredRows > 0 ? endIndex : 0);
       syncBulkSelectionState();
     }
 
@@ -8868,7 +9084,7 @@
         }
       }
 
-      return 'Numeracao por aluno/turma';
+      return 'Numeracao por estudante/turma';
     }
 
     function getGabaritoNumeracaoBoxSize(ctx, availablePageWidth, numeracaoText) {
@@ -8884,7 +9100,7 @@
       if (ctx) {
         ctx.save();
         ctx.font = 'bold 16px Arial, sans-serif';
-        var metrics = ctx.measureText(safeText !== '' ? safeText : 'Numeracao por aluno/turma');
+        var metrics = ctx.measureText(safeText !== '' ? safeText : 'Numeracao por estudante/turma');
         measuredWidth = Math.max(minWidth, Math.ceil(metrics.width) + horizontalPadding);
         measuredHeight = Math.max(
           fontSize,
@@ -8892,7 +9108,7 @@
         );
         ctx.restore();
       } else {
-        var fallbackText = safeText !== '' ? safeText : 'Numeracao por aluno/turma';
+        var fallbackText = safeText !== '' ? safeText : 'Numeracao por estudante/turma';
         measuredWidth = Math.max(minWidth, Math.ceil(fallbackText.length * (fontSize * 0.7)) + horizontalPadding);
       }
 
@@ -9478,10 +9694,10 @@
 
       ctx.fillStyle = '#000000';
       ctx.font = 'bold ' + alunoLabelFontSize + 'px Arial, sans-serif';
-      var alunoLabelWidth = Math.max(ctx.measureText('Aluno:').width, ctx.measureText('Turma:').width);
+      var alunoLabelWidth = Math.max(ctx.measureText('Estudante:').width, ctx.measureText('Turma:').width);
       var alunoValueGap = Math.max(16, Math.round(alunoLabelFontSize * 1.1));
       var alunoValueOffsetX = alunoPaddingX + Math.ceil(alunoLabelWidth) + alunoValueGap;
-      ctx.fillText('Aluno:', alunoBox.x + alunoPaddingX, alunoLineOneY);
+      ctx.fillText('Estudante:', alunoBox.x + alunoPaddingX, alunoLineOneY);
       ctx.font = alunoValueFontSize + 'px Arial, sans-serif';
       ctx.fillText(fitCanvasText(ctx, pageData.alunoNome, alunoBox.width - alunoValueOffsetX - (alunoPaddingX * 2)), alunoBox.x + alunoValueOffsetX, alunoLineOneY);
       ctx.font = 'bold ' + alunoLabelFontSize + 'px Arial, sans-serif';
@@ -9536,14 +9752,14 @@
       var printData = getActiveAvaliacaoPrintData();
       if (impressaoResumo) {
         var resumoTexto = printData.turmaCount > 0
-          ? (String(printData.alunoCount) + ' folha(s) para ' + String(printData.turmaCount) + ' turma(s)' + (printData.usingFallbackAlunos ? ' usando todos os alunos das turmas vinculadas.' : '.'))
+          ? (String(printData.alunoCount) + ' folha(s) para ' + String(printData.turmaCount) + ' turma(s)' + (printData.usingFallbackAlunos ? ' usando todos os estudantes das turmas vinculadas.' : '.'))
           : 'Nenhuma turma vinculada à avaliação para impressão.';
         impressaoResumo.textContent = resumoTexto;
       }
 
       if (!printData.records.length) {
-        setImpressaoPreviewMessage('Nenhum aluno vinculado às turmas desta avaliação para gerar as folhas A4.');
-        setImpressaoStatusMessage('Selecione alunos válidos na avaliação para habilitar a impressão.');
+        setImpressaoPreviewMessage('Nenhum estudante vinculado às turmas desta avaliação para gerar as folhas A4.');
+        setImpressaoStatusMessage('Selecione estudantes válidos na avaliação para habilitar a impressão.');
         return Promise.resolve(false);
       }
 
@@ -9593,7 +9809,7 @@
           });
 
           setImpressaoStatusMessage(qrGenerator
-            ? 'Visualização pronta. O QR Code leva os ids da avaliação, do aluno e da turma em cada folha.'
+            ? 'Visualização pronta. O QR Code leva os ids da avaliação, do estudante e da turma em cada folha.'
             : 'Visualização pronta sem QR Code. Verifique a conexão para carregar a biblioteca de QR.');
           applyImpressaoPreviewFilter();
 
@@ -9832,9 +10048,9 @@
       if (status === 'ausente') {
         return {
           key: status,
-          label: 'Aluno ausente',
+          label: 'Estudante ausente',
           badgeClass: 'text-bg-danger',
-          resultLabel: 'Aluno ausente',
+          resultLabel: 'Estudante ausente',
         };
       }
 
@@ -10817,7 +11033,7 @@
           tipo: normalizeQuestaoTipo(safeItem.tipo),
           tipoLabel: getQuestaoTipoLabel(safeItem.tipo),
           peso: sanitizeQuestaoPeso(safeItem.peso, 1),
-          disciplina: getStatsMetaLabel(safeItem.disciplina, 'Disciplina não informada'),
+          disciplina: getStatsMetaLabel(getQuestaoDisciplinaNome(safeItem), 'Disciplina não informada'),
           habilidade: getStatsMetaLabel(safeItem.habilidade, 'Habilidade não informada'),
           correta: String(safeItem.correta || '').trim().toUpperCase(),
           alternativas: getQuestaoAlternativaLabels(safeItem, gabaritoAlternativasConfiguradas),
@@ -10849,7 +11065,7 @@
           id: Number(safeRow.id || 0),
           alunoId: Number(safeRow.aluno_id || 0),
           turmaId: Number(safeRow.turma_id || 0),
-          alunoNome: String(safeRow.aluno_nome || 'Aluno não identificado').trim() || 'Aluno não identificado',
+          alunoNome: String(safeRow.aluno_nome || 'Estudante não identificado').trim() || 'Estudante não identificado',
           turmaNome: String(safeRow.turma_nome || 'Turma não informada').trim() || 'Turma não informada',
           percentual: snapshot ? Number(snapshot.percentual || 0) : Number(safeRow.percentual || 0),
           pontuacao: snapshot ? Number(snapshot.pontuacao || 0) : Number(safeRow.pontuacao || 0),
@@ -11058,7 +11274,7 @@
       normalizedRows.forEach(function (row) {
         var alunoKey = makeStatsAlunoScopeKey(row);
         if (!alunoMap[alunoKey]) {
-          var alunoNome = String(row && row.alunoNome || 'Aluno não identificado').trim() || 'Aluno não identificado';
+          var alunoNome = String(row && row.alunoNome || 'Estudante não identificado').trim() || 'Estudante não identificado';
           var turmaNome = String(row && row.turmaNome || 'Turma não informada').trim() || 'Turma não informada';
           alunoMap[alunoKey] = {
             value: alunoKey,
@@ -11391,7 +11607,7 @@
         summaryChips.push(renderStatsFilterChip(label, 'Turma'));
       });
       getStatsScopeOptionLabels('scopeAlunoOptions', alunoFilterValues).forEach(function (label) {
-        summaryChips.push(renderStatsFilterChip(label, 'Aluno'));
+        summaryChips.push(renderStatsFilterChip(label, 'Estudante'));
       });
       getStatsSectionOptionLabels(options, panelFilterValues).forEach(function (label) {
         summaryChips.push(renderStatsFilterChip(label, 'Filtro'));
@@ -11581,7 +11797,7 @@
       var scopeConfig = buildStatsScopeOptions(normalizedRows, statsFiltersDraftState.turmaValues, statsFiltersDraftState.alunoValues);
       statsFiltersDraftState.turmaValues = scopeConfig.turmaValues;
       statsFiltersDraftState.alunoValues = scopeConfig.alunoValues;
-      renderStatsFilterCheckboxCards(statsFiltersAlunoList, 'Aluno', scopeConfig.alunoOptions, statsFiltersDraftState.alunoValues, 'Todos os alunos');
+      renderStatsFilterCheckboxCards(statsFiltersAlunoList, 'Estudante', scopeConfig.alunoOptions, statsFiltersDraftState.alunoValues, 'Todos os estudantes');
       applyStatsFilterCardSearch(statsFiltersAlunoList, statsFiltersAlunoSearch ? statsFiltersAlunoSearch.value : '');
     }
 
@@ -11686,7 +11902,7 @@
         insights.push({
           title: 'Habilidades menos alcançadas',
           text: pendingSkills.map(function (item) {
-            return item.nome + ' (' + formatStatsPercent(item.alcancePercent) + ' dos alunos atingiram)';
+            return item.nome + ' (' + formatStatsPercent(item.alcancePercent) + ' dos estudantes atingiram)';
           }).join(' • '),
         });
       }
@@ -11855,7 +12071,7 @@
       var dataset = buildAvaliacaoStatsDatasetFromNormalizedRows(filteredRows);
       if (dataset.totalCorrecoes <= 0) {
         var scopeMessage = (hasActiveStatsFilterValues(scopeConfig.turmaValues) || hasActiveStatsFilterValues(scopeConfig.alunoValues))
-          ? 'As estatísticas aparecerão aqui quando houver correções para os filtros de turma/aluno selecionados.'
+          ? 'As estatísticas aparecerão aqui quando houver correções para os filtros de turma/estudante selecionados.'
           : 'As estatísticas aparecerão aqui assim que houver correções salvas para esta avaliação.';
         statsRoot.innerHTML = '<div class="admin-avaliacao-stats-empty">'
           + '<div class="admin-avaliacao-stats-empty-title">Painel pedagógico</div>'
@@ -11911,7 +12127,7 @@
         },
         {
           key: 'alunos',
-          title: 'Mapa por aluno',
+          title: 'Mapa por estudante',
           value: String(dataset.alunoStats.length),
           meta: 'Visão individual de desempenho',
         }
@@ -11961,7 +12177,7 @@
         { value: 'baixo', label: 'Média abaixo de 50%' },
       ], 'turmas')
         + renderStatsBarList(dataset.turmaStats, 'mediaPercentual', function (item) {
-          return formatStatsPercent(item.mediaPercentual) + ' • ' + item.totalAlunos + ' aluno(s)';
+          return formatStatsPercent(item.mediaPercentual) + ' • ' + item.totalAlunos + ' estudante(s)';
         }, {
           searchTextBuilder: function (item) {
             return item.nome + ' ' + item.totalAlunos + ' ' + formatStatsPercent(item.mediaPercentual);
@@ -11970,7 +12186,7 @@
             return [item.mediaPercentual >= 70 ? 'alto' : (item.mediaPercentual >= 50 ? 'medio' : 'baixo')];
           }
         })
-        + '<div class="admin-avaliacao-stats-table-wrap mt-3"><table class="admin-avaliacao-stats-table"><thead><tr><th>Turma</th><th>Média</th><th>Alunos corrigidos</th></tr></thead><tbody>'
+        + '<div class="admin-avaliacao-stats-table-wrap mt-3"><table class="admin-avaliacao-stats-table"><thead><tr><th>Turma</th><th>Média</th><th>Estudantes corrigidos</th></tr></thead><tbody>'
         + dataset.turmaStats.map(function (item) {
           return '<tr' + buildStatsFilterableAttrs(item.nome + ' ' + item.totalAlunos + ' ' + formatStatsPercent(item.mediaPercentual), [item.mediaPercentual >= 70 ? 'alto' : (item.mediaPercentual >= 50 ? 'medio' : 'baixo')]) + '>'
             + '<td><strong>' + escapeHtml(item.nome) + '</strong></td>'
@@ -12057,12 +12273,12 @@
         + '</tbody></table></div>'
         + renderStatsFilterEmpty();
 
-      var alunosContent = renderStatsToolbar('Buscar aluno, turma ou habilidade...', [
-        { value: 'all', label: 'Todos os alunos' },
+      var alunosContent = renderStatsToolbar('Buscar estudante, turma ou habilidade...', [
+        { value: 'all', label: 'Todos os estudantes' },
         { value: 'destaque', label: 'Sem pendências' },
         { value: 'atencao', label: 'Com pendências' },
       ], 'alunos')
-        + '<div class="admin-avaliacao-stats-table-wrap"><table class="admin-avaliacao-stats-table"><thead><tr><th>Aluno</th><th>Turma</th><th>Resultado</th><th>Habilidades alcançadas</th><th>Habilidades não alcançadas</th></tr></thead><tbody>'
+        + '<div class="admin-avaliacao-stats-table-wrap"><table class="admin-avaliacao-stats-table"><thead><tr><th>Estudante</th><th>Turma</th><th>Resultado</th><th>Habilidades alcançadas</th><th>Habilidades não alcançadas</th></tr></thead><tbody>'
         + dataset.alunoStats.map(function (item) {
           return '<tr' + buildStatsFilterableAttrs(item.alunoNome + ' ' + item.turmaNome + ' ' + item.habilidadesAtingidas.join(' ') + ' ' + item.habilidadesPendentes.join(' '), [item.habilidadesPendentes.length ? 'atencao' : 'destaque']) + '>'
             + '<td><strong>' + escapeHtml(item.alunoNome) + '</strong></td>'
@@ -12078,13 +12294,13 @@
       statsRoot.innerHTML = '<div class="admin-avaliacao-stats-shell">'
         + renderStatsSideNav(navItems, activeTab)
         + '<div class="admin-avaliacao-stats-detail">'
-        + renderStatsDetailPanel('resumo', 'Resumo pedagógico', 'Leitura consolidada por turma, disciplina, habilidade, questão e aluno.', String(dataset.totalCorrecoes) + ' correções', resumoContent, activeTab === 'resumo')
+        + renderStatsDetailPanel('resumo', 'Resumo pedagógico', 'Leitura consolidada por turma, disciplina, habilidade, questão e estudante.', String(dataset.totalCorrecoes) + ' correções', resumoContent, activeTab === 'resumo')
         + renderStatsDetailPanel('alertas', 'Alertas pedagógicos', 'Sinais imediatos para intervenção e revisão.', insights.length ? String(insights.length) + ' alertas' : '', alertasContent, activeTab === 'alertas')
-        + renderStatsDetailPanel('turmas', 'Acertos por turma', 'Média percentual e volume de alunos corrigidos.', bestTurma ? ('Destaque: ' + bestTurma.nome) : '', turmasContent, activeTab === 'turmas')
+        + renderStatsDetailPanel('turmas', 'Acertos por turma', 'Média percentual e volume de estudantes corrigidos.', bestTurma ? ('Destaque: ' + bestTurma.nome) : '', turmasContent, activeTab === 'turmas')
         + renderStatsDetailPanel('disciplinas', 'Desempenho por disciplina', 'Domínio percentual e volume de respostas em branco por disciplina.', strongestDisciplina ? ('Top: ' + strongestDisciplina.nome) : '', disciplinasContent, activeTab === 'disciplinas')
-        + renderStatsDetailPanel('habilidades', 'Habilidades e alcance pedagógico', 'Domínio da habilidade e percentual de alunos que a atingiram.', String(dataset.habilidadeStats.length) + ' habilidades', habilidadesContent, activeTab === 'habilidades')
+        + renderStatsDetailPanel('habilidades', 'Habilidades e alcance pedagógico', 'Domínio da habilidade e percentual de estudantes que a atingiram.', String(dataset.habilidadeStats.length) + ' habilidades', habilidadesContent, activeTab === 'habilidades')
         + renderStatsDetailPanel('questoes', 'Questão por questão', 'Acertos, brancos, dificuldade e distribuição das alternativas marcadas.', weakestQuestion ? ('Crítica: Q' + weakestQuestion.questionNumber) : '', questoesContent, activeTab === 'questoes')
-        + renderStatsDetailPanel('alunos', 'Mapa por aluno', 'Percentual geral e habilidades alcançadas ou pendentes por estudante.', String(dataset.alunoStats.length) + ' alunos', alunosContent, activeTab === 'alunos')
+        + renderStatsDetailPanel('alunos', 'Mapa por estudante', 'Percentual geral e habilidades alcançadas ou pendentes por estudante.', String(dataset.alunoStats.length) + ' estudantes', alunosContent, activeTab === 'alunos')
         + '</div>'
         + '</div>';
 
@@ -12387,7 +12603,7 @@
           avaliacaoId: Number(safeRecord.avaliacaoId || activeDashboardAvaliacaoId || 0),
           alunoId: Number(safeRecord.alunoId || 0),
           turmaId: Number(safeRecord.turmaId || 0),
-          alunoNome: String(safeRecord.alunoNome || '').trim() || 'Aluno não identificado',
+          alunoNome: String(safeRecord.alunoNome || '').trim() || 'Estudante não identificado',
           turmaNome: String(safeRecord.turmaNome || '').trim() || 'Turma não informada',
           numeracao: String(safeRecord.numeracao || '').trim(),
           numeracaoLabel: String(safeRecord.numeracaoLabel || '').trim(),
@@ -12411,12 +12627,12 @@
           return !!item.correction;
         }).length;
         correcaoRosterStatus.textContent = rosterItems.length > 0
-          ? (String(correctedCount) + ' de ' + String(rosterItems.length) + ' aluno(s) com correção registrada.')
-          : 'Nenhum aluno relacionado a esta avaliação.';
+          ? (String(correctedCount) + ' de ' + String(rosterItems.length) + ' estudante(s) com correção registrada.')
+          : 'Nenhum estudante relacionado a esta avaliação.';
       }
 
       if (!rosterItems.length) {
-        correcaoRosterBody.innerHTML = '<tr><td colspan="6" class="text-center text-secondary py-4">Nenhum aluno relacionado a esta avaliação.</td></tr>';
+        correcaoRosterBody.innerHTML = '<tr><td colspan="6" class="text-center text-secondary py-4">Nenhum estudante relacionado a esta avaliação.</td></tr>';
         return;
       }
 
@@ -15119,6 +15335,116 @@
       if (correcaoEdicaoSaveBtn) {
         correcaoEdicaoSaveBtn.removeAttribute('disabled');
       }
+      if (correcaoEdicaoBlankBtn) {
+        correcaoEdicaoBlankBtn.removeAttribute('disabled');
+        correcaoEdicaoBlankBtn.classList.add('d-none');
+      }
+      if (correcaoEdicaoAbsentBtn) {
+        correcaoEdicaoAbsentBtn.removeAttribute('disabled');
+        correcaoEdicaoAbsentBtn.classList.add('d-none');
+      }
+    }
+
+    function setCorrecaoEdicaoQuickActionsVisible(visible) {
+      var shouldShow = visible === true;
+      if (correcaoEdicaoBlankBtn) {
+        correcaoEdicaoBlankBtn.classList.toggle('d-none', !shouldShow);
+      }
+      if (correcaoEdicaoAbsentBtn) {
+        correcaoEdicaoAbsentBtn.classList.toggle('d-none', !shouldShow);
+      }
+    }
+
+    function setCorrecaoEdicaoActionButtonsDisabled(disabled) {
+      var shouldDisable = disabled === true;
+      [correcaoEdicaoSaveBtn, correcaoEdicaoBlankBtn, correcaoEdicaoAbsentBtn].forEach(function (button) {
+        if (!(button instanceof HTMLElement)) {
+          return;
+        }
+        if (shouldDisable) {
+          button.setAttribute('disabled', 'disabled');
+        } else {
+          button.removeAttribute('disabled');
+        }
+      });
+    }
+
+    function submitCorrecaoEdicaoQuickStatus(status) {
+      var row = correcaoEdicaoCurrentRowData && typeof correcaoEdicaoCurrentRowData === 'object'
+        ? correcaoEdicaoCurrentRowData
+        : null;
+
+      if (!row) {
+        if (correcaoEdicaoError) {
+          correcaoEdicaoError.textContent = 'Correção não carregada.';
+          correcaoEdicaoError.classList.remove('d-none');
+        }
+        return Promise.resolve(false);
+      }
+
+      var normalizedStatus = normalizeCorrecaoStatus(status);
+      var resultPayload;
+
+      if (correcaoEdicaoError) {
+        correcaoEdicaoError.textContent = '';
+        correcaoEdicaoError.classList.add('d-none');
+      }
+
+      setCorrecaoEdicaoActionButtonsDisabled(true);
+
+      if (normalizedStatus === 'ausente') {
+        resultPayload = {
+          avaliacao_id: Number(row.avaliacao_id || row.avaliacaoId || activeDashboardAvaliacaoId || 0),
+          aluno_id: Number(row.aluno_id || row.alunoId || 0),
+          turma_id: Number(row.turma_id || row.turmaId || 0),
+          numeracao: String(row.numeracao || ''),
+          qr_payload: String(row.qr_payload || row.qrPayload || ''),
+          respostas: {},
+          correcoes: [],
+          status: 'ausente',
+          acertos: 0,
+          total_questoes: 0,
+          pontuacao: '0.00',
+          pontuacao_total: '0.00',
+          percentual: '0.00',
+        };
+      } else {
+        var comparison = buildCorrecaoCorrections({}, {}, {});
+        resultPayload = {
+          avaliacao_id: Number(row.avaliacao_id || row.avaliacaoId || activeDashboardAvaliacaoId || 0),
+          aluno_id: Number(row.aluno_id || row.alunoId || 0),
+          turma_id: Number(row.turma_id || row.turmaId || 0),
+          numeracao: String(row.numeracao || ''),
+          qr_payload: String(row.qr_payload || row.qrPayload || ''),
+          respostas: {},
+          correcoes: comparison.corrections,
+          status: 'corrigida',
+          acertos: comparison.score,
+          total_questoes: comparison.total,
+          pontuacao: comparison.earnedPoints.toFixed(2),
+          pontuacao_total: comparison.totalPoints.toFixed(2),
+          percentual: comparison.totalPoints > 0 ? ((comparison.earnedPoints / comparison.totalPoints) * 100).toFixed(2) : '0.00',
+        };
+      }
+
+      var request = Number(correcaoEdicaoCurrentRowId || 0) > 0
+        ? updateCorrecaoResult(correcaoEdicaoCurrentRowId, resultPayload)
+        : saveCorrecaoResult(resultPayload);
+
+      return request.then(function (payload) {
+        renderCorrecoesTable(payload.rows || [], payload.stats || getCorrecoesSummaryStats(payload.rows || []));
+        closeCorrecaoEdicaoModal();
+        showGlobalStatus(normalizedStatus === 'ausente' ? 'Estudante marcado como ausente com sucesso.' : 'Correção lançada como em branco com sucesso.', false);
+        return true;
+      }).catch(function (error) {
+        if (correcaoEdicaoError) {
+          correcaoEdicaoError.textContent = error && error.message ? error.message : 'Não foi possível salvar a correção.';
+          correcaoEdicaoError.classList.remove('d-none');
+        }
+        return false;
+      }).finally(function () {
+        setCorrecaoEdicaoActionButtonsDisabled(false);
+      });
     }
 
     function closeCorrecaoEdicaoModal() {
@@ -15147,9 +15473,7 @@
         return Promise.resolve(false);
       }
 
-      if (correcaoEdicaoSaveBtn) {
-        correcaoEdicaoSaveBtn.setAttribute('disabled', 'disabled');
-      }
+      setCorrecaoEdicaoActionButtonsDisabled(true);
 
       if (correcaoEdicaoError) {
         correcaoEdicaoError.textContent = '';
@@ -15164,9 +15488,7 @@
           correcaoEdicaoError.textContent = error && error.message ? error.message : 'Não foi possível validar as respostas informadas.';
           correcaoEdicaoError.classList.remove('d-none');
         }
-        if (correcaoEdicaoSaveBtn) {
-          correcaoEdicaoSaveBtn.removeAttribute('disabled');
-        }
+        setCorrecaoEdicaoActionButtonsDisabled(false);
         return Promise.resolve(false);
       }
 
@@ -15203,9 +15525,7 @@
         }
         return false;
       }).finally(function () {
-        if (correcaoEdicaoSaveBtn) {
-          correcaoEdicaoSaveBtn.removeAttribute('disabled');
-        }
+        setCorrecaoEdicaoActionButtonsDisabled(false);
       });
     }
 
@@ -15222,9 +15542,10 @@
       resetCorrecaoEdicaoModalState();
       correcaoEdicaoCurrentRowId = Number(row.id || 0);
       correcaoEdicaoCurrentRowData = row;
+      setCorrecaoEdicaoQuickActionsVisible(Number(row.id || 0) <= 0);
 
       if (correcaoEdicaoSummary) {
-        correcaoEdicaoSummary.textContent = String(row.aluno_nome || 'Aluno') + ' | ' + String(row.turma_nome || 'Turma') + ' | numeração ' + String(row.numeracao || '-');
+        correcaoEdicaoSummary.textContent = String(row.aluno_nome || 'Estudante') + ' | ' + String(row.turma_nome || 'Turma') + ' | numeração ' + String(row.numeracao || '-');
       }
 
       if (!Array.isArray(gabaritoQuestoesItens) || gabaritoQuestoesItens.length === 0) {
@@ -15450,7 +15771,7 @@
       var normalizedStatus = normalizeCorrecaoStatus(status);
       var numeracaoText = getCurrentGabaritoNumeracaoLabel();
       var numeracaoValue = correcaoCurrentTarget.numeracao || numeracaoText;
-      if (!numeracaoValue || numeracaoValue === 'Numeracao por aluno/turma') {
+      if (!numeracaoValue || numeracaoValue === 'Numeracao por estudante/turma') {
         numeracaoValue = String(correcaoCurrentTarget.numeracaoLabel || '').replace(/^Nº\s*/i, '').trim();
       }
 
@@ -15491,7 +15812,7 @@
       }
 
       correcaoBusy = true;
-      setCorrecaoScannerStep('saving', normalizedStatus === 'ausente' ? 'Registrando aluno ausente...' : 'Registrando gabarito zerado...');
+      setCorrecaoScannerStep('saving', normalizedStatus === 'ausente' ? 'Registrando estudante ausente...' : 'Registrando gabarito zerado...');
 
       return saveCorrecaoResult(resultPayload).then(function (payload) {
         renderCorrecoesTable(payload.rows || [], payload.stats || getCorrecoesSummaryStats(payload.rows || []));
@@ -15619,7 +15940,7 @@
 
       var aluno = getAllowedCorrecaoAluno(parsed.alunoId, parsed.turmaId);
       if (!aluno) {
-        setCorrecaoScannerStep('scan-qr', 'Aluno ou turma não relacionados a esta avaliação.');
+        setCorrecaoScannerStep('scan-qr', 'Estudante ou turma não relacionados a esta avaliação.');
         return Promise.resolve();
       }
 
@@ -15648,7 +15969,7 @@
 
         renderCorrecaoTarget();
         stopCorrecaoScanLoop();
-        setCorrecaoScannerStep('confirm-target', 'QR identificado. Confira o aluno e a turma antes de continuar.');
+        setCorrecaoScannerStep('confirm-target', 'QR identificado. Confira o estudante e a turma antes de continuar.');
       }).catch(function (error) {
         setCorrecaoScannerStep('scan-qr', error && error.message ? error.message : 'Não foi possível verificar esta folha agora.');
       });
@@ -16375,7 +16696,7 @@
       });
 
       if (filteredAlunos.length === 0) {
-        alunosRelacionadosWrap.innerHTML = '<div class="small text-secondary py-2">Nenhum aluno encontrado.</div>';
+        alunosRelacionadosWrap.innerHTML = '<div class="small text-secondary py-2">Nenhum estudante encontrado.</div>';
         return;
       }
 
@@ -16411,7 +16732,7 @@
 
       var selectedTurmasIds = getSelectedTurmasIds();
       if (selectedTurmasIds.length === 0) {
-        alunosSummaryElement.innerHTML = '<div class="small text-secondary">Selecione as turmas para vincular os alunos automaticamente.</div>';
+        alunosSummaryElement.innerHTML = '<div class="small text-secondary">Selecione as turmas para vincular os estudantes automaticamente.</div>';
         return;
       }
 
@@ -16422,7 +16743,7 @@
       selectedAlunosRelacionadosIds = validIds;
 
       if (validIds.length === 0) {
-        alunosSummaryElement.innerHTML = '<div class="small text-secondary">Nenhum aluno selecionado.</div>';
+        alunosSummaryElement.innerHTML = '<div class="small text-secondary">Nenhum estudante selecionado.</div>';
         return;
       }
 
@@ -16800,23 +17121,98 @@
       });
     }
 
+    if (tableFiltersButton && tableFiltersButton.dataset.boundClick !== '1') {
+      tableFiltersButton.dataset.boundClick = '1';
+      tableFiltersButton.addEventListener('click', function () {
+        rebuildTableFilterControls();
+        if (tableFiltersModalInstance) {
+          tableFiltersModalInstance.show();
+        }
+      });
+    }
+
+    if (tableCycleFiltersElement && tableCycleFiltersElement.dataset.boundClick !== '1') {
+      tableCycleFiltersElement.dataset.boundClick = '1';
+      tableCycleFiltersElement.addEventListener('click', function (event) {
+        var button = event.target.closest('[data-filter-value]');
+        if (!button) {
+          return;
+        }
+
+        activeTableCycleFilter = String(button.getAttribute('data-filter-value') || 'all').trim() || 'all';
+        tableCurrentPage = 1;
+        rebuildTableFilterControls();
+        filterTable();
+      });
+    }
+
+    if (tableTurmaFiltersElement && tableTurmaFiltersElement.dataset.boundClick !== '1') {
+      tableTurmaFiltersElement.dataset.boundClick = '1';
+      tableTurmaFiltersElement.addEventListener('click', function (event) {
+        var button = event.target.closest('[data-filter-value]');
+        if (!button) {
+          return;
+        }
+
+        activeTableTurmaFilter = String(button.getAttribute('data-filter-value') || 'all').trim() || 'all';
+        tableCurrentPage = 1;
+        rebuildTableFilterControls();
+        filterTable();
+      });
+    }
+
     if (tableSearchInput) {
       tableSearchInput.addEventListener('input', function () {
-        var query = normalizeSearchValue(this.value);
-        var hasVisibleRows = false;
+        tableCurrentPage = 1;
+        filterTable();
+      });
+    }
 
-        tableRows.forEach(function (row) {
-          var searchText = normalizeSearchValue(row.getAttribute('data-search-text') || '');
-          var isVisible = searchText.indexOf(query) !== -1;
-          row.style.display = isVisible ? '' : 'none';
-          if (isVisible) {
-            hasVisibleRows = true;
-          }
-        });
+    if (tablePageSizeSelect && tablePageSizeSelect.dataset.boundChange !== '1') {
+      tablePageSizeSelect.dataset.boundChange = '1';
+      tablePageSizeSelect.addEventListener('change', function () {
+        tableCurrentPage = 1;
+        filterTable();
+      });
+    }
 
-        if (tableEmpty) {
-          tableEmpty.style.display = hasVisibleRows ? 'none' : 'block';
+    if (tableClearFiltersButton && tableClearFiltersButton.dataset.boundClick !== '1') {
+      tableClearFiltersButton.dataset.boundClick = '1';
+      tableClearFiltersButton.addEventListener('click', function () {
+        activeTableCycleFilter = 'all';
+        activeTableTurmaFilter = 'all';
+        tableCurrentPage = 1;
+        rebuildTableFilterControls();
+        filterTable();
+      });
+    }
+
+    if (tablePrevPageButton && tablePrevPageButton.dataset.boundClick !== '1') {
+      tablePrevPageButton.dataset.boundClick = '1';
+      tablePrevPageButton.addEventListener('click', function () {
+        tableCurrentPage = Math.max(1, tableCurrentPage - 1);
+        filterTable();
+      });
+    }
+
+    if (tableNextPageButton && tableNextPageButton.dataset.boundClick !== '1') {
+      tableNextPageButton.dataset.boundClick = '1';
+      tableNextPageButton.addEventListener('click', function () {
+        tableCurrentPage += 1;
+        filterTable();
+      });
+    }
+
+    if (tablePaginationPages && tablePaginationPages.dataset.boundClick !== '1') {
+      tablePaginationPages.dataset.boundClick = '1';
+      tablePaginationPages.addEventListener('click', function (event) {
+        var button = event.target.closest('[data-page]');
+        if (!button) {
+          return;
         }
+
+        tableCurrentPage = clampInt(parseInt(button.getAttribute('data-page'), 10), 1, 9999, 1);
+        filterTable();
       });
     }
 
@@ -16824,6 +17220,10 @@
       selectAllCheckbox.addEventListener('change', function () {
         var isChecked = this.checked;
         tableRows.forEach(function (row) {
+          if (row.classList.contains('d-none')) {
+            return;
+          }
+
           var rowId = Number(row.getAttribute('data-avaliacao-id') || 0);
           var checkbox = row.querySelector('.js-admin-avaliacao-select');
           if (checkbox) {
@@ -16885,6 +17285,8 @@
     }
 
     bindRowSelectionCheckboxes();
+    rebuildTableFilterControls();
+    filterTable();
 
     bindRowActionButtons();
 
@@ -17582,6 +17984,7 @@
       confirmCorrecaoRevisaoModal: confirmCorrecaoRevisaoModal,
       cancelCorrecaoRevisaoModal: cancelCorrecaoRevisaoModal,
       submitCorrecaoEdicaoModal: submitCorrecaoEdicaoModal,
+      submitCorrecaoEdicaoQuickStatus: submitCorrecaoEdicaoQuickStatus,
       closeCorrecaoEdicaoModal: closeCorrecaoEdicaoModal,
       getCameraDeps: getCorrecaoCameraDeps,
       getElements: function () {
@@ -17610,6 +18013,8 @@
           correcaoRevisaoSaveBtn: correcaoRevisaoSaveBtn,
           correcaoRevisaoCancelBtn: correcaoRevisaoCancelBtn,
           correcaoEdicaoModalElement: correcaoEdicaoModalElement,
+          correcaoEdicaoBlankBtn: correcaoEdicaoBlankBtn,
+          correcaoEdicaoAbsentBtn: correcaoEdicaoAbsentBtn,
           correcaoEdicaoSaveBtn: correcaoEdicaoSaveBtn,
           correcaoEdicaoCancelBtn: correcaoEdicaoCancelBtn,
         };

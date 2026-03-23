@@ -1533,19 +1533,28 @@ body {
 }
 
 .institutional-avaliacoes-card-body {
+  flex: 1 1 0%;
+  height: 0;
   overflow: hidden;
 }
 
 .institutional-avaliacoes-list-container {
   display: flex;
   flex-direction: column;
-  flex: 1 1 auto;
+  flex: 1 1 0%;
+  height: 0;
   overflow: hidden;
 }
 .institutional-avaliacoes-shell {
+  box-sizing: border-box;
   height: calc(100vh - var(--header-height) - var(--footer-height) - 12px);
-  margin-bottom: calc(-1 * (var(--footer-height) + 12px));
+  height: calc(100dvh - var(--header-height) - var(--footer-height) - 12px);
+  margin-bottom: 0;
   overflow: hidden;
+}
+.institutional-avaliacoes-shell-col {
+  display: flex;
+  flex-direction: column;
 }
 
 .institutional-avaliacoes-shell-container,
@@ -1553,6 +1562,8 @@ body {
 .institutional-avaliacoes-shell-col,
 .institutional-avaliacoes-shell-card {
   height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .institutional-avaliacoes-shell-row {
@@ -1560,14 +1571,136 @@ body {
 }
 
 .institutional-avaliacoes-search-wrap {
-  max-width: 320px;
+  flex: 1 1 240px;
+  max-width: 280px;
+}
+
+.institutional-avaliacoes-toolbar {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.institutional-avaliacoes-toolbar-top {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.institutional-avaliacoes-toolbar-actions {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.institutional-avaliacoes-page-size-wrap {
+  flex: 0 0 145px;
+  min-width: 145px;
+}
+
+.institutional-avaliacoes-filters-wrap {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.institutional-avaliacoes-filter-group {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: start;
+  gap: 0.5rem;
+}
+
+.institutional-avaliacoes-filter-label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6c757d;
+  line-height: 2rem;
+  margin: 0;
+}
+
+.institutional-avaliacoes-filter-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.institutional-avaliacoes-filter-chip {
+  border-radius: 999px;
+  border: 1px solid #d9dee5;
+  background: #ffffff;
+  color: #495057;
+  padding: 0.26rem 0.72rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.institutional-avaliacoes-filter-chip:hover,
+.institutional-avaliacoes-filter-chip:focus {
+  border-color: #b42318;
+  color: #b42318;
+  background: #fff5f5;
+}
+
+.institutional-avaliacoes-filter-chip.is-active {
+  border-color: #b42318;
+  background: #b42318;
+  color: #ffffff;
+}
+
+.institutional-avaliacoes-filter-empty {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.9rem;
+  font-size: 0.82rem;
+  color: #6c757d;
+}
+
+.institutional-avaliacoes-filters-modal-body {
+  padding-top: 1rem;
+}
+
+.institutional-avaliacoes-filters-modal-wrap {
+  gap: 0.85rem;
+}
+
+.institutional-avaliacoes-pagination-wrap {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.institutional-avaliacoes-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.institutional-avaliacoes-page-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.institutional-avaliacoes-page-btn {
+  min-width: 2.2rem;
 }
 
 .institutional-avaliacoes-table-wrap {
-  flex: 1 1 auto;
+  flex: 1 1 0%;
   min-height: 0;
-  height: calc(100vh - 250px);
-  max-height: calc(100vh - 250px);
+  height: 0;
+  max-height: none;
   overflow-y: auto !important;
   overflow-x: auto !important;
 }
@@ -3830,6 +3963,33 @@ iframe.iframe-modal-active {
 @media (max-width: 955px) {
   .institutional-avaliacoes-table-wrap {
     overflow-x: hidden !important;
+  }
+
+  .institutional-avaliacoes-toolbar-top {
+    align-items: stretch;
+  }
+
+  .institutional-avaliacoes-toolbar-actions {
+    justify-content: stretch;
+  }
+
+  .institutional-avaliacoes-filter-group {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
+
+  .institutional-avaliacoes-filter-label {
+    line-height: 1.2;
+  }
+
+  .institutional-avaliacoes-search-wrap,
+  .institutional-avaliacoes-page-size-wrap {
+    max-width: none;
+    width: 100%;
+  }
+
+  .institutional-avaliacoes-toolbar-actions > .btn {
+    width: 100%;
   }
 
   .institutional-avaliacoes-col-select,
