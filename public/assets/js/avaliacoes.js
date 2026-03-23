@@ -6107,8 +6107,8 @@
         // Cursor logic
         if (gabaritoSelectionType === 'background') {
           if ((gabaritoBackgroundHandleRect && inRect(gabaritoBackgroundHandleRect, pointer.x, pointer.y))
-              || (gabaritoBackgroundGrowWidthRect && inRect(gabaritoBackgroundGrowWidthRect, pointer.x, pointer.y))
-              || (gabaritoBackgroundGrowHeightRect && inRect(gabaritoBackgroundGrowHeightRect, pointer.x, pointer.y))) {
+            || (gabaritoBackgroundGrowWidthRect && inRect(gabaritoBackgroundGrowWidthRect, pointer.x, pointer.y))
+            || (gabaritoBackgroundGrowHeightRect && inRect(gabaritoBackgroundGrowHeightRect, pointer.x, pointer.y))) {
             gabaritoA4EditorCanvas.style.cursor = 'nwse-resize';
             return;
           }
@@ -6553,6 +6553,101 @@
       return form.action.replace('/avaliacoes/salvar', '/avaliacoes/upload-fundo-gabarito');
     }
 
+    function isInlineAssetSource(value) {
+      var normalized = String(value || '').trim();
+      return /^data:/i.test(normalized) || /^blob:/i.test(normalized);
+    }
+
+    function getAssetExtensionFromMimeType(mimeType, fallbackExtension) {
+      var normalized = String(mimeType || '').trim().toLowerCase();
+      if (normalized === 'image/jpeg') {
+        return 'jpg';
+      }
+      if (normalized === 'image/png') {
+        return 'png';
+      }
+      if (normalized === 'image/webp') {
+        return 'webp';
+      }
+      if (normalized === 'application/pdf') {
+        return 'pdf';
+      }
+      return String(fallbackExtension || 'png').trim().toLowerCase() || 'png';
+    }
+
+    function buildUploadFileFromInlineSource(source, preferredBaseName) {
+      var inlineSource = String(source || '').trim();
+      if (!isInlineAssetSource(inlineSource)) {
+        return Promise.resolve(null);
+      }
+
+      return fetch(inlineSource)
+        .then(function (response) {
+          if (!response.ok) {
+            throw new Error('Não foi possível preparar o plano de fundo para upload.');
+          }
+          return response.blob();
+        })
+        .then(function (blob) {
+          var mimeType = String(blob && blob.type || '').trim().toLowerCase();
+          var extension = getAssetExtensionFromMimeType(mimeType, 'png');
+          var filename = String(preferredBaseName || 'layout-asset').trim() || 'layout-asset';
+          filename += '-' + String(Date.now()) + '.' + extension;
+
+          if (typeof File === 'function') {
+            return new File([blob], filename, {
+              type: mimeType || 'application/octet-stream',
+            });
+          }
+
+          try {
+            blob.name = filename;
+          } catch (error) {
+            // Ignore: Blob may be immutable in older browsers.
+          }
+
+          return blob;
+        });
+    }
+
+    function persistGabaritoBackgroundIfNeeded() {
+      var currentPath = String(gabaritoBackgroundPath || '').trim();
+      var currentUrl = String(gabaritoBackgroundUrl || '').trim();
+      var inlineSource = '';
+
+      if (isInlineAssetSource(currentUrl)) {
+        inlineSource = currentUrl;
+      } else if (isInlineAssetSource(currentPath)) {
+        inlineSource = currentPath;
+      }
+
+      if (inlineSource === '') {
+        return Promise.resolve({
+          path: currentPath,
+          url: currentUrl,
+          cache_bust: String(gabaritoBackgroundCacheBust || '').trim(),
+        });
+      }
+
+      return buildUploadFileFromInlineSource(inlineSource, 'gabarito-fundo')
+        .then(function (file) {
+          if (!file) {
+            throw new Error('Não foi possível preparar o plano de fundo para upload.');
+          }
+
+          return uploadLayoutAsset(file, getGabaritoBackgroundUploadUrl());
+        })
+        .then(function (uploadedAsset) {
+          var persistedBackground = {
+            path: String(uploadedAsset && uploadedAsset.path || '').trim(),
+            url: String(uploadedAsset && uploadedAsset.url || '').trim(),
+            cache_bust: String(Date.now()),
+          };
+          setGabaritoBackground(persistedBackground);
+          return persistedBackground;
+        });
+    }
+
     function getLayoutImageUploadUrl() {
       var fallbackUrl = '/index.php/paineladministrativo/avaliacoes/upload-imagem-layout';
       if (!form || !form.action) {
@@ -6635,8 +6730,6 @@
     }
 
     function saveCurrentGabaritoToDatabase(_closeModal, successMessage, silentStatus) {
-      syncGabaritoInput();
-
       var targetId = Number(activeDashboardAvaliacaoId || (idInput ? idInput.value : 0) || 0);
       var csrfInput = form ? form.querySelector('input[name="csrf_token"]') : null;
       var csrfToken = csrfInput ? String(csrfInput.value || '') : '';
@@ -6649,19 +6742,24 @@
         return Promise.resolve(false);
       }
 
-      var serializedConfig = JSON.stringify(getCurrentGabaritoConfig());
-      var requestData = new FormData();
-      requestData.append('csrf_token', csrfToken);
-      requestData.append('id', String(targetId));
-      requestData.append('gabarito', serializedConfig);
+      return persistGabaritoBackgroundIfNeeded()
+        .then(function () {
+          syncGabaritoInput();
 
-      return fetch(getGabaritoSaveUrl(), {
-        method: 'POST',
-        body: requestData,
-        headers: {
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-      })
+          var serializedConfig = JSON.stringify(getCurrentGabaritoConfig());
+          var requestData = new FormData();
+          requestData.append('csrf_token', csrfToken);
+          requestData.append('id', String(targetId));
+          requestData.append('gabarito', serializedConfig);
+
+          return fetch(getGabaritoSaveUrl(), {
+            method: 'POST',
+            body: requestData,
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest',
+            },
+          });
+        })
         .then(function (response) {
           return response.json()
             .catch(function () { return { ok: false, message: 'Resposta inválida do servidor.' }; })
@@ -6673,17 +6771,11 @@
               return payload;
             });
         })
-        .then(function (payload) {
-          document.querySelectorAll('.js-admin-avaliacao-edit, .js-admin-avaliacao-dashboard, .js-admin-avaliacao-copy').forEach(function (button) {
-            var buttonId = Number(button.getAttribute('data-id') || 0);
-            if (buttonId === targetId) {
-              button.setAttribute('data-gabarito', serializedConfig);
-            }
-          });
-
+        .then(function (_payload) {
+          setGabaritoPendingChanges(false);
+          var message = String(successMessage || '').trim() || 'Gabarito salvo com sucesso.';
           if (!isSilent) {
-            showGlobalStatus(successMessage || payload.message || 'Gabarito salvo com sucesso.', false);
-            refreshAvaliacoesCrudView();
+            showGlobalStatus(message, false);
           }
           return true;
         })
@@ -6871,7 +6963,7 @@
           nomeInput.value = (button.getAttribute('data-nome') || '') + ' (cópia)';
 
           if (aplicacaoInput) {
-            aplicacaoInput.value = '';
+            aplicacaoInput.value = button.getAttribute('data-aplicacao') || '';
           }
           if (bimestreInput) {
             bimestreInput.value = button.getAttribute('data-bimestre') || '';
@@ -9301,7 +9393,7 @@
       }
 
       ctx.clearRect(0, 0, a4CanvasWidth, a4CanvasHeight);
-      ctx.fillStyle = '#f1f3f5';
+      ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, a4CanvasWidth, a4CanvasHeight);
 
       var pageRect = getA4PageRect();
@@ -9517,6 +9609,51 @@
       renderImpressaoPreview();
     }
 
+    function exportPrintCanvasDataUrl(canvas) {
+      if (!(canvas instanceof HTMLCanvasElement)) {
+        return '';
+      }
+
+      var pageRect = getA4PageRect();
+      var scaleX = canvas.width / a4CanvasWidth;
+      var scaleY = canvas.height / a4CanvasHeight;
+      var sourceX = Math.round(pageRect.x * scaleX);
+      var sourceY = Math.round(pageRect.y * scaleY);
+      var sourceWidth = Math.round(pageRect.width * scaleX);
+      var sourceHeight = Math.round(pageRect.height * scaleY);
+
+      if (sourceWidth <= 0 || sourceHeight <= 0) {
+        return canvas.toDataURL('image/png');
+      }
+
+      var exportCanvas = document.createElement('canvas');
+      exportCanvas.width = canvas.width;
+      exportCanvas.height = canvas.height;
+
+      var exportContext = exportCanvas.getContext('2d');
+      if (!exportContext) {
+        return canvas.toDataURL('image/png');
+      }
+
+      exportContext.fillStyle = '#ffffff';
+      exportContext.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+      exportContext.imageSmoothingEnabled = true;
+      exportContext.imageSmoothingQuality = 'high';
+      exportContext.drawImage(
+        canvas,
+        sourceX,
+        sourceY,
+        sourceWidth,
+        sourceHeight,
+        0,
+        0,
+        exportCanvas.width,
+        exportCanvas.height
+      );
+
+      return exportCanvas.toDataURL('image/png');
+    }
+
     function openImpressaoWindow() {
       if (!impressaoGrid) {
         return false;
@@ -9542,11 +9679,11 @@
           return;
         }
 
-        pagesHtml.push('<div class="print-page"><img src="' + canvas.toDataURL('image/png') + '" alt="Folha A4 do gabarito"></div>');
+        pagesHtml.push('<div class="print-page"><img src="' + exportPrintCanvasDataUrl(canvas) + '" alt="Folha A4 do gabarito"></div>');
       });
 
       printWindow.document.open();
-      printWindow.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Impressão de Gabaritos</title><style>@page { size: A4 portrait; margin: 0; } html, body { margin: 0; padding: 0; background: #f1f3f5; } body { display: flex; flex-direction: column; align-items: center; } .print-page { width: 210mm; min-height: 297mm; margin: 0 auto 8mm; page-break-after: always; break-after: page; background: #ffffff; display: flex; align-items: flex-start; justify-content: center; } .print-page:last-child { page-break-after: auto; break-after: auto; } .print-page img { width: 210mm; height: 297mm; display: block; } @media print { html, body { background: #ffffff; } .print-page { margin: 0; } }</style></head><body>' + pagesHtml.join('') + '<script>window.onload = function () { setTimeout(function () { window.print(); }, 250); }<' + '/script></body></html>');
+      printWindow.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Impressão de Gabaritos</title><style>@page { size: A4 portrait; margin: 0; } html, body { width: 210mm; min-height: 297mm; margin: 0; padding: 0; background: #ffffff !important; } body { display: block; } .print-page { width: 210mm; min-height: 297mm; margin: 0; padding: 0; page-break-after: always; break-after: page; background: #ffffff !important; border: none !important; box-shadow: none !important; outline: none !important; } .print-page:last-child { page-break-after: auto; break-after: auto; } .print-page img { width: 210mm; height: 297mm; margin: 0; padding: 0; border: 0; box-shadow: none; outline: none; display: block; } @media print { html, body { width: 210mm; min-height: 297mm; background: #ffffff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; } .print-page { margin: 0; border: 0 !important; box-shadow: none !important; outline: none !important; } .print-page img { border: 0; box-shadow: none; outline: none; } }</style></head><body>' + pagesHtml.join('') + '<script>window.onload = function () { setTimeout(function () { window.print(); }, 250); }<' + '/script></body></html>');
       printWindow.document.close();
       return true;
     }
@@ -14574,12 +14711,12 @@
           && best.score.combined >= 0.40
           && best.score.centerDarkRatio - second.score.centerDarkRatio >= 0.20
         ) || (
-          best.legacyBubbleScore >= 0.15
-          && best.roiMarkStrength >= 0.11
-          && best.roiAdaptiveDarkGain >= 0.055
-          && best.roiBrightnessDrop >= 10
-          && strengthGap >= 0.025
-        );
+            best.legacyBubbleScore >= 0.15
+            && best.roiMarkStrength >= 0.11
+            && best.roiAdaptiveDarkGain >= 0.055
+            && best.roiBrightnessDrop >= 10
+            && strengthGap >= 0.025
+          );
         if ((passesRelativeCheck || passesAdaptiveSingleCheck || passesLocalDominanceCheck || passesAbsoluteCheck) && !secondAlsoMarked) {
           var confidenceLevel = getCorrecaoAnswerConfidenceLevel(best);
           studentAnswers[questionKey] = best.alternativa;
@@ -16124,6 +16261,30 @@
       return ids;
     }
 
+    function buildAutomaticSelectedAlunosIds() {
+      var selectedTurmasIds = getSelectedTurmasIds();
+      if (selectedTurmasIds.length === 0) {
+        return [];
+      }
+
+      return alunosOptions.filter(function (aluno) {
+        return selectedTurmasIds.indexOf(aluno.turmaId) !== -1;
+      }).map(function (aluno) {
+        return aluno.id;
+      });
+    }
+
+    function syncSelectedAlunosFromTurmas() {
+      selectedAlunosRelacionadosIds = buildAutomaticSelectedAlunosIds();
+      syncAlunosHiddenInputs();
+      updateAlunosSummary();
+
+      if (alunosModalElement && alunosModalElement.classList.contains('show')) {
+        buildAlunosTurmaFilterOptions();
+        renderAlunosModalList();
+      }
+    }
+
     function updateTurmasSummary() {
       if (!turmasSummaryElement) {
         return;
@@ -16250,7 +16411,7 @@
 
       var selectedTurmasIds = getSelectedTurmasIds();
       if (selectedTurmasIds.length === 0) {
-        alunosSummaryElement.innerHTML = '<div class="small text-secondary">Selecione as turmas para liberar a seleção de alunos.</div>';
+        alunosSummaryElement.innerHTML = '<div class="small text-secondary">Selecione as turmas para vincular os alunos automaticamente.</div>';
         return;
       }
 
@@ -16343,12 +16504,8 @@
         cb.checked = turmaIdStrings.indexOf(String(cb.value || '')) !== -1;
       });
 
-      // Alunos
-      var alunoIdNumbers = String(alunosIds || '').trim() === ''
-        ? []
-        : String(alunosIds).split(',').map(function (v) { return Number(v.trim()) || 0; }).filter(function (id) { return id > 0; });
-      selectedAlunosRelacionadosIds = alunoIdNumbers;
-      syncAlunosHiddenInputs();
+      // Alunos seguem automaticamente as turmas selecionadas.
+      syncSelectedAlunosFromTurmas();
 
       // Aplicadores
       var aplicadorIdNumbers = String(aplicadoresIds || '').trim() === ''
@@ -16361,7 +16518,6 @@
 
       updateTurmasSummary();
       updateAlunosModalButtonState();
-      updateAlunosSummary();
       updateAplicadoresSummary();
     }
 
@@ -16379,11 +16535,9 @@
     if (clearTurmasButton) {
       clearTurmasButton.addEventListener('click', function () {
         turmaCheckboxes.forEach(function (cb) { cb.checked = false; });
-        selectedAlunosRelacionadosIds = [];
-        syncAlunosHiddenInputs();
         updateTurmasSummary();
-        updateAlunosSummary();
         updateAlunosModalButtonState();
+        syncSelectedAlunosFromTurmas();
       });
     }
 
@@ -16413,16 +16567,7 @@
       cb.addEventListener('change', function () {
         updateTurmasSummary();
         updateAlunosModalButtonState();
-        var currentTurmasIds = getSelectedTurmasIds();
-        var remaining = selectedAlunosRelacionadosIds.filter(function (alunoId) {
-          var aluno = alunosOptions.find(function (a) { return a.id === alunoId; });
-          return aluno && currentTurmasIds.indexOf(aluno.turmaId) !== -1;
-        });
-        if (remaining.length !== selectedAlunosRelacionadosIds.length) {
-          selectedAlunosRelacionadosIds = remaining;
-          syncAlunosHiddenInputs();
-          updateAlunosSummary();
-        }
+        syncSelectedAlunosFromTurmas();
       });
     });
 
@@ -16430,6 +16575,7 @@
       turmasModalElement.addEventListener('hidden.bs.modal', function () {
         updateTurmasSummary();
         updateAlunosModalButtonState();
+        syncSelectedAlunosFromTurmas();
         if (pendingOpenAlunosAfterTurmasClose) {
           pendingOpenAlunosAfterTurmasClose = false;
           if (alunosModalInstance && getSelectedTurmasIds().length > 0) {
@@ -16608,13 +16754,17 @@
           submitButton.disabled = true;
         }
 
-        var formData = new FormData(form);
+        persistGabaritoBackgroundIfNeeded()
+          .then(function () {
+            syncGabaritoInput();
+            var formData = new FormData(form);
 
-        fetch(form.action, {
-          method: 'POST',
-          body: formData,
-          headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        })
+            return fetch(form.action, {
+              method: 'POST',
+              body: formData,
+              headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            });
+          })
           .then(function (response) { return response.json(); })
           .then(function (payload) {
             if (payload && payload.ok) {
@@ -17092,14 +17242,30 @@
     if (gabaritoFundoArquivoInput) {
       gabaritoFundoArquivoInput.addEventListener('change', function () {
         var file = this.files && this.files[0];
-        if (!file) { return; }
-        var reader = new FileReader();
-        reader.onload = function (e) {
-          setGabaritoBackground({ url: String(e.target && e.target.result || '') });
-          markGabaritoPendingChanges();
-        };
-        reader.readAsDataURL(file);
         this.value = '';
+        if (!file) { return; }
+
+        if (gabaritoFundoSelectBtn) {
+          gabaritoFundoSelectBtn.disabled = true;
+        }
+
+        uploadLayoutAsset(file, getGabaritoBackgroundUploadUrl())
+          .then(function (uploadedAsset) {
+            setGabaritoBackground({
+              path: String(uploadedAsset && uploadedAsset.path || '').trim(),
+              url: String(uploadedAsset && uploadedAsset.url || '').trim(),
+              cache_bust: String(Date.now()),
+            });
+            markGabaritoPendingChanges();
+          })
+          .catch(function (error) {
+            alert(error && error.message ? error.message : 'Não foi possível enviar o plano de fundo.');
+          })
+          .finally(function () {
+            if (gabaritoFundoSelectBtn) {
+              gabaritoFundoSelectBtn.disabled = false;
+            }
+          });
       });
     }
 
@@ -17114,20 +17280,26 @@
       gabaritoFundoSetDefaultBtn.addEventListener('click', function () {
         var csrfInput = form ? form.querySelector('input[name="csrf_token"]') : null;
         var csrfToken = csrfInput ? String(csrfInput.value || '').trim() : '';
-        var gabarito = {
-          background: { path: gabaritoBackgroundPath, url: gabaritoBackgroundUrl, cache_bust: gabaritoBackgroundCacheBust },
-          background_layout: { x: gabaritoBackgroundLayout.x, y: gabaritoBackgroundLayout.y, scale_x: gabaritoBackgroundLayout.scale_x, scale_y: gabaritoBackgroundLayout.scale_y },
-        };
-        var postBody = new URLSearchParams();
-        postBody.set('csrf_token', csrfToken);
-        postBody.set('action', 'save');
-        postBody.set('gabarito', JSON.stringify(gabarito));
         gabaritoFundoSetDefaultBtn.disabled = true;
-        fetch(getDefaultGabaritoPresetUrl(), {
-          method: 'POST',
-          headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
-          body: postBody.toString(),
-        }).then(function (res) { return res.json().catch(function () { return { ok: false, message: 'Resposta inválida.' }; }); })
+
+        persistGabaritoBackgroundIfNeeded()
+          .then(function () {
+            var gabarito = {
+              background: { path: gabaritoBackgroundPath, url: gabaritoBackgroundUrl, cache_bust: gabaritoBackgroundCacheBust },
+              background_layout: { x: gabaritoBackgroundLayout.x, y: gabaritoBackgroundLayout.y, scale_x: gabaritoBackgroundLayout.scale_x, scale_y: gabaritoBackgroundLayout.scale_y },
+            };
+            var postBody = new URLSearchParams();
+            postBody.set('csrf_token', csrfToken);
+            postBody.set('action', 'save');
+            postBody.set('gabarito', JSON.stringify(gabarito));
+
+            return fetch(getDefaultGabaritoPresetUrl(), {
+              method: 'POST',
+              headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+              body: postBody.toString(),
+            });
+          })
+          .then(function (res) { return res.json().catch(function () { return { ok: false, message: 'Resposta inválida.' }; }); })
           .then(function (payload) {
             if (payload && payload.ok && payload.preset) {
               defaultGabaritoPreset = payload.preset;
