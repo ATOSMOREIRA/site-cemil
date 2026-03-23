@@ -95,18 +95,6 @@ Este projeto está sob a licença MIT.
 
 ---
 
-## 🤝 Contribuição
-
-Contribuições são bem-vindas!
-
-Fork o projeto
-Crie uma branch (git checkout -b feature/nova-feature)
-Commit (git commit -m 'Adiciona nova feature')
-Push (git push origin feature/nova-feature)
-Abra um Pull Request
-
----
-
 ```bash
 
 
