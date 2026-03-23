@@ -2291,12 +2291,20 @@
 				tbody.innerHTML = html;
 			}
 
+			function dateInputValueLocal(date) {
+				var value = date instanceof Date ? date : new Date();
+				var year = value.getFullYear();
+				var month = String(value.getMonth() + 1).padStart(2, '0');
+				var day = String(value.getDate()).padStart(2, '0');
+				return year + '-' + month + '-' + day;
+			}
+
 			/* --------------------------------------------------------
 			   Inicialização — carrega dados base
 			   -------------------------------------------------------- */
 			function init() {
 				// datas padrão do relatório e gerenciamento
-				var today = new Date().toISOString().slice(0, 10);
+				var today = dateInputValueLocal(new Date());
 				['relDataInicio', 'relDataFim', 'gerencDataInicio', 'gerencDataFim'].forEach(function (id) {
 					var el = document.getElementById(id);
 					if (el) el.value = today;

@@ -37,6 +37,14 @@
     return isNaN(d.getTime()) ? s : d.toLocaleDateString('pt-BR');
   }
 
+  function dateInputValueLocal(date) {
+    var value = date instanceof Date ? date : new Date();
+    var year = value.getFullYear();
+    var month = String(value.getMonth() + 1).padStart(2, '0');
+    var day = String(value.getDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
+  }
+
   function fmtScore(nota, max) {
     var n = Number(nota);
     if (!isFinite(n)) return '-';
@@ -1736,7 +1744,7 @@
       var url = URL.createObjectURL(blob);
       var link = document.createElement('a');
       link.href = url;
-      link.download = 'conferencia_sge_' + new Date().toISOString().slice(0, 10) + '.csv';
+      link.download = 'conferencia_sge_' + dateInputValueLocal(new Date()) + '.csv';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -2634,7 +2642,7 @@
       var anoInput = formEl.querySelector('[name="ano_letivo"]');
       if (anoInput) anoInput.value = String(new Date().getFullYear());
       var dataInput = formEl.querySelector('[name="data_referencia"]');
-      if (dataInput) dataInput.value = new Date().toISOString().slice(0, 10);
+      if (dataInput) dataInput.value = dateInputValueLocal(new Date());
       renderFormAlunoOptions('', '');
       if (formNotaInput) {
         formNotaInput.step = '0.1';
