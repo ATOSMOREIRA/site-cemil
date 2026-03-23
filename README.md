@@ -51,11 +51,7 @@ Abra o arquivo index.html no navegador
 
 ## 🌍 Deploy
 
-Caso o projeto esteja publicado, acesse:
-
-https://seu-link-aqui.com
-
-(adicione aqui o link real se tiver GitHub Pages ou outro)
+https://cemiljardenirjorgefrederico.com
 
 ---
 
