@@ -1,2 +1,0 @@
-ALTER TABLE avaliacoes
-ADD COLUMN bimestre TINYINT UNSIGNED NULL AFTER nome;

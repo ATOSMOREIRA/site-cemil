@@ -1,2 +1,0 @@
-ALTER TABLE alunos
-ADD COLUMN desempenho LONGTEXT NULL AFTER matricula;
