@@ -4,6 +4,7 @@ declare(strict_types=1);
 return [
     '/' => ['HomeController', 'index'],
     '/api/instagram-posts' => ['HomeController', 'instagramPosts'],
+    '/api/chatbot' => ['HomeController', 'apiChatbot'],
     '/404' => ['HomeController', 'notFound'],
     '/informacoes' => ['HomeController', 'informacoes'],
     '/institucional' => ['InstitucionalController', 'institucional'],

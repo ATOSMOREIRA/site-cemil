@@ -1319,6 +1319,620 @@ class HomeController extends Controller
         return is_string($decrypted) ? $decrypted : '';
     }
 
+    // =========================================================================
+    // CHATBOT
+    // =========================================================================
+
+    public function apiChatbot(): void
+    {
+        if (!isset($_SESSION['auth'])) {
+            $this->respondJson(['ok' => false, 'error' => 'Não autenticado.'], 401);
+            return;
+        }
+
+        $raw   = file_get_contents('php://input');
+        $input = is_string($raw) ? json_decode($raw, true) : null;
+
+        if (!is_array($input)) {
+            $this->respondJson(['ok' => false, 'error' => 'Payload inválido.'], 400);
+            return;
+        }
+
+        $message = trim((string) ($input['message'] ?? ''));
+        if ($message === '') {
+            $this->respondJson(['ok' => false, 'error' => 'Mensagem vazia.'], 400);
+            return;
+        }
+
+        $rawHistory = is_array($input['history'] ?? null) ? $input['history'] : [];
+        $user       = $_SESSION['auth'];
+
+        $turmasVinculadas = $this->getChatbotTurmasVinculadas((int) ($user['id'] ?? 0));
+        $tools            = $this->getChatbotTools($user, $turmasVinculadas);
+        $system           = $this->buildChatbotSystemPrompt($user, $turmasVinculadas);
+
+        $messages = [];
+        foreach (array_slice($rawHistory, -10) as $entry) {
+            $role    = (string) ($entry['role']    ?? '');
+            $content = $entry['content'] ?? '';
+            if ($role !== '' && $content !== '' && $content !== []) {
+                $messages[] = ['role' => $role, 'content' => $content];
+            }
+        }
+        $messages[] = ['role' => 'user', 'content' => $message];
+
+        $reply = $this->chatbotToolUseLoop($messages, $tools, $system, $turmasVinculadas);
+        $this->respondJson(['ok' => true, 'reply' => $reply]);
+    }
+
+    private function getChatbotTurmasVinculadas(int $userId): array
+    {
+        if ($userId <= 0) {
+            return [];
+        }
+
+        try {
+            $pdo  = Database::connection();
+            $stmt = $pdo->prepare(
+                'SELECT DISTINCT pm.turma_id FROM professor_modulacoes pm WHERE pm.professor_id = :uid AND pm.turma_id IS NOT NULL'
+            );
+            $stmt->execute(['uid' => $userId]);
+            $rows = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+            return array_values(array_filter(array_map('intval', $rows), fn(int $id): bool => $id > 0));
+        } catch (Throwable) {
+            return [];
+        }
+    }
+
+    private function buildChatbotSystemPrompt(array $user, array $turmasVinculadas): string
+    {
+        $nome = (string) ($user['nome'] ?? 'Usuário');
+        $tipo = (string) ($user['tipo'] ?? 'usuario');
+
+        $prompt  = "Você é o assistente da escola CEMIL - Jardenir Jorge Frederico.\n";
+        $prompt .= "Seu foco é apoiar rotinas escolares, pedagógicas e administrativas com respostas práticas.\n";
+        $prompt .= "Responda sempre em português brasileiro, de forma clara, objetiva e curta.\n";
+        $prompt .= "Prefira respostas com no máximo 5 itens ou 1 parágrafo curto, salvo se o usuário pedir detalhes.\n";
+        $prompt .= "Use formatação markdown apenas quando isso realmente ajudar na leitura.\n\n";
+        $prompt .= "Usuário logado: {$nome} (tipo: {$tipo})\n";
+        $prompt .= 'Data de hoje: ' . date('d/m/Y') . "\n";
+
+        if ($turmasVinculadas !== []) {
+            $prompt .= 'Turmas vinculadas ao usuário (IDs): ' . implode(', ', $turmasVinculadas) . "\n";
+            $prompt .= "Ao listar alunos, filtre sempre pelas turmas vinculadas deste usuário.\n";
+        }
+
+        $prompt .= "\nUse as ferramentas disponíveis para buscar dados reais antes de responder sempre que a pergunta depender de informações do sistema.\n";
+        $prompt .= "Nunca invente nomes, números, registros ou resultados.\n";
+        $prompt .= "Quando houver limitação ou ausência de dados, explique isso em uma frase e diga o que falta para concluir.\n";
+        $prompt .= "Se o usuário pedir análise pedagógica, destaque primeiro os pontos principais e depois as ações sugeridas.";
+
+        return $prompt;
+    }
+
+    private function getChatbotTools(array $user, array $turmasVinculadas): array
+    {
+        $isAdmin = ($user['tipo'] ?? '') === 'admin';
+        $tools   = [];
+
+        // Sempre disponível
+        $tools[] = [
+            'name'         => 'estatisticas_gerais',
+            'description'  => 'Retorna contagens gerais: total de alunos, turmas, avaliações, usuários e refeições de hoje.',
+            'input_schema' => ['type' => 'object', 'properties' => (object) []],
+        ];
+
+        $tools[] = [
+            'name'         => 'listar_turmas',
+            'description'  => 'Lista turmas cadastradas. Filtra por ano_letivo se informado.',
+            'input_schema' => [
+                'type'       => 'object',
+                'properties' => [
+                    'ano_letivo' => ['type' => 'integer', 'description' => 'Filtrar por ano letivo (ex: 2025)'],
+                ],
+            ],
+        ];
+
+        // Alunos
+        if ($isAdmin || !empty($user['can_access_cadastro_de_alunos'])) {
+            $desc = 'Lista alunos cadastrados.';
+            if ($turmasVinculadas !== []) {
+                $desc .= ' Filtrado automaticamente para as turmas vinculadas ao usuário.';
+            }
+
+            $tools[] = [
+                'name'         => 'listar_alunos',
+                'description'  => $desc . ' Aceita filtro adicional por nome.',
+                'input_schema' => [
+                    'type'       => 'object',
+                    'properties' => [
+                        'nome'   => ['type' => 'string',  'description' => 'Filtro parcial pelo nome'],
+                        'limite' => ['type' => 'integer', 'description' => 'Máximo de resultados (padrão 50)'],
+                    ],
+                ],
+            ];
+
+            $tools[] = [
+                'name'         => 'buscar_aluno',
+                'description'  => 'Busca um aluno pelo ID ou matrícula.',
+                'input_schema' => [
+                    'type'       => 'object',
+                    'properties' => [
+                        'id'        => ['type' => 'integer', 'description' => 'ID do aluno'],
+                        'matricula' => ['type' => 'string',  'description' => 'Matrícula'],
+                    ],
+                ],
+            ];
+        }
+
+        // Avaliações
+        if ($isAdmin
+            || $this->canAccessSubservice('avaliacoes')
+            || $this->canAccessSubservice('cadastro_de_avaliacoes')
+        ) {
+            $tools[] = [
+                'name'         => 'listar_avaliacoes',
+                'description'  => 'Lista avaliações cadastradas. Filtra por bimestre.',
+                'input_schema' => [
+                    'type'       => 'object',
+                    'properties' => [
+                        'bimestre' => ['type' => 'integer', 'description' => '1, 2, 3 ou 4'],
+                    ],
+                ],
+            ];
+        }
+
+        // Correções / Corretor de Gabaritos
+        if ($isAdmin || !empty($user['can_access_corretor_de_gabaritos'])) {
+            $tools[] = [
+                'name'         => 'listar_correcoes',
+                'description'  => 'Lista correções de avaliações. Filtra por avaliacao_id e/ou aluno_id.',
+                'input_schema' => [
+                    'type'       => 'object',
+                    'properties' => [
+                        'avaliacao_id' => ['type' => 'integer'],
+                        'aluno_id'     => ['type' => 'integer'],
+                    ],
+                ],
+            ];
+        }
+
+        // Notas / Desempenho
+        if ($isAdmin
+            || $this->canAccessSubservice('notas_desempenho')
+            || $this->canAccessSubservice('notas_e_desempenho')
+        ) {
+            $tools[] = [
+                'name'         => 'desempenho_aluno',
+                'description'  => 'Retorna notas e desempenho de um aluno pelo ID.',
+                'input_schema' => [
+                    'type'       => 'object',
+                    'required'   => ['aluno_id'],
+                    'properties' => [
+                        'aluno_id' => ['type' => 'integer'],
+                    ],
+                ],
+            ];
+        }
+
+        // Refeitório
+        if ($isAdmin
+            || $this->canAccessSubservice('refeitorio')
+            || $this->canAccessSubservice('controle_de_refeitorio')
+        ) {
+            $tools[] = [
+                'name'         => 'resumo_refeitorio',
+                'description'  => 'Resumo de consumo do refeitório em uma data (padrão: hoje).',
+                'input_schema' => [
+                    'type'       => 'object',
+                    'properties' => [
+                        'data' => ['type' => 'string', 'description' => 'YYYY-MM-DD'],
+                    ],
+                ],
+            ];
+
+            $tools[] = [
+                'name'         => 'relatorio_refeitorio',
+                'description'  => 'Relatório de refeições em um período.',
+                'input_schema' => [
+                    'type'       => 'object',
+                    'required'   => ['data_inicio', 'data_fim'],
+                    'properties' => [
+                        'data_inicio' => ['type' => 'string', 'description' => 'YYYY-MM-DD'],
+                        'data_fim'    => ['type' => 'string', 'description' => 'YYYY-MM-DD'],
+                        'turma_id'    => ['type' => 'integer'],
+                    ],
+                ],
+            ];
+        }
+
+        // Agendamento
+        if ($isAdmin
+            || $this->canAccessSubservice('agendamento')
+            || $this->canAccessSubservice('meus_agendamentos')
+        ) {
+            $tools[] = [
+                'name'         => 'listar_reservas',
+                'description'  => 'Lista reservas de agendamento. Filtra por período.',
+                'input_schema' => [
+                    'type'       => 'object',
+                    'properties' => [
+                        'data_inicio' => ['type' => 'string', 'description' => 'YYYY-MM-DD'],
+                        'data_fim'    => ['type' => 'string', 'description' => 'YYYY-MM-DD'],
+                    ],
+                ],
+            ];
+        }
+
+        // Admin exclusivo
+        if ($isAdmin) {
+            $tools[] = [
+                'name'         => 'listar_usuarios',
+                'description'  => 'Lista usuários do sistema. Filtra por tipo.',
+                'input_schema' => [
+                    'type'       => 'object',
+                    'properties' => [
+                        'tipo' => ['type' => 'string', 'description' => 'Tipo do usuário (admin, servidor, etc.)'],
+                    ],
+                ],
+            ];
+        }
+
+        return $tools;
+    }
+
+    private function chatbotToolUseLoop(array $messages, array $tools, string $system, array $turmasVinculadas): string
+    {
+        $messages = $this->normalizeChatbotMessagesForGroq($messages, $system);
+        $tools    = $this->normalizeChatbotToolsForGroq($tools);
+        $maxIter = 8;
+
+        for ($i = 0; $i < $maxIter; $i++) {
+            $response = $this->callGroqApi($messages, $tools);
+
+            if ($response === null) {
+                return 'Desculpe, ocorreu um erro ao processar sua solicitação.';
+            }
+
+            $choice   = is_array($response['choices'][0] ?? null) ? $response['choices'][0] : [];
+            $message  = is_array($choice['message'] ?? null) ? $choice['message'] : [];
+            $content  = trim((string) ($message['content'] ?? ''));
+            $toolCalls = is_array($message['tool_calls'] ?? null) ? $message['tool_calls'] : [];
+
+            $assistantMessage = ['role' => 'assistant'];
+            if ($content !== '') {
+                $assistantMessage['content'] = $content;
+            }
+            if ($toolCalls !== []) {
+                $assistantMessage['tool_calls'] = $toolCalls;
+            }
+            $messages[] = $assistantMessage;
+
+            if ($toolCalls === []) {
+                return $content;
+            }
+
+            foreach ($toolCalls as $toolCall) {
+                $toolName = (string) ($toolCall['function']['name'] ?? '');
+                $rawArguments = (string) ($toolCall['function']['arguments'] ?? '{}');
+                $toolInput = json_decode($rawArguments, true);
+                if (!is_array($toolInput)) {
+                    $toolInput = [];
+                }
+
+                $toolCallId = trim((string) ($toolCall['id'] ?? ''));
+                if ($toolCallId === '' || $toolName === '') {
+                    continue;
+                }
+
+                $messages[] = [
+                    'role' => 'tool',
+                    'tool_call_id' => $toolCallId,
+                    'content' => $this->executeChatbotTool($toolName, $toolInput, $turmasVinculadas),
+                ];
+            }
+        }
+
+        return 'Limite de operações atingido. Por favor, refaça a pergunta de forma mais específica.';
+    }
+
+    private function normalizeChatbotMessagesForGroq(array $messages, string $system): array
+    {
+        $normalized = [
+            ['role' => 'system', 'content' => $system],
+        ];
+
+        foreach ($messages as $message) {
+            $role = (string) ($message['role'] ?? '');
+            $content = $message['content'] ?? '';
+
+            if (($role !== 'user' && $role !== 'assistant') || !is_string($content) || trim($content) === '') {
+                continue;
+            }
+
+            $normalized[] = [
+                'role' => $role,
+                'content' => trim($content),
+            ];
+        }
+
+        return $normalized;
+    }
+
+    private function normalizeChatbotToolsForGroq(array $tools): array
+    {
+        $normalized = [];
+
+        foreach ($tools as $tool) {
+            $name = trim((string) ($tool['name'] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+
+            $parameters = is_array($tool['input_schema'] ?? null) ? $tool['input_schema'] : ['type' => 'object', 'properties' => new stdClass()];
+            if (!isset($parameters['type'])) {
+                $parameters['type'] = 'object';
+            }
+            if (!isset($parameters['properties']) || !is_array($parameters['properties'])) {
+                $parameters['properties'] = new stdClass();
+            }
+
+            $normalized[] = [
+                'type' => 'function',
+                'function' => [
+                    'name' => $name,
+                    'description' => (string) ($tool['description'] ?? ''),
+                    'parameters' => $parameters,
+                ],
+            ];
+        }
+
+        return $normalized;
+    }
+
+    private function executeChatbotTool(string $name, array $input, array $turmaIds): string
+    {
+        try {
+            $pdo = Database::connection();
+
+            switch ($name) {
+                case 'estatisticas_gerais':
+                    $stats = [];
+                    foreach ([
+                        'alunos_total'  => 'SELECT COUNT(*) FROM alunos',
+                        'alunos_ativos' => 'SELECT COUNT(*) FROM alunos WHERE data_saida IS NULL OR data_saida >= CURDATE()',
+                        'turmas'        => 'SELECT COUNT(*) FROM turmas',
+                        'avaliacoes'    => 'SELECT COUNT(*) FROM avaliacoes',
+                        'usuarios'      => 'SELECT COUNT(*) FROM usuarios',
+                    ] as $key => $sql) {
+                        try {
+                            $stats[$key] = (int) ($pdo->query($sql)?->fetchColumn() ?: 0);
+                        } catch (Throwable) {
+                            $stats[$key] = null;
+                        }
+                    }
+
+                    try {
+                        $stats['refeicoes_hoje'] = (int) ($pdo->query(
+                            "SELECT COUNT(*) FROM refeitorio_registros WHERE data = CURDATE()"
+                        )?->fetchColumn() ?: 0);
+                    } catch (Throwable) {
+                        $stats['refeicoes_hoje'] = null;
+                    }
+
+                    return json_encode($stats, JSON_UNESCAPED_UNICODE);
+
+                case 'listar_turmas':
+                    $anoLetivo = (int) ($input['ano_letivo'] ?? 0);
+                    $sql    = 'SELECT id, nome, ano_letivo, turno, capacidade, ano_escolar FROM turmas WHERE 1=1';
+                    $params = [];
+                    if ($anoLetivo > 0) {
+                        $sql .= ' AND ano_letivo = ?';
+                        $params[] = $anoLetivo;
+                    }
+
+                    $sql .= ' ORDER BY ano_letivo DESC, nome ASC';
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute($params);
+                    return json_encode($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [], JSON_UNESCAPED_UNICODE);
+
+                case 'listar_alunos':
+                    $nome   = trim((string) ($input['nome']   ?? ''));
+                    $limite = max(1, min(200, (int) ($input['limite'] ?? 50)));
+                    $sql    = 'SELECT id, nome, matricula, turma_id, turma, data_nascimento, responsavel, telefone, email FROM alunos WHERE 1=1';
+                    $params = [];
+
+                    if ($turmaIds !== []) {
+                        $placeholders = implode(',', array_fill(0, count($turmaIds), '?'));
+                        $sql    .= " AND turma_id IN ({$placeholders})";
+                        $params  = array_merge($params, $turmaIds);
+                    }
+
+                    if ($nome !== '') {
+                        $sql .= ' AND nome LIKE ?';
+                        $params[] = "%{$nome}%";
+                    }
+
+                    $sql .= ' ORDER BY nome ASC LIMIT ?';
+                    $params[] = $limite;
+                    $stmt     = $pdo->prepare($sql);
+                    $stmt->execute($params);
+                    return json_encode($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [], JSON_UNESCAPED_UNICODE);
+
+                case 'buscar_aluno':
+                    $id        = (int)    ($input['id']        ?? 0);
+                    $matricula = trim((string) ($input['matricula'] ?? ''));
+
+                    if ($id > 0) {
+                        $stmt = $pdo->prepare('SELECT id, nome, matricula, turma_id, turma, data_nascimento, responsavel, telefone, email FROM alunos WHERE id = ? LIMIT 1');
+                        $stmt->execute([$id]);
+                    } elseif ($matricula !== '') {
+                        $stmt = $pdo->prepare('SELECT id, nome, matricula, turma_id, turma, data_nascimento, responsavel, telefone, email FROM alunos WHERE matricula = ? LIMIT 1');
+                        $stmt->execute([$matricula]);
+                    } else {
+                        return json_encode(['erro' => 'Informe id ou matricula.']);
+                    }
+
+                    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+                    return json_encode($row ?: ['erro' => 'Aluno não encontrado.'], JSON_UNESCAPED_UNICODE);
+
+                case 'listar_avaliacoes':
+                    $bimestre = (int) ($input['bimestre'] ?? 0);
+                    $sql      = 'SELECT a.id, a.nome, a.bimestre, a.aplicacao, a.turma, a.is_recuperacao, a.is_simulado, u.nome AS autor FROM avaliacoes a LEFT JOIN usuarios u ON u.id = a.autor_id WHERE 1=1';
+                    $params   = [];
+                    if ($bimestre > 0) {
+                        $sql .= ' AND a.bimestre = ?';
+                        $params[] = $bimestre;
+                    }
+
+                    $sql .= ' ORDER BY a.aplicacao DESC, a.created_at DESC LIMIT 100';
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute($params);
+                    return json_encode($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [], JSON_UNESCAPED_UNICODE);
+
+                case 'listar_correcoes':
+                    $avalId  = (int) ($input['avaliacao_id'] ?? 0);
+                    $alunoId = (int) ($input['aluno_id']     ?? 0);
+                    $sql     = 'SELECT ac.id, ac.avaliacao_id, ac.aluno_id, al.nome AS aluno_nome, av.nome AS avaliacao_nome FROM avaliacoes_correcoes ac JOIN alunos al ON al.id = ac.aluno_id JOIN avaliacoes av ON av.id = ac.avaliacao_id WHERE 1=1';
+                    $params  = [];
+                    if ($avalId  > 0) { $sql .= ' AND ac.avaliacao_id = ?'; $params[] = $avalId; }
+                    if ($alunoId > 0) { $sql .= ' AND ac.aluno_id = ?';     $params[] = $alunoId; }
+                    $sql .= ' LIMIT 100';
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute($params);
+                    return json_encode($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [], JSON_UNESCAPED_UNICODE);
+
+                case 'desempenho_aluno':
+                    $alunoId = (int) ($input['aluno_id'] ?? 0);
+                    if ($alunoId <= 0) {
+                        return json_encode(['erro' => 'aluno_id inválido.']);
+                    }
+
+                    $stmt = $pdo->prepare('SELECT id, nome, matricula, turma, desempenho FROM alunos WHERE id = ? LIMIT 1');
+                    $stmt->execute([$alunoId]);
+                    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+                    if (!$row) {
+                        return json_encode(['erro' => 'Aluno não encontrado.']);
+                    }
+
+                    try {
+                        $row['desempenho'] = json_decode((string) ($row['desempenho'] ?? ''), true) ?? [];
+                    } catch (Throwable) {
+                    }
+
+                    return json_encode($row, JSON_UNESCAPED_UNICODE);
+
+                case 'resumo_refeitorio':
+                    $data = trim((string) ($input['data'] ?? '')) ?: date('Y-m-d');
+                    $stmt = $pdo->prepare(
+                        'SELECT t.nome AS refeicao, COUNT(r.id) AS total FROM refeitorio_tipos_refeicao t LEFT JOIN refeitorio_registros r ON r.tipo_refeicao_id = t.id AND r.data = ? WHERE t.ativo = 1 GROUP BY t.id, t.nome ORDER BY t.horario_ini'
+                    );
+                    $stmt->execute([$data]);
+                    return json_encode(['data' => $data, 'resumo' => $stmt->fetchAll(PDO::FETCH_ASSOC)], JSON_UNESCAPED_UNICODE);
+
+                case 'relatorio_refeitorio':
+                    $ini     = trim((string) ($input['data_inicio'] ?? ''));
+                    $fim     = trim((string) ($input['data_fim']    ?? ''));
+                    $turmaId = (int) ($input['turma_id'] ?? 0);
+                    if ($ini === '' || $fim === '') {
+                        return json_encode(['erro' => 'data_inicio e data_fim são obrigatórios.']);
+                    }
+
+                    $sql    = 'SELECT r.data, r.horario, a.nome AS aluno, a.turma, t.nome AS refeicao, r.obs FROM refeitorio_registros r JOIN alunos a ON a.id = r.aluno_id JOIN refeitorio_tipos_refeicao t ON t.id = r.tipo_refeicao_id WHERE r.data BETWEEN ? AND ?';
+                    $params = [$ini, $fim];
+                    if ($turmaId > 0) { $sql .= ' AND a.turma_id = ?'; $params[] = $turmaId; }
+                    $sql .= ' ORDER BY r.data DESC, r.horario DESC LIMIT 500';
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute($params);
+                    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                    return json_encode(['periodo' => "{$ini} a {$fim}", 'total' => count($rows), 'registros' => $rows], JSON_UNESCAPED_UNICODE);
+
+                case 'listar_reservas':
+                    $ini    = trim((string) ($input['data_inicio'] ?? ''));
+                    $fim    = trim((string) ($input['data_fim']    ?? ''));
+                    $sql    = 'SELECT r.id, i.nome AS item, r.responsavel_nome, r.inicio, r.fim, r.observacao FROM agendamento_reservas r JOIN agendamento_itens i ON i.id = r.item_id WHERE 1=1';
+                    $params = [];
+                    if ($ini !== '') { $sql .= ' AND r.inicio >= ?'; $params[] = $ini; }
+                    if ($fim !== '') { $sql .= ' AND r.fim <= ?';    $params[] = $fim . ' 23:59:59'; }
+                    $sql .= ' ORDER BY r.inicio ASC LIMIT 100';
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute($params);
+                    return json_encode($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [], JSON_UNESCAPED_UNICODE);
+
+                case 'listar_usuarios':
+                    $tipo   = trim((string) ($input['tipo'] ?? ''));
+                    $sql    = 'SELECT id, nome, usuario, email, tipo, departamento FROM usuarios WHERE 1=1';
+                    $params = [];
+                    if ($tipo !== '') { $sql .= ' AND tipo = ?'; $params[] = $tipo; }
+                    $sql .= ' ORDER BY nome ASC LIMIT 100';
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute($params);
+                    return json_encode($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [], JSON_UNESCAPED_UNICODE);
+
+                default:
+                    return json_encode(['erro' => "Ferramenta '{$name}' não reconhecida."]);
+            }
+        } catch (Throwable $e) {
+            return json_encode(['erro' => $e->getMessage()]);
+        }
+    }
+
+    private function callGroqApi(array $messages, array $tools): ?array
+    {
+        $apiKey = $this->getChatbotApiKey();
+        if ($apiKey === '') {
+            return null;
+        }
+
+        $payload = json_encode([
+            'model' => app_env('GROQ_MODEL', 'llama-3.3-70b-versatile') ?: 'llama-3.3-70b-versatile',
+            'temperature' => 0.2,
+            'max_tokens' => 4096,
+            'messages' => $messages,
+            'tools' => $tools,
+            'tool_choice' => 'auto',
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        $ch = curl_init('https://api.groq.com/openai/v1/chat/completions');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $payload,
+            CURLOPT_TIMEOUT        => 60,
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/json',
+                'Authorization: Bearer ' . $apiKey,
+            ],
+        ]);
+
+        $raw  = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($raw === false || $code < 200 || $code >= 300) {
+            return null;
+        }
+
+        $decoded = json_decode((string) $raw, true);
+        return is_array($decoded) ? $decoded : null;
+    }
+
+    private function getChatbotApiKey(): string
+    {
+        foreach ([
+            app_env('GROQ_API_KEY', null),
+            app_env('APIKEY_GROQ', null),
+            app_env('API_KEY_GROQ', null),
+            app_env('GROQ_KEY', null),
+        ] as $candidate) {
+            if (is_string($candidate) && trim($candidate) !== '') {
+                return trim($candidate);
+            }
+        }
+
+        return '';
+    }
+
     protected function isAjaxRequest(): bool
     {
         $requestedWith = strtolower((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? ''));
