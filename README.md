@@ -23,7 +23,6 @@ Este projeto foi desenvolvido visando:
 - CSS3
 - JavaScript
 - Bootstrap (se aplicável)
-- (adicione aqui: React, PHP, etc. se estiver usando)
 
 ---
 
@@ -71,9 +70,7 @@ Contato
 Navegação intuitiva
 Layout responsivo
 📸 Preview
-
-(adicione prints aqui depois)
-
+(em breve)
 ---
 
 ## 👨‍💻 Autor
