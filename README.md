@@ -22,7 +22,6 @@ Este projeto foi desenvolvido visando:
 - HTML5
 - CSS3
 - JavaScript
-- Bootstrap (se aplicável)
 
 ---
 
