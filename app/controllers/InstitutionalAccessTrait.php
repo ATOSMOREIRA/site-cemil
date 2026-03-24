@@ -277,7 +277,6 @@ trait InstitutionalAccessTrait
             'agendamento' => '/institucional/agendamento',
             'meus_agendamentos' => '/institucional/meus-agendamentos',
             'corretor_de_gabaritos' => '/institucional/corretor-gabaritos',
-            'controle_entrada_e_saida', 'controle_de_entrada_e_saida', 'controle_entrada_saida', 'entrada_e_saida' => '/institucional/entrada-saida',
             default => null,
         };
 
