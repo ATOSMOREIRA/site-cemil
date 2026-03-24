@@ -6480,10 +6480,16 @@
         ctx.fillStyle = '#555555';
         ctx.textAlign = 'center';
         for (var hCol = 0; hCol < columnCount; hCol += 1) {
+          var firstQuestionIndexInColumn = hCol * rowsPerColumn;
+          var rowsInColumn = Math.max(0, Math.min(rowsPerColumn, questoes - firstQuestionIndexInColumn));
+          if (rowsInColumn <= 0) {
+            continue;
+          }
+
           var hBaseX = safeLeft + innerHorizontalPadding + contentHorizontalOffset + (hCol * (columnWidth + columnGap));
           var hBubblesStartX = hBaseX + numberLabelWidth + numberToBubblesGap + bubbleRadius;
           var maxAltInCol = alternativas;
-          for (var qi = hCol * rowsPerColumn; qi < Math.min((hCol + 1) * rowsPerColumn, questoes); qi += 1) {
+          for (var qi = firstQuestionIndexInColumn; qi < Math.min((hCol + 1) * rowsPerColumn, questoes); qi += 1) {
             var qItem = gabaritoQuestoesItens[qi];
             if (qItem && Array.isArray(qItem.alternativas)) {
               maxAltInCol = Math.max(maxAltInCol, qItem.alternativas.length);
@@ -6491,7 +6497,7 @@
           }
           maxAltInCol = clampInt(maxAltInCol, 2, 10, alternativas);
 
-          for (var hRow = 0; hRow < rowsPerColumn; hRow += groupSize) {
+          for (var hRow = 0; hRow < rowsInColumn; hRow += groupSize) {
             var hG = Math.floor(hRow / groupSize);
             var hGroupBlockH = headerHeight + groupSize * rowHeight;
             var hGroupY = contentTop + hG * hGroupBlockH + Math.round(headerHeight * 0.75);
@@ -7309,7 +7315,7 @@
           activeDashboardAlunosIds = String(button.getAttribute('data-alunos-ids') || '').split(',').map(Number).filter(Boolean);
           impressaoTurmasSelectionInitialized = false;
           applyGabaritoConfig(parseGabaritoConfig(button.getAttribute('data-gabarito')));
-          openDashboardModal(button.getAttribute('data-id'), button.getAttribute('data-nome'));
+          openDashboardModal(button.getAttribute('data-id'), button.getAttribute('data-nome'), button.getAttribute('data-ciclo'));
         });
       });
     }
@@ -8669,16 +8675,18 @@
       setTimeout(markConfirmBackdrop, 0);
     }
 
-    function openDashboardModal(avaliacaoId, avaliacaoNome) {
+    function openDashboardModal(avaliacaoId, avaliacaoNome, avaliacaoCiclo) {
       if (!dashboardModalInstance) {
         return;
       }
 
       var safeId = Number(avaliacaoId || 0);
       var safeNome = String(avaliacaoNome || '').trim();
+      var safeCiclo = String(avaliacaoCiclo || '').trim();
+
       if (dashboardModalTitle) {
         dashboardModalTitle.textContent = safeNome !== ''
-          ? ('Painel da Avaliação: ' + safeNome)
+          ? ('Painel da Avaliação: ' + safeNome + (safeCiclo !== '' ? ' - CICLO ' + safeCiclo : ''))
           : (safeId > 0 ? ('Painel da Avaliação #' + safeId) : 'Painel da Avaliação');
       }
 
@@ -11400,10 +11408,69 @@
       });
     }
 
+    function getStatsCorrecaoStudentAnswer(correcao) {
+      if (!correcao || typeof correcao !== 'object') {
+        return '';
+      }
+
+      var rawAnswer = correcao.studentAnswer;
+      if (rawAnswer === undefined || rawAnswer === null) {
+        rawAnswer = correcao.selectedAnswer;
+      }
+
+      if (rawAnswer === undefined || rawAnswer === null) {
+        return '';
+      }
+
+      return String(rawAnswer || '').trim().toUpperCase();
+    }
+
+    function getStatsTurmaCoverageMap(rows) {
+      var coverageMap = {};
+      var printData = getActiveAvaliacaoPrintData(Array.isArray(activeDashboardTurmasIds) ? activeDashboardTurmasIds.slice() : []);
+      var records = Array.isArray(printData && printData.records) ? printData.records : [];
+      var correctedKeys = {};
+      var ausenteKeys = {};
+
+      records.forEach(function (record) {
+        var turmaNome = String(record && record.turmaNome || 'Turma não informada').trim() || 'Turma não informada';
+        var turmaEntry = ensureStatsAggregateEntry(coverageMap, turmaNome, {
+          totalAlunos: 0,
+          totalCorrigidos: 0,
+          ausentes: 0,
+        });
+        turmaEntry.totalAlunos += 1;
+      });
+
+      (Array.isArray(rows) ? rows : []).forEach(function (row) {
+        var turmaNome = String(row && row.turmaNome || 'Turma não informada').trim() || 'Turma não informada';
+        var alunoKey = String(Number(row && row.alunoId || 0)) + ':' + String(Number(row && row.turmaId || 0));
+        var status = normalizeCorrecaoStatus(row && row.status);
+        var turmaEntry = ensureStatsAggregateEntry(coverageMap, turmaNome, {
+          totalAlunos: 0,
+          totalCorrigidos: 0,
+          ausentes: 0,
+        });
+
+        if (!correctedKeys[alunoKey]) {
+          correctedKeys[alunoKey] = true;
+          turmaEntry.totalCorrigidos += 1;
+        }
+
+        if (status === 'ausente' && !ausenteKeys[alunoKey]) {
+          ausenteKeys[alunoKey] = true;
+          turmaEntry.ausentes += 1;
+        }
+      });
+
+      return coverageMap;
+    }
+
     function buildAvaliacaoStatsDatasetFromNormalizedRows(normalizedRows) {
       var safeRows = Array.isArray(normalizedRows) ? normalizedRows : [];
       var questionMeta = getStatsQuestionMetaMap();
       var questionStats = buildStatsQuestionDistributionMap(questionMeta);
+      var turmaCoverageMap = getStatsTurmaCoverageMap(safeRows);
       var turmaMap = {};
       var disciplinaMap = {};
       var habilidadeMap = {};
@@ -11416,14 +11483,20 @@
         overallEarnedPoints += Number(row.pontuacao || 0);
         overallTotalPoints += Number(row.pontuacaoTotal || 0);
 
+        var turmaCoverage = turmaCoverageMap[row.turmaNome] || { totalAlunos: 0, totalCorrigidos: 0, ausentes: 0 };
+
         var turmaEntry = ensureStatsAggregateEntry(turmaMap, row.turmaNome, {
           nome: row.turmaNome,
-          totalAlunos: 0,
+          totalAlunos: Number(turmaCoverage.totalAlunos || 0),
+          totalCorrigidos: 0,
+          ausentes: 0,
           percentualSum: 0,
           earnedPoints: 0,
           totalPoints: 0,
         });
-        turmaEntry.totalAlunos += 1;
+        turmaEntry.totalAlunos = Math.max(Number(turmaEntry.totalAlunos || 0), Number(turmaCoverage.totalAlunos || 0));
+        turmaEntry.totalCorrigidos = Math.max(Number(turmaEntry.totalCorrigidos || 0), Number(turmaCoverage.totalCorrigidos || 0));
+        turmaEntry.ausentes = Math.max(Number(turmaEntry.ausentes || 0), Number(turmaCoverage.ausentes || 0));
         turmaEntry.percentualSum += Number(row.percentual || 0);
         turmaEntry.earnedPoints += Number(row.pontuacao || 0);
         turmaEntry.totalPoints += Number(row.pontuacaoTotal || 0);
@@ -11454,9 +11527,7 @@
           var earnedPoints = Number(correcao && correcao.pontuacao || 0);
           var totalPoints = Number(correcao && correcao.pontuacao_maxima || meta.peso || 0);
           var questionMastered = getStatsQuestionMasteryLevel(meta, earnedPoints, totalPoints, correcao);
-          var studentAnswer = correcao && correcao.studentAnswer !== undefined && correcao.studentAnswer !== null
-            ? String(correcao.studentAnswer || '').trim().toUpperCase()
-            : '';
+          var studentAnswer = getStatsCorrecaoStudentAnswer(correcao);
           var questionEntry = questionStats[questionKey] || ensureStatsAggregateEntry(questionStats, questionKey, {
             questionNumber: Number(questionKey || 0),
             disciplina: meta.disciplina,
@@ -11603,7 +11674,10 @@
 
       var turmaStats = Object.keys(turmaMap).map(function (key) {
         var item = turmaMap[key];
-        item.mediaPercentual = item.totalAlunos > 0 ? (item.percentualSum / item.totalAlunos) : 0;
+        item.totalCorrigidos = Number(item.totalCorrigidos || 0);
+        item.totalAlunos = Math.max(Number(item.totalAlunos || 0), item.totalCorrigidos);
+        item.ausentes = Number(item.ausentes || 0);
+        item.mediaPercentual = item.totalCorrigidos > 0 ? (item.percentualSum / item.totalCorrigidos) : 0;
         item.masteryPercent = item.totalPoints > 0 ? ((item.earnedPoints / item.totalPoints) * 100) : 0;
         return item;
       }).sort(function (left, right) {
@@ -12238,12 +12312,6 @@
           meta: String(dataset.totalCorrecoes) + ' correções consolidadas',
         },
         {
-          key: 'alertas',
-          title: 'Alertas pedagógicos',
-          value: String(insights.length),
-          meta: insights.length > 0 ? 'Sinais para intervenção imediata' : 'Sem alertas críticos agora',
-        },
-        {
           key: 'turmas',
           title: 'Acertos por turma',
           value: bestTurma ? bestTurma.nome : '-',
@@ -12298,20 +12366,6 @@
         }).join('') + '</div>'
         + renderStatsFilterEmpty();
 
-      var alertasContent = renderStatsToolbar('Buscar alerta por texto ou tema...', [
-        { value: 'all', label: 'Todos os alertas' },
-        { value: 'questoes', label: 'Questões' },
-        { value: 'disciplinas', label: 'Disciplinas' },
-        { value: 'habilidades', label: 'Habilidades' },
-        { value: 'turmas', label: 'Turmas' },
-        { value: 'geral', label: 'Geral' },
-      ], 'alertas')
-        + (insights.length
-          ? '<div class="admin-avaliacao-stats-list">' + insights.map(function (item) {
-            return '<div' + buildStatsFilterableAttrs(item.title + ' ' + item.text, [getStatsInsightCategory(item)]) + '><div class="admin-avaliacao-stats-insight"><div class="admin-avaliacao-stats-insight-title">' + escapeHtml(item.title) + '</div><div class="admin-avaliacao-stats-insight-text">' + escapeHtml(item.text) + '</div></div></div>';
-          }).join('') + '</div>' + renderStatsFilterEmpty()
-          : '<div class="admin-avaliacao-stats-empty-text">Sem alertas pedagógicos relevantes no momento.</div>');
-
       var turmasContent = renderStatsToolbar('Buscar turma...', [
         { value: 'all', label: 'Todas as turmas' },
         { value: 'alto', label: 'Média acima de 70%' },
@@ -12319,24 +12373,27 @@
         { value: 'baixo', label: 'Média abaixo de 50%' },
       ], 'turmas')
         + renderStatsBarList(dataset.turmaStats, 'mediaPercentual', function (item) {
-          return formatStatsPercent(item.mediaPercentual) + ' • ' + item.totalAlunos + ' estudante(s)';
+          return formatStatsPercent(item.mediaPercentual) + ' • ' + item.totalCorrigidos + ' corrigido(s) de ' + item.totalAlunos;
         }, {
           searchTextBuilder: function (item) {
-            return item.nome + ' ' + item.totalAlunos + ' ' + formatStatsPercent(item.mediaPercentual);
+            return item.nome + ' ' + item.totalCorrigidos + ' ' + item.totalAlunos + ' ' + formatStatsPercent(item.mediaPercentual);
           },
           filterTokensBuilder: function (item) {
             return [item.mediaPercentual >= 70 ? 'alto' : (item.mediaPercentual >= 50 ? 'medio' : 'baixo')];
           }
         })
-        + '<div class="admin-avaliacao-stats-table-wrap mt-3"><table class="admin-avaliacao-stats-table"><thead><tr><th>Turma</th><th>Média</th><th>Estudantes corrigidos</th></tr></thead><tbody>'
+        + '<div class="admin-avaliacao-stats-table-wrap mt-3"><table class="admin-avaliacao-stats-table"><thead><tr><th>Turma</th><th>Média</th><th>Estudantes corrigidos</th><th>Não corrigidos</th><th>Ausentes</th></tr></thead><tbody>'
         + dataset.turmaStats.map(function (item) {
-          return '<tr' + buildStatsFilterableAttrs(item.nome + ' ' + item.totalAlunos + ' ' + formatStatsPercent(item.mediaPercentual), [item.mediaPercentual >= 70 ? 'alto' : (item.mediaPercentual >= 50 ? 'medio' : 'baixo')]) + '>'
+          return '<tr' + buildStatsFilterableAttrs(item.nome + ' ' + item.totalCorrigidos + ' ' + item.totalAlunos + ' ' + formatStatsPercent(item.mediaPercentual), [item.mediaPercentual >= 70 ? 'alto' : (item.mediaPercentual >= 50 ? 'medio' : 'baixo')]) + '>'
             + '<td><strong>' + escapeHtml(item.nome) + '</strong></td>'
             + '<td>' + escapeHtml(formatStatsPercent(item.mediaPercentual)) + '</td>'
-            + '<td>' + escapeHtml(String(item.totalAlunos)) + '</td>'
+            + '<td>' + escapeHtml(String(item.totalCorrigidos || 0)) + '</td>'
+            + '<td>' + escapeHtml(String(Math.max(0, Number(item.totalAlunos || 0) - Number(item.totalCorrigidos || 0)))) + '</td>'
+            + '<td>' + escapeHtml(String(item.ausentes || 0)) + '</td>'
             + '</tr>';
         }).join('')
         + '</tbody></table></div>'
+
         + renderStatsFilterEmpty();
 
       var disciplinasContent = renderStatsToolbar('Buscar disciplina...', [
@@ -12355,12 +12412,11 @@
             return [item.masteryPercent >= 70 ? 'forte' : (item.masteryPercent >= 50 ? 'atencao' : 'critico')];
           }
         })
-        + '<div class="admin-avaliacao-stats-table-wrap mt-3"><table class="admin-avaliacao-stats-table"><thead><tr><th>Disciplina</th><th>Domínio</th><th>Brancos</th></tr></thead><tbody>'
+        + '<div class="admin-avaliacao-stats-table-wrap mt-3"><table class="admin-avaliacao-stats-table"><thead><tr><th>Disciplina</th><th>Domínio</th></tr></thead><tbody>'
         + dataset.disciplinaStats.map(function (item) {
           return '<tr' + buildStatsFilterableAttrs(item.nome + ' ' + formatStatsPercent(item.masteryPercent), [item.masteryPercent >= 70 ? 'forte' : (item.masteryPercent >= 50 ? 'atencao' : 'critico')]) + '>'
             + '<td><strong>' + escapeHtml(item.nome) + '</strong></td>'
             + '<td>' + escapeHtml(formatStatsPercent(item.masteryPercent)) + '</td>'
-            + '<td>' + escapeHtml(String(item.brancos || 0)) + '</td>'
             + '</tr>';
         }).join('')
         + '</tbody></table></div>'
@@ -12437,7 +12493,6 @@
         + renderStatsSideNav(navItems, activeTab)
         + '<div class="admin-avaliacao-stats-detail">'
         + renderStatsDetailPanel('resumo', 'Resumo pedagógico', 'Leitura consolidada por turma, disciplina, habilidade, questão e estudante.', String(dataset.totalCorrecoes) + ' correções', resumoContent, activeTab === 'resumo')
-        + renderStatsDetailPanel('alertas', 'Alertas pedagógicos', 'Sinais imediatos para intervenção e revisão.', insights.length ? String(insights.length) + ' alertas' : '', alertasContent, activeTab === 'alertas')
         + renderStatsDetailPanel('turmas', 'Acertos por turma', 'Média percentual e volume de estudantes corrigidos.', bestTurma ? ('Destaque: ' + bestTurma.nome) : '', turmasContent, activeTab === 'turmas')
         + renderStatsDetailPanel('disciplinas', 'Desempenho por disciplina', 'Domínio percentual e volume de respostas em branco por disciplina.', strongestDisciplina ? ('Top: ' + strongestDisciplina.nome) : '', disciplinasContent, activeTab === 'disciplinas')
         + renderStatsDetailPanel('habilidades', 'Habilidades e alcance pedagógico', 'Domínio da habilidade e percentual de estudantes que a atingiram.', String(dataset.habilidadeStats.length) + ' habilidades', habilidadesContent, activeTab === 'habilidades')
