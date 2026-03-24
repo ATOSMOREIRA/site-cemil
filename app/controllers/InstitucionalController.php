@@ -5715,6 +5715,17 @@ class InstitucionalController extends HomeController
 		return in_array($subserviceKey, ['avaliacoes', 'cadastro_de_avaliacoes', 'gerenciar_avaliacoes'], true);
 	}
 
+	private function canAccessEntradaSaidaModule(): bool
+	{
+		foreach (['controle_entrada_e_saida', 'controle_de_entrada_e_saida', 'controle_entrada_saida', 'entrada_e_saida'] as $key) {
+			if ($this->canAccessSubservice($key)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	// ======================================================================
 	// Controle de Refeitório
 	// ======================================================================
@@ -6085,6 +6096,410 @@ class InstitucionalController extends HomeController
 		}
 
 		$model = new RefeitorioModel();
+		$model->ensureTableStructure();
+
+		try {
+			$model->excluirRegistro($id);
+		} catch (Throwable $e) {
+			$this->respondJson(['ok' => false, 'message' => $e->getMessage()], 409);
+		}
+
+		$this->respondJson(['ok' => true, 'message' => 'Registro excluído com sucesso.']);
+	}
+
+	// ======================================================================
+	// Controle de Entrada e Saída
+	// ======================================================================
+
+	public function entradaSaida(): void
+	{
+		if (!$this->canAccessEntradaSaidaModule()) {
+			$this->redirect('/404');
+		}
+
+		$this->render('home/Institucional/Controle de Entrada e Saída', [
+			'schoolName' => SCHOOL_NAME,
+		]);
+	}
+
+	public function entradaSaidaDados(): void
+	{
+		if (!$this->canAccessEntradaSaidaModule()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		$model = new EntradaSaidaModel();
+		$model->ensureTableStructure();
+
+		try {
+			$tipos = $model->getTodos();
+			$turmas = (new TurmaModel())->getAllOrdered();
+			$today = date('Y-m-d');
+			$resumo = $model->resumoHoje($today);
+			$meta = $model->resumoPresencaHoje($today);
+		} catch (Throwable $e) {
+			$this->respondJson(['ok' => false, 'message' => 'Erro ao carregar dados: ' . $e->getMessage()], 500);
+		}
+
+		$this->respondJson([
+			'ok' => true,
+			'tipos' => $tipos,
+			'turmas' => $turmas,
+			'resumo' => $resumo,
+			'meta' => $meta,
+			'hoje' => $today,
+		]);
+	}
+
+	public function entradaSaidaPoll(): void
+	{
+		if (!$this->canAccessEntradaSaidaModule()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		$model = new EntradaSaidaModel();
+		$model->ensureTableStructure();
+		$today = date('Y-m-d');
+
+		$this->respondJson([
+			'ok' => true,
+			'resumo_hoje' => $model->resumoHoje($today),
+			'ultimas_entradas' => $model->ultimasMovimentacoesHoje($today, 10),
+			'meta' => $model->resumoPresencaHoje($today),
+		]);
+	}
+
+	public function entradaSaidaBuscarAluno(): void
+	{
+		if (!$this->canAccessEntradaSaidaModule()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		$matricula = trim((string) ($_GET['matricula'] ?? ''));
+		$tipoId = (int) ($_GET['tipo_id'] ?? 0);
+
+		if ($matricula === '') {
+			$this->respondJson(['ok' => false, 'message' => 'Matrícula não informada.'], 422);
+		}
+
+		if ($tipoId <= 0) {
+			$this->respondJson(['ok' => false, 'message' => 'Selecione a movimentação antes de escanear.'], 422);
+		}
+
+		$model = new EntradaSaidaModel();
+		$model->ensureTableStructure();
+		$aluno = $model->buscarAlunoPorMatricula($matricula);
+
+		if ($aluno === null) {
+			$this->respondJson(['ok' => false, 'message' => 'Aluno não encontrado para esta matrícula.'], 404);
+		}
+
+		$today = date('Y-m-d');
+		if (!empty($aluno['data_saida']) && (string) $aluno['data_saida'] <= $today) {
+			$this->respondJson(['ok' => false, 'message' => 'Este estudante está inativo no cadastro.'], 409);
+		}
+
+		try {
+			$avaliacao = $model->avaliarMovimentacao((int) $aluno['id'], $tipoId, $today);
+		} catch (Throwable $e) {
+			$this->respondJson(['ok' => false, 'message' => $e->getMessage()], 409);
+		}
+
+		$this->respondJson([
+			'ok' => true,
+			'aluno' => [
+				'id' => (int) $aluno['id'],
+				'nome' => $aluno['nome'],
+				'matricula' => $aluno['matricula'],
+				'turma' => $aluno['turma'],
+			],
+			'ja_consumiu' => $avaliacao['permitido'] ? false : true,
+			'mensagem_status' => $avaliacao['message'],
+			'ultima_movimentacao' => $avaliacao['ultima_movimentacao'],
+			'estado_atual' => $avaliacao['estado_atual'],
+		]);
+	}
+
+	public function entradaSaidaSearchAlunos(): void
+	{
+		if (!$this->canAccessEntradaSaidaModule()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		$q = trim((string) ($_GET['q'] ?? ''));
+		$tipoId = (int) ($_GET['tipo_id'] ?? 0);
+		$turmaId = (int) ($_GET['turma_id'] ?? 0);
+
+		if (mb_strlen($q) < 2) {
+			$this->respondJson(['ok' => true, 'alunos' => []]);
+		}
+
+		if ($tipoId <= 0) {
+			$this->respondJson(['ok' => false, 'message' => 'Selecione a movimentação antes de buscar.'], 422);
+		}
+
+		$model = new EntradaSaidaModel();
+		$model->ensureTableStructure();
+
+		$this->respondJson([
+			'ok' => true,
+			'alunos' => $model->pesquisarAlunos($q, $turmaId, $tipoId, date('Y-m-d')),
+		]);
+	}
+
+	public function entradaSaidaRegistrar(): void
+	{
+		if (!$this->canAccessEntradaSaidaModule()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+			$this->respondJson(['ok' => false, 'message' => 'Método não permitido.'], 405);
+		}
+
+		$alunoId = (int) ($_POST['aluno_id'] ?? 0);
+		$tipoId = (int) ($_POST['tipo_id'] ?? 0);
+		$obs = trim((string) ($_POST['obs'] ?? ''));
+
+		if ($alunoId <= 0 || $tipoId <= 0) {
+			$this->respondJson(['ok' => false, 'message' => 'Dados insuficientes para registrar.'], 422);
+		}
+
+		$model = new EntradaSaidaModel();
+		$model->ensureTableStructure();
+		$today = date('Y-m-d');
+		$horario = date('H:i:s');
+
+		try {
+			$avaliacao = $model->avaliarMovimentacao($alunoId, $tipoId, $today);
+			if (!$avaliacao['permitido']) {
+				$this->respondJson(['ok' => false, 'message' => $avaliacao['message']], 409);
+			}
+
+			$usuarioId = isset($_SESSION['auth']['id']) ? (int) $_SESSION['auth']['id'] : null;
+			$id = $model->registrarMovimentacao($alunoId, $tipoId, $today, $horario, $usuarioId, $obs);
+			$tipo = $model->getTipoById($tipoId);
+		} catch (Throwable $e) {
+			$this->respondJson(['ok' => false, 'message' => 'Erro ao registrar: ' . $e->getMessage()], 500);
+		}
+
+		$this->respondJson([
+			'ok' => true,
+			'id' => $id,
+			'horario' => $horario,
+			'tipo_nome' => (string) ($tipo['nome'] ?? ''),
+			'message' => 'Movimentação registrada com sucesso.',
+		]);
+	}
+
+	public function entradaSaidaTiposSalvar(): void
+	{
+		if (!$this->canAccessEntradaSaidaModule()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+			$this->respondJson(['ok' => false, 'message' => 'Método não permitido.'], 405);
+		}
+
+		$id = (int) ($_POST['id'] ?? 0);
+		$nome = trim((string) ($_POST['nome'] ?? ''));
+		$natureza = trim((string) ($_POST['natureza'] ?? 'entrada'));
+		$descricao = trim((string) ($_POST['descricao'] ?? ''));
+		$horIni = trim((string) ($_POST['horario_ini'] ?? ''));
+		$horFim = trim((string) ($_POST['horario_fim'] ?? ''));
+		$cor = trim((string) ($_POST['cor'] ?? '#2563eb'));
+		$ativo = (bool) ($_POST['ativo'] ?? true);
+
+		if ($nome === '') {
+			$this->respondJson(['ok' => false, 'message' => 'Informe o nome do tipo de movimentação.'], 422);
+		}
+
+		if (!in_array($natureza, ['entrada', 'saida'], true)) {
+			$this->respondJson(['ok' => false, 'message' => 'Natureza inválida.'], 422);
+		}
+
+		if (!preg_match('/^#[0-9a-fA-F]{6}$/', $cor)) {
+			$cor = '#2563eb';
+		}
+
+		$model = new EntradaSaidaModel();
+		$model->ensureTableStructure();
+
+		try {
+			$savedId = $model->salvarTipo($id, $nome, $natureza, $descricao, $horIni, $horFim, $cor, $ativo);
+		} catch (Throwable $e) {
+			$this->respondJson(['ok' => false, 'message' => $e->getMessage()], 500);
+		}
+
+		$this->respondJson(['ok' => true, 'id' => $savedId, 'message' => 'Tipo de movimentação salvo com sucesso.']);
+	}
+
+	public function entradaSaidaTiposExcluir(): void
+	{
+		if (!$this->canAccessEntradaSaidaModule()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+			$this->respondJson(['ok' => false, 'message' => 'Método não permitido.'], 405);
+		}
+
+		$id = (int) ($_POST['id'] ?? 0);
+		if ($id <= 0) {
+			$this->respondJson(['ok' => false, 'message' => 'ID inválido.'], 422);
+		}
+
+		$model = new EntradaSaidaModel();
+		$model->ensureTableStructure();
+
+		try {
+			$model->excluirTipo($id);
+		} catch (Throwable $e) {
+			$this->respondJson(['ok' => false, 'message' => $e->getMessage()], 409);
+		}
+
+		$this->respondJson(['ok' => true, 'message' => 'Tipo de movimentação excluído.']);
+	}
+
+	public function entradaSaidaRelatorio(): void
+	{
+		if (!$this->canAccessEntradaSaidaModule()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		$dataInicio = trim((string) ($_GET['data_inicio'] ?? ''));
+		$dataFim = trim((string) ($_GET['data_fim'] ?? ''));
+		$tipoId = (int) ($_GET['tipo_id'] ?? 0);
+		$turmaId = trim((string) ($_GET['turma_id'] ?? ''));
+
+		if ($dataInicio === '' || $dataFim === '') {
+			$dataInicio = date('Y-m-d');
+			$dataFim = date('Y-m-d');
+		}
+
+		$model = new EntradaSaidaModel();
+		$model->ensureTableStructure();
+
+		try {
+			$registros = $model->relatorio(
+				$dataInicio,
+				$dataFim,
+				$tipoId > 0 ? $tipoId : null,
+				$turmaId !== '' ? $turmaId : null
+			);
+			$totais = $model->totalPorTipoNoPeriodo(
+				$dataInicio,
+				$dataFim,
+				$tipoId > 0 ? $tipoId : null,
+				$turmaId !== '' ? $turmaId : null
+			);
+			$meta = [
+				'total_alunos_ativos' => $model->totalAlunosAtivos($turmaId !== '' ? (int) $turmaId : null),
+			];
+		} catch (Throwable $e) {
+			$this->respondJson(['ok' => false, 'message' => $e->getMessage()], 500);
+		}
+
+		$this->respondJson([
+			'ok' => true,
+			'registros' => $registros,
+			'totais' => $totais,
+			'meta' => $meta,
+			'data_inicio' => $dataInicio,
+			'data_fim' => $dataFim,
+		]);
+	}
+
+	public function entradaSaidaQrCodes(): void
+	{
+		if (!$this->canAccessEntradaSaidaModule()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		$turmaId = (int) ($_GET['turma_id'] ?? 0);
+		$model = new EntradaSaidaModel();
+		$model->ensureTableStructure();
+
+		try {
+			$alunos = $model->listarAlunosParaQr($turmaId > 0 ? $turmaId : null);
+		} catch (Throwable $e) {
+			$this->respondJson(['ok' => false, 'message' => $e->getMessage()], 500);
+		}
+
+		$this->respondJson(['ok' => true, 'alunos' => $alunos]);
+	}
+
+	public function entradaSaidaRegistroBuscar(): void
+	{
+		if (!$this->canAccessEntradaSaidaModule()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		$id = (int) ($_GET['id'] ?? 0);
+		if ($id <= 0) {
+			$this->respondJson(['ok' => false, 'message' => 'ID inválido.'], 422);
+		}
+
+		$model = new EntradaSaidaModel();
+		$model->ensureTableStructure();
+		$registro = $model->buscarRegistroPorId($id);
+
+		if (!$registro) {
+			$this->respondJson(['ok' => false, 'message' => 'Registro não encontrado.'], 404);
+		}
+
+		$this->respondJson(['ok' => true, 'registro' => $registro]);
+	}
+
+	public function entradaSaidaRegistroSalvar(): void
+	{
+		if (!$this->canAccessEntradaSaidaModule()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+			$this->respondJson(['ok' => false, 'message' => 'Método não permitido.'], 405);
+		}
+
+		$id = (int) ($_POST['id'] ?? 0);
+		$data = trim((string) ($_POST['data'] ?? ''));
+		$horario = trim((string) ($_POST['horario'] ?? ''));
+		$tipoId = (int) ($_POST['tipo_refeicao_id'] ?? 0);
+		$obs = trim((string) ($_POST['obs'] ?? ''));
+
+		if ($id <= 0 || $data === '' || $horario === '' || $tipoId <= 0) {
+			$this->respondJson(['ok' => false, 'message' => 'Dados incompletos.'], 422);
+		}
+
+		$model = new EntradaSaidaModel();
+		$model->ensureTableStructure();
+
+		try {
+			$model->salvarRegistro($id, $data, $horario, $tipoId, $obs);
+		} catch (Throwable $e) {
+			$this->respondJson(['ok' => false, 'message' => $e->getMessage()], 409);
+		}
+
+		$this->respondJson(['ok' => true, 'message' => 'Registro atualizado com sucesso.']);
+	}
+
+	public function entradaSaidaRegistroExcluir(): void
+	{
+		if (!$this->canAccessEntradaSaidaModule()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+			$this->respondJson(['ok' => false, 'message' => 'Método não permitido.'], 405);
+		}
+
+		$id = (int) ($_POST['id'] ?? 0);
+		if ($id <= 0) {
+			$this->respondJson(['ok' => false, 'message' => 'ID inválido.'], 422);
+		}
+
+		$model = new EntradaSaidaModel();
 		$model->ensureTableStructure();
 
 		try {
