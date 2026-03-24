@@ -245,6 +245,76 @@
 			margin-right: 6px;
 		}
 
+		.movimentacao-radio-group {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+			gap: .75rem;
+		}
+
+		.movimentacao-radio-item {
+			position: relative;
+		}
+
+		.movimentacao-radio-input {
+			position: absolute;
+			opacity: 0;
+			pointer-events: none;
+		}
+
+		.movimentacao-radio-label {
+			display: flex;
+			align-items: center;
+			gap: .75rem;
+			padding: .9rem 1rem;
+			border: 1px solid #d7dee8;
+			border-radius: .9rem;
+			background: #fff;
+			cursor: pointer;
+			transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+		}
+
+		.movimentacao-radio-input:checked + .movimentacao-radio-label {
+			border-color: #c2410c;
+			box-shadow: 0 0 0 3px rgba(249, 115, 22, .18);
+			transform: translateY(-1px);
+		}
+
+		.movimentacao-radio-input:focus-visible + .movimentacao-radio-label {
+			outline: 2px solid #fb923c;
+			outline-offset: 2px;
+		}
+
+		.movimentacao-radio-icon {
+			width: 2.1rem;
+			height: 2.1rem;
+			border-radius: 50%;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			color: #fff;
+			font-size: 1rem;
+			flex-shrink: 0;
+		}
+
+		.movimentacao-radio-text {
+			display: flex;
+			flex-direction: column;
+			gap: .1rem;
+			min-width: 0;
+		}
+
+		.movimentacao-radio-title {
+			font-weight: 700;
+			line-height: 1.2;
+			color: #1f2937;
+		}
+
+		.movimentacao-radio-subtitle {
+			font-size: .78rem;
+			color: #6b7280;
+			line-height: 1.2;
+		}
+
 		/* --- dashboard --- */
 		.dash-stat-card {
 			border-radius: 1rem;
@@ -644,6 +714,10 @@
 
 			#scannerVideo {
 				max-height: 58vw;
+			}
+
+			.mobile-hide-history {
+				display: none !important;
 			}
 
 			/* Botões grandes e verticais */
@@ -1092,9 +1166,9 @@
 									<div>
 										<label class="form-label fw-semibold" for="selecionarTipo">Refeição em
 											andamento</label>
-										<select id="selecionarTipo" class="form-select form-select-lg">
-											<option value="">Carregando…</option>
-										</select>
+										<div id="selecionarTipo" class="movimentacao-radio-group" role="radiogroup" aria-label="Selecionar refeição em andamento">
+											<div class="text-muted small">Carregando…</div>
+										</div>
 									</div>
 
 									<div class="scan-overlay" id="scanOverlayWrap">
@@ -1180,7 +1254,7 @@
 							</div>
 
 							<!-- Últimas entradas do dia -->
-							<div class="card border-0 shadow-sm flex-fill">
+							<div class="card border-0 shadow-sm flex-fill mobile-hide-history">
 								<div
 									class="card-header bg-white border-0 fw-semibold d-flex align-items-center justify-content-between">
 									<span><i class="las la-history me-1 text-muted"></i>Últimas entradas hoje</span>
@@ -1751,6 +1825,36 @@
 					minimumFractionDigits: 1,
 					maximumFractionDigits: 1,
 				});
+			}
+
+			function getTipoSelecionado() {
+				var checked = document.querySelector('input[name="movimentacao_tipo_principal"]:checked');
+				if (!checked) return null;
+				var id = parseInt(checked.value, 10);
+				if (!id) return null;
+				return state.tipos.find(function (item) { return Number(item.id) === id; }) || null;
+			}
+
+			function getTipoSelecionadoId() {
+				var tipo = getTipoSelecionado();
+				return tipo ? parseInt(tipo.id, 10) : 0;
+			}
+
+			function getTipoDisplayLabel(tipo) {
+				if (!tipo) return '';
+				return String(tipo.nome || '').trim();
+			}
+
+			function getTipoInputHelpLabel(tipo) {
+				if (!tipo) return '';
+				var descricao = String(tipo.descricao || '').trim();
+				if (descricao) return descricao;
+				var horarioIni = formatHora(tipo.horario_ini);
+				var horarioFim = formatHora(tipo.horario_fim);
+				if (horarioIni && horarioFim) return horarioIni + ' às ' + horarioFim;
+				if (horarioIni) return 'A partir de ' + horarioIni;
+				if (horarioFim) return 'Até ' + horarioFim;
+				return 'Disponível para registro';
 			}
 
 			function obterRotuloSelect(id, fallback) {
@@ -2337,22 +2441,39 @@
 				var relT = document.getElementById('relTipo');
 				var gerT = document.getElementById('gerencTipo');
 				var edT = document.getElementById('editRegTipo');
-				var html = '<option value="">— Selecione uma refeição —</option>';
+				var radiosHtml = '';
 				var rhtml = '<option value="">Todas</option>';
 				var ehtml = '';
+				var tipoPadraoId = 0;
 
 				state.tipos.forEach(function (t) {
 					if (t.ativo == 1) {
-						html += '<option value="' + esc(t.id) + '">' + esc(t.nome) + '</option>';
-						ehtml += '<option value="' + esc(t.id) + '">' + esc(t.nome) + '</option>';
+						if (!tipoPadraoId) {
+							tipoPadraoId = parseInt(t.id, 10) || 0;
+						}
+						radiosHtml += '<div class="movimentacao-radio-item">' +
+							'<input class="movimentacao-radio-input" type="radio" name="movimentacao_tipo_principal" id="movimentacaoTipo' + esc(String(t.id)) + '" value="' + esc(t.id) + '">' +
+							'<label class="movimentacao-radio-label" for="movimentacaoTipo' + esc(String(t.id)) + '">' +
+							'<span class="movimentacao-radio-icon" style="background:' + esc(t.cor || '#b91c1c') + '"><i class="las la-concierge-bell"></i></span>' +
+							'<span class="movimentacao-radio-text"><span class="movimentacao-radio-title">' + esc(getTipoDisplayLabel(t)) + '</span><span class="movimentacao-radio-subtitle">' + esc(getTipoInputHelpLabel(t)) + '</span></span>' +
+							'</label>' +
+							'</div>';
+						ehtml += '<option value="' + esc(t.id) + '">' + esc(getTipoDisplayLabel(t)) + '</option>';
 					}
-					rhtml += '<option value="' + esc(t.id) + '">' + esc(t.nome) + '</option>';
+					rhtml += '<option value="' + esc(t.id) + '">' + esc(getTipoDisplayLabel(t)) + '</option>';
 				});
 
-				sel.innerHTML = html;
+				sel.innerHTML = radiosHtml || '<div class="text-muted small">Nenhum tipo ativo disponível.</div>';
 				relT.innerHTML = rhtml;
 				gerT.innerHTML = rhtml;
 				edT.innerHTML = ehtml;
+
+				var radioToCheck = tipoPadraoId > 0
+					? document.getElementById('movimentacaoTipo' + String(tipoPadraoId))
+					: sel.querySelector('input[name="movimentacao_tipo_principal"]');
+				if (radioToCheck) {
+					radioToCheck.checked = true;
+				}
 			}
 
 			function preencherSelectsTurma() {
@@ -2398,10 +2519,13 @@
 			   Scanner de QR code
 			   -------------------------------------------------------- */
 			function iniciarCamera() {
-				var tipoSel = document.getElementById('selecionarTipo');
-				if (!tipoSel.value) {
+				var tipoSelecionado = getTipoSelecionado();
+				if (!tipoSelecionado) {
 					showStatus('Selecione uma refeição antes de usar o scanner.', 'error');
-					tipoSel.focus();
+					var primeiroRadio = document.querySelector('input[name="movimentacao_tipo_principal"]');
+					if (primeiroRadio) {
+						primeiroRadio.focus();
+					}
 					return;
 				}
 
@@ -2420,10 +2544,7 @@
 						document.getElementById('scanOverlayWrap').classList.add('scan-scanning');
 
 						// Preenche nome da refeição na topbar mobile
-						var _tipoSel = document.getElementById('selecionarTipo');
-						document.getElementById('mobileCamTipoNome').textContent =
-							(_tipoSel.selectedIndex >= 0 && _tipoSel.options[_tipoSel.selectedIndex])
-								? _tipoSel.options[_tipoSel.selectedIndex].text : '';
+						document.getElementById('mobileCamTipoNome').textContent = getTipoDisplayLabel(tipoSelecionado);
 
 						// Tenta Fullscreen API (rompe limites do iframe com allowfullscreen)
 						var _overlay = document.getElementById('scanOverlayWrap');
@@ -2531,7 +2652,7 @@
 			   Buscar estudante (por matrícula)
 			   -------------------------------------------------------- */
 			function buscarAluno(matricula) {
-				var tipoId = document.getElementById('selecionarTipo').value;
+				var tipoId = getTipoSelecionadoId();
 				if (!tipoId) {
 					showStatus('Selecione uma refeição antes de escanear.', 'error');
 					_bloqueioScan = false;
@@ -2546,7 +2667,7 @@
 					}
 
 					state.alunoAtual = res.aluno;
-					state.tipoAtualId = parseInt(tipoId);
+					state.tipoAtualId = parseInt(tipoId, 10);
 					exibirResultado(res.aluno, res.ja_consumiu);
 				});
 			}
@@ -3133,7 +3254,7 @@
 			}
 
 			function executarBuscaAluno(q) {
-				var tipoId = document.getElementById('selecionarTipo').value;
+				var tipoId = getTipoSelecionadoId();
 				if (!tipoId) { showStatus('Selecione uma refeição antes de buscar.', 'error'); return; }
 				var lista = document.getElementById('buscaResultados');
 				lista.innerHTML = '<div class="px-3 py-2 text-muted small"><span class="spinner-border spinner-border-sm me-1"></span>Buscando…</div>';
@@ -3166,7 +3287,7 @@
 							document.getElementById('inputBuscaAluno').value = aluno.nome;
 							lista.classList.add('d-none');
 							state.alunoAtual = aluno;
-							state.tipoAtualId = parseInt(document.getElementById('selecionarTipo').value);
+							state.tipoAtualId = getTipoSelecionadoId();
 							exibirResultado(aluno, aluno.ja_consumiu == 1);
 						});
 					});
