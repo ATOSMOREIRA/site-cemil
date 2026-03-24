@@ -18,10 +18,14 @@
       .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
   }
 
-  function fmtNota(v) {
+  function fmtDecimal(v) {
     if (v === null || v === undefined || v === '') return '-';
     var n = Number(v);
-    return isFinite(n) ? n.toFixed(2).replace('.', ',') : '-';
+    return isFinite(n) ? n.toFixed(1).replace('.', ',') : '-';
+  }
+
+  function fmtNota(v) {
+    return fmtDecimal(v);
   }
 
   function fmtPct(v) {
@@ -49,8 +53,8 @@
     var n = Number(nota);
     if (!isFinite(n)) return '-';
     var m = Number(max);
-    if (isFinite(m) && m > 0) return String(n).replace('.', ',') + ' / ' + String(m).replace('.', ',');
-    return String(n).replace('.', ',');
+    if (isFinite(m) && m > 0) return fmtDecimal(n) + ' / ' + fmtDecimal(m);
+    return fmtDecimal(n);
   }
 
   function buildEndpoint(path) {
@@ -1212,7 +1216,7 @@
         if (!isFinite(numeric)) {
           return String(value);
         }
-        return numeric.toFixed(2).replace('.', ',');
+        return fmtDecimal(numeric);
       }
 
       return String(value).trim().toUpperCase();

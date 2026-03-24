@@ -12066,12 +12066,20 @@
         return '<span class="admin-avaliacao-stats-micro">Questão discursiva.</span>';
       }
 
+      labels = labels.filter(function (label) {
+        return String(label || '').trim().toUpperCase() !== String(question.correta || '').trim().toUpperCase();
+      });
+
+      if (!labels.length) {
+        return '<span class="admin-avaliacao-stats-micro">Sem distratores marcados.</span>';
+      }
+
       return '<div class="admin-avaliacao-stats-question-dist">' + labels.map(function (label) {
         var totalCount = Number(question.alternativaCounts && question.alternativaCounts[label] || 0);
         var wrongCount = Number(question.alternativasErradas && question.alternativasErradas[label] || 0);
         var percent = question.total > 0 ? ((totalCount / question.total) * 100) : 0;
         return '<div class="admin-avaliacao-stats-question-alt">'
-          + '<span class="admin-avaliacao-stats-question-alt-label">' + escapeHtml(label) + (label === question.correta ? ' correta' : '') + '</span>'
+          + '<span class="admin-avaliacao-stats-question-alt-label">' + escapeHtml(label) + '</span>'
           + '<div class="admin-avaliacao-stats-question-alt-track"><div class="admin-avaliacao-stats-question-alt-fill" style="width:' + escapeHtml(String(percent.toFixed(2))) + '%"></div></div>'
           + '<span>' + escapeHtml(formatStatsPercent(percent)) + ' • erradas ' + escapeHtml(String(wrongCount)) + '</span>'
           + '</div>';
@@ -12458,7 +12466,7 @@
         { value: 'discursiva', label: 'Discursivas' },
         { value: 'critica', label: 'Críticas abaixo de 50%' },
       ], 'questoes')
-        + '<div class="admin-avaliacao-stats-table-wrap"><table class="admin-avaliacao-stats-table"><thead><tr><th>Questão</th><th>Contexto</th><th>Acerto</th><th>Fluxo de resposta</th><th>Distribuição por alternativa</th></tr></thead><tbody>'
+        + '<div class="admin-avaliacao-stats-table-wrap"><table class="admin-avaliacao-stats-table"><thead><tr><th>Questão</th><th>Contexto</th><th>Acerto</th><th>Fluxo de resposta</th><th>Distribuição por distratores</th></tr></thead><tbody>'
         + dataset.questionStats.map(function (item) {
           return '<tr' + buildStatsFilterableAttrs('questao ' + item.questionNumber + ' ' + item.disciplina + ' ' + item.habilidade + ' ' + item.tipoLabel + ' ' + (item.correta || ''), [item.tipo === 'discursiva' ? 'discursiva' : 'objetiva', item.masteryPercent < 50 ? 'critica' : 'regular']) + '>'
             + '<td><strong>Q' + escapeHtml(String(item.questionNumber)) + '</strong><div class="admin-avaliacao-stats-micro">' + escapeHtml(item.tipoLabel) + '</div></td>'
