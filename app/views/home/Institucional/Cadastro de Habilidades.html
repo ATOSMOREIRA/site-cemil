@@ -174,6 +174,7 @@
 				<h1 class="h4 fw-bold mb-0">Cadastro de Habilidades</h1>
 				<div class="d-flex gap-2 align-items-center">
 					<button id="hbNewBtn" class="btn btn-danger btn-sm" type="button"><i class="las la-plus me-1"></i>Nova habilidade</button>
+					<button id="hbExportBtn" class="btn btn-outline-success btn-sm" type="button"><i class="las la-file-csv me-1"></i>Exportar CSV</button>
 					<button id="hbImportBtn" class="btn btn-outline-primary btn-sm" type="button"><i class="las la-file-import me-1"></i>Importar CSV</button>
 					<button id="hbDeleteSelectedBtn" class="btn btn-outline-danger btn-sm" type="button" disabled><i class="las la-trash-alt me-1"></i>Excluir selecionadas</button>
 					<a id="hbBackBtn" href="#" target="_top" class="btn btn-outline-secondary btn-sm"><i class="las la-arrow-left me-1"></i>Voltar</a>
@@ -485,6 +486,7 @@
 			var selectAll       = document.getElementById('hbSelectAll');
 			var deleteSelBtn    = document.getElementById('hbDeleteSelectedBtn');
 			var newBtn          = document.getElementById('hbNewBtn');
+			var exportBtn       = document.getElementById('hbExportBtn');
 			var importBtn       = document.getElementById('hbImportBtn');
 			var filterBtn       = document.getElementById('hbFilterBtn');
 			var filterBadge     = document.getElementById('hbFilterBadge');
@@ -634,6 +636,60 @@
 				statusTimer = setTimeout(function () { statusBar.classList.add('d-none'); }, 4000);
 			}
 
+			function formatAnoEscolar(value) {
+				var anos = String(value || '').split(',').map(function (item) { return item.trim(); }).filter(Boolean);
+				return anos.length ? anos.map(function (item) { return item + 'º ano'; }).join(', ') : '';
+			}
+
+			function toCsvCell(value) {
+				var text = String(value == null ? '' : value).replace(/"/g, '""');
+				return '"' + text + '"';
+			}
+
+			function exportCsv() {
+				var rows = getFilteredData();
+				if (!rows.length) {
+					showStatus('Nao ha habilidades para exportar.', true);
+					return;
+				}
+
+				var csvRows = [
+					['Codigo', 'Documento', 'Nome da Disciplina', 'Ano escolar', 'Descricao']
+				];
+
+				rows.forEach(function (h) {
+					csvRows.push([
+						h.codigo || '',
+						h.documento || '',
+						disciplinasMap[String(h.disciplina_id)] || '',
+						formatAnoEscolar(h.ano_escolar),
+						h.descricao || ''
+					]);
+				});
+
+				var csvContent = csvRows.map(function (row) {
+					return row.map(toCsvCell).join(';');
+				}).join('\r\n');
+				var blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+				var url = window.URL.createObjectURL(blob);
+				var link = document.createElement('a');
+				var now = new Date();
+				var dateStamp = [
+					now.getFullYear(),
+					String(now.getMonth() + 1).padStart(2, '0'),
+					String(now.getDate()).padStart(2, '0')
+				].join('-');
+
+				link.href = url;
+				link.download = 'habilidades-' + dateStamp + '.csv';
+				document.body.appendChild(link);
+				link.click();
+				document.body.removeChild(link);
+				window.URL.revokeObjectURL(url);
+
+				showStatus(rows.length + ' habilidade(s) exportada(s) em CSV.');
+			}
+
 			/* ── data loading ───────────────────────────────── */
 
 			function loadData() {
@@ -763,6 +819,12 @@
 
 				tableBody.innerHTML = html;
 				updateSelectState();
+			}
+
+			if (exportBtn) {
+				exportBtn.addEventListener('click', function () {
+					exportCsv();
+				});
 			}
 
 			/* ── checkbox state ─────────────────────────────── */

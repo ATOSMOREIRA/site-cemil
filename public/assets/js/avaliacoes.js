@@ -101,6 +101,10 @@
     var statsFiltersSectionList = document.getElementById('adminAvaliacaoStatsFilterSectionList');
     var statsFiltersClearBtn = document.getElementById('adminAvaliacaoStatsFiltersClearBtn');
     var statsFiltersApplyBtn = document.getElementById('adminAvaliacaoStatsFiltersApplyBtn');
+    var statsSkillsModalElement = document.getElementById('adminAvaliacaoStatsSkillsModal');
+    var statsSkillsModalTitle = document.getElementById('adminAvaliacaoStatsSkillsModalLabel');
+    var statsSkillsModalSummary = document.getElementById('adminAvaliacaoStatsSkillsModalSummary');
+    var statsSkillsModalList = document.getElementById('adminAvaliacaoStatsSkillsModalList');
     var dashboardStatsTab = document.getElementById('adminAvaliacaoDashboardTabEstatisticas');
     var dashboardCorrecaoTab = document.getElementById('adminAvaliacaoDashboardTabCorrecao');
     var dashboardQuestoesTab = document.getElementById('adminAvaliacaoDashboardTabQuestoes');
@@ -290,6 +294,8 @@
     var habilidadeSelectorFilterButtons = habilidadeSelectorModalElement ? habilidadeSelectorModalElement.querySelectorAll('[data-hb-filter]') : [];
     var habilidadeSelectorBsModal = null;
     var habilidadeSelectorCache = null;
+    var habilidadeSelectorCacheLoading = false;
+    var habilidadeSelectorCacheCallbacks = [];
     var habilidadeSelectorQuestionIndex = -1;
     var habilidadeSelectorActiveFilter = 'todos';
     var habilidadeSelectorSelected = [];
@@ -400,9 +406,11 @@
     var correcaoRevisaoModalInstance = null;
     var correcaoEdicaoModalInstance = null;
     var statsFiltersModalInstance = null;
+    var statsSkillsModalInstance = null;
     var tableFiltersModalInstance = null;
     var pendingDeleteForms = [];
     var selectedAlunosRelacionadosIds = [];
+    var hasManualAlunosSelection = false;
     var lastSelectedTurmasIdsForAlunos = [];
     var pendingOpenAlunosAfterTurmasClose = false;
     var alunosModalSearchQuery = '';
@@ -794,6 +802,15 @@
       document.body.appendChild(statsFiltersModalElement);
     }
 
+    if (statsSkillsModalElement && statsSkillsModalElement.parentElement !== document.body) {
+      var existingStatsSkillsModal = document.body.querySelector('#adminAvaliacaoStatsSkillsModal');
+      if (existingStatsSkillsModal && existingStatsSkillsModal !== statsSkillsModalElement) {
+        existingStatsSkillsModal.remove();
+      }
+
+      document.body.appendChild(statsSkillsModalElement);
+    }
+
     if (tableFiltersModalElement && tableFiltersModalElement.parentElement !== document.body) {
       var existingTableFiltersModal = document.body.querySelector('#adminAvaliacoesFiltersModal');
       if (existingTableFiltersModal && existingTableFiltersModal !== tableFiltersModalElement) {
@@ -831,6 +848,10 @@
       statsFiltersModalInstance = bootstrap.Modal.getOrCreateInstance(statsFiltersModalElement, {
         backdrop: false,
       });
+    }
+
+    if (statsSkillsModalElement && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+      statsSkillsModalInstance = bootstrap.Modal.getOrCreateInstance(statsSkillsModalElement);
     }
 
     if (tableFiltersModalElement && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
@@ -1629,6 +1650,13 @@
 
     function habilidadeFetchCache(cb) {
       if (habilidadeSelectorCache) { cb(habilidadeSelectorCache); return; }
+      if (typeof cb === 'function') {
+        habilidadeSelectorCacheCallbacks.push(cb);
+      }
+      if (habilidadeSelectorCacheLoading) {
+        return;
+      }
+      habilidadeSelectorCacheLoading = true;
       fetch(getHabilidadesListarUrl(), {
         headers: { 'X-Requested-With': 'XMLHttpRequest' }
       })
@@ -1640,13 +1668,49 @@
             data.disciplinas.forEach(function (d) { disciplinasMap[String(d.id)] = d.nome; });
           }
           habilidadeSelectorCache = { habilidades: data.habilidades, disciplinasMap: disciplinasMap };
-          cb(habilidadeSelectorCache);
+          habilidadeSelectorCacheLoading = false;
+          var pendingCallbacks = habilidadeSelectorCacheCallbacks.slice();
+          habilidadeSelectorCacheCallbacks = [];
+          pendingCallbacks.forEach(function (callback) {
+            callback(habilidadeSelectorCache);
+          });
         })
         .catch(function () {
+          habilidadeSelectorCacheLoading = false;
+          habilidadeSelectorCacheCallbacks = [];
           if (habilidadeSelectorList) {
             habilidadeSelectorList.innerHTML = '<div class="text-center text-danger py-4">Erro ao carregar habilidades.</div>';
           }
         });
+    }
+
+    function getStatsSkillDisplayLabel(value, fallbackValue) {
+      var safeValue = sanitizeQuestaoMetaField(value);
+      if (safeValue === '') {
+        return fallbackValue;
+      }
+
+      var habilidades = habilidadeSelectorCache && Array.isArray(habilidadeSelectorCache.habilidades)
+        ? habilidadeSelectorCache.habilidades
+        : [];
+
+      for (var index = 0; index < habilidades.length; index += 1) {
+        var habilidade = habilidades[index] && typeof habilidades[index] === 'object' ? habilidades[index] : null;
+        if (!habilidade) {
+          continue;
+        }
+
+        if (String(habilidade.codigo || '').trim() !== safeValue) {
+          continue;
+        }
+
+        var descricao = String(habilidade.descricao || '').trim();
+        if (descricao !== '') {
+          return safeValue + ' - ' + descricao;
+        }
+      }
+
+      return safeValue;
     }
 
     function renderHabilidadeSelectorList(cache, disciplinaFiltro) {
@@ -6802,6 +6866,21 @@
             });
         })
         .then(function (_payload) {
+          var serializedConfig = JSON.stringify(getCurrentGabaritoConfig());
+
+          document.querySelectorAll('.js-admin-avaliacao-dashboard, .js-admin-avaliacao-edit, .js-admin-avaliacao-copy').forEach(function (button) {
+            if (!(button instanceof HTMLElement)) {
+              return;
+            }
+
+            var buttonId = Number(button.getAttribute('data-id') || 0);
+            if (buttonId !== targetId) {
+              return;
+            }
+
+            button.setAttribute('data-gabarito', serializedConfig);
+          });
+
           setGabaritoPendingChanges(false);
           var message = String(successMessage || '').trim() || 'Gabarito salvo com sucesso.';
           if (!isSilent) {
@@ -7126,7 +7205,8 @@
           restoreSelectorState(
             button.getAttribute('data-turmas-ids') || '',
             button.getAttribute('data-alunos-ids') || '',
-            button.getAttribute('data-aplicadores-ids') || ''
+            button.getAttribute('data-aplicadores-ids') || '',
+            button.getAttribute('data-alunos-explicit') === '1'
           );
 
           applyGabaritoConfig(parseGabaritoConfig(button.getAttribute('data-gabarito')));
@@ -7184,7 +7264,8 @@
           restoreSelectorState(
             button.getAttribute('data-turmas-ids') || '',
             '',
-            button.getAttribute('data-aplicadores-ids') || ''
+            button.getAttribute('data-aplicadores-ids') || '',
+            false
           );
 
           applyGabaritoConfig(parseGabaritoConfig(button.getAttribute('data-gabarito')));
@@ -7350,6 +7431,7 @@
       });
 
       selectedAlunosRelacionadosIds = [];
+      hasManualAlunosSelection = false;
       syncAlunosHiddenInputs();
 
       getAplicadorCheckboxes().forEach(function (cb) { cb.checked = false; });
@@ -11028,13 +11110,15 @@
       gabaritoQuestoesItens.forEach(function (item, index) {
         var safeItem = sanitizeQuestaoItem(item);
         var questionNumber = index + 1;
+        var habilidadeCodigo = getStatsMetaLabel(safeItem.habilidade, 'Habilidade não informada');
         map[String(questionNumber)] = {
           questionNumber: questionNumber,
           tipo: normalizeQuestaoTipo(safeItem.tipo),
           tipoLabel: getQuestaoTipoLabel(safeItem.tipo),
           peso: sanitizeQuestaoPeso(safeItem.peso, 1),
           disciplina: getStatsMetaLabel(getQuestaoDisciplinaNome(safeItem), 'Disciplina não informada'),
-          habilidade: getStatsMetaLabel(safeItem.habilidade, 'Habilidade não informada'),
+          habilidadeCodigo: habilidadeCodigo,
+          habilidade: getStatsSkillDisplayLabel(safeItem.habilidade, 'Habilidade não informada'),
           correta: String(safeItem.correta || '').trim().toUpperCase(),
           alternativas: getQuestaoAlternativaLabels(safeItem, gabaritoAlternativasConfiguradas),
           enunciado: richTextToPlainText(safeItem.enunciado || ''),
@@ -11361,6 +11445,7 @@
             tipoLabel: getQuestaoTipoLabel(correcao && correcao.questionType),
             peso: sanitizeQuestaoPeso(correcao && correcao.pontuacao_maxima, 1),
             disciplina: 'Disciplina não informada',
+            habilidadeCodigo: 'Habilidade não informada',
             habilidade: 'Habilidade não informada',
             correta: String(correcao && correcao.correctAnswer || '').trim().toUpperCase(),
             alternativas: [],
@@ -11430,7 +11515,8 @@
           disciplinaEntry.corretas += effectiveIsCorrect ? 1 : 0;
           disciplinaEntry.brancos += studentAnswer === '' ? 1 : 0;
 
-          var habilidadeEntry = ensureStatsAggregateEntry(habilidadeMap, meta.habilidade, {
+          var skillKey = String(meta.habilidadeCodigo || meta.habilidade || 'Habilidade não informada');
+          var habilidadeEntry = ensureStatsAggregateEntry(habilidadeMap, skillKey, {
             nome: meta.habilidade,
             earnedPoints: 0,
             totalPoints: 0,
@@ -11446,9 +11532,11 @@
           habilidadeEntry.masteryUnitsTotal += 1;
           habilidadeEntry.masteryUnitsEarned += questionMastered ? 1 : 0;
 
-          allSkills[meta.habilidade] = true;
-          if (!alunoEntry.habilidades[meta.habilidade]) {
-            alunoEntry.habilidades[meta.habilidade] = {
+          allSkills[skillKey] = {
+            nome: meta.habilidade,
+          };
+          if (!alunoEntry.habilidades[skillKey]) {
+            alunoEntry.habilidades[skillKey] = {
               habilidade: meta.habilidade,
               earnedPoints: 0,
               totalPoints: 0,
@@ -11456,10 +11544,10 @@
               masteryUnitsTotal: 0,
             };
           }
-          alunoEntry.habilidades[meta.habilidade].earnedPoints += earnedPoints;
-          alunoEntry.habilidades[meta.habilidade].totalPoints += totalPoints;
-          alunoEntry.habilidades[meta.habilidade].masteryUnitsTotal += 1;
-          alunoEntry.habilidades[meta.habilidade].masteryUnitsEarned += questionMastered ? 1 : 0;
+          alunoEntry.habilidades[skillKey].earnedPoints += earnedPoints;
+          alunoEntry.habilidades[skillKey].totalPoints += totalPoints;
+          alunoEntry.habilidades[skillKey].masteryUnitsTotal += 1;
+          alunoEntry.habilidades[skillKey].masteryUnitsEarned += questionMastered ? 1 : 0;
         });
       });
 
@@ -11468,9 +11556,12 @@
         var habilidadesAtingidas = [];
         var habilidadesPendentes = [];
 
-        Object.keys(allSkills).forEach(function (skillName) {
-          var skillEntry = alunoEntry.habilidades[skillName] || {
-            habilidade: skillName,
+        Object.keys(allSkills).forEach(function (skillKey) {
+          var skillLabel = allSkills[skillKey] && allSkills[skillKey].nome
+            ? allSkills[skillKey].nome
+            : skillKey;
+          var skillEntry = alunoEntry.habilidades[skillKey] || {
+            habilidade: skillLabel,
             earnedPoints: 0,
             totalPoints: 0,
             masteryUnitsEarned: 0,
@@ -11478,9 +11569,9 @@
           };
           var reached = getStatsSkillMasteryLevel(skillEntry);
           if (reached) {
-            habilidadesAtingidas.push(skillName);
+            habilidadesAtingidas.push(skillLabel);
           } else {
-            habilidadesPendentes.push(skillName);
+            habilidadesPendentes.push(skillLabel);
           }
         });
 
@@ -11493,6 +11584,7 @@
         var pendingCount = 0;
         Object.keys(alunoMap).forEach(function (alunoKey) {
           var skillEntry = alunoMap[alunoKey].habilidades[skillName] || {
+            habilidade: habilidadeMap[skillName].nome,
             earnedPoints: 0,
             totalPoints: 0,
             masteryUnitsEarned: 0,
@@ -11587,6 +11679,51 @@
       }
 
       return badges.join('');
+    }
+
+    function renderStatsSkillListButton(kind, items, alunoNome, turmaNome) {
+      var safeItems = Array.isArray(items) ? items.filter(Boolean) : [];
+      var safeKind = String(kind || '').trim() === 'pendentes' ? 'pendentes' : 'atingidas';
+      var buttonClass = safeKind === 'pendentes' ? 'btn-outline-warning' : 'btn-outline-primary';
+      var buttonLabel = safeKind === 'pendentes' ? 'Visualizar não alcançadas' : 'Visualizar alcançadas';
+      var serializedItems = escapeHtml(JSON.stringify(safeItems));
+
+      return '<button type="button" class="btn btn-sm ' + buttonClass + ' js-admin-avaliacao-stats-skills-view"'
+        + ' data-kind="' + escapeHtml(safeKind) + '"'
+        + ' data-aluno="' + escapeHtml(alunoNome) + '"'
+        + ' data-turma="' + escapeHtml(turmaNome) + '"'
+        + ' data-items="' + serializedItems + '"'
+        + (safeItems.length ? '' : ' disabled') + '>'
+        + escapeHtml(buttonLabel + ' (' + safeItems.length + ')')
+        + '</button>';
+    }
+
+    function openStatsSkillsModal(kind, alunoNome, turmaNome, items) {
+      var safeKind = String(kind || '').trim() === 'pendentes' ? 'pendentes' : 'atingidas';
+      var safeItems = Array.isArray(items) ? items.filter(Boolean) : [];
+      var tipoLabel = safeKind === 'pendentes' ? 'Habilidades não alcançadas' : 'Habilidades alcançadas';
+      var alunoLabel = String(alunoNome || '').trim() || 'Estudante não identificado';
+      var turmaLabel = String(turmaNome || '').trim() || 'Turma não informada';
+
+      if (statsSkillsModalTitle) {
+        statsSkillsModalTitle.textContent = tipoLabel;
+      }
+
+      if (statsSkillsModalSummary) {
+        statsSkillsModalSummary.textContent = alunoLabel + ' • ' + turmaLabel + ' • ' + safeItems.length + ' item(ns)';
+      }
+
+      if (statsSkillsModalList) {
+        statsSkillsModalList.innerHTML = safeItems.length
+          ? safeItems.map(function (item) {
+            return '<div class="border rounded px-3 py-2 bg-light small">' + escapeHtml(item) + '</div>';
+          }).join('')
+          : '<div class="text-secondary small text-center py-3">Nenhuma habilidade nesta categoria.</div>';
+      }
+
+      if (statsSkillsModalInstance) {
+        statsSkillsModalInstance.show();
+      }
     }
 
     function buildStatsFilterableAttrs(searchText, filterTokens) {
@@ -12057,6 +12194,11 @@
       }
 
       var normalizedRows = getStatsNormalizedCorrecoesRows(correcoesRows);
+      if (!habilidadeSelectorCache && normalizedRows.length) {
+        habilidadeFetchCache(function () {
+          renderAvaliacaoStats();
+        });
+      }
       var scopeConfig = buildStatsScopeOptions(
         normalizedRows,
         readStatsDatasetFilterValues('scopeTurma'),
@@ -12284,8 +12426,8 @@
             + '<td><strong>' + escapeHtml(item.alunoNome) + '</strong></td>'
             + '<td>' + escapeHtml(item.turmaNome) + '</td>'
             + '<td><div><strong>' + escapeHtml(formatStatsPercent(item.percentual)) + '</strong></div></td>'
-            + '<td><div class="admin-avaliacao-stats-badges">' + renderStatsBadgeList(item.habilidadesAtingidas, 'Nenhuma') + '</div></td>'
-            + '<td><div class="admin-avaliacao-stats-badges">' + renderStatsBadgeList(item.habilidadesPendentes, 'Nenhuma') + '</div></td>'
+            + '<td>' + renderStatsSkillListButton('atingidas', item.habilidadesAtingidas, item.alunoNome, item.turmaNome) + '</td>'
+            + '<td>' + renderStatsSkillListButton('pendentes', item.habilidadesPendentes, item.alunoNome, item.turmaNome) + '</td>'
             + '</tr>';
         }).join('')
         + '</tbody></table></div>'
@@ -12381,6 +12523,21 @@
           writeStatsDatasetFilterValues('scopeAluno', ['all']);
           setStatsPanelFilterValue(clearPanelKey, ['all']);
           renderAvaliacaoStats();
+          return;
+        }
+
+        var skillsButton = target.closest('.js-admin-avaliacao-stats-skills-view');
+        if (skillsButton instanceof HTMLElement) {
+          var skillKind = String(skillsButton.getAttribute('data-kind') || 'atingidas');
+          var skillAluno = String(skillsButton.getAttribute('data-aluno') || '');
+          var skillTurma = String(skillsButton.getAttribute('data-turma') || '');
+          var skillItems = [];
+          try {
+            skillItems = JSON.parse(String(skillsButton.getAttribute('data-items') || '[]'));
+          } catch (error) {
+            skillItems = [];
+          }
+          openStatsSkillsModal(skillKind, skillAluno, skillTurma, skillItems);
           return;
         }
       });
@@ -16595,8 +16752,53 @@
       });
     }
 
-    function syncSelectedAlunosFromTurmas() {
-      selectedAlunosRelacionadosIds = buildAutomaticSelectedAlunosIds();
+    function getValidSelectedAlunosIdsForCurrentTurmas(alunosIds) {
+      var selectedTurmasIds = getSelectedTurmasIds();
+      var safeAlunosIds = Array.isArray(alunosIds) ? alunosIds : [];
+
+      if (selectedTurmasIds.length === 0) {
+        return [];
+      }
+
+      return safeAlunosIds.filter(function (alunoId) {
+        var aluno = alunosOptions.find(function (item) {
+          return item.id === alunoId;
+        });
+
+        return aluno && selectedTurmasIds.indexOf(aluno.turmaId) !== -1;
+      });
+    }
+
+    function parseSelectedIds(rawValue) {
+      if (String(rawValue || '').trim() === '') {
+        return [];
+      }
+
+      return String(rawValue)
+        .split(',')
+        .map(function (value) { return Number(String(value || '').trim()) || 0; })
+        .filter(function (value, index, arr) {
+          return value > 0 && arr.indexOf(value) === index;
+        });
+    }
+
+    function syncSelectedAlunosFromTurmas(options) {
+      var safeOptions = options && typeof options === 'object' ? options : {};
+
+      if (safeOptions.explicitSelection === true) {
+        selectedAlunosRelacionadosIds = getValidSelectedAlunosIdsForCurrentTurmas(safeOptions.alunosIds);
+        hasManualAlunosSelection = true;
+      } else if (safeOptions.preserveExisting === true) {
+        if (hasManualAlunosSelection) {
+          selectedAlunosRelacionadosIds = getValidSelectedAlunosIdsForCurrentTurmas(selectedAlunosRelacionadosIds);
+        } else {
+          selectedAlunosRelacionadosIds = buildAutomaticSelectedAlunosIds();
+        }
+      } else {
+        selectedAlunosRelacionadosIds = buildAutomaticSelectedAlunosIds();
+        hasManualAlunosSelection = false;
+      }
+
       syncAlunosHiddenInputs();
       updateAlunosSummary();
 
@@ -16732,7 +16934,7 @@
 
       var selectedTurmasIds = getSelectedTurmasIds();
       if (selectedTurmasIds.length === 0) {
-        alunosSummaryElement.innerHTML = '<div class="small text-secondary">Selecione as turmas para vincular os estudantes automaticamente.</div>';
+        alunosSummaryElement.innerHTML = '<div class="small text-secondary">Selecione as turmas para liberar a lista de estudantes disponíveis.</div>';
         return;
       }
 
@@ -16816,7 +17018,7 @@
         + '</div>';
     }
 
-    function restoreSelectorState(turmasIds, alunosIds, aplicadoresIds) {
+    function restoreSelectorState(turmasIds, alunosIds, aplicadoresIds, hasExplicitAlunosSelection) {
       // Turmas
       var turmaIdStrings = String(turmasIds || '').trim() === ''
         ? []
@@ -16825,8 +17027,14 @@
         cb.checked = turmaIdStrings.indexOf(String(cb.value || '')) !== -1;
       });
 
-      // Alunos seguem automaticamente as turmas selecionadas.
-      syncSelectedAlunosFromTurmas();
+      syncSelectedAlunosFromTurmas({
+        explicitSelection: hasExplicitAlunosSelection === true,
+        alunosIds: parseSelectedIds(alunosIds),
+      });
+
+      if (hasExplicitAlunosSelection !== true) {
+        hasManualAlunosSelection = false;
+      }
 
       // Aplicadores
       var aplicadorIdNumbers = String(aplicadoresIds || '').trim() === ''
@@ -16858,7 +17066,7 @@
         turmaCheckboxes.forEach(function (cb) { cb.checked = false; });
         updateTurmasSummary();
         updateAlunosModalButtonState();
-        syncSelectedAlunosFromTurmas();
+        syncSelectedAlunosFromTurmas({ preserveExisting: true });
       });
     }
 
@@ -16888,7 +17096,7 @@
       cb.addEventListener('change', function () {
         updateTurmasSummary();
         updateAlunosModalButtonState();
-        syncSelectedAlunosFromTurmas();
+        syncSelectedAlunosFromTurmas({ preserveExisting: true });
       });
     });
 
@@ -16896,7 +17104,7 @@
       turmasModalElement.addEventListener('hidden.bs.modal', function () {
         updateTurmasSummary();
         updateAlunosModalButtonState();
-        syncSelectedAlunosFromTurmas();
+        syncSelectedAlunosFromTurmas({ preserveExisting: true });
         if (pendingOpenAlunosAfterTurmasClose) {
           pendingOpenAlunosAfterTurmasClose = false;
           if (alunosModalInstance && getSelectedTurmasIds().length > 0) {
@@ -16934,6 +17142,7 @@
     if (clearAlunosButton) {
       clearAlunosButton.addEventListener('click', function () {
         selectedAlunosRelacionadosIds = [];
+        hasManualAlunosSelection = true;
         syncAlunosHiddenInputs();
         updateAlunosSummary();
       });
@@ -16970,6 +17179,7 @@
         } else {
           selectedAlunosRelacionadosIds = selectedAlunosRelacionadosIds.filter(function (id) { return id !== alunoId; });
         }
+        hasManualAlunosSelection = true;
       });
     }
 
