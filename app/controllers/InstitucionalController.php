@@ -6137,6 +6137,7 @@ class InstitucionalController extends HomeController
 			$today = date('Y-m-d');
 			$resumo = $model->resumoHoje($today);
 			$meta = $model->resumoPresencaHoje($today);
+			$liberacoesAtivas = $model->listarLiberacoesAtivas($today);
 		} catch (Throwable $e) {
 			$this->respondJson(['ok' => false, 'message' => 'Erro ao carregar dados: ' . $e->getMessage()], 500);
 		}
@@ -6147,6 +6148,7 @@ class InstitucionalController extends HomeController
 			'turmas' => $turmas,
 			'resumo' => $resumo,
 			'meta' => $meta,
+			'liberacoes_ativas' => $liberacoesAtivas,
 			'hoje' => $today,
 		]);
 	}
@@ -6166,6 +6168,7 @@ class InstitucionalController extends HomeController
 			'resumo_hoje' => $model->resumoHoje($today),
 			'ultimas_entradas' => $model->ultimasMovimentacoesHoje($today, 10),
 			'meta' => $model->resumoPresencaHoje($today),
+			'liberacoes_ativas' => $model->listarLiberacoesAtivas($today),
 		]);
 	}
 
@@ -6217,6 +6220,7 @@ class InstitucionalController extends HomeController
 			'mensagem_status' => $avaliacao['message'],
 			'ultima_movimentacao' => $avaliacao['ultima_movimentacao'],
 			'estado_atual' => $avaliacao['estado_atual'],
+			'liberacao_antecipada' => $avaliacao['liberacao_antecipada'] ?? false,
 		]);
 	}
 
@@ -6247,6 +6251,28 @@ class InstitucionalController extends HomeController
 		]);
 	}
 
+	public function entradaSaidaSearchAlunosLiberacao(): void
+	{
+		if (!$this->canAccessEntradaSaidaModule()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		$q = trim((string) ($_GET['q'] ?? ''));
+		$turmaId = (int) ($_GET['turma_id'] ?? 0);
+
+		if (mb_strlen($q) < 2) {
+			$this->respondJson(['ok' => true, 'alunos' => []]);
+		}
+
+		$model = new EntradaSaidaModel();
+		$model->ensureTableStructure();
+
+		$this->respondJson([
+			'ok' => true,
+			'alunos' => $model->pesquisarAlunosParaLiberacao($q, $turmaId, date('Y-m-d')),
+		]);
+	}
+
 	public function entradaSaidaRegistrar(): void
 	{
 		if (!$this->canAccessEntradaSaidaModule()) {
@@ -6271,7 +6297,7 @@ class InstitucionalController extends HomeController
 		$horario = date('H:i:s');
 
 		try {
-			$avaliacao = $model->avaliarMovimentacao($alunoId, $tipoId, $today);
+			$avaliacao = $model->avaliarMovimentacao($alunoId, $tipoId, $today, $horario);
 			if (!$avaliacao['permitido']) {
 				$this->respondJson(['ok' => false, 'message' => $avaliacao['message']], 409);
 			}
@@ -6279,6 +6305,9 @@ class InstitucionalController extends HomeController
 			$usuarioId = isset($_SESSION['auth']['id']) ? (int) $_SESSION['auth']['id'] : null;
 			$id = $model->registrarMovimentacao($alunoId, $tipoId, $today, $horario, $usuarioId, $obs);
 			$tipo = $model->getTipoById($tipoId);
+			if (!empty($avaliacao['liberacao_antecipada']) && !empty($avaliacao['liberacao']['id'])) {
+				$model->consumirLiberacaoSaida((int) $avaliacao['liberacao']['id'], $id);
+			}
 		} catch (Throwable $e) {
 			$this->respondJson(['ok' => false, 'message' => 'Erro ao registrar: ' . $e->getMessage()], 500);
 		}
@@ -6289,6 +6318,58 @@ class InstitucionalController extends HomeController
 			'horario' => $horario,
 			'tipo_nome' => (string) ($tipo['nome'] ?? ''),
 			'message' => 'Movimentação registrada com sucesso.',
+		]);
+	}
+
+	public function entradaSaidaLiberarSaida(): void
+	{
+		if (!$this->canAccessEntradaSaidaModule()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+			$this->respondJson(['ok' => false, 'message' => 'Método não permitido.'], 405);
+		}
+
+		$alunoId = (int) ($_POST['aluno_id'] ?? 0);
+		$obs = trim((string) ($_POST['obs'] ?? ''));
+
+		if ($alunoId <= 0) {
+			$this->respondJson(['ok' => false, 'message' => 'Selecione um estudante para liberar.'], 422);
+		}
+
+		$model = new EntradaSaidaModel();
+		$model->ensureTableStructure();
+		$today = date('Y-m-d');
+		$aluno = $model->buscarAlunoPorId($alunoId);
+
+		if ($aluno === null) {
+			$this->respondJson(['ok' => false, 'message' => 'Estudante não encontrado.'], 404);
+		}
+
+		if (!empty($aluno['data_saida']) && (string) $aluno['data_saida'] <= $today) {
+			$this->respondJson(['ok' => false, 'message' => 'Este estudante está inativo no cadastro.'], 409);
+		}
+
+		try {
+			$usuarioId = isset($_SESSION['auth']['id']) ? (int) $_SESSION['auth']['id'] : null;
+			$liberacao = $model->concederLiberacaoSaida($alunoId, $today, $usuarioId, $obs);
+			$liberacoesAtivas = $model->listarLiberacoesAtivas($today);
+		} catch (Throwable $e) {
+			$this->respondJson(['ok' => false, 'message' => $e->getMessage()], 409);
+		}
+
+		$this->respondJson([
+			'ok' => true,
+			'message' => 'Liberação antecipada registrada com sucesso.',
+			'liberacao' => $liberacao,
+			'liberacoes_ativas' => $liberacoesAtivas,
+			'aluno' => [
+				'id' => (int) $aluno['id'],
+				'nome' => $aluno['nome'],
+				'matricula' => $aluno['matricula'],
+				'turma' => $aluno['turma'],
+			],
 		]);
 	}
 

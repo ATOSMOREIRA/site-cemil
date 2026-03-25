@@ -46,6 +46,26 @@ class EntradaSaidaModel
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
         );
 
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS entrada_saida_liberacoes (
+                id                  INT          NOT NULL AUTO_INCREMENT,
+                aluno_id            INT          NOT NULL,
+                data                DATE         NOT NULL,
+                usuario_id          INT          NULL,
+                obs                 VARCHAR(255) NULL,
+                status              VARCHAR(16)  NOT NULL DEFAULT 'pendente',
+                usado_em            DATETIME     NULL,
+                registro_saida_id   INT          NULL,
+                created_at          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                KEY idx_entrada_saida_lib_data_status       (data, status),
+                KEY idx_entrada_saida_lib_aluno_data_status (aluno_id, data, status),
+                CONSTRAINT fk_entrada_saida_lib_aluno FOREIGN KEY (aluno_id)
+                    REFERENCES alunos (id) ON DELETE RESTRICT ON UPDATE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+        );
+
         $this->seedDefaultTipos();
     }
 
@@ -198,6 +218,21 @@ class EntradaSaidaModel
         return $row !== false ? $row : null;
     }
 
+    public function buscarAlunoPorId(int $id): ?array
+    {
+        $pdo = Database::connection();
+        $stmt = $pdo->prepare(
+            'SELECT a.id, a.nome, a.matricula, a.turma, a.turma_id, a.data_saida
+               FROM alunos a
+              WHERE a.id = :id
+              LIMIT 1'
+        );
+        $stmt->execute(['id' => $id]);
+        $row = $stmt->fetch();
+
+        return $row !== false ? $row : null;
+    }
+
     public function pesquisarAlunos(string $q, int $turmaId, int $tipoId, string $data): array
     {
         $pdo = Database::connection();
@@ -246,7 +281,62 @@ class EntradaSaidaModel
         return $items;
     }
 
-    public function avaliarMovimentacao(int $alunoId, int $tipoId, string $data): array
+    public function pesquisarAlunosParaLiberacao(string $q, int $turmaId, string $data): array
+    {
+        $pdo = Database::connection();
+        $like = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $q) . '%';
+        $where = '(a.nome LIKE :q1 OR a.turma LIKE :q2 OR a.matricula LIKE :q3)';
+        $params = [
+            'q1' => $like,
+            'q2' => $like,
+            'q3' => $like,
+            'today' => $data,
+        ];
+
+        if ($turmaId > 0) {
+            $where .= ' AND a.turma_id = :turma_id';
+            $params['turma_id'] = $turmaId;
+        }
+
+        $stmt = $pdo->prepare(
+            "SELECT a.id, a.nome, a.matricula, a.turma
+               FROM alunos a
+              WHERE {$where}
+                AND (a.data_saida IS NULL OR a.data_saida > :today)
+              ORDER BY a.nome
+              LIMIT 25"
+        );
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll();
+        if (!is_array($rows) || $rows === []) {
+            return [];
+        }
+
+        $items = [];
+        foreach ($rows as $row) {
+            $ultima = $this->buscarUltimaMovimentacaoDoDia((int) $row['id'], $data);
+            $liberacao = $this->buscarLiberacaoSaidaAtiva((int) $row['id'], $data);
+            $estadoAtual = 'sem_registro';
+            if ($ultima !== null) {
+                $estadoAtual = ($ultima['natureza'] ?? '') === 'saida' ? 'fora' : 'dentro';
+            }
+
+            $items[] = [
+                'id' => (int) $row['id'],
+                'nome' => $row['nome'],
+                'matricula' => $row['matricula'],
+                'turma' => $row['turma'],
+                'estado_atual' => $estadoAtual,
+                'ultima_movimentacao' => $ultima,
+                'liberacao_ativa' => $liberacao !== null ? 1 : 0,
+                'liberacao_obs' => $liberacao['obs'] ?? null,
+            ];
+        }
+
+        return $items;
+    }
+
+    public function avaliarMovimentacao(int $alunoId, int $tipoId, string $data, ?string $horarioAtual = null): array
     {
         $tipo = $this->getTipoById($tipoId);
         if ($tipo === null) {
@@ -255,6 +345,7 @@ class EntradaSaidaModel
 
         $ultima = $this->buscarUltimaMovimentacaoDoDia($alunoId, $data);
         $natureza = $this->normalizeNatureza((string) ($tipo['natureza'] ?? 'entrada'));
+        $horarioAtual = $this->normalizeHorario($horarioAtual ?? date('H:i:s'));
 
         if ($natureza === 'saida') {
             if ($ultima === null) {
@@ -263,6 +354,8 @@ class EntradaSaidaModel
                     'message' => 'Não há entrada registrada hoje para lançar a saída.',
                     'ultima_movimentacao' => null,
                     'estado_atual' => 'sem_registro',
+                    'liberacao_antecipada' => false,
+                    'liberacao' => null,
                 ];
             }
 
@@ -272,14 +365,37 @@ class EntradaSaidaModel
                     'message' => 'A última movimentação de hoje já é uma saída.',
                     'ultima_movimentacao' => $ultima,
                     'estado_atual' => 'fora',
+                    'liberacao_antecipada' => false,
+                    'liberacao' => null,
+                ];
+            }
+
+            $liberacao = $this->buscarLiberacaoSaidaAtiva($alunoId, $data);
+            if (!$this->saidaDentroDoHorario($tipo, $horarioAtual) && $liberacao === null) {
+                $horarioMinimo = trim((string) ($tipo['horario_ini'] ?? ''));
+                $horarioLabel = $horarioMinimo !== '' ? substr($horarioMinimo, 0, 5) : '';
+
+                return [
+                    'permitido' => false,
+                    'message' => $horarioLabel !== ''
+                        ? ('Saída disponível somente a partir das ' . $horarioLabel . ', salvo liberação antecipada.')
+                        : 'Saída bloqueada até liberação da gestão.',
+                    'ultima_movimentacao' => $ultima,
+                    'estado_atual' => 'dentro',
+                    'liberacao_antecipada' => false,
+                    'liberacao' => null,
                 ];
             }
 
             return [
                 'permitido' => true,
-                'message' => 'Saída liberada para registro.',
+                'message' => $liberacao !== null
+                    ? 'Saída liberada por autorização antecipada.'
+                    : 'Saída liberada para registro.',
                 'ultima_movimentacao' => $ultima,
                 'estado_atual' => 'dentro',
+                'liberacao_antecipada' => $liberacao !== null,
+                'liberacao' => $liberacao,
             ];
         }
 
@@ -289,6 +405,8 @@ class EntradaSaidaModel
                 'message' => 'Este estudante já possui entrada registrada hoje e ainda não saiu.',
                 'ultima_movimentacao' => $ultima,
                 'estado_atual' => 'dentro',
+                'liberacao_antecipada' => false,
+                'liberacao' => null,
             ];
         }
 
@@ -297,6 +415,8 @@ class EntradaSaidaModel
             'message' => 'Entrada liberada para registro.',
             'ultima_movimentacao' => $ultima,
             'estado_atual' => $ultima === null ? 'sem_registro' : 'fora',
+            'liberacao_antecipada' => false,
+            'liberacao' => null,
         ];
     }
 
@@ -318,6 +438,87 @@ class EntradaSaidaModel
         ]);
 
         return (int) $pdo->lastInsertId();
+    }
+
+    public function concederLiberacaoSaida(int $alunoId, string $data, ?int $usuarioId, string $obs = ''): array
+    {
+        $ultima = $this->buscarUltimaMovimentacaoDoDia($alunoId, $data);
+        if ($ultima === null || ($ultima['natureza'] ?? '') !== 'entrada') {
+            throw new RuntimeException('A liberação antecipada só pode ser concedida para estudantes com entrada registrada e ainda sem saída hoje.');
+        }
+
+        $pdo = Database::connection();
+        $existente = $this->buscarLiberacaoSaidaAtiva($alunoId, $data);
+        if ($existente !== null) {
+            $stmt = $pdo->prepare(
+                'UPDATE entrada_saida_liberacoes
+                    SET usuario_id = :usuario_id,
+                        obs = :obs
+                  WHERE id = :id'
+            );
+            $stmt->execute([
+                'id' => (int) $existente['id'],
+                'usuario_id' => $usuarioId ?: null,
+                'obs' => $obs !== '' ? $obs : ($existente['obs'] ?? null),
+            ]);
+
+            return $this->buscarLiberacaoSaidaAtiva($alunoId, $data) ?: $existente;
+        }
+
+        $stmt = $pdo->prepare(
+            "INSERT INTO entrada_saida_liberacoes
+                (aluno_id, data, usuario_id, obs, status)
+             VALUES (:aluno_id, :data, :usuario_id, :obs, 'pendente')"
+        );
+        $stmt->execute([
+            'aluno_id' => $alunoId,
+            'data' => $data,
+            'usuario_id' => $usuarioId ?: null,
+            'obs' => $obs !== '' ? $obs : null,
+        ]);
+
+        return $this->buscarLiberacaoSaidaAtiva($alunoId, $data) ?: [
+            'id' => (int) $pdo->lastInsertId(),
+            'aluno_id' => $alunoId,
+            'data' => $data,
+            'usuario_id' => $usuarioId,
+            'obs' => $obs !== '' ? $obs : null,
+            'status' => 'pendente',
+        ];
+    }
+
+    public function consumirLiberacaoSaida(int $liberacaoId, int $registroSaidaId): void
+    {
+        $pdo = Database::connection();
+        $stmt = $pdo->prepare(
+            "UPDATE entrada_saida_liberacoes
+                SET status = 'utilizada',
+                    usado_em = NOW(),
+                    registro_saida_id = :registro_saida_id
+              WHERE id = :id
+                AND status = 'pendente'"
+        );
+        $stmt->execute([
+            'id' => $liberacaoId,
+            'registro_saida_id' => $registroSaidaId,
+        ]);
+    }
+
+    public function listarLiberacoesAtivas(string $data): array
+    {
+        $pdo = Database::connection();
+                $stmt = $pdo->prepare(
+                        "SELECT l.id, l.aluno_id, l.data, l.obs, l.created_at,
+                                        a.nome AS aluno_nome, a.matricula, a.turma
+                             FROM entrada_saida_liberacoes l
+                             JOIN alunos a ON a.id = l.aluno_id
+                            WHERE l.data = :data
+                                AND l.status = 'pendente'
+                            ORDER BY l.created_at DESC, l.id DESC"
+                );
+        $stmt->execute(['data' => $data]);
+
+        return $stmt->fetchAll();
     }
 
     public function resumoHoje(string $data): array
@@ -585,6 +786,47 @@ class EntradaSaidaModel
         $row = $stmt->fetch();
 
         return $row ?: null;
+    }
+
+    private function buscarLiberacaoSaidaAtiva(int $alunoId, string $data): ?array
+    {
+        $pdo = Database::connection();
+                $stmt = $pdo->prepare(
+                        "SELECT id, aluno_id, data, usuario_id, obs, status, created_at
+                             FROM entrada_saida_liberacoes
+                            WHERE aluno_id = :aluno_id
+                                AND data = :data
+                                AND status = 'pendente'
+                            ORDER BY id DESC
+                            LIMIT 1"
+                );
+        $stmt->execute([
+            'aluno_id' => $alunoId,
+            'data' => $data,
+        ]);
+        $row = $stmt->fetch();
+
+        return $row ?: null;
+    }
+
+    private function saidaDentroDoHorario(array $tipo, string $horarioAtual): bool
+    {
+        $horarioMinimo = trim((string) ($tipo['horario_ini'] ?? ''));
+        if ($horarioMinimo === '') {
+            return true;
+        }
+
+        return $this->normalizeHorario($horarioAtual) >= $this->normalizeHorario($horarioMinimo);
+    }
+
+    private function normalizeHorario(string $horario): string
+    {
+        $horario = trim($horario);
+        if (preg_match('/^\d{2}:\d{2}$/', $horario)) {
+            return $horario . ':00';
+        }
+
+        return preg_match('/^\d{2}:\d{2}:\d{2}$/', $horario) ? $horario : '00:00:00';
     }
 
     private function normalizeNatureza(string $natureza): string

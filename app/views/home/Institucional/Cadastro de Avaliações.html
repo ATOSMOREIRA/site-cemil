@@ -128,10 +128,12 @@ foreach ($turmas as $turmaOption) {
                                         $canEditThisAvaliacao = $isAdminViewer || ($autorId === $currentUserId);
 
                                         $aplicacaoDisplay = '-';
+                                        $anoAplicacao = 0;
                                         if ($aplicacao !== '') {
                                             $dateObject = date_create($aplicacao);
                                             if ($dateObject !== false) {
                                                 $aplicacaoDisplay = $dateObject->format('d/m/Y');
+                                                $anoAplicacao = (int) $dateObject->format('Y');
                                             }
                                         }
 
@@ -174,11 +176,14 @@ foreach ($turmas as $turmaOption) {
                                             $cicloDisplay = '2º ciclo';
                                         }
 
-                                        $searchText = implode(' ', [$nome, $cicloDisplay, implode(' ', $rowTurmaFilterLabels), $aplicacao, $autorNome, $aplicadorNome, $descricao, $isRecuperacao ? 'recuperacao recuperação' : '']);
+                                        $bimestreDisplay = $bimestre >= 1 && $bimestre <= 4 ? ($bimestre . 'º bimestre') : '';
+                                        $searchText = implode(' ', [$nome, $cicloDisplay, implode(' ', $rowTurmaFilterLabels), $aplicacao, (string) $anoAplicacao, $bimestreDisplay, $autorNome, $aplicadorNome, $descricao, $isRecuperacao ? 'recuperacao recuperação' : '']);
                                     ?>
                                     <tr class="js-admin-avaliacoes-row" data-avaliacao-id="<?= $id; ?>"
                                         data-search-text="<?= htmlspecialchars($searchText, ENT_QUOTES, 'UTF-8'); ?>"
                                         data-filter-cycle="<?= htmlspecialchars($ciclo > 0 ? (string) $ciclo : '', ENT_QUOTES, 'UTF-8'); ?>"
+                                        data-filter-bimestre="<?= htmlspecialchars($bimestre >= 1 && $bimestre <= 4 ? (string) $bimestre : '', ENT_QUOTES, 'UTF-8'); ?>"
+                                        data-filter-ano="<?= htmlspecialchars($anoAplicacao > 0 ? (string) $anoAplicacao : '', ENT_QUOTES, 'UTF-8'); ?>"
                                         data-filter-turmas="<?= htmlspecialchars(implode('||', $rowTurmaFilterValues), ENT_QUOTES, 'UTF-8'); ?>"
                                         data-filter-turmas-labels="<?= htmlspecialchars(implode('||', $rowTurmaFilterLabels), ENT_QUOTES, 'UTF-8'); ?>">
                                         <?php if ($canEditAvaliacoes): ?>
@@ -325,6 +330,16 @@ foreach ($turmas as $turmaOption) {
                                         <div class="institutional-avaliacoes-filter-group">
                                             <span class="institutional-avaliacoes-filter-label">Ciclos</span>
                                             <div class="institutional-avaliacoes-filter-chip-list" id="adminAvaliacoesCycleFilters">
+                                            </div>
+                                        </div>
+                                        <div class="institutional-avaliacoes-filter-group">
+                                            <span class="institutional-avaliacoes-filter-label">Bimestres</span>
+                                            <div class="institutional-avaliacoes-filter-chip-list" id="adminAvaliacoesBimestreFilters">
+                                            </div>
+                                        </div>
+                                        <div class="institutional-avaliacoes-filter-group">
+                                            <span class="institutional-avaliacoes-filter-label">Anos</span>
+                                            <div class="institutional-avaliacoes-filter-chip-list" id="adminAvaliacoesAnoFilters">
                                             </div>
                                         </div>
                                         <div class="institutional-avaliacoes-filter-group">

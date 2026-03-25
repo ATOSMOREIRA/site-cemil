@@ -1139,7 +1139,13 @@
 				<li class="nav-item" role="presentation">
 					<button class="nav-link" id="tab-gerenc-btn" data-bs-toggle="tab" data-bs-target="#tabGerenc"
 						type="button" role="tab">
-						<i class="las la-edit me-1"></i>Gerenciamento
+						<i class="las la-edit me-1"></i>Registros
+					</button>
+				</li>
+				<li class="nav-item" role="presentation">
+					<button class="nav-link" id="tab-liberacoes-btn" data-bs-toggle="tab" data-bs-target="#tabLiberacoes"
+						type="button" role="tab">
+						<i class="las la-unlock-alt me-1"></i>Liberações
 					</button>
 				</li>
 				<li class="nav-item" role="presentation">
@@ -1438,7 +1444,29 @@
 				</div><!-- /tabGerenc -->
 
 				<!-- ========================================
-		     ABA 5 — Dashboard & Relatórios
+		     ABA 5 — Liberações Antecipadas
+		     ======================================== -->
+				<div class="tab-pane fade" id="tabLiberacoes" role="tabpanel">
+					<div class="card border-0 shadow-sm mb-3 no-print">
+						<div class="card-body">
+							<div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">
+								<div>
+									<div class="fw-semibold">Liberação antecipada de saída</div>
+									<div class="text-muted small">Autorize um estudante a sair antes do horário configurado para a movimentação de saída.</div>
+								</div>
+								<button id="btnAbrirModalLiberacao" class="btn btn-outline-danger btn-sm" type="button">
+									<i class="las la-unlock me-1"></i>Liberar estudante
+								</button>
+							</div>
+							<div id="liberacoesAtivasWrap" class="d-flex flex-column gap-2">
+								<div class="muted-empty p-0">Nenhuma liberação antecipada ativa para hoje.</div>
+							</div>
+						</div>
+					</div>
+				</div><!-- /tabLiberacoes -->
+
+				<!-- ========================================
+		     ABA 6 — Dashboard / Relatório
 		     ======================================== -->
 				<div class="tab-pane fade" id="tabDash" role="tabpanel">
 
@@ -1735,6 +1763,45 @@
 			</div>
 		</div>
 
+		<div class="modal fade" id="modalLiberacaoSaida" tabindex="-1" aria-hidden="true">
+			<div class="modal-dialog modal-dialog-centered">
+				<div class="modal-content site-modal-content">
+					<div class="modal-header">
+						<h2 class="modal-title fs-5">Liberar saída antecipada</h2>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+					</div>
+					<form id="formLiberacaoSaida" novalidate>
+						<div class="modal-body">
+							<input type="hidden" id="liberacaoAlunoId" value="0">
+							<div class="row g-3">
+								<div class="col-12">
+									<label class="form-label" for="liberacaoBuscaAluno">Buscar estudante <span class="text-danger">*</span></label>
+									<div class="position-relative">
+										<input type="text" id="liberacaoBuscaAluno" class="form-control" maxlength="80" autocomplete="off" placeholder="Digite nome, turma ou matrícula">
+										<div id="liberacaoBuscaResultados" class="position-absolute w-100 bg-white border rounded shadow d-none" style="top:100%; z-index:300; max-height:280px; overflow-y:auto;"></div>
+									</div>
+									<div class="form-text">A liberação vale apenas para hoje e só funciona para estudantes com entrada registrada e sem saída no dia.</div>
+								</div>
+								<div class="col-12">
+									<div id="liberacaoAlunoSelecionado" class="border rounded-3 p-3 bg-light text-muted small">Nenhum estudante selecionado.</div>
+								</div>
+								<div class="col-12">
+									<label class="form-label" for="liberacaoObs">Observação</label>
+									<input type="text" id="liberacaoObs" class="form-control" maxlength="255" placeholder="Opcional">
+								</div>
+							</div>
+						</div>
+						<div class="modal-footer">
+							<button type="submit" class="btn btn-danger btn-sm" id="btnSalvarLiberacaoSaida">
+								<i class="las la-unlock me-1"></i>Salvar liberação
+							</button>
+							<button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+						</div>
+					</form>
+				</div>
+			</div>
+		</div>
+
 	</div><!-- /institutional-page-root -->
 
 	<!-- jsQR (leitura de QR code) -->
@@ -1777,7 +1844,7 @@
 				if (_iframeModalOpenCount === 0) { _notifyParentModal(false); }
 			}
 			function _bindModalNotify() {
-				['modalTipo', 'modalEditarRegistro', 'modalConfirmarExcluirTipo', 'modalConfirmarExcluirRegistro'].forEach(function (id) {
+				['modalTipo', 'modalEditarRegistro', 'modalConfirmarExcluirTipo', 'modalConfirmarExcluirRegistro', 'modalLiberacaoSaida'].forEach(function (id) {
 					var el = document.getElementById(id);
 					if (!el) { return; }
 					el.addEventListener('show.bs.modal', _onModalShow);
@@ -1791,6 +1858,7 @@
 			var state = {
 				tipos: [],
 				turmas: [],
+				liberacoesAtivas: [],
 				scanAtivo: false,
 				stream: null,
 				alunoAtual: null,
@@ -1823,6 +1891,20 @@
 				var parts = String(d).split('-');
 				if (parts.length === 3) return parts[2] + '/' + parts[1] + '/' + parts[0];
 				return d;
+			}
+
+			function formatDataHora(dt) {
+				if (!dt) return '';
+				var normalized = String(dt).replace(' ', 'T');
+				var parsed = new Date(normalized);
+				if (isNaN(parsed.getTime())) return String(dt);
+				return parsed.toLocaleString('pt-BR', {
+					day: '2-digit',
+					month: '2-digit',
+					year: 'numeric',
+					hour: '2-digit',
+					minute: '2-digit',
+				});
 			}
 
 			function formatNumero(n) {
@@ -2411,6 +2493,8 @@
 
 			function applyPollData(res) {
 				var ultimas = (res.ultimas_entradas || []).slice(0, 10);
+				state.liberacoesAtivas = Array.isArray(res.liberacoes_ativas) ? res.liberacoes_ativas : [];
+				renderLiberacoesAtivas();
 
 				// Atualiza contador do badge
 				document.getElementById('totalHojeContador').textContent = ultimas.length;
@@ -2457,10 +2541,12 @@
 
 					state.tipos = res.tipos || [];
 					state.turmas = res.turmas || [];
+					state.liberacoesAtivas = res.liberacoes_ativas || [];
 
 					preencherSelectTipo();
 					preencherSelectsTurma();
 					renderTiposTabela();
+					renderLiberacoesAtivas();
 
 					// Carrega entradas de hoje imediatamente e inicia polling
 					pollServidor();
@@ -2767,23 +2853,35 @@
 				if (!state.alunoAtual || !state.tipoAtualId) return;
 
 				var btnLib = document.getElementById('btnLiberar');
+				var btnLibMobile = document.getElementById('mobileBtnLiberar');
 				btnLib.disabled = true;
 				btnLib.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Registrando…';
+				if (btnLibMobile) {
+					btnLibMobile.disabled = true;
+					btnLibMobile.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Registrando…';
+				}
 
 				post(API_BASE + '/registrar', {
 					aluno_id: state.alunoAtual.id,
 					tipo_id: state.tipoAtualId,
 				}, function (res) {
 					btnLib.innerHTML = '<i class="las la-check-circle me-1"></i>' + esc(getActionLabel(state.tipoAtualId));
+					if (btnLibMobile) {
+						btnLibMobile.innerHTML = '<i class="las la-check-circle me-1"></i>' + esc(getActionLabel(state.tipoAtualId));
+					}
 
 					if (!res.ok) {
 						showStatus(res.message || 'Erro ao registrar.', 'error');
 						btnLib.disabled = false;
+						if (btnLibMobile) {
+							btnLibMobile.disabled = false;
+						}
 						return;
 					}
 
 					showStatus((res.tipo_nome || 'Movimentação') + ' de ' + state.alunoAtual.nome + ' registrada com sucesso!', 'success');
 					adicionarUltimaEntrada(state.alunoAtual, res.horario);
+					pollServidor();
 					// Preserva a matrícula escaneada por 2,5s para evitar rescan imediato
 					// do mesmo QR code enquanto a câmera ainda aponta para ele
 					var _scanGuard = _ultimaMatriculaScaneada;
@@ -2976,9 +3074,11 @@
 					if (!res.ok) return;
 					state.tipos = res.tipos || [];
 					state.turmas = res.turmas || [];
+					state.liberacoesAtivas = res.liberacoes_ativas || [];
 					renderTiposTabela();
 					preencherSelectTipo();
 					preencherSelectsTurma();
+					renderLiberacoesAtivas();
 				});
 			}
 
@@ -3339,6 +3439,211 @@
 				});
 			}
 
+			function renderLiberacoesAtivas() {
+				var wrap = document.getElementById('liberacoesAtivasWrap');
+				if (!wrap) {
+					return;
+				}
+
+				var itens = Array.isArray(state.liberacoesAtivas) ? state.liberacoesAtivas : [];
+				if (!itens.length) {
+					wrap.innerHTML = '<div class="text-muted small border rounded-3 p-3 bg-light">Nenhuma liberação antecipada pendente hoje.</div>';
+					return;
+				}
+
+				var html = '';
+				itens.forEach(function (item) {
+					html += '<div class="border rounded-3 p-3 bg-white shadow-sm">' +
+						'<div class="d-flex flex-wrap justify-content-between align-items-start gap-2">' +
+						'<div>' +
+						'<div class="fw-semibold">' + esc(item.aluno_nome || 'Estudante') + '</div>' +
+						'<div class="text-muted small">' + esc(item.turma || 'Sem turma') + ' · Matrícula ' + esc(item.matricula || '—') + '</div>' +
+						'</div>' +
+						'<span class="badge text-bg-warning border">Pendente</span>' +
+						'</div>' +
+						'<div class="small text-muted mt-2">Liberado em ' + esc(formatDataHora(item.created_at)) + '</div>' +
+						(item.obs ? ('<div class="small mt-2"><strong>Obs.:</strong> ' + esc(item.obs) + '</div>') : '') +
+						'</div>';
+				});
+				wrap.innerHTML = html;
+			}
+
+			function resetLiberacaoForm(clearBusca) {
+				if (clearBusca !== false) {
+					document.getElementById('liberacaoBuscaAluno').value = '';
+				}
+				document.getElementById('liberacaoAlunoId').value = '0';
+				document.getElementById('liberacaoObs').value = '';
+				var lista = document.getElementById('liberacaoBuscaResultados');
+				lista.classList.add('d-none');
+				lista.innerHTML = '';
+				lista._cache = [];
+				document.getElementById('liberacaoAlunoSelecionado').className = 'border rounded-3 p-3 bg-light text-muted small';
+				document.getElementById('liberacaoAlunoSelecionado').textContent = 'Nenhum estudante selecionado.';
+			}
+
+			function selecionarAlunoLiberacao(aluno) {
+				if (!aluno) {
+					return;
+				}
+
+				document.getElementById('liberacaoAlunoId').value = String(aluno.id || 0);
+				document.getElementById('liberacaoBuscaAluno').value = aluno.nome || '';
+
+				var ultima = aluno.ultima_movimentacao || null;
+				var statusAtual = aluno.estado_atual === 'dentro'
+					? 'Dentro da unidade'
+					: (aluno.estado_atual === 'fora' ? 'Fora da unidade' : 'Sem registro hoje');
+				var ultimaLabel = ultima
+					? ((ultima.tipo_nome || (ultima.natureza === 'saida' ? 'Saída' : 'Entrada')) + ' às ' + formatHora(ultima.horario || ''))
+					: 'Nenhuma movimentação hoje';
+				var painel = document.getElementById('liberacaoAlunoSelecionado');
+				painel.className = 'border rounded-3 p-3 bg-white';
+				painel.innerHTML =
+					'<div class="fw-semibold">' + esc(aluno.nome || '') + '</div>' +
+					'<div class="text-muted small">' + esc(aluno.turma || 'Sem turma') + ' · Matrícula ' + esc(aluno.matricula || '—') + '</div>' +
+					'<div class="small mt-2"><strong>Situação:</strong> ' + esc(statusAtual) + '</div>' +
+					'<div class="small"><strong>Última movimentação:</strong> ' + esc(ultimaLabel) + '</div>' +
+					(aluno.liberacao_ativa == 1
+						? '<div class="small text-warning-emphasis mt-2"><strong>Já possui liberação pendente para hoje.</strong></div>'
+						: '');
+
+				var lista = document.getElementById('liberacaoBuscaResultados');
+				lista.classList.add('d-none');
+				lista.innerHTML = '';
+			}
+
+			var _liberacaoBuscaTimer = null;
+
+			function executarBuscaAlunoLiberacao(q) {
+				var lista = document.getElementById('liberacaoBuscaResultados');
+				lista.innerHTML = '<div class="px-3 py-2 text-muted small"><span class="spinner-border spinner-border-sm me-1"></span>Buscando…</div>';
+				lista.classList.remove('d-none');
+
+				get(API_BASE + '/pesquisar-alunos-liberacao?q=' + encodeURIComponent(q), function (res) {
+					if (!res.ok) {
+						lista.classList.add('d-none');
+						return;
+					}
+
+					var alunos = Array.isArray(res.alunos) ? res.alunos : [];
+					if (!alunos.length) {
+						lista.innerHTML = '<div class="px-3 py-2 text-muted small">Nenhum estudante encontrado.</div>';
+						return;
+					}
+
+					var html = '';
+					alunos.forEach(function (aluno) {
+						var situacao = aluno.estado_atual === 'dentro'
+							? 'Com entrada registrada'
+							: (aluno.estado_atual === 'fora' ? 'Já saiu hoje' : 'Sem movimentação hoje');
+						html += '<button type="button" class="busca-item d-flex align-items-start gap-2 w-100 px-3 py-2 border-0 bg-transparent text-start" data-id="' + esc(String(aluno.id)) + '">' +
+							'<i class="las ' + (aluno.liberacao_ativa == 1 ? 'la-unlock text-warning' : 'la-user-check text-success') + ' fs-5 flex-shrink-0 mt-1"></i>' +
+							'<div>' +
+							'<div class="fw-semibold" style="font-size:.88rem">' + esc(aluno.nome) + '</div>' +
+							'<div class="text-muted" style="font-size:.75rem">' + esc(aluno.turma || '') + ' · ' + esc(aluno.matricula || '') + '</div>' +
+							'<div class="small mt-1 ' + (aluno.estado_atual === 'dentro' ? 'text-success' : 'text-muted') + '">' + esc(situacao) + (aluno.liberacao_ativa == 1 ? ' · liberação pendente' : '') + '</div>' +
+							'</div>' +
+							'</button>';
+					});
+
+					lista.innerHTML = html;
+					lista._cache = alunos;
+					lista.querySelectorAll('.busca-item').forEach(function (btn) {
+						btn.addEventListener('click', function () {
+							var aluno = (lista._cache || []).find(function (item) { return String(item.id) === String(btn.dataset.id); });
+							selecionarAlunoLiberacao(aluno);
+						});
+					});
+				});
+			}
+
+			function bindBuscaAlunoLiberacao() {
+				var input = document.getElementById('liberacaoBuscaAluno');
+				var lista = document.getElementById('liberacaoBuscaResultados');
+
+				input.addEventListener('input', function () {
+					clearTimeout(_liberacaoBuscaTimer);
+					document.getElementById('liberacaoAlunoId').value = '0';
+					if (input.value.trim().length < 2) {
+						lista.classList.add('d-none');
+						lista.innerHTML = '';
+						if (!input.value.trim()) {
+							resetLiberacaoForm(false);
+						}
+						return;
+					}
+					_liberacaoBuscaTimer = setTimeout(function () {
+						executarBuscaAlunoLiberacao(input.value.trim());
+					}, 320);
+				});
+
+				input.addEventListener('keydown', function (ev) {
+					if (ev.key === 'Escape') {
+						lista.classList.add('d-none');
+						return;
+					}
+					if (ev.key === 'Enter') {
+						ev.preventDefault();
+						var primeiro = lista.querySelector('.busca-item');
+						if (primeiro) {
+							primeiro.click();
+						} else if (input.value.trim().length >= 2) {
+							executarBuscaAlunoLiberacao(input.value.trim());
+						}
+					}
+				});
+
+				document.addEventListener('click', function (ev) {
+					if (!input.contains(ev.target) && !lista.contains(ev.target)) {
+						lista.classList.add('d-none');
+					}
+				});
+			}
+
+			function abrirModalLiberacao() {
+				resetLiberacaoForm();
+				var modalEl = document.getElementById('modalLiberacaoSaida');
+				var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+				modal.show();
+				setTimeout(function () {
+					document.getElementById('liberacaoBuscaAluno').focus();
+				}, 180);
+			}
+
+			function salvarLiberacaoSaida(e) {
+				e.preventDefault();
+				var alunoId = parseInt(document.getElementById('liberacaoAlunoId').value, 10) || 0;
+				if (!alunoId) {
+					showStatus('Selecione um estudante para liberar.', 'error');
+					return;
+				}
+
+				var btn = document.getElementById('btnSalvarLiberacaoSaida');
+				btn.disabled = true;
+				btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Salvando…';
+
+				post(API_BASE + '/liberar-saida', {
+					aluno_id: alunoId,
+					obs: document.getElementById('liberacaoObs').value.trim(),
+				}, function (res) {
+					btn.disabled = false;
+					btn.innerHTML = '<i class="las la-unlock me-1"></i>Salvar liberação';
+
+					if (!res.ok) {
+						showStatus(res.message || 'Erro ao salvar liberação.', 'error');
+						return;
+					}
+
+					state.liberacoesAtivas = Array.isArray(res.liberacoes_ativas) ? res.liberacoes_ativas : state.liberacoesAtivas;
+					renderLiberacoesAtivas();
+					showStatus(res.message || 'Liberação antecipada registrada com sucesso.', 'success');
+					bootstrap.Modal.getInstance(document.getElementById('modalLiberacaoSaida')).hide();
+					resetLiberacaoForm();
+					pollServidor();
+				});
+			}
+
 			/* --------------------------------------------------------
 			   Bind eventos
 			   -------------------------------------------------------- */
@@ -3361,10 +3666,16 @@
 
 				// Busca por nome / turma
 				bindBuscaAluno();
+				bindBuscaAlunoLiberacao();
 
 				// Tipo de movimentação
 				document.getElementById('btnNovoTipo').addEventListener('click', abrirNovoTipo);
 				document.getElementById('formTipo').addEventListener('submit', salvarTipo);
+				document.getElementById('btnAbrirModalLiberacao').addEventListener('click', abrirModalLiberacao);
+				document.getElementById('formLiberacaoSaida').addEventListener('submit', salvarLiberacaoSaida);
+				document.getElementById('modalLiberacaoSaida').addEventListener('hidden.bs.modal', function () {
+					resetLiberacaoForm();
+				});
 
 				// QR Codes
 				document.getElementById('btnGerarQr').addEventListener('click', gerarQrCodes);
@@ -3458,6 +3769,12 @@
 				// Ao abrir aba de gerenciamento, filtrar
 				document.getElementById('tab-gerenc-btn').addEventListener('shown.bs.tab', function () {
 					filtrarGerenc();
+				});
+
+				// Ao abrir aba de liberações, sincronizar lista pendente
+				document.getElementById('tab-liberacoes-btn').addEventListener('shown.bs.tab', function () {
+					renderLiberacoesAtivas();
+					pollServidor();
 				});
 
 				// Parar câmera ao mudar de aba

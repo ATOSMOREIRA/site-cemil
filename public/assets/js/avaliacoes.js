@@ -267,6 +267,8 @@
     var tableFiltersModalElement = document.getElementById('adminAvaliacoesFiltersModal');
     var tableClearFiltersButton = document.getElementById('adminAvaliacoesClearFiltersButton');
     var tableCycleFiltersElement = document.getElementById('adminAvaliacoesCycleFilters');
+    var tableBimestreFiltersElement = document.getElementById('adminAvaliacoesBimestreFilters');
+    var tableAnoFiltersElement = document.getElementById('adminAvaliacoesAnoFilters');
     var tableTurmaFiltersElement = document.getElementById('adminAvaliacoesTurmaFilters');
     var tablePageSizeSelect = document.getElementById('adminAvaliacoesPageSize');
     var tablePaginationWrap = document.getElementById('adminAvaliacoesPaginationWrap');
@@ -419,8 +421,10 @@
     var gabaritoHasPendingChanges = false;
     var listSignature = listContainer ? String(listContainer.innerHTML || '').trim() : '';
     var selectedAvaliacaoIdsForDelete = [];
-    var activeTableCycleFilter = 'all';
-    var activeTableTurmaFilter = 'all';
+    var activeTableCycleFilters = ['all'];
+    var activeTableBimestreFilters = ['all'];
+    var activeTableAnoFilters = ['all'];
+    var activeTableTurmaFilters = ['all'];
     var tableCurrentPage = 1;
     var statsFiltersDraftState = {
       panelKey: 'resumo',
@@ -6944,14 +6948,63 @@
       return clampInt(parseInt(rawValue, 10), 10, 500, 10);
     }
 
-    function renderTableFilterButtons(targetElement, options, activeValue, emptyLabel) {
+    function normalizeTableFilterSelection(values, allowedValues) {
+      var rawValues = Array.isArray(values) ? values : [];
+      var normalized = rawValues
+        .map(function (value) { return String(value || '').trim(); })
+        .filter(Boolean);
+
+      if (!normalized.length || normalized.indexOf('all') !== -1) {
+        return ['all'];
+      }
+
+      var allowedMap = {};
+      (Array.isArray(allowedValues) ? allowedValues : []).forEach(function (value) {
+        var key = String(value || '').trim();
+        if (key !== '') {
+          allowedMap[key] = true;
+        }
+      });
+
+      var filtered = normalized.filter(function (value) {
+        return !!allowedMap[value];
+      });
+
+      return filtered.length ? Array.from(new Set(filtered)) : ['all'];
+    }
+
+    function toggleTableFilterValue(currentValues, value) {
+      var nextValue = String(value || '').trim();
+      if (nextValue === '' || nextValue === 'all') {
+        return ['all'];
+      }
+
+      var values = Array.isArray(currentValues) ? currentValues.slice() : ['all'];
+      values = values.filter(function (item) {
+        return item && item !== 'all';
+      });
+
+      var index = values.indexOf(nextValue);
+      if (index === -1) {
+        values.push(nextValue);
+      } else {
+        values.splice(index, 1);
+      }
+
+      return values.length ? values : ['all'];
+    }
+
+    function renderTableFilterButtons(targetElement, options, activeValues, emptyLabel) {
       if (!targetElement) {
         return;
       }
 
       var safeOptions = Array.isArray(options) ? options : [];
+      var normalizedActiveValues = normalizeTableFilterSelection(activeValues, safeOptions.map(function (option) {
+        return option && option.value;
+      }));
       var html = '';
-      html += '<button type="button" class="btn btn-sm institutional-avaliacoes-filter-chip' + (activeValue === 'all' ? ' is-active' : '') + '" data-filter-value="all">Todas</button>';
+      html += '<button type="button" class="btn btn-sm institutional-avaliacoes-filter-chip' + (normalizedActiveValues.indexOf('all') !== -1 ? ' is-active' : '') + '" data-filter-value="all">Todas</button>';
 
       safeOptions.forEach(function (option) {
         var optionValue = String(option && option.value || '').trim();
@@ -6960,7 +7013,7 @@
           return;
         }
 
-        html += '<button type="button" class="btn btn-sm institutional-avaliacoes-filter-chip' + (activeValue === optionValue ? ' is-active' : '') + '" data-filter-value="' + escapeHtml(optionValue) + '">' + escapeHtml(optionLabel) + '</button>';
+        html += '<button type="button" class="btn btn-sm institutional-avaliacoes-filter-chip' + (normalizedActiveValues.indexOf(optionValue) !== -1 ? ' is-active' : '') + '" data-filter-value="' + escapeHtml(optionValue) + '">' + escapeHtml(optionLabel) + '</button>';
       });
 
       if (safeOptions.length === 0 && String(emptyLabel || '').trim() !== '') {
@@ -6972,16 +7025,28 @@
 
     function rebuildTableFilterControls() {
       var cycleMap = {};
+      var bimestreMap = {};
+      var anoMap = {};
       var turmaMap = {};
 
       tableRows.forEach(function (row) {
         var cycleValue = String(row.getAttribute('data-filter-cycle') || '').trim();
+        var bimestreValue = String(row.getAttribute('data-filter-bimestre') || '').trim();
+        var anoValue = String(row.getAttribute('data-filter-ano') || '').trim();
         if (cycleValue !== '' && !cycleMap[cycleValue]) {
           cycleMap[cycleValue] = cycleValue === '1'
             ? '1º ciclo'
             : cycleValue === '2'
               ? '2º ciclo'
               : ('Ciclo ' + cycleValue);
+        }
+
+        if (bimestreValue !== '' && !bimestreMap[bimestreValue]) {
+          bimestreMap[bimestreValue] = bimestreValue + 'º bimestre';
+        }
+
+        if (anoValue !== '' && !anoMap[anoValue]) {
+          anoMap[anoValue] = anoValue;
         }
 
         var turmaValues = splitTableFilterValues(row.getAttribute('data-filter-turmas'));
@@ -7017,16 +7082,33 @@
           };
         });
 
-      if (activeTableCycleFilter !== 'all' && !cycleMap[activeTableCycleFilter]) {
-        activeTableCycleFilter = 'all';
-      }
+      var bimestreOptions = Object.keys(bimestreMap)
+        .sort(function (left, right) { return Number(left) - Number(right); })
+        .map(function (value) {
+          return {
+            value: value,
+            label: bimestreMap[value],
+          };
+        });
 
-      if (activeTableTurmaFilter !== 'all' && !turmaMap[activeTableTurmaFilter]) {
-        activeTableTurmaFilter = 'all';
-      }
+      var anoOptions = Object.keys(anoMap)
+        .sort(function (left, right) { return Number(right) - Number(left); })
+        .map(function (value) {
+          return {
+            value: value,
+            label: anoMap[value],
+          };
+        });
 
-      renderTableFilterButtons(tableCycleFiltersElement, cycleOptions, activeTableCycleFilter, 'Nenhum ciclo disponível');
-      renderTableFilterButtons(tableTurmaFiltersElement, turmaOptions, activeTableTurmaFilter, 'Nenhuma turma disponível');
+      activeTableCycleFilters = normalizeTableFilterSelection(activeTableCycleFilters, Object.keys(cycleMap));
+      activeTableBimestreFilters = normalizeTableFilterSelection(activeTableBimestreFilters, Object.keys(bimestreMap));
+      activeTableAnoFilters = normalizeTableFilterSelection(activeTableAnoFilters, Object.keys(anoMap));
+      activeTableTurmaFilters = normalizeTableFilterSelection(activeTableTurmaFilters, Object.keys(turmaMap));
+
+      renderTableFilterButtons(tableCycleFiltersElement, cycleOptions, activeTableCycleFilters, 'Nenhum ciclo disponível');
+      renderTableFilterButtons(tableBimestreFiltersElement, bimestreOptions, activeTableBimestreFilters, 'Nenhum bimestre disponível');
+      renderTableFilterButtons(tableAnoFiltersElement, anoOptions, activeTableAnoFilters, 'Nenhum ano disponível');
+      renderTableFilterButtons(tableTurmaFiltersElement, turmaOptions, activeTableTurmaFilters, 'Nenhuma turma disponível');
     }
 
     function getFilteredTableRows() {
@@ -7035,13 +7117,19 @@
       return Array.prototype.filter.call(tableRows, function (row) {
         var searchText = normalizeSearchValue(row.getAttribute('data-search-text') || '');
         var cycleValue = String(row.getAttribute('data-filter-cycle') || '').trim();
+        var bimestreValue = String(row.getAttribute('data-filter-bimestre') || '').trim();
+        var anoValue = String(row.getAttribute('data-filter-ano') || '').trim();
         var turmaValues = splitTableFilterValues(row.getAttribute('data-filter-turmas'));
 
         var matchesSearch = searchTerm === '' || searchText.indexOf(searchTerm) !== -1;
-        var matchesCycle = activeTableCycleFilter === 'all' || cycleValue === activeTableCycleFilter;
-        var matchesTurma = activeTableTurmaFilter === 'all' || turmaValues.indexOf(activeTableTurmaFilter) !== -1;
+        var matchesCycle = activeTableCycleFilters.indexOf('all') !== -1 || activeTableCycleFilters.indexOf(cycleValue) !== -1;
+        var matchesBimestre = activeTableBimestreFilters.indexOf('all') !== -1 || activeTableBimestreFilters.indexOf(bimestreValue) !== -1;
+        var matchesAno = activeTableAnoFilters.indexOf('all') !== -1 || activeTableAnoFilters.indexOf(anoValue) !== -1;
+        var matchesTurma = activeTableTurmaFilters.indexOf('all') !== -1 || turmaValues.some(function (value) {
+          return activeTableTurmaFilters.indexOf(value) !== -1;
+        });
 
-        return matchesSearch && matchesCycle && matchesTurma;
+        return matchesSearch && matchesCycle && matchesBimestre && matchesAno && matchesTurma;
       });
     }
 
@@ -17412,7 +17500,37 @@
           return;
         }
 
-        activeTableCycleFilter = String(button.getAttribute('data-filter-value') || 'all').trim() || 'all';
+        activeTableCycleFilters = toggleTableFilterValue(activeTableCycleFilters, button.getAttribute('data-filter-value'));
+        tableCurrentPage = 1;
+        rebuildTableFilterControls();
+        filterTable();
+      });
+    }
+
+    if (tableBimestreFiltersElement && tableBimestreFiltersElement.dataset.boundClick !== '1') {
+      tableBimestreFiltersElement.dataset.boundClick = '1';
+      tableBimestreFiltersElement.addEventListener('click', function (event) {
+        var button = event.target.closest('[data-filter-value]');
+        if (!button) {
+          return;
+        }
+
+        activeTableBimestreFilters = toggleTableFilterValue(activeTableBimestreFilters, button.getAttribute('data-filter-value'));
+        tableCurrentPage = 1;
+        rebuildTableFilterControls();
+        filterTable();
+      });
+    }
+
+    if (tableAnoFiltersElement && tableAnoFiltersElement.dataset.boundClick !== '1') {
+      tableAnoFiltersElement.dataset.boundClick = '1';
+      tableAnoFiltersElement.addEventListener('click', function (event) {
+        var button = event.target.closest('[data-filter-value]');
+        if (!button) {
+          return;
+        }
+
+        activeTableAnoFilters = toggleTableFilterValue(activeTableAnoFilters, button.getAttribute('data-filter-value'));
         tableCurrentPage = 1;
         rebuildTableFilterControls();
         filterTable();
@@ -17427,7 +17545,7 @@
           return;
         }
 
-        activeTableTurmaFilter = String(button.getAttribute('data-filter-value') || 'all').trim() || 'all';
+        activeTableTurmaFilters = toggleTableFilterValue(activeTableTurmaFilters, button.getAttribute('data-filter-value'));
         tableCurrentPage = 1;
         rebuildTableFilterControls();
         filterTable();
@@ -17452,8 +17570,10 @@
     if (tableClearFiltersButton && tableClearFiltersButton.dataset.boundClick !== '1') {
       tableClearFiltersButton.dataset.boundClick = '1';
       tableClearFiltersButton.addEventListener('click', function () {
-        activeTableCycleFilter = 'all';
-        activeTableTurmaFilter = 'all';
+        activeTableCycleFilters = ['all'];
+        activeTableBimestreFilters = ['all'];
+        activeTableAnoFilters = ['all'];
+        activeTableTurmaFilters = ['all'];
         tableCurrentPage = 1;
         rebuildTableFilterControls();
         filterTable();
