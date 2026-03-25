@@ -792,6 +792,10 @@ foreach ($turmas as $turmaOption) {
                                                     id="adminAvaliacaoCorrecaoStartBtn">
                                                     <i class="las la-camera me-1"></i>Corrigir
                                                 </button>
+                                                <button type="button" class="btn btn-outline-success btn-sm"
+                                                    id="adminAvaliacaoCorrecaoImportBtn">
+                                                    <i class="las la-file-import me-1"></i>Importar de Planilha
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
@@ -1071,6 +1075,99 @@ foreach ($turmas as $turmaOption) {
                                                 id="adminAvaliacaoCorrecaoEdicaoSaveBtn">Salvar alterações</button>
                                             <button type="button" class="btn btn-outline-secondary btn-sm"
                                                 id="adminAvaliacaoCorrecaoEdicaoCancelBtn">Cancelar</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal fade admin-info-form-modal" id="adminAvaliacaoCorrecaoImportModal"
+                                tabindex="-1" aria-labelledby="adminAvaliacaoCorrecaoImportModalLabel"
+                                aria-hidden="true">
+                                <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+                                    <div class="modal-content site-modal-content">
+                                        <div class="modal-header">
+                                            <div>
+                                                <div class="small text-secondary">Importação de correções</div>
+                                                <h2 class="h6 mb-0" id="adminAvaliacaoCorrecaoImportModalLabel">
+                                                    Importar notas de planilha</h2>
+                                            </div>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                                aria-label="Fechar"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="row g-3">
+                                                <div class="col-12">
+                                                    <label class="form-label" for="adminAvaliacaoCorrecaoImportFile">Arquivo da planilha</label>
+                                                    <input type="file" class="form-control"
+                                                        id="adminAvaliacaoCorrecaoImportFile"
+                                                        accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+                                                    <div class="form-text">Envie um arquivo CSV ou XLSX. As colunas das questões devem trazer 1 para acerto e 0 para erro.</div>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label" for="adminAvaliacaoCorrecaoImportSheet">Aba da planilha</label>
+                                                    <select class="form-select" id="adminAvaliacaoCorrecaoImportSheet" disabled>
+                                                        <option value="">Selecione o arquivo primeiro</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label" for="adminAvaliacaoCorrecaoImportHeaderRow">Linha de cabeçalho</label>
+                                                    <select class="form-select" id="adminAvaliacaoCorrecaoImportHeaderRow" disabled>
+                                                        <option value="">Selecione a aba primeiro</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label" for="adminAvaliacaoCorrecaoImportNameColumn">Coluna do estudante</label>
+                                                    <select class="form-select" id="adminAvaliacaoCorrecaoImportNameColumn" disabled>
+                                                        <option value="">Selecione o cabeçalho</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label" for="adminAvaliacaoCorrecaoImportFirstColumn">Coluna da 1ª questão</label>
+                                                    <select class="form-select" id="adminAvaliacaoCorrecaoImportFirstColumn" disabled>
+                                                        <option value="">Selecione o cabeçalho</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label" for="adminAvaliacaoCorrecaoImportLastColumn">Coluna da última questão</label>
+                                                    <select class="form-select" id="adminAvaliacaoCorrecaoImportLastColumn" disabled>
+                                                        <option value="">Selecione o cabeçalho</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-12">
+                                                    <div class="alert alert-light border mb-0 small"
+                                                        id="adminAvaliacaoCorrecaoImportStatus" role="status">
+                                                        Selecione um arquivo para carregar a pré-visualização.
+                                                    </div>
+                                                </div>
+                                                <div class="col-12">
+                                                    <div class="table-responsive border rounded bg-white">
+                                                        <table class="table table-sm align-middle mb-0"
+                                                            id="adminAvaliacaoCorrecaoImportPreviewTable">
+                                                            <thead id="adminAvaliacaoCorrecaoImportPreviewHead">
+                                                                <tr>
+                                                                    <th>Linha</th>
+                                                                    <th>Pré-visualização</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody id="adminAvaliacaoCorrecaoImportPreviewBody">
+                                                                <tr>
+                                                                    <td colspan="2" class="text-center text-secondary py-4">Nenhuma pré-visualização carregada.</td>
+                                                                </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer justify-content-between">
+                                            <div class="small text-secondary" id="adminAvaliacaoCorrecaoImportSummary">A importação atualiza ou cria correções pelo nome do estudante vinculado à avaliação.</div>
+                                            <div class="d-flex gap-2">
+                                                <button type="button" class="btn btn-outline-secondary btn-sm"
+                                                    data-bs-dismiss="modal">Cancelar</button>
+                                                <button type="button" class="btn btn-success btn-sm"
+                                                    id="adminAvaliacaoCorrecaoImportSubmitBtn" disabled>
+                                                    <i class="las la-file-upload me-1"></i>Importar agora
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

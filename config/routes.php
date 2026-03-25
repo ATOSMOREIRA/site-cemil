@@ -106,6 +106,8 @@ return [
     '/paineladministrativo/avaliacoes/salvar-gabarito' => ['AdminController', 'painelAdministrativoAvaliacoesSalvarGabarito'],
     '/paineladministrativo/avaliacoes/correcoes/listar' => ['AdminController', 'painelAdministrativoAvaliacoesCorrecoesListar'],
     '/paineladministrativo/avaliacoes/correcoes/verificar' => ['AdminController', 'painelAdministrativoAvaliacoesCorrecoesVerificar'],
+    '/paineladministrativo/avaliacoes/correcoes/importar/preview' => ['AdminController', 'painelAdministrativoAvaliacoesCorrecoesImportarPreview'],
+    '/paineladministrativo/avaliacoes/correcoes/importar' => ['AdminController', 'painelAdministrativoAvaliacoesCorrecoesImportar'],
     '/paineladministrativo/avaliacoes/correcoes/salvar' => ['AdminController', 'painelAdministrativoAvaliacoesCorrecoesSalvar'],
     '/paineladministrativo/avaliacoes/correcoes/atualizar' => ['AdminController', 'painelAdministrativoAvaliacoesCorrecoesAtualizar'],
     '/paineladministrativo/avaliacoes/correcoes/excluir' => ['AdminController', 'painelAdministrativoAvaliacoesCorrecoesExcluir'],

@@ -2693,6 +2693,1109 @@ class AdminController extends HomeController
         );
     }
 
+    public function painelAdministrativoAvaliacoesCorrecoesImportarPreview(): void
+    {
+        $isAjax = $this->isAjaxRequest();
+
+        if (!$this->canAccessAvaliacoesManagement()) {
+            if ($isAjax) {
+                $this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+            }
+
+            $this->redirect('/404');
+        }
+
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+            $this->respondJson(['ok' => false, 'message' => 'Método não permitido.'], 405);
+        }
+
+        $csrfToken = trim((string) ($_POST['csrf_token'] ?? ''));
+        $sessionToken = trim((string) ($_SESSION['csrf_token'] ?? ''));
+        if ($csrfToken === '' || $sessionToken === '' || !hash_equals($sessionToken, $csrfToken)) {
+            $this->respondJson(['ok' => false, 'message' => 'Sessão inválida. Atualize a página e tente novamente.'], 419);
+        }
+
+        [$avaliacao, $fileMeta] = $this->resolveCorrecaoImportRequestContext();
+
+        try {
+            $workbook = $this->parseCorrecaoImportWorkbook($fileMeta['tmp_path'], $fileMeta['extension']);
+        } catch (Throwable $exception) {
+            $this->respondJson([
+                'ok' => false,
+                'message' => $exception->getMessage() !== '' ? $exception->getMessage() : 'Não foi possível ler a planilha enviada.',
+            ], 422);
+        }
+
+        $this->respondJson([
+            'ok' => true,
+            'message' => 'Pré-visualização da planilha carregada com sucesso.',
+            'avaliacao_id' => (int) ($avaliacao['id'] ?? 0),
+            'file' => [
+                'name' => $fileMeta['original_name'],
+                'extension' => $fileMeta['extension'],
+                'size' => $fileMeta['size'],
+            ],
+            'sheets' => array_map(function (array $sheet): array {
+                return $this->buildCorrecaoImportSheetPreview($sheet);
+            }, $workbook['sheets'] ?? []),
+        ]);
+    }
+
+    public function painelAdministrativoAvaliacoesCorrecoesImportar(): void
+    {
+        $isAjax = $this->isAjaxRequest();
+
+        if (!$this->canAccessAvaliacoesManagement()) {
+            if ($isAjax) {
+                $this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+            }
+
+            $this->redirect('/404');
+        }
+
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+            $this->respondJson(['ok' => false, 'message' => 'Método não permitido.'], 405);
+        }
+
+        $csrfToken = trim((string) ($_POST['csrf_token'] ?? ''));
+        $sessionToken = trim((string) ($_SESSION['csrf_token'] ?? ''));
+        if ($csrfToken === '' || $sessionToken === '' || !hash_equals($sessionToken, $csrfToken)) {
+            $this->respondJson(['ok' => false, 'message' => 'Sessão inválida. Atualize a página e tente novamente.'], 419);
+        }
+
+        [$avaliacao, $fileMeta] = $this->resolveCorrecaoImportRequestContext();
+
+        $sheetKey = trim((string) ($_POST['sheet_key'] ?? ''));
+        $headerRow = (int) ($_POST['header_row'] ?? 0);
+        $nameColumn = (int) ($_POST['name_column'] ?? -1);
+        $firstQuestionColumn = (int) ($_POST['first_question_column'] ?? -1);
+        $lastQuestionColumn = (int) ($_POST['last_question_column'] ?? -1);
+
+        if ($sheetKey === '' || $headerRow <= 0 || $nameColumn < 0 || $firstQuestionColumn < 0 || $lastQuestionColumn < $firstQuestionColumn) {
+            $this->respondJson(['ok' => false, 'message' => 'Configuração de importação inválida.'], 422);
+        }
+
+        try {
+            $workbook = $this->parseCorrecaoImportWorkbook($fileMeta['tmp_path'], $fileMeta['extension']);
+            $sheet = $this->findCorrecaoImportSheetByKey($workbook['sheets'] ?? [], $sheetKey);
+            if ($sheet === null) {
+                throw new RuntimeException('A aba selecionada não foi encontrada na planilha enviada.');
+            }
+
+            $questionItems = $this->extractAvaliacaoImportQuestionItems($avaliacao);
+            if ($questionItems === []) {
+                throw new RuntimeException('Esta avaliação ainda não possui gabarito configurado para importar correções.');
+            }
+
+            foreach ($questionItems as $questionIndex => $questionItem) {
+                $questionType = trim((string) ($questionItem['tipo'] ?? 'multipla'));
+                if ($questionType === 'discursiva') {
+                    throw new RuntimeException('A importação por planilha aceita apenas avaliações com questões objetivas.');
+                }
+            }
+
+            $expectedQuestionCount = count($questionItems);
+            $selectedQuestionCount = ($lastQuestionColumn - $firstQuestionColumn) + 1;
+            if ($selectedQuestionCount !== $expectedQuestionCount) {
+                throw new RuntimeException('O intervalo de colunas informado não corresponde ao total de questões configuradas nesta avaliação.');
+            }
+
+            $roster = $this->buildAvaliacaoRosterForCorrecaoImport($avaliacao);
+            if ($roster['students'] === []) {
+                throw new RuntimeException('Não há estudantes vinculados a esta avaliação para receber a importação.');
+            }
+
+            $correcaoModel = new AvaliacaoCorrecaoModel();
+            $createdCount = 0;
+            $updatedCount = 0;
+            $skippedCount = 0;
+            $warnings = [];
+            $processedRows = 0;
+
+            foreach (($sheet['rows'] ?? []) as $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+
+                $lineNumber = (int) ($row['line'] ?? 0);
+                if ($lineNumber <= $headerRow) {
+                    continue;
+                }
+
+                $values = isset($row['values']) && is_array($row['values']) ? $row['values'] : [];
+                $studentName = trim((string) ($values[$nameColumn] ?? ''));
+
+                $hasAnyContent = false;
+                foreach ($values as $value) {
+                    if (trim((string) $value) !== '') {
+                        $hasAnyContent = true;
+                        break;
+                    }
+                }
+
+                if (!$hasAnyContent) {
+                    continue;
+                }
+
+                if ($studentName === '') {
+                    $skippedCount += 1;
+                    $warnings[] = 'Linha ' . $lineNumber . ': nome do estudante não informado.';
+                    continue;
+                }
+
+                $normalizedStudentName = $this->normalizeCorrecaoImportSearchValue($studentName);
+                $matchedStudents = $normalizedStudentName !== '' && isset($roster['by_name'][$normalizedStudentName])
+                    ? $roster['by_name'][$normalizedStudentName]
+                    : [];
+
+                if ($matchedStudents === []) {
+                    $skippedCount += 1;
+                    $warnings[] = 'Linha ' . $lineNumber . ': estudante "' . $studentName . '" não encontrado entre os vinculados à avaliação.';
+                    continue;
+                }
+
+                if (count($matchedStudents) > 1) {
+                    $skippedCount += 1;
+                    $warnings[] = 'Linha ' . $lineNumber . ': estudante "' . $studentName . '" está ambíguo entre turmas vinculadas. Ajuste o nome na planilha.';
+                    continue;
+                }
+
+                $matchedStudent = $matchedStudents[0];
+                try {
+                    $resultPayload = $this->buildCorrecaoImportPayloadFromRow(
+                        $avaliacao,
+                        $questionItems,
+                        $matchedStudent,
+                        $values,
+                        $firstQuestionColumn,
+                        $lastQuestionColumn,
+                        $lineNumber,
+                        $studentName
+                    );
+                } catch (Throwable $exception) {
+                    $skippedCount += 1;
+                    $warnings[] = $exception->getMessage() !== ''
+                        ? $exception->getMessage()
+                        : ('Linha ' . $lineNumber . ': não foi possível interpretar os dados da planilha.');
+                    continue;
+                }
+
+                $existing = $correcaoModel->findByComposite(
+                    (int) ($avaliacao['id'] ?? 0),
+                    (int) ($matchedStudent['id'] ?? 0),
+                    (int) ($matchedStudent['turma_id'] ?? 0)
+                );
+
+                if ($existing !== null) {
+                    $correcaoModel->updateById((int) ($existing['id'] ?? 0), [
+                        'numeracao' => trim((string) ($existing['numeracao'] ?? '')),
+                        'qr_payload' => trim((string) ($existing['qr_payload'] ?? '')),
+                        'respostas_json' => json_encode($resultPayload['respostas'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                        'correcoes_json' => json_encode($resultPayload['correcoes'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                        'status' => 'corrigida',
+                        'acertos' => $resultPayload['acertos'],
+                        'total_questoes' => $resultPayload['total_questoes'],
+                        'pontuacao' => $resultPayload['pontuacao'],
+                        'pontuacao_total' => $resultPayload['pontuacao_total'],
+                        'percentual' => $resultPayload['percentual'],
+                        'corrigido_em' => date('Y-m-d H:i:s'),
+                    ]);
+                    $savedCorrecao = $correcaoModel->findById((int) ($existing['id'] ?? 0));
+                    $updatedCount += 1;
+                } else {
+                    $savedId = $correcaoModel->create([
+                        'avaliacao_id' => (int) ($avaliacao['id'] ?? 0),
+                        'aluno_id' => (int) ($matchedStudent['id'] ?? 0),
+                        'turma_id' => (int) ($matchedStudent['turma_id'] ?? 0),
+                        'avaliacao_nome' => trim((string) ($avaliacao['nome'] ?? '')),
+                        'aluno_nome' => trim((string) ($matchedStudent['nome'] ?? '')),
+                        'turma_nome' => trim((string) ($matchedStudent['turma'] ?? '')),
+                        'numeracao' => '',
+                        'qr_payload' => '',
+                        'respostas_json' => json_encode($resultPayload['respostas'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                        'correcoes_json' => json_encode($resultPayload['correcoes'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                        'status' => 'corrigida',
+                        'acertos' => $resultPayload['acertos'],
+                        'total_questoes' => $resultPayload['total_questoes'],
+                        'pontuacao' => $resultPayload['pontuacao'],
+                        'pontuacao_total' => $resultPayload['pontuacao_total'],
+                        'percentual' => $resultPayload['percentual'],
+                        'corrigido_em' => date('Y-m-d H:i:s'),
+                    ]);
+                    $savedCorrecao = $savedId > 0 ? $correcaoModel->findById($savedId) : null;
+                    $createdCount += 1;
+                }
+
+                if (is_array($savedCorrecao)) {
+                    try {
+                        $this->syncAlunoDesempenhoFromCorrecao($avaliacao, $savedCorrecao);
+                    } catch (Throwable) {
+                    }
+                }
+
+                $processedRows += 1;
+            }
+
+            $rows = $correcaoModel->listByAvaliacaoId((int) ($avaliacao['id'] ?? 0));
+            $total = count($rows);
+            $mediaPercentual = $total > 0
+                ? array_reduce($rows, static function (float $carry, array $item): float {
+                    return $carry + (float) ($item['percentual'] ?? 0);
+                }, 0.0) / $total
+                : 0.0;
+
+            $message = 'Importação concluída: ' . $createdCount . ' nova(s), ' . $updatedCount . ' atualizada(s) e ' . $skippedCount . ' ignorada(s).';
+            if ($processedRows <= 0 && $skippedCount > 0) {
+                $message = 'Nenhuma correção foi importada. Verifique os avisos retornados.';
+            }
+
+            $this->respondJson([
+                'ok' => true,
+                'message' => $message,
+                'summary' => [
+                    'created' => $createdCount,
+                    'updated' => $updatedCount,
+                    'skipped' => $skippedCount,
+                    'processed' => $processedRows,
+                ],
+                'warnings' => array_values(array_slice($warnings, 0, 100)),
+                'rows' => $rows,
+                'stats' => [
+                    'total' => $total,
+                    'total_questoes' => $total > 0 ? (int) ($rows[0]['total_questoes'] ?? 0) : 0,
+                    'media_percentual' => round($mediaPercentual, 2),
+                ],
+            ]);
+        } catch (Throwable $exception) {
+            $this->respondJson([
+                'ok' => false,
+                'message' => $exception->getMessage() !== '' ? $exception->getMessage() : 'Não foi possível importar a planilha agora.',
+            ], 422);
+        }
+    }
+
+    private function resolveCorrecaoImportRequestContext(): array
+    {
+        $avaliacaoId = (int) ($_POST['avaliacao_id'] ?? 0);
+        if ($avaliacaoId <= 0) {
+            $this->respondJson(['ok' => false, 'message' => 'Avaliação inválida.'], 422);
+        }
+
+        $avaliacaoModel = new AvaliacaoModel();
+        $avaliacao = $avaliacaoModel->findById($avaliacaoId);
+        if ($avaliacao === null) {
+            $this->respondJson(['ok' => false, 'message' => 'Avaliação não encontrada.'], 404);
+        }
+
+        if (!$this->canAccessAvaliacaoCorrecao($avaliacao)) {
+            $this->respondJson(['ok' => false, 'message' => 'Você não pode importar correções para esta avaliação.'], 403);
+        }
+
+        $file = $_FILES['planilha'] ?? null;
+        if (!is_array($file) || (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            $this->respondJson(['ok' => false, 'message' => 'Selecione uma planilha CSV ou XLSX válida para importar.'], 422);
+        }
+
+        $tmpPath = trim((string) ($file['tmp_name'] ?? ''));
+        $originalName = trim((string) ($file['name'] ?? ''));
+        $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+        $fileSize = (int) ($file['size'] ?? 0);
+
+        if ($tmpPath === '' || !is_uploaded_file($tmpPath)) {
+            $this->respondJson(['ok' => false, 'message' => 'Arquivo de planilha inválido.'], 422);
+        }
+
+        if (!in_array($extension, ['csv', 'xlsx'], true)) {
+            $this->respondJson(['ok' => false, 'message' => 'Formato inválido. Envie um arquivo .csv ou .xlsx.'], 422);
+        }
+
+        if ($fileSize <= 0 || $fileSize > 10 * 1024 * 1024) {
+            $this->respondJson(['ok' => false, 'message' => 'A planilha deve ter até 10MB.'], 422);
+        }
+
+        return [$avaliacao, [
+            'tmp_path' => $tmpPath,
+            'original_name' => $originalName,
+            'extension' => $extension,
+            'size' => $fileSize,
+        ]];
+    }
+
+    private function parseCorrecaoImportWorkbook(string $filePath, string $extension): array
+    {
+        if ($extension === 'csv') {
+            return [
+                'sheets' => [$this->parseCorrecaoImportCsvSheet($filePath)],
+            ];
+        }
+
+        if ($extension === 'xlsx') {
+            return [
+                'sheets' => $this->parseCorrecaoImportXlsxSheets($filePath),
+            ];
+        }
+
+        throw new RuntimeException('Formato de planilha não suportado para importação.');
+    }
+
+    private function parseCorrecaoImportCsvSheet(string $filePath): array
+    {
+        $content = @file_get_contents($filePath);
+        if (!is_string($content) || $content === '') {
+            throw new RuntimeException('Não foi possível ler o arquivo CSV enviado.');
+        }
+
+        $content = preg_replace('/^\xEF\xBB\xBF/u', '', $content) ?? $content;
+        $delimiter = $this->detectCorrecaoImportCsvDelimiter($content);
+        $lines = preg_split('/\r\n|\n|\r/u', $content) ?: [];
+
+        $rows = [];
+        $maxColumns = 0;
+        foreach ($lines as $index => $line) {
+            $lineNumber = $index + 1;
+            $values = str_getcsv((string) $line, $delimiter);
+            if (!is_array($values)) {
+                $values = [];
+            }
+
+            $trimmedValues = array_map(static function ($value): string {
+                return trim((string) $value);
+            }, $values);
+
+            $hasContent = false;
+            foreach ($trimmedValues as $value) {
+                if ($value !== '') {
+                    $hasContent = true;
+                    break;
+                }
+            }
+
+            if (!$hasContent) {
+                continue;
+            }
+
+            $maxColumns = max($maxColumns, count($trimmedValues));
+            $rows[] = [
+                'line' => $lineNumber,
+                'values' => $trimmedValues,
+            ];
+        }
+
+        foreach ($rows as &$row) {
+            $row['values'] = $this->padCorrecaoImportRowValues($row['values'], $maxColumns);
+        }
+        unset($row);
+
+        return [
+            'key' => 'csv:1',
+            'name' => 'CSV',
+            'rows' => $rows,
+            'max_columns' => $maxColumns,
+        ];
+    }
+
+    private function detectCorrecaoImportCsvDelimiter(string $content): string
+    {
+        $sampleLines = preg_split('/\r\n|\n|\r/u', $content) ?: [];
+        $sample = implode("\n", array_slice($sampleLines, 0, 5));
+        $delimiters = [';' => 0, ',' => 0, "\t" => 0];
+
+        foreach (array_keys($delimiters) as $delimiter) {
+            $lines = preg_split('/\n/u', $sample) ?: [];
+            foreach ($lines as $line) {
+                $parts = str_getcsv((string) $line, $delimiter);
+                $delimiters[$delimiter] += is_array($parts) ? max(0, count($parts) - 1) : 0;
+            }
+        }
+
+        arsort($delimiters);
+        $detected = array_key_first($delimiters);
+        return is_string($detected) && $detected !== '' ? $detected : ';';
+    }
+
+    private function parseCorrecaoImportXlsxSheets(string $filePath): array
+    {
+        $archiveEntries = $this->readCorrecaoImportXlsxArchiveEntries($filePath);
+        $sharedStrings = $this->readCorrecaoImportXlsxSharedStrings($archiveEntries);
+        $worksheetTargets = $this->resolveCorrecaoImportWorksheetTargets($archiveEntries);
+
+        if ($worksheetTargets === []) {
+            throw new RuntimeException('Não foi possível localizar abas válidas na planilha XLSX.');
+        }
+
+        $sheets = [];
+        foreach ($worksheetTargets as $sheetIndex => $sheetMeta) {
+            $targetPath = $sheetMeta['target'] ?? '';
+            $sheetXml = is_string($targetPath) ? ($archiveEntries[$targetPath] ?? null) : null;
+            if (!is_string($sheetXml) || trim($sheetXml) === '') {
+                continue;
+            }
+
+            $parsedSheet = $this->parseCorrecaoImportXlsxWorksheetRows($sheetXml, $sharedStrings);
+            $sheets[] = [
+                'key' => 'xlsx:' . ($sheetIndex + 1),
+                'name' => trim((string) ($sheetMeta['name'] ?? ('Aba ' . ($sheetIndex + 1)))) !== ''
+                    ? trim((string) ($sheetMeta['name'] ?? ''))
+                    : ('Aba ' . ($sheetIndex + 1)),
+                'rows' => $parsedSheet['rows'],
+                'max_columns' => $parsedSheet['max_columns'],
+            ];
+        }
+
+        return $sheets;
+    }
+
+    private function resolveCorrecaoImportWorksheetTargets(array $archiveEntries): array
+    {
+        $workbookXml = $archiveEntries['xl/workbook.xml'] ?? null;
+        if (!is_string($workbookXml) || trim($workbookXml) === '') {
+            return [];
+        }
+
+        $workbook = @simplexml_load_string($workbookXml);
+        if (!$workbook instanceof SimpleXMLElement) {
+            return [];
+        }
+
+        $workbookRelsXml = $archiveEntries['xl/_rels/workbook.xml.rels'] ?? null;
+        $relations = [];
+        if (is_string($workbookRelsXml) && trim($workbookRelsXml) !== '') {
+            $rels = @simplexml_load_string($workbookRelsXml);
+            if ($rels instanceof SimpleXMLElement) {
+                $relationshipNodes = $rels->xpath('//*[local-name()="Relationship"]');
+                if (!is_array($relationshipNodes)) {
+                    $relationshipNodes = [];
+                }
+
+                foreach ($relationshipNodes as $relationshipNode) {
+                    if (!$relationshipNode instanceof SimpleXMLElement) {
+                        continue;
+                    }
+
+                    $relationId = trim((string) ($relationshipNode['Id'] ?? ''));
+                    $target = trim((string) ($relationshipNode['Target'] ?? ''));
+                    if ($relationId === '' || $target === '') {
+                        continue;
+                    }
+
+                    $relations[$relationId] = str_starts_with($target, 'xl/') ? $target : ('xl/' . ltrim($target, '/'));
+                }
+            }
+        }
+
+        $sheetNodes = $workbook->xpath('//*[local-name()="sheets"]/*[local-name()="sheet"]');
+        if (!is_array($sheetNodes)) {
+            $sheetNodes = [];
+        }
+
+        $targets = [];
+        foreach ($sheetNodes as $sheetNode) {
+            if (!$sheetNode instanceof SimpleXMLElement) {
+                continue;
+            }
+
+            $relationAttributes = $sheetNode->attributes('r', true);
+            $relationId = trim((string) ($relationAttributes['id'] ?? $sheetNode['id'] ?? ''));
+            $sheetName = trim((string) ($sheetNode['name'] ?? ''));
+            $target = $relationId !== '' ? ($relations[$relationId] ?? '') : '';
+
+            if ($target === '' || !isset($archiveEntries[$target])) {
+                continue;
+            }
+
+            $targets[] = [
+                'name' => $sheetName !== '' ? $sheetName : 'Aba',
+                'target' => $target,
+            ];
+        }
+
+        if ($targets !== []) {
+            return $targets;
+        }
+
+        $fallbackPath = 'xl/worksheets/sheet1.xml';
+        if (isset($archiveEntries[$fallbackPath])) {
+            return [[
+                'name' => 'Aba 1',
+                'target' => $fallbackPath,
+            ]];
+        }
+
+        return [];
+    }
+
+    private function parseCorrecaoImportXlsxWorksheetRows(string $sheetXml, array $sharedStrings): array
+    {
+        $sheet = @simplexml_load_string($sheetXml);
+        if (!$sheet instanceof SimpleXMLElement) {
+            throw new RuntimeException('Não foi possível interpretar uma das abas da planilha XLSX.');
+        }
+
+        $rowNodes = $sheet->xpath('//*[local-name()="sheetData"]/*[local-name()="row"]');
+        if (!is_array($rowNodes) || $rowNodes === []) {
+            return [
+                'rows' => [],
+                'max_columns' => 0,
+            ];
+        }
+
+        $rows = [];
+        $maxColumns = 0;
+
+        foreach ($rowNodes as $rowNode) {
+            if (!$rowNode instanceof SimpleXMLElement) {
+                continue;
+            }
+
+            $cells = [];
+            $cellNodes = $rowNode->xpath('./*[local-name()="c"]');
+            if (!is_array($cellNodes)) {
+                $cellNodes = [];
+            }
+
+            foreach ($cellNodes as $cellNode) {
+                if (!$cellNode instanceof SimpleXMLElement) {
+                    continue;
+                }
+
+                $reference = (string) ($cellNode['r'] ?? '');
+                $columnIndex = $this->correcaoImportXlsxColumnReferenceToIndex($reference);
+                $cells[$columnIndex] = $this->extractCorrecaoImportXlsxCellValue($cellNode, $sharedStrings);
+            }
+
+            if ($cells === []) {
+                continue;
+            }
+
+            ksort($cells);
+            $lineNumber = (int) ($rowNode['r'] ?? 0);
+            if ($lineNumber <= 0) {
+                $lineNumber = count($rows) + 1;
+            }
+
+            $currentMaxIndex = max(array_keys($cells));
+            $maxColumns = max($maxColumns, $currentMaxIndex + 1);
+
+            $values = [];
+            for ($columnIndex = 0; $columnIndex <= $currentMaxIndex; $columnIndex += 1) {
+                $values[] = isset($cells[$columnIndex]) ? trim((string) $cells[$columnIndex]) : '';
+            }
+
+            $hasContent = false;
+            foreach ($values as $value) {
+                if ($value !== '') {
+                    $hasContent = true;
+                    break;
+                }
+            }
+
+            if (!$hasContent) {
+                continue;
+            }
+
+            $rows[] = [
+                'line' => $lineNumber,
+                'values' => $values,
+            ];
+        }
+
+        foreach ($rows as &$row) {
+            $row['values'] = $this->padCorrecaoImportRowValues($row['values'], $maxColumns);
+        }
+        unset($row);
+
+        return [
+            'rows' => $rows,
+            'max_columns' => $maxColumns,
+        ];
+    }
+
+    private function buildCorrecaoImportSheetPreview(array $sheet): array
+    {
+        $rows = isset($sheet['rows']) && is_array($sheet['rows']) ? $sheet['rows'] : [];
+        $previewRows = array_slice($rows, 0, 30);
+
+        return [
+            'key' => trim((string) ($sheet['key'] ?? '')),
+            'name' => trim((string) ($sheet['name'] ?? 'Aba')),
+            'total_rows' => count($rows),
+            'max_columns' => (int) ($sheet['max_columns'] ?? 0),
+            'sample_rows' => array_values(array_map(static function (array $row): array {
+                return [
+                    'line' => (int) ($row['line'] ?? 0),
+                    'values' => array_values(is_array($row['values'] ?? null) ? $row['values'] : []),
+                ];
+            }, $previewRows)),
+        ];
+    }
+
+    private function findCorrecaoImportSheetByKey(array $sheets, string $sheetKey): ?array
+    {
+        foreach ($sheets as $sheet) {
+            if (!is_array($sheet)) {
+                continue;
+            }
+
+            if (trim((string) ($sheet['key'] ?? '')) === $sheetKey) {
+                return $sheet;
+            }
+        }
+
+        return null;
+    }
+
+    private function buildAvaliacaoRosterForCorrecaoImport(array $avaliacao): array
+    {
+        $alunoModel = new AlunoModel();
+        $students = $alunoModel->getSimpleOptions();
+
+        $turmasRelacionadasIds = is_array($avaliacao['turmas_relacionadas_ids'] ?? null)
+            ? array_values(array_filter(array_map('intval', $avaliacao['turmas_relacionadas_ids']), static fn(int $value): bool => $value > 0))
+            : [];
+        $alunosRelacionadosIds = is_array($avaliacao['alunos_relacionados_ids'] ?? null)
+            ? array_values(array_filter(array_map('intval', $avaliacao['alunos_relacionados_ids']), static fn(int $value): bool => $value > 0))
+            : [];
+
+        $filteredStudents = array_values(array_filter($students, static function ($row) use ($turmasRelacionadasIds, $alunosRelacionadosIds): bool {
+            if (!is_array($row)) {
+                return false;
+            }
+
+            $studentId = (int) ($row['id'] ?? 0);
+            $turmaId = (int) ($row['turma_id'] ?? 0);
+            if ($studentId <= 0 || $turmaId <= 0) {
+                return false;
+            }
+
+            if ($turmasRelacionadasIds !== [] && !in_array($turmaId, $turmasRelacionadasIds, true)) {
+                return false;
+            }
+
+            if ($alunosRelacionadosIds !== [] && !in_array($studentId, $alunosRelacionadosIds, true)) {
+                return false;
+            }
+
+            return true;
+        }));
+
+        $byName = [];
+        foreach ($filteredStudents as $student) {
+            $normalized = $this->normalizeCorrecaoImportSearchValue((string) ($student['nome'] ?? ''));
+            if ($normalized === '') {
+                continue;
+            }
+
+            if (!isset($byName[$normalized])) {
+                $byName[$normalized] = [];
+            }
+
+            $byName[$normalized][] = $student;
+        }
+
+        return [
+            'students' => $filteredStudents,
+            'by_name' => $byName,
+        ];
+    }
+
+    private function extractAvaliacaoImportQuestionItems(array $avaliacao): array
+    {
+        $gabaritoRaw = trim((string) ($avaliacao['gabarito'] ?? ''));
+        if ($gabaritoRaw === '') {
+            return [];
+        }
+
+        $decoded = json_decode($gabaritoRaw, true);
+        if (!is_array($decoded)) {
+            return [];
+        }
+
+        $items = $decoded['itens'] ?? null;
+        if (is_array($items) && $items !== []) {
+            return array_values(array_map(function ($item): array {
+                $safeItem = is_array($item) ? $item : [];
+                return [
+                    'tipo' => trim((string) ($safeItem['tipo'] ?? 'multipla')),
+                    'peso' => max(0.01, round((float) ($safeItem['peso'] ?? 1), 2)),
+                    'correta' => trim((string) ($safeItem['correta'] ?? '')),
+                    'anulada' => (($safeItem['anulada'] ?? false) === true),
+                ];
+            }, $items));
+        }
+
+        $legacyQuestionCount = max(0, (int) ($decoded['questoes'] ?? 0));
+        $legacyAnswers = is_array($decoded['respostas'] ?? null) ? $decoded['respostas'] : [];
+        if ($legacyQuestionCount <= 0) {
+            return [];
+        }
+
+        $items = [];
+        for ($questionNumber = 1; $questionNumber <= $legacyQuestionCount; $questionNumber += 1) {
+            $items[] = [
+                'tipo' => 'multipla',
+                'peso' => 1.0,
+                'correta' => trim((string) ($legacyAnswers[(string) $questionNumber] ?? '')),
+                'anulada' => false,
+            ];
+        }
+
+        return $items;
+    }
+
+    private function buildCorrecaoImportPayloadFromRow(
+        array $avaliacao,
+        array $questionItems,
+        array $student,
+        array $values,
+        int $firstQuestionColumn,
+        int $lastQuestionColumn,
+        int $lineNumber,
+        string $studentNameFromSheet
+    ): array {
+        $correcoes = [];
+        $respostas = [];
+        $acertos = 0;
+        $pontuacao = 0.0;
+        $pontuacaoTotal = 0.0;
+
+        foreach ($questionItems as $questionIndex => $questionItem) {
+            $columnIndex = $firstQuestionColumn + $questionIndex;
+            if ($columnIndex > $lastQuestionColumn) {
+                throw new RuntimeException('A linha ' . $lineNumber . ' não possui todas as questões esperadas no intervalo selecionado.');
+            }
+
+            $rawCellValue = trim((string) ($values[$columnIndex] ?? ''));
+            $isCorrect = $this->parseCorrecaoImportBooleanValue($rawCellValue);
+            if ($isCorrect === null) {
+                throw new RuntimeException('Linha ' . $lineNumber . ': a questão ' . ($questionIndex + 1) . ' do estudante "' . $studentNameFromSheet . '" precisa ter valor 1 ou 0.');
+            }
+
+            $peso = max(0.01, round((float) ($questionItem['peso'] ?? 1), 2));
+            $correctAnswer = trim((string) ($questionItem['correta'] ?? ''));
+            $questionType = trim((string) ($questionItem['tipo'] ?? 'multipla'));
+            if ($questionType === '') {
+                $questionType = 'multipla';
+            }
+
+            $studentAnswer = $isCorrect
+                ? ($correctAnswer !== '' ? strtoupper($correctAnswer) : '1')
+                : '0';
+
+            $pontuacaoQuestao = $isCorrect ? $peso : 0.0;
+            $pontuacao += $pontuacaoQuestao;
+            $pontuacaoTotal += $peso;
+            if ($isCorrect) {
+                $acertos += 1;
+            }
+
+            $questionNumber = $questionIndex + 1;
+            $respostas[(string) $questionNumber] = $studentAnswer;
+            $correcoes[] = [
+                'questionNumber' => $questionNumber,
+                'questionType' => $questionType,
+                'peso' => $peso,
+                'studentAnswer' => $studentAnswer,
+                'correctAnswer' => strtoupper($correctAnswer),
+                'isCorrect' => $isCorrect,
+                'pontuacao' => round($pontuacaoQuestao, 2),
+                'pontuacao_maxima' => $peso,
+                'answerConfidence' => 'manual',
+                'readStrength' => null,
+            ];
+        }
+
+        $totalQuestoes = count($questionItems);
+        $percentual = $pontuacaoTotal > 0 ? round(($pontuacao / $pontuacaoTotal) * 100, 2) : 0.0;
+
+        return [
+            'avaliacao_id' => (int) ($avaliacao['id'] ?? 0),
+            'aluno_id' => (int) ($student['id'] ?? 0),
+            'turma_id' => (int) ($student['turma_id'] ?? 0),
+            'respostas' => $respostas,
+            'correcoes' => $correcoes,
+            'acertos' => $acertos,
+            'total_questoes' => $totalQuestoes,
+            'pontuacao' => round($pontuacao, 2),
+            'pontuacao_total' => round($pontuacaoTotal, 2),
+            'percentual' => $percentual,
+        ];
+    }
+
+    private function parseCorrecaoImportBooleanValue(string $value): ?bool
+    {
+        $normalized = $this->normalizeCorrecaoImportSearchValue($value);
+        if ($normalized === '') {
+            return null;
+        }
+
+        if (in_array($normalized, ['1', 'true', 'verdadeiro', 'sim', 'certo', 'correto', 'acerto'], true)) {
+            return true;
+        }
+
+        if (in_array($normalized, ['0', 'false', 'falso', 'nao', 'não', 'errado', 'incorreto', 'erro'], true)) {
+            return false;
+        }
+
+        if (is_numeric($value)) {
+            return ((float) $value) > 0;
+        }
+
+        return null;
+    }
+
+    private function normalizeCorrecaoImportSearchValue(string $value): string
+    {
+        $text = trim(mb_strtolower($value, 'UTF-8'));
+        if ($text === '') {
+            return '';
+        }
+
+        $converted = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $text);
+        if (is_string($converted) && $converted !== '') {
+            $text = $converted;
+        }
+
+        $text = preg_replace('/[^a-z0-9]+/i', ' ', $text) ?? '';
+        return trim($text);
+    }
+
+    private function padCorrecaoImportRowValues(array $values, int $maxColumns): array
+    {
+        $normalized = array_values(array_map(static function ($value): string {
+            return trim((string) $value);
+        }, $values));
+
+        while (count($normalized) < $maxColumns) {
+            $normalized[] = '';
+        }
+
+        return $normalized;
+    }
+
+    private function readCorrecaoImportXlsxArchiveEntries(string $filePath): array
+    {
+        if (!is_file($filePath) || !is_readable($filePath)) {
+            throw new RuntimeException('Não foi possível acessar a planilha XLSX enviada.');
+        }
+
+        if (class_exists('ZipArchive')) {
+            $zip = new ZipArchive();
+            if ($zip->open($filePath) === true) {
+                try {
+                    $entries = [];
+                    $fileCount = (int) $zip->numFiles;
+                    for ($index = 0; $index < $fileCount; $index += 1) {
+                        $entryName = $zip->getNameIndex($index);
+                        if (!is_string($entryName) || $entryName === '' || str_ends_with($entryName, '/')) {
+                            continue;
+                        }
+
+                        $entryContent = $zip->getFromIndex($index);
+                        if (is_string($entryContent)) {
+                            $entries[str_replace('\\', '/', $entryName)] = $entryContent;
+                        }
+                    }
+
+                    if ($entries !== []) {
+                        return $entries;
+                    }
+                } finally {
+                    $zip->close();
+                }
+            }
+        }
+
+        $binaryContent = @file_get_contents($filePath);
+        if (!is_string($binaryContent) || $binaryContent === '') {
+            throw new RuntimeException('Não foi possível abrir a planilha XLSX enviada.');
+        }
+
+        return $this->extractCorrecaoImportZipEntriesFromBinary($binaryContent);
+    }
+
+    private function extractCorrecaoImportZipEntriesFromBinary(string $binaryContent): array
+    {
+        $eocdOffset = strrpos($binaryContent, "\x50\x4b\x05\x06");
+        if ($eocdOffset === false) {
+            throw new RuntimeException('O arquivo enviado não é um XLSX ZIP válido.');
+        }
+
+        $eocd = unpack(
+            'vdisk_number/vcentral_directory_disk/ventries_on_disk/ventries_total/Vcentral_directory_size/Vcentral_directory_offset/vcomment_length',
+            substr($binaryContent, $eocdOffset + 4, 18)
+        );
+        if (!is_array($eocd)) {
+            throw new RuntimeException('Não foi possível interpretar a estrutura ZIP da planilha.');
+        }
+
+        $offset = (int) ($eocd['central_directory_offset'] ?? 0);
+        $entriesTotal = (int) ($eocd['entries_total'] ?? 0);
+        $entries = [];
+
+        for ($entryIndex = 0; $entryIndex < $entriesTotal; $entryIndex += 1) {
+            $signature = substr($binaryContent, $offset, 4);
+            if ($signature !== "\x50\x4b\x01\x02") {
+                throw new RuntimeException('A planilha XLSX possui um diretório ZIP inválido.');
+            }
+
+            $centralHeader = unpack(
+                'vversion_made_by/vversion_needed/vflags/vcompression_method/vmod_time/vmod_date/Vcrc32/Vcompressed_size/Vuncompressed_size/vfile_name_length/vextra_length/vcomment_length/vdisk_number_start/vinternal_attributes/Vexternal_attributes/Vlocal_header_offset',
+                substr($binaryContent, $offset + 4, 42)
+            );
+            if (!is_array($centralHeader)) {
+                throw new RuntimeException('Não foi possível interpretar os arquivos internos da planilha.');
+            }
+
+            $fileNameLength = (int) ($centralHeader['file_name_length'] ?? 0);
+            $extraLength = (int) ($centralHeader['extra_length'] ?? 0);
+            $commentLength = (int) ($centralHeader['comment_length'] ?? 0);
+            $fileName = substr($binaryContent, $offset + 46, $fileNameLength);
+            $fileName = str_replace('\\', '/', (string) $fileName);
+
+            $offset += 46 + $fileNameLength + $extraLength + $commentLength;
+
+            if ($fileName === '' || str_ends_with($fileName, '/')) {
+                continue;
+            }
+
+            $entries[$fileName] = $this->extractCorrecaoImportZipEntryContentFromBinary($binaryContent, $centralHeader);
+        }
+
+        return $entries;
+    }
+
+    private function extractCorrecaoImportZipEntryContentFromBinary(string $binaryContent, array $centralHeader): string
+    {
+        $localHeaderOffset = (int) ($centralHeader['local_header_offset'] ?? 0);
+        $localSignature = substr($binaryContent, $localHeaderOffset, 4);
+        if ($localSignature !== "\x50\x4b\x03\x04") {
+            throw new RuntimeException('A planilha XLSX possui um arquivo interno inválido.');
+        }
+
+        $localHeader = unpack(
+            'vversion_needed/vflags/vcompression_method/vmod_time/vmod_date/Vcrc32/Vcompressed_size/Vuncompressed_size/vfile_name_length/vextra_length',
+            substr($binaryContent, $localHeaderOffset + 4, 26)
+        );
+        if (!is_array($localHeader)) {
+            throw new RuntimeException('Não foi possível interpretar um arquivo interno da planilha.');
+        }
+
+        $flags = (int) ($centralHeader['flags'] ?? $localHeader['flags'] ?? 0);
+        if (($flags & 0x0001) !== 0) {
+            throw new RuntimeException('A planilha XLSX está protegida ou criptografada e não pode ser importada.');
+        }
+
+        $compressionMethod = (int) ($centralHeader['compression_method'] ?? $localHeader['compression_method'] ?? 0);
+        $compressedSize = (int) ($centralHeader['compressed_size'] ?? $localHeader['compressed_size'] ?? 0);
+        $fileNameLength = (int) ($localHeader['file_name_length'] ?? 0);
+        $extraLength = (int) ($localHeader['extra_length'] ?? 0);
+        $dataOffset = $localHeaderOffset + 30 + $fileNameLength + $extraLength;
+        $compressedData = substr($binaryContent, $dataOffset, $compressedSize);
+
+        if ($compressionMethod === 0) {
+            return $compressedData;
+        }
+
+        if ($compressionMethod === 8) {
+            $inflated = @gzinflate($compressedData);
+            if ($inflated === false && function_exists('zlib_decode')) {
+                $inflated = @zlib_decode($compressedData);
+            }
+            if (!is_string($inflated)) {
+                throw new RuntimeException('O servidor não conseguiu descompactar a planilha XLSX enviada.');
+            }
+
+            return $inflated;
+        }
+
+        throw new RuntimeException('A planilha XLSX usa um formato de compactação não suportado pelo servidor.');
+    }
+
+    private function readCorrecaoImportXlsxSharedStrings(array $archiveEntries): array
+    {
+        $xml = $archiveEntries['xl/sharedStrings.xml'] ?? null;
+        if (!is_string($xml) || trim($xml) === '') {
+            return [];
+        }
+
+        $document = @simplexml_load_string($xml);
+        if (!$document instanceof SimpleXMLElement) {
+            return [];
+        }
+
+        $result = [];
+        foreach ($document->si as $item) {
+            if (!$item instanceof SimpleXMLElement) {
+                continue;
+            }
+
+            $text = '';
+            if (isset($item->t)) {
+                $text .= (string) $item->t;
+            }
+
+            if (isset($item->r)) {
+                foreach ($item->r as $run) {
+                    $text .= (string) ($run->t ?? '');
+                }
+            }
+
+            $result[] = trim($text);
+        }
+
+        return $result;
+    }
+
+    private function extractCorrecaoImportXlsxCellValue(SimpleXMLElement $cellNode, array $sharedStrings)
+    {
+        $type = (string) ($cellNode['t'] ?? '');
+        if ($type === 'inlineStr') {
+            $text = '';
+            if (isset($cellNode->is->t)) {
+                $text .= (string) $cellNode->is->t;
+            }
+            if (isset($cellNode->is->r)) {
+                foreach ($cellNode->is->r as $run) {
+                    $text .= (string) ($run->t ?? '');
+                }
+            }
+            return trim($text);
+        }
+
+        $value = isset($cellNode->v) ? (string) $cellNode->v : '';
+        if ($type === 's') {
+            $sharedIndex = (int) $value;
+            return $sharedStrings[$sharedIndex] ?? '';
+        }
+
+        if ($type === 'b') {
+            return $value === '1' ? '1' : '0';
+        }
+
+        return trim($value);
+    }
+
+    private function correcaoImportXlsxColumnReferenceToIndex(string $reference): int
+    {
+        if ($reference === '') {
+            return 0;
+        }
+
+        $letters = preg_replace('/[^A-Z]/i', '', strtoupper($reference));
+        $letters = is_string($letters) ? $letters : '';
+        if ($letters === '') {
+            return 0;
+        }
+
+        $index = 0;
+        $length = strlen($letters);
+        for ($i = 0; $i < $length; $i += 1) {
+            $index = ($index * 26) + (ord($letters[$i]) - 64);
+        }
+
+        return max(0, $index - 1);
+    }
+
     public function painelAdministrativoAvaliacoesFundoGabaritoPadrao(): void
     {
         $isAjax = $this->isAjaxRequest();

@@ -195,6 +195,7 @@
     var correcaoResumo = document.getElementById('adminAvaliacaoCorrecaoResumo');
     var correcaoStepBadge = document.getElementById('adminAvaliacaoCorrecaoStepBadge');
     var correcaoStartBtn = document.getElementById('adminAvaliacaoCorrecaoStartBtn');
+    var correcaoImportBtn = document.getElementById('adminAvaliacaoCorrecaoImportBtn');
     var correcaoCaptureBtn = document.getElementById('adminAvaliacaoCorrecaoCaptureBtn');
     var correcaoStopBtn = document.getElementById('adminAvaliacaoCorrecaoStopBtn');
     var correcaoVideo = document.getElementById('adminAvaliacaoCorrecaoVideo');
@@ -247,6 +248,18 @@
     var correcaoEdicaoAbsentBtn = document.getElementById('adminAvaliacaoCorrecaoEdicaoAbsentBtn');
     var correcaoEdicaoCancelBtn = document.getElementById('adminAvaliacaoCorrecaoEdicaoCancelBtn');
     var correcaoEdicaoSaveBtn = document.getElementById('adminAvaliacaoCorrecaoEdicaoSaveBtn');
+    var correcaoImportModalElement = document.getElementById('adminAvaliacaoCorrecaoImportModal');
+    var correcaoImportFileInput = document.getElementById('adminAvaliacaoCorrecaoImportFile');
+    var correcaoImportSheetSelect = document.getElementById('adminAvaliacaoCorrecaoImportSheet');
+    var correcaoImportHeaderRowSelect = document.getElementById('adminAvaliacaoCorrecaoImportHeaderRow');
+    var correcaoImportNameColumnSelect = document.getElementById('adminAvaliacaoCorrecaoImportNameColumn');
+    var correcaoImportFirstColumnSelect = document.getElementById('adminAvaliacaoCorrecaoImportFirstColumn');
+    var correcaoImportLastColumnSelect = document.getElementById('adminAvaliacaoCorrecaoImportLastColumn');
+    var correcaoImportStatus = document.getElementById('adminAvaliacaoCorrecaoImportStatus');
+    var correcaoImportSummary = document.getElementById('adminAvaliacaoCorrecaoImportSummary');
+    var correcaoImportPreviewHead = document.getElementById('adminAvaliacaoCorrecaoImportPreviewHead');
+    var correcaoImportPreviewBody = document.getElementById('adminAvaliacaoCorrecaoImportPreviewBody');
+    var correcaoImportSubmitBtn = document.getElementById('adminAvaliacaoCorrecaoImportSubmitBtn');
     var impressaoPane = document.getElementById('adminAvaliacaoDashboardPaneImpressao');
     var impressaoResumo = document.getElementById('adminAvaliacaoImpressaoResumo');
     var impressaoStatus = document.getElementById('adminAvaliacaoImpressaoStatus');
@@ -407,6 +420,7 @@
     var correcaoDiscursivaModalInstance = null;
     var correcaoRevisaoModalInstance = null;
     var correcaoEdicaoModalInstance = null;
+    var correcaoImportModalInstance = null;
     var statsFiltersModalInstance = null;
     var statsSkillsModalInstance = null;
     var tableFiltersModalInstance = null;
@@ -574,6 +588,8 @@
     var correcaoRevisaoRejecter = null;
     var correcaoEdicaoCurrentRowId = 0;
     var correcaoEdicaoCurrentRowData = null;
+    var correcaoImportPreviewData = null;
+    var correcaoImportLoading = false;
     var correcaoAutoReadFingerprint = '';
     var correcaoAutoReadStableReads = 0;
     var gabaritoTemplateImage = new Image();
@@ -768,6 +784,15 @@
       }
 
       document.body.appendChild(correcaoEdicaoModalElement);
+    }
+
+    if (correcaoImportModalElement && correcaoImportModalElement.parentElement !== document.body) {
+      var existingCorrecaoImportModal = document.body.querySelector('#adminAvaliacaoCorrecaoImportModal');
+      if (existingCorrecaoImportModal && existingCorrecaoImportModal !== correcaoImportModalElement) {
+        existingCorrecaoImportModal.remove();
+      }
+
+      document.body.appendChild(correcaoImportModalElement);
     }
 
     if (turmasModalElement && turmasModalElement.parentElement !== document.body) {
@@ -978,6 +1003,16 @@
       correcaoEdicaoModalInstance = bootstrap.Modal.getOrCreateInstance(correcaoEdicaoModalElement, {
         backdrop: false,
         keyboard: false,
+      });
+    }
+
+    if (correcaoImportModalElement && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+      correcaoImportModalInstance = bootstrap.Modal.getOrCreateInstance(correcaoImportModalElement, {
+        backdrop: 'static',
+      });
+
+      correcaoImportModalElement.addEventListener('hidden.bs.modal', function () {
+        resetCorrecaoImportState(true);
       });
     }
 
@@ -10166,6 +10201,24 @@
       return form.action.replace('/avaliacoes/salvar', '/avaliacoes/correcoes/verificar');
     }
 
+    function getCorrecaoImportPreviewUrl() {
+      var fallbackUrl = '/index.php/paineladministrativo/avaliacoes/correcoes/importar/preview';
+      if (!form || !form.action) {
+        return fallbackUrl;
+      }
+
+      return form.action.replace('/avaliacoes/salvar', '/avaliacoes/correcoes/importar/preview');
+    }
+
+    function getCorrecaoImportUrl() {
+      var fallbackUrl = '/index.php/paineladministrativo/avaliacoes/correcoes/importar';
+      if (!form || !form.action) {
+        return fallbackUrl;
+      }
+
+      return form.action.replace('/avaliacoes/salvar', '/avaliacoes/correcoes/importar');
+    }
+
     function formatDateTimePtBr(dateTimeValue) {
       var safeValue = String(dateTimeValue || '').trim();
       if (safeValue === '') {
@@ -13060,6 +13113,463 @@
           }
           return [];
         });
+    }
+
+    function getCorrecaoImportColumnLetter(columnIndex) {
+      var index = Number(columnIndex || 0) + 1;
+      if (!Number.isFinite(index) || index <= 0) {
+        return '';
+      }
+
+      var result = '';
+      while (index > 0) {
+        var remainder = (index - 1) % 26;
+        result = String.fromCharCode(65 + remainder) + result;
+        index = Math.floor((index - 1) / 26);
+      }
+
+      return result;
+    }
+
+    function resetCorrecaoImportPreviewTable() {
+      if (correcaoImportPreviewHead) {
+        correcaoImportPreviewHead.innerHTML = '<tr><th>Linha</th><th>Pré-visualização</th></tr>';
+      }
+
+      if (correcaoImportPreviewBody) {
+        correcaoImportPreviewBody.innerHTML = '<tr><td colspan="2" class="text-center text-secondary py-4">Nenhuma pré-visualização carregada.</td></tr>';
+      }
+    }
+
+    function setCorrecaoImportStatus(message, tone) {
+      if (!correcaoImportStatus) {
+        return;
+      }
+
+      correcaoImportStatus.className = 'alert border mb-0 small';
+      if (tone === 'danger') {
+        correcaoImportStatus.classList.add('alert-danger');
+      } else if (tone === 'success') {
+        correcaoImportStatus.classList.add('alert-success');
+      } else if (tone === 'warning') {
+        correcaoImportStatus.classList.add('alert-warning');
+      } else {
+        correcaoImportStatus.classList.add('alert-light');
+      }
+      correcaoImportStatus.textContent = String(message || '');
+    }
+
+    function setCorrecaoImportSelectOptions(selectElement, options, placeholder, disabled) {
+      if (!(selectElement instanceof HTMLSelectElement)) {
+        return;
+      }
+
+      var items = Array.isArray(options) ? options : [];
+      selectElement.innerHTML = '';
+
+      var placeholderOption = document.createElement('option');
+      placeholderOption.value = '';
+      placeholderOption.textContent = placeholder || 'Selecione';
+      selectElement.appendChild(placeholderOption);
+
+      items.forEach(function (item) {
+        var option = document.createElement('option');
+        option.value = String(item && item.value != null ? item.value : '');
+        option.textContent = String(item && item.label != null ? item.label : option.value);
+        selectElement.appendChild(option);
+      });
+
+      selectElement.disabled = disabled === true;
+    }
+
+    function resetCorrecaoImportState(clearFile) {
+      correcaoImportPreviewData = null;
+      correcaoImportLoading = false;
+
+      if (clearFile && correcaoImportFileInput) {
+        correcaoImportFileInput.value = '';
+      }
+
+      setCorrecaoImportSelectOptions(correcaoImportSheetSelect, [], 'Selecione o arquivo primeiro', true);
+      setCorrecaoImportSelectOptions(correcaoImportHeaderRowSelect, [], 'Selecione a aba primeiro', true);
+      setCorrecaoImportSelectOptions(correcaoImportNameColumnSelect, [], 'Selecione o cabeçalho', true);
+      setCorrecaoImportSelectOptions(correcaoImportFirstColumnSelect, [], 'Selecione o cabeçalho', true);
+      setCorrecaoImportSelectOptions(correcaoImportLastColumnSelect, [], 'Selecione o cabeçalho', true);
+      resetCorrecaoImportPreviewTable();
+      setCorrecaoImportStatus('Selecione um arquivo para carregar a pré-visualização.', 'neutral');
+
+      if (correcaoImportSummary) {
+        correcaoImportSummary.textContent = 'A importação atualiza ou cria correções pelo nome do estudante vinculado à avaliação.';
+      }
+
+      if (correcaoImportSubmitBtn) {
+        correcaoImportSubmitBtn.disabled = true;
+      }
+    }
+
+    function getSelectedCorrecaoImportSheet() {
+      if (!correcaoImportPreviewData || !Array.isArray(correcaoImportPreviewData.sheets) || !correcaoImportSheetSelect) {
+        return null;
+      }
+
+      var sheetKey = String(correcaoImportSheetSelect.value || '').trim();
+      if (sheetKey === '') {
+        return null;
+      }
+
+      for (var index = 0; index < correcaoImportPreviewData.sheets.length; index += 1) {
+        var sheet = correcaoImportPreviewData.sheets[index];
+        if (sheet && String(sheet.key || '') === sheetKey) {
+          return sheet;
+        }
+      }
+
+      return null;
+    }
+
+    function detectCorrecaoImportNameColumn(headerValues) {
+      var values = Array.isArray(headerValues) ? headerValues : [];
+      var patterns = ['nomedoestudante', 'nomedoaluno', 'nomeestudante', 'nomealuno', 'estudante', 'aluno', 'nome'];
+
+      for (var index = 0; index < values.length; index += 1) {
+        var normalized = normalizeSearchValue(String(values[index] || '')).replace(/\s+/g, '');
+        if (patterns.indexOf(normalized) !== -1) {
+          return index;
+        }
+      }
+
+      return values.length > 0 ? 0 : -1;
+    }
+
+    function detectCorrecaoImportQuestionRange(headerValues) {
+      var values = Array.isArray(headerValues) ? headerValues : [];
+      var matches = [];
+
+      values.forEach(function (value, index) {
+        var text = String(value || '').trim();
+        if (text === '') {
+          return;
+        }
+
+        var match = text.match(/(?:^|[^0-9])(\d{1,3})(?:[^0-9]|$)/);
+        var normalized = normalizeSearchValue(text);
+        if (!match || (normalized.indexOf('quest') === -1 && normalized.indexOf('q') !== 0 && !/^\d+$/.test(text))) {
+          return;
+        }
+
+        matches.push({ index: index, number: Number(match[1] || 0) });
+      });
+
+      if (!matches.length) {
+        return { first: -1, last: -1 };
+      }
+
+      matches.sort(function (left, right) {
+        return left.number - right.number || left.index - right.index;
+      });
+
+      return {
+        first: matches[0].index,
+        last: matches[matches.length - 1].index,
+      };
+    }
+
+    function renderCorrecaoImportPreview() {
+      var sheet = getSelectedCorrecaoImportSheet();
+      if (!sheet) {
+        resetCorrecaoImportPreviewTable();
+        return;
+      }
+
+      var sampleRows = Array.isArray(sheet.sample_rows) ? sheet.sample_rows : [];
+      var maxColumns = Number(sheet.max_columns || 0);
+      var selectedHeaderRow = Number(correcaoImportHeaderRowSelect ? correcaoImportHeaderRowSelect.value : 0);
+
+      if (correcaoImportPreviewHead) {
+        var headHtml = '<tr><th>Linha</th>';
+        for (var columnIndex = 0; columnIndex < maxColumns; columnIndex += 1) {
+          headHtml += '<th>' + escapeHtml(getCorrecaoImportColumnLetter(columnIndex)) + '</th>';
+        }
+        headHtml += '</tr>';
+        correcaoImportPreviewHead.innerHTML = headHtml;
+      }
+
+      if (!correcaoImportPreviewBody) {
+        return;
+      }
+
+      if (!sampleRows.length) {
+        correcaoImportPreviewBody.innerHTML = '<tr><td colspan="' + String(maxColumns + 1) + '" class="text-center text-secondary py-4">A aba selecionada não possui linhas com conteúdo.</td></tr>';
+        return;
+      }
+
+      correcaoImportPreviewBody.innerHTML = sampleRows.map(function (row) {
+        var lineNumber = Number(row && row.line || 0);
+        var values = Array.isArray(row && row.values) ? row.values : [];
+        var rowClass = lineNumber === selectedHeaderRow ? ' class="table-warning"' : '';
+        var cells = '<td><strong>' + escapeHtml(String(lineNumber)) + '</strong></td>';
+
+        for (var columnIndex = 0; columnIndex < maxColumns; columnIndex += 1) {
+          cells += '<td>' + escapeHtml(String(values[columnIndex] || '')) + '</td>';
+        }
+
+        return '<tr' + rowClass + '>' + cells + '</tr>';
+      }).join('');
+    }
+
+    function refreshCorrecaoImportColumnSelectors() {
+      var sheet = getSelectedCorrecaoImportSheet();
+      if (!sheet) {
+        setCorrecaoImportSelectOptions(correcaoImportNameColumnSelect, [], 'Selecione o cabeçalho', true);
+        setCorrecaoImportSelectOptions(correcaoImportFirstColumnSelect, [], 'Selecione o cabeçalho', true);
+        setCorrecaoImportSelectOptions(correcaoImportLastColumnSelect, [], 'Selecione o cabeçalho', true);
+        renderCorrecaoImportPreview();
+        return;
+      }
+
+      var headerRowLine = Number(correcaoImportHeaderRowSelect ? correcaoImportHeaderRowSelect.value : 0);
+      var headerRow = null;
+      var sampleRows = Array.isArray(sheet.sample_rows) ? sheet.sample_rows : [];
+      for (var index = 0; index < sampleRows.length; index += 1) {
+        if (Number(sampleRows[index] && sampleRows[index].line || 0) === headerRowLine) {
+          headerRow = sampleRows[index];
+          break;
+        }
+      }
+
+      if (!headerRow) {
+        setCorrecaoImportSelectOptions(correcaoImportNameColumnSelect, [], 'Selecione o cabeçalho', true);
+        setCorrecaoImportSelectOptions(correcaoImportFirstColumnSelect, [], 'Selecione o cabeçalho', true);
+        setCorrecaoImportSelectOptions(correcaoImportLastColumnSelect, [], 'Selecione o cabeçalho', true);
+        renderCorrecaoImportPreview();
+        return;
+      }
+
+      var headerValues = Array.isArray(headerRow.values) ? headerRow.values : [];
+      var maxColumns = Number(sheet.max_columns || headerValues.length || 0);
+      var columnOptions = [];
+      for (var columnIndex = 0; columnIndex < maxColumns; columnIndex += 1) {
+        var headerText = String(headerValues[columnIndex] || '').trim();
+        columnOptions.push({
+          value: String(columnIndex),
+          label: getCorrecaoImportColumnLetter(columnIndex) + ' - ' + (headerText !== '' ? headerText : 'Sem título'),
+        });
+      }
+
+      setCorrecaoImportSelectOptions(correcaoImportNameColumnSelect, columnOptions, 'Selecione a coluna do estudante', false);
+      setCorrecaoImportSelectOptions(correcaoImportFirstColumnSelect, columnOptions, 'Selecione a coluna da 1ª questão', false);
+      setCorrecaoImportSelectOptions(correcaoImportLastColumnSelect, columnOptions, 'Selecione a coluna da última questão', false);
+
+      var detectedNameColumn = detectCorrecaoImportNameColumn(headerValues);
+      var detectedRange = detectCorrecaoImportQuestionRange(headerValues);
+      if (correcaoImportNameColumnSelect && detectedNameColumn >= 0) {
+        correcaoImportNameColumnSelect.value = String(detectedNameColumn);
+      }
+      if (correcaoImportFirstColumnSelect && detectedRange.first >= 0) {
+        correcaoImportFirstColumnSelect.value = String(detectedRange.first);
+      }
+      if (correcaoImportLastColumnSelect && detectedRange.last >= 0) {
+        correcaoImportLastColumnSelect.value = String(detectedRange.last);
+      }
+
+      renderCorrecaoImportPreview();
+      updateCorrecaoImportSummary();
+    }
+
+    function updateCorrecaoImportSummary() {
+      var sheet = getSelectedCorrecaoImportSheet();
+      var headerRow = Number(correcaoImportHeaderRowSelect ? correcaoImportHeaderRowSelect.value : 0);
+      var firstColumn = Number(correcaoImportFirstColumnSelect ? correcaoImportFirstColumnSelect.value : -1);
+      var lastColumn = Number(correcaoImportLastColumnSelect ? correcaoImportLastColumnSelect.value : -1);
+      var isValid = !!sheet && headerRow > 0 && firstColumn >= 0 && lastColumn >= firstColumn;
+
+      if (correcaoImportSummary) {
+        if (isValid) {
+          correcaoImportSummary.textContent = 'Aba: ' + String(sheet.name || 'Aba') + ' • Cabeçalho: linha ' + String(headerRow)
+            + ' • Intervalo de questões: ' + getCorrecaoImportColumnLetter(firstColumn) + ' até ' + getCorrecaoImportColumnLetter(lastColumn)
+            + ' (' + String((lastColumn - firstColumn) + 1) + ' questão(ões)).';
+        } else {
+          correcaoImportSummary.textContent = 'A importação atualiza ou cria correções pelo nome do estudante vinculado à avaliação.';
+        }
+      }
+
+      if (correcaoImportSubmitBtn) {
+        correcaoImportSubmitBtn.disabled = !isValid || correcaoImportLoading;
+      }
+    }
+
+    function populateCorrecaoImportHeaderOptions() {
+      var sheet = getSelectedCorrecaoImportSheet();
+      if (!sheet) {
+        setCorrecaoImportSelectOptions(correcaoImportHeaderRowSelect, [], 'Selecione a aba primeiro', true);
+        refreshCorrecaoImportColumnSelectors();
+        return;
+      }
+
+      var headerOptions = (Array.isArray(sheet.sample_rows) ? sheet.sample_rows : []).map(function (row) {
+        var values = Array.isArray(row && row.values) ? row.values : [];
+        var preview = values.slice(0, 3).join(' | ');
+        return {
+          value: String(row && row.line || ''),
+          label: 'Linha ' + String(row && row.line || '') + (preview ? ' - ' + preview : ''),
+        };
+      });
+
+      setCorrecaoImportSelectOptions(correcaoImportHeaderRowSelect, headerOptions, 'Selecione a linha de cabeçalho', headerOptions.length === 0);
+      if (correcaoImportHeaderRowSelect && headerOptions.length > 0) {
+        correcaoImportHeaderRowSelect.value = String(headerOptions[0].value || '');
+      }
+
+      refreshCorrecaoImportColumnSelectors();
+    }
+
+    function handleCorrecaoImportPreviewPayload(payload) {
+      correcaoImportPreviewData = payload && typeof payload === 'object' ? payload : null;
+      var sheets = correcaoImportPreviewData && Array.isArray(correcaoImportPreviewData.sheets)
+        ? correcaoImportPreviewData.sheets
+        : [];
+
+      if (!sheets.length) {
+        resetCorrecaoImportState(false);
+        setCorrecaoImportStatus('A planilha não possui abas ou linhas utilizáveis para importação.', 'warning');
+        return;
+      }
+
+      var sheetOptions = sheets.map(function (sheet) {
+        return {
+          value: String(sheet && sheet.key || ''),
+          label: String(sheet && sheet.name || 'Aba') + ' (' + String(Number(sheet && sheet.total_rows || 0)) + ' linha(s))',
+        };
+      });
+
+      setCorrecaoImportSelectOptions(correcaoImportSheetSelect, sheetOptions, 'Selecione a aba', false);
+      if (correcaoImportSheetSelect) {
+        correcaoImportSheetSelect.value = String(sheetOptions[0].value || '');
+      }
+
+      populateCorrecaoImportHeaderOptions();
+      setCorrecaoImportStatus('Pré-visualização carregada. Revise a aba, o cabeçalho e as colunas antes de importar.', 'success');
+      updateCorrecaoImportSummary();
+    }
+
+    function loadCorrecaoImportPreviewFromFile() {
+      var file = correcaoImportFileInput && correcaoImportFileInput.files ? correcaoImportFileInput.files[0] : null;
+      if (!file) {
+        resetCorrecaoImportState(false);
+        return Promise.resolve(false);
+      }
+
+      var avaliacaoId = Number(activeDashboardAvaliacaoId || 0);
+      if (avaliacaoId <= 0) {
+        setCorrecaoImportStatus('Abra o painel de uma avaliação antes de importar a planilha.', 'warning');
+        return Promise.resolve(false);
+      }
+
+      var csrfInput = form ? form.querySelector('input[name="csrf_token"]') : null;
+      var csrfToken = csrfInput ? String(csrfInput.value || '').trim() : '';
+      var requestBody = new FormData();
+      requestBody.append('csrf_token', csrfToken);
+      requestBody.append('avaliacao_id', String(avaliacaoId));
+      requestBody.append('planilha', file);
+
+      correcaoImportLoading = true;
+      updateCorrecaoImportSummary();
+      setCorrecaoImportStatus('Lendo arquivo e montando pré-visualização...', 'neutral');
+
+      return fetch(getCorrecaoImportPreviewUrl(), {
+        method: 'POST',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: requestBody,
+      }).then(function (response) {
+        return response.json().catch(function () {
+          return { ok: false, message: 'Resposta inválida do servidor.' };
+        }).then(function (payload) {
+          if (!response.ok || !payload || payload.ok !== true) {
+            throw new Error(payload && payload.message ? payload.message : 'Não foi possível carregar a pré-visualização da planilha.');
+          }
+
+          handleCorrecaoImportPreviewPayload(payload);
+          return true;
+        });
+      }).catch(function (error) {
+        resetCorrecaoImportState(false);
+        setCorrecaoImportStatus(error && error.message ? error.message : 'Não foi possível carregar a pré-visualização da planilha.', 'danger');
+        return false;
+      }).finally(function () {
+        correcaoImportLoading = false;
+        updateCorrecaoImportSummary();
+      });
+    }
+
+    function submitCorrecaoImport() {
+      var file = correcaoImportFileInput && correcaoImportFileInput.files ? correcaoImportFileInput.files[0] : null;
+      var sheet = getSelectedCorrecaoImportSheet();
+      var avaliacaoId = Number(activeDashboardAvaliacaoId || 0);
+      var headerRow = Number(correcaoImportHeaderRowSelect ? correcaoImportHeaderRowSelect.value : 0);
+      var nameColumn = Number(correcaoImportNameColumnSelect ? correcaoImportNameColumnSelect.value : -1);
+      var firstColumn = Number(correcaoImportFirstColumnSelect ? correcaoImportFirstColumnSelect.value : -1);
+      var lastColumn = Number(correcaoImportLastColumnSelect ? correcaoImportLastColumnSelect.value : -1);
+
+      if (!file || !sheet || avaliacaoId <= 0 || headerRow <= 0 || nameColumn < 0 || firstColumn < 0 || lastColumn < firstColumn) {
+        setCorrecaoImportStatus('Revise o arquivo, a aba e as colunas antes de importar.', 'warning');
+        updateCorrecaoImportSummary();
+        return Promise.resolve(false);
+      }
+
+      var csrfInput = form ? form.querySelector('input[name="csrf_token"]') : null;
+      var csrfToken = csrfInput ? String(csrfInput.value || '').trim() : '';
+      var requestBody = new FormData();
+      requestBody.append('csrf_token', csrfToken);
+      requestBody.append('avaliacao_id', String(avaliacaoId));
+      requestBody.append('sheet_key', String(sheet.key || ''));
+      requestBody.append('header_row', String(headerRow));
+      requestBody.append('name_column', String(nameColumn));
+      requestBody.append('first_question_column', String(firstColumn));
+      requestBody.append('last_question_column', String(lastColumn));
+      requestBody.append('planilha', file);
+
+      correcaoImportLoading = true;
+      updateCorrecaoImportSummary();
+      setCorrecaoImportStatus('Importando correções da planilha...', 'neutral');
+
+      return fetch(getCorrecaoImportUrl(), {
+        method: 'POST',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: requestBody,
+      }).then(function (response) {
+        return response.json().catch(function () {
+          return { ok: false, message: 'Resposta inválida do servidor.' };
+        }).then(function (payload) {
+          if (!response.ok || !payload || payload.ok !== true) {
+            throw new Error(payload && payload.message ? payload.message : 'Não foi possível importar a planilha.');
+          }
+
+          renderCorrecoesTable(payload.rows || [], payload.stats || getCorrecoesSummaryStats(payload.rows || []));
+          setCorrecaoImportStatus(payload.message || 'Importação concluída com sucesso.', 'success');
+
+          if (Array.isArray(payload.warnings) && payload.warnings.length > 0) {
+            setCorrecaoImportStatus((payload.message || 'Importação concluída com avisos.') + ' Avisos: ' + payload.warnings.slice(0, 5).join(' | '), 'warning');
+          }
+
+          if (correcaoImportModalInstance) {
+            correcaoImportModalInstance.hide();
+          }
+
+          return loadCorrecoesList(true).then(function () {
+            return true;
+          });
+        });
+      }).catch(function (error) {
+        setCorrecaoImportStatus(error && error.message ? error.message : 'Não foi possível importar a planilha.', 'danger');
+        return false;
+      }).finally(function () {
+        correcaoImportLoading = false;
+        updateCorrecaoImportSummary();
+      });
     }
 
     function deleteCorrecaoById(correcaoId) {
@@ -18319,6 +18829,49 @@
     if (impressaoImprimirBtn) {
       impressaoImprimirBtn.addEventListener('click', function () {
         openImpressaoWindow();
+      });
+    }
+
+    if (correcaoImportBtn) {
+      correcaoImportBtn.addEventListener('click', function () {
+        resetCorrecaoImportState(true);
+        if (correcaoImportModalInstance) {
+          correcaoImportModalInstance.show();
+        }
+      });
+    }
+
+    if (correcaoImportFileInput) {
+      correcaoImportFileInput.addEventListener('change', function () {
+        loadCorrecaoImportPreviewFromFile();
+      });
+    }
+
+    if (correcaoImportSheetSelect) {
+      correcaoImportSheetSelect.addEventListener('change', function () {
+        populateCorrecaoImportHeaderOptions();
+      });
+    }
+
+    if (correcaoImportHeaderRowSelect) {
+      correcaoImportHeaderRowSelect.addEventListener('change', function () {
+        refreshCorrecaoImportColumnSelectors();
+      });
+    }
+
+    [correcaoImportNameColumnSelect, correcaoImportFirstColumnSelect, correcaoImportLastColumnSelect].forEach(function (selectElement) {
+      if (!(selectElement instanceof HTMLSelectElement)) {
+        return;
+      }
+
+      selectElement.addEventListener('change', function () {
+        updateCorrecaoImportSummary();
+      });
+    });
+
+    if (correcaoImportSubmitBtn) {
+      correcaoImportSubmitBtn.addEventListener('click', function () {
+        submitCorrecaoImport();
       });
     }
 
