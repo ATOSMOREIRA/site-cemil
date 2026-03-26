@@ -1221,6 +1221,22 @@
       };
     }
 
+    function parseHabilidadeList(value) {
+      return String(value || '')
+        .split(',')
+        .map(function (item) { return String(item || '').trim(); })
+        .filter(Boolean)
+        .filter(function (item, index, list) { return list.indexOf(item) === index; });
+    }
+
+    function joinHabilidadeList(list) {
+      return (Array.isArray(list) ? list : [])
+        .map(function (item) { return String(item || '').trim(); })
+        .filter(Boolean)
+        .filter(function (item, index, arr) { return arr.indexOf(item) === index; })
+        .join(', ');
+    }
+
     function getQuestaoAltLabel(tipo, altIndex) {
       if (tipo === 'vf') {
         return altIndex === 0 ? 'V' : 'F';
@@ -1269,7 +1285,7 @@
         anulada: anulada,
         peso: sanitizeQuestaoPeso(item.peso, 1),
         disciplina: String(item.disciplina || '').trim(),
-        habilidade: String(item.habilidade || '').trim(),
+        habilidade: joinHabilidadeList(parseHabilidadeList(item.habilidade)),
       };
     }
 
@@ -1577,29 +1593,30 @@
         var hbWrap = document.createElement('div');
         hbWrap.style.cssText = 'display:flex;align-items:center;gap:4px;flex-wrap:wrap;';
 
-        var habilidade = String(item.habilidade || '').trim();
-        if (habilidade !== '') {
+        var habilidades = parseHabilidadeList(item.habilidade);
+        habilidades.forEach(function (habilidade, habilidadeIndex) {
           var tag = document.createElement('span');
           tag.className = 'badge text-bg-primary';
           tag.style.cssText = 'font-size:.7rem;font-weight:500;cursor:default;';
-          tag.textContent = habilidade;
+          tag.appendChild(document.createTextNode(habilidade));
 
           var rmHb = document.createElement('button');
           rmHb.type = 'button';
           rmHb.className = 'btn-close btn-close-sm ms-1 js-admin-disc-hb-remove-habilidade';
           rmHb.setAttribute('data-question-index', String(qi));
+          rmHb.setAttribute('data-habilidade-index', String(habilidadeIndex));
           rmHb.style.cssText = 'font-size:.55rem;vertical-align:middle;';
           rmHb.title = 'Remover habilidade';
           tag.appendChild(rmHb);
           hbWrap.appendChild(tag);
-        }
+        });
 
         var hbBtn = document.createElement('button');
         hbBtn.type = 'button';
         hbBtn.className = 'btn btn-outline-secondary btn-sm js-admin-disc-hb-select-habilidade';
         hbBtn.setAttribute('data-question-index', String(qi));
         hbBtn.style.cssText = 'font-size:.7rem;padding:1px 6px;white-space:nowrap;';
-        hbBtn.textContent = habilidade !== '' ? '✏ trocar' : '+ habilidade';
+        hbBtn.textContent = habilidades.length > 0 ? '✏ editar' : '+ habilidade';
         hbWrap.appendChild(hbBtn);
 
         tdHb.appendChild(hbWrap);
@@ -1618,8 +1635,7 @@
       habilidadeSelectorActiveFilter = 'todos';
 
       var item = gabaritoQuestoesItens[questionIndex] || {};
-      var habilidadeAtual = String(item.habilidade || '').trim();
-      habilidadeSelectorSelected = habilidadeAtual !== '' ? [habilidadeAtual] : [];
+      habilidadeSelectorSelected = parseHabilidadeList(item.habilidade);
 
       // título
       if (habilidadeSelectorQuestaoNum) {
@@ -1837,7 +1853,7 @@
           ? '<span class="text-secondary d-block" style="font-size:.68rem">' + esc(disciplinaLabels.join(', ')) + '</span>'
           : '';
         html += '<label class="d-flex align-items-start gap-2 px-2 py-1 border-bottom hb-selector-row" for="' + safeId + '" style="cursor:pointer;' + (isChecked ? 'background:#f0f7ff;' : '') + '">'
-          + '<input type="radio" id="' + safeId + '" name="adminHbSel" value="' + esc(codigo) + '"' + (isChecked ? ' checked' : '') + ' class="mt-1 flex-shrink-0 js-admin-hb-radio">'
+          + '<input type="checkbox" id="' + safeId + '" value="' + esc(codigo) + '"' + (isChecked ? ' checked' : '') + ' class="mt-1 flex-shrink-0 js-admin-hb-checkbox">'
           + '<span class="small"><strong>' + esc(codigo) + '</strong>' + docBadge + disciplinaMeta + '<span class="text-secondary" style="font-size:.72rem">' + esc(descTrunc) + '</span></span>'
           + '</label>';
       }
@@ -19010,8 +19026,15 @@
         var rmBtn = event.target.closest('.js-admin-disc-hb-remove-habilidade');
         if (rmBtn) {
           var rqi = parseInt(rmBtn.getAttribute('data-question-index'), 10);
+          var habilidadeIndex = parseInt(rmBtn.getAttribute('data-habilidade-index'), 10);
           if (!isNaN(rqi) && rqi >= 0 && rqi < gabaritoQuestoesItens.length) {
-            gabaritoQuestoesItens[rqi].habilidade = '';
+            var habilidadesAtuais = parseHabilidadeList(gabaritoQuestoesItens[rqi].habilidade);
+            if (!isNaN(habilidadeIndex) && habilidadeIndex >= 0) {
+              habilidadesAtuais.splice(habilidadeIndex, 1);
+            } else {
+              habilidadesAtuais = [];
+            }
+            gabaritoQuestoesItens[rqi].habilidade = joinHabilidadeList(habilidadesAtuais);
             renderDisciplinasHabilidadesEditor();
             renderA4LayoutEditor();
             markGabaritoPendingChanges();
@@ -19024,10 +19047,17 @@
     // ---- Habilidade selector modal events ----
     if (habilidadeSelectorList) {
       habilidadeSelectorList.addEventListener('change', function (event) {
-        var radio = event.target.closest('.js-admin-hb-radio');
-        if (!radio) { return; }
-        var val = String(radio.value || '').trim();
-        habilidadeSelectorSelected = val !== '' ? [val] : [];
+        var checkbox = event.target.closest('.js-admin-hb-checkbox');
+        if (!checkbox) { return; }
+        var val = String(checkbox.value || '').trim();
+        if (val === '') { return; }
+        if (checkbox.checked) {
+          if (habilidadeSelectorSelected.indexOf(val) === -1) {
+            habilidadeSelectorSelected.push(val);
+          }
+        } else {
+          habilidadeSelectorSelected = habilidadeSelectorSelected.filter(function (item) { return item !== val; });
+        }
         updateHabilidadeSelectorCount();
       });
     }
@@ -19056,7 +19086,9 @@
       function addCustomHabilidade() {
         var val = String(habilidadeSelectorCustomInput.value || '').trim();
         if (val === '') { return; }
-        habilidadeSelectorSelected = [val];
+        if (habilidadeSelectorSelected.indexOf(val) === -1) {
+          habilidadeSelectorSelected.push(val);
+        }
         updateHabilidadeSelectorCount();
         habilidadeSelectorCustomInput.value = '';
       }
@@ -19070,7 +19102,7 @@
       habilidadeSelectorConfirmBtn.addEventListener('click', function () {
         var qi = habilidadeSelectorQuestionIndex;
         if (qi >= 0 && qi < gabaritoQuestoesItens.length) {
-          gabaritoQuestoesItens[qi].habilidade = habilidadeSelectorSelected.length > 0 ? habilidadeSelectorSelected[0] : '';
+          gabaritoQuestoesItens[qi].habilidade = joinHabilidadeList(habilidadeSelectorSelected);
           renderDisciplinasHabilidadesEditor();
           renderA4LayoutEditor();
           markGabaritoPendingChanges();
