@@ -298,6 +298,57 @@
     var alunosDataElement = document.getElementById('adminAvaliacoesAlunosData');
     var disciplinasDataElement = document.getElementById('adminAvaliacoesDisciplinasData');
     var defaultGabaritoDataElement = document.getElementById('adminAvaliacoesDefaultGabaritoData');
+    var avaliacoesCatalogDataElement = document.getElementById('adminAvaliacoesCatalogData');
+    var turmasDataElement = document.getElementById('adminAvaliacoesTurmasData');
+    var reportOpenButton = document.getElementById('adminAvaliacoesOpenReportBtn');
+    var reportModalElement = document.getElementById('adminAvaliacoesReportModal');
+    var reportTypeSelect = document.getElementById('adminAvaliacoesReportType');
+    var reportCriticalThresholdSelect = document.getElementById('adminAvaliacoesReportCriticalThreshold');
+    var reportGenerateButton = document.getElementById('adminAvaliacoesReportGenerateBtn');
+    var reportResetButton = document.getElementById('adminAvaliacoesReportResetBtn');
+    var reportBackButton = document.getElementById('adminAvaliacoesReportBackBtn');
+    var reportPrintButton = document.getElementById('adminAvaliacoesReportPrintBtn');
+    var reportStatusElement = document.getElementById('adminAvaliacoesReportStatus');
+    var reportSummaryElement = document.getElementById('adminAvaliacoesReportSummary');
+    var reportEvaluationSummaryElement = document.getElementById('adminAvaliacoesReportEvaluationSummary');
+    var reportEvaluationCountElement = document.getElementById('adminAvaliacoesReportEvaluationCount');
+    var reportFiltersSummaryElement = document.getElementById('adminAvaliacoesReportFiltersSummary');
+    var reportFiltersCountElement = document.getElementById('adminAvaliacoesReportFiltersCount');
+    var reportFilterGroupsSummaryElement = document.getElementById('adminAvaliacoesReportFilterGroupsSummary');
+    var reportFiltersStageElement = document.getElementById('adminAvaliacoesReportFiltersStage');
+    var reportResultsStageElement = document.getElementById('adminAvaliacoesReportResultsStage');
+    var reportGeneratedMetaElement = document.getElementById('adminAvaliacoesReportGeneratedMeta');
+    var reportRoot = document.getElementById('adminAvaliacoesReportRoot');
+    var reportOpenSelectionButton = document.getElementById('adminAvaliacoesReportOpenSelectionBtn');
+    var reportOpenFiltersButton = document.getElementById('adminAvaliacoesReportOpenFiltersBtn');
+    var reportSelectionModalElement = document.getElementById('adminAvaliacoesReportSelectionModal');
+    var reportFiltersModalElement = document.getElementById('adminAvaliacoesReportFiltersPickerModal');
+    var reportFilterOptionsModalElement = document.getElementById('adminAvaliacoesReportFilterOptionsModal');
+    var reportFilterOptionsModalLabel = document.getElementById('adminAvaliacoesReportFilterOptionsModalLabel');
+    var reportFilterOptionsModalSummary = document.getElementById('adminAvaliacoesReportFilterOptionsModalSummary');
+    var reportFilterOptionsSearchInput = document.getElementById('adminAvaliacoesReportFilterOptionsSearch');
+    var reportFilterOptionsList = document.getElementById('adminAvaliacoesReportFilterOptionsList');
+    var reportEvaluationSearchInput = document.getElementById('adminAvaliacoesReportEvaluationSearch');
+    var reportEvaluationList = document.getElementById('adminAvaliacoesReportEvaluationList');
+    var reportSelectAllButton = document.getElementById('adminAvaliacoesReportSelectAllBtn');
+    var reportClearAllButton = document.getElementById('adminAvaliacoesReportClearAllBtn');
+    var reportSelectionSelectAllButton = document.getElementById('adminAvaliacoesReportSelectionSelectAllBtn');
+    var reportSelectionClearButton = document.getElementById('adminAvaliacoesReportSelectionClearBtn');
+    var reportTurmaSearchInput = document.getElementById('adminAvaliacoesReportTurmaSearch');
+    var reportTurmaList = document.getElementById('adminAvaliacoesReportTurmaList');
+    var reportDisciplinaSearchInput = document.getElementById('adminAvaliacoesReportDisciplinaSearch');
+    var reportDisciplinaList = document.getElementById('adminAvaliacoesReportDisciplinaList');
+    var reportHabilidadeSearchInput = document.getElementById('adminAvaliacoesReportHabilidadeSearch');
+    var reportHabilidadeList = document.getElementById('adminAvaliacoesReportHabilidadeList');
+    var reportAlunoSearchInput = document.getElementById('adminAvaliacoesReportAlunoSearch');
+    var reportAlunoList = document.getElementById('adminAvaliacoesReportAlunoList');
+    var reportAnoList = document.getElementById('adminAvaliacoesReportAnoList');
+    var reportBimestreList = document.getElementById('adminAvaliacoesReportBimestreList');
+    var reportCicloList = document.getElementById('adminAvaliacoesReportCicloList');
+    var reportPresenceList = document.getElementById('adminAvaliacoesReportPresenceList');
+    var reportFlagList = document.getElementById('adminAvaliacoesReportFlagList');
+    var reportFiltersClearButton = document.getElementById('adminAvaliacoesReportFiltersClearBtn');
+    var reportFilterOptionsClearButton = document.getElementById('adminAvaliacoesReportFilterOptionsClearBtn');
     var habilidadeSelectorModalElement = document.getElementById('adminAvaliacaoHabilidadeSelectorModal');
     var habilidadeSelectorSearch = document.getElementById('adminHabilidadeSelectorSearch');
     var habilidadeSelectorList = document.getElementById('adminHabilidadeSelectorList');
@@ -322,6 +373,8 @@
     var habilidadeSelectorClearAnoBtn = document.getElementById('adminHabilidadeSelectorClearAnoFilter');
     var alunosOptionsRaw = [];
     var disciplinasOptionsRaw = [];
+    var avaliacoesCatalogRaw = [];
+    var turmasOptionsRaw = [];
     var defaultGabaritoPreset = null;
 
     if (alunosDataElement && String(alunosDataElement.textContent || '').trim() !== '') {
@@ -362,6 +415,28 @@
         }
       } catch (error) {
         defaultGabaritoPreset = null;
+      }
+    }
+
+    if (avaliacoesCatalogDataElement && String(avaliacoesCatalogDataElement.textContent || '').trim() !== '') {
+      try {
+        var parsedAvaliacoesCatalog = JSON.parse(String(avaliacoesCatalogDataElement.textContent || '[]'));
+        if (Array.isArray(parsedAvaliacoesCatalog)) {
+          avaliacoesCatalogRaw = parsedAvaliacoesCatalog;
+        }
+      } catch (error) {
+        avaliacoesCatalogRaw = [];
+      }
+    }
+
+    if (turmasDataElement && String(turmasDataElement.textContent || '').trim() !== '') {
+      try {
+        var parsedTurmasCatalog = JSON.parse(String(turmasDataElement.textContent || '[]'));
+        if (Array.isArray(parsedTurmasCatalog)) {
+          turmasOptionsRaw = parsedTurmasCatalog;
+        }
+      } catch (error) {
+        turmasOptionsRaw = [];
       }
     }
 
@@ -411,10 +486,78 @@
       return !!item;
     });
 
+    var turmasOptions = turmasOptionsRaw.map(function (item) {
+      if (!item || typeof item !== 'object') {
+        return null;
+      }
+
+      var id = Number(item.id || 0);
+      var nome = String(item.nome || item.turma || '').trim();
+      var anoEscolar = String(item.ano_escolar || '').trim();
+      var anoLetivo = Number(item.ano_letivo || 0);
+
+      if (id <= 0 || nome === '') {
+        return null;
+      }
+
+      return {
+        id: id,
+        nome: nome,
+        anoEscolar: anoEscolar,
+        anoLetivo: anoLetivo,
+      };
+    }).filter(function (item) {
+      return !!item;
+    });
+
+    var avaliacoesCatalog = avaliacoesCatalogRaw.map(function (item) {
+      if (!item || typeof item !== 'object') {
+        return null;
+      }
+
+      var avaliacaoId = Number(item.id || 0);
+      var avaliacaoNome = String(item.nome || '').trim();
+      if (avaliacaoId <= 0 || avaliacaoNome === '') {
+        return null;
+      }
+
+      var gabaritoConfig = parseGabaritoConfig(item.gabarito);
+      var turmaIds = Array.isArray(item.turmas_relacionadas_ids) ? item.turmas_relacionadas_ids.map(Number).filter(Boolean) : [];
+      var alunoIds = Array.isArray(item.alunos_relacionados_ids) ? item.alunos_relacionados_ids.map(Number).filter(Boolean) : [];
+      var turmaLabels = Array.isArray(item.turmas_relacionadas_nomes)
+        ? item.turmas_relacionadas_nomes.map(function (label) { return String(label || '').trim(); }).filter(Boolean)
+        : [];
+
+      return {
+        id: avaliacaoId,
+        nome: avaliacaoNome,
+        isRecuperacao: Number(item.is_recuperacao || 0) === 1,
+        ciclo: Number(item.ciclo || 0),
+        isSimulado: Number(item.is_simulado || 0) === 1,
+        bimestre: Number(item.bimestre || 0),
+        aplicacao: String(item.aplicacao || '').trim(),
+        autorId: Number(item.autor_id || 0),
+        autorNome: String(item.autor_nome || '').trim(),
+        descricao: String(item.descricao || '').trim(),
+        gabaritoRaw: String(item.gabarito || '').trim(),
+        gabaritoConfig: gabaritoConfig,
+        turmaIds: turmaIds,
+        turmaLabels: turmaLabels,
+        alunoIds: alunoIds,
+        hasExplicitAlunos: item.alunos_relacionados_explicit === true || Number(item.alunos_relacionados_explicit || 0) === 1,
+      };
+    }).filter(function (item) {
+      return !!item;
+    });
+
     var formModalInstance = null;
     var turmasModalInstance = null;
     var alunosModalInstance = null;
     var aplicadoresModalInstance = null;
+    var reportModalInstance = null;
+    var reportSelectionModalInstance = null;
+    var reportFiltersModalInstance = null;
+    var reportFilterOptionsModalInstance = null;
     var dashboardModalInstance = null;
     var deleteConfirmModalInstance = null;
     var correcaoModalInstance = null;
@@ -552,6 +695,45 @@
     var selectedImpressaoTurmasIds = [];
     var impressaoTurmasSelectionInitialized = false;
     var impressaoBaseStatusMessage = impressaoStatus ? String(impressaoStatus.textContent || '').trim() : '';
+    var reportDataCache = {};
+    var reportCurrentRows = [];
+    var reportCurrentSummary = null;
+    var reportGeneratedAt = '';
+    var reportPrintSnapshot = null;
+    var reportFiltersState = {
+      avaliacaoIds: [],
+      turmaValues: ['all'],
+      disciplinaValues: ['all'],
+      habilidadeValues: ['all'],
+      alunoValues: ['all'],
+      anoValues: ['all'],
+      bimestreValues: ['all'],
+      cicloValues: ['all'],
+      presenceValues: ['all'],
+      flagValues: ['all'],
+    };
+    var reportDynamicOptions = {
+      turmas: [],
+      disciplinas: [],
+      habilidades: [],
+      alunos: [],
+    };
+    var reportTypeTabMap = {
+      completo: 'resumo',
+      resumo: 'resumo',
+      turmas: 'turmas',
+      disciplinas: 'disciplinas',
+      habilidades: 'habilidades',
+      estudantes: 'alunos',
+      criticos: 'criticos',
+    };
+    var reportFilterOptionPickerState = {
+      groupKey: '',
+    };
+    var reportViewState = {
+      stage: 'filters',
+      isDirty: false,
+    };
     var qrCodeLibraryPromise = null;
     var qrScanLibraryPromise = null;
     var gabaritoTemplateMarkers = null;
@@ -842,6 +1024,42 @@
       document.body.appendChild(statsSkillsModalElement);
     }
 
+    if (reportModalElement && reportModalElement.parentElement !== document.body) {
+      var existingReportModal = document.body.querySelector('#adminAvaliacoesReportModal');
+      if (existingReportModal && existingReportModal !== reportModalElement) {
+        existingReportModal.remove();
+      }
+
+      document.body.appendChild(reportModalElement);
+    }
+
+    if (reportSelectionModalElement && reportSelectionModalElement.parentElement !== document.body) {
+      var existingReportSelectionModal = document.body.querySelector('#adminAvaliacoesReportSelectionModal');
+      if (existingReportSelectionModal && existingReportSelectionModal !== reportSelectionModalElement) {
+        existingReportSelectionModal.remove();
+      }
+
+      document.body.appendChild(reportSelectionModalElement);
+    }
+
+    if (reportFiltersModalElement && reportFiltersModalElement.parentElement !== document.body) {
+      var existingReportFiltersModal = document.body.querySelector('#adminAvaliacoesReportFiltersPickerModal');
+      if (existingReportFiltersModal && existingReportFiltersModal !== reportFiltersModalElement) {
+        existingReportFiltersModal.remove();
+      }
+
+      document.body.appendChild(reportFiltersModalElement);
+    }
+
+    if (reportFilterOptionsModalElement && reportFilterOptionsModalElement.parentElement !== document.body) {
+      var existingReportFilterOptionsModal = document.body.querySelector('#adminAvaliacoesReportFilterOptionsModal');
+      if (existingReportFilterOptionsModal && existingReportFilterOptionsModal !== reportFilterOptionsModalElement) {
+        existingReportFilterOptionsModal.remove();
+      }
+
+      document.body.appendChild(reportFilterOptionsModalElement);
+    }
+
     if (tableFiltersModalElement && tableFiltersModalElement.parentElement !== document.body) {
       var existingTableFiltersModal = document.body.querySelector('#adminAvaliacoesFiltersModal');
       if (existingTableFiltersModal && existingTableFiltersModal !== tableFiltersModalElement) {
@@ -871,6 +1089,30 @@
 
     if (aplicadoresModalElement && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
       aplicadoresModalInstance = bootstrap.Modal.getOrCreateInstance(aplicadoresModalElement, {
+        backdrop: false,
+      });
+    }
+
+    if (reportModalElement && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+      reportModalInstance = bootstrap.Modal.getOrCreateInstance(reportModalElement, {
+        backdrop: 'static',
+      });
+    }
+
+    if (reportSelectionModalElement && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+      reportSelectionModalInstance = bootstrap.Modal.getOrCreateInstance(reportSelectionModalElement, {
+        backdrop: false,
+      });
+    }
+
+    if (reportFiltersModalElement && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+      reportFiltersModalInstance = bootstrap.Modal.getOrCreateInstance(reportFiltersModalElement, {
+        backdrop: false,
+      });
+    }
+
+    if (reportFilterOptionsModalElement && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+      reportFilterOptionsModalInstance = bootstrap.Modal.getOrCreateInstance(reportFilterOptionsModalElement, {
         backdrop: false,
       });
     }
@@ -13023,6 +13265,2385 @@
       applyAvaliacaoStatsActiveTab(activeTab);
     }
 
+    function buildAvaliacaoReportMeta(avaliacao) {
+      var safeAvaliacao = avaliacao && typeof avaliacao === 'object' ? avaliacao : null;
+      if (!safeAvaliacao) {
+        return {
+          questionMetaMap: {},
+          disciplinas: [],
+          habilidades: [],
+          totalQuestoes: 0,
+        };
+      }
+
+      if (safeAvaliacao.reportMeta && typeof safeAvaliacao.reportMeta === 'object') {
+        return safeAvaliacao.reportMeta;
+      }
+
+      var config = safeAvaliacao.gabaritoConfig || parseGabaritoConfig(safeAvaliacao.gabaritoRaw) || null;
+      var itens = [];
+      var alternativasCount = 0;
+      var questionMetaMap = {};
+      var disciplinasMap = {};
+      var habilidadesMap = {};
+
+      if (config) {
+        itens = sanitizeGabaritoQuestoesItens(
+          config.itens,
+          config.questoes || 1,
+          config.alternativas || 4,
+          config.respostas || {}
+        );
+        alternativasCount = getMaxAlternativasFromQuestoesItens(itens);
+      }
+
+      itens.forEach(function (item, index) {
+        var safeItem = sanitizeQuestaoItem(item);
+        var disciplinaNome = getStatsMetaLabel(getQuestaoDisciplinaNome(safeItem), 'Disciplina não informada');
+        var habilidadeCodigo = getStatsMetaLabel(safeItem.habilidade, 'Habilidade não informada');
+        var habilidadeNome = getStatsSkillDisplayLabel(safeItem.habilidade, 'Habilidade não informada');
+        var questionNumber = index + 1;
+        var disciplinaKey = normalizeSearchValue(disciplinaNome);
+        var habilidadeKey = normalizeSearchValue(habilidadeNome);
+
+        questionMetaMap[String(questionNumber)] = {
+          questionNumber: questionNumber,
+          tipo: normalizeQuestaoTipo(safeItem.tipo),
+          tipoLabel: getQuestaoTipoLabel(safeItem.tipo),
+          peso: sanitizeQuestaoPeso(safeItem.peso, 1),
+          disciplina: disciplinaNome,
+          disciplinaKey: disciplinaKey,
+          habilidadeCodigo: habilidadeCodigo,
+          habilidade: habilidadeNome,
+          habilidadeKey: habilidadeKey,
+          correta: String(safeItem.correta || '').trim().toUpperCase(),
+          alternativas: getQuestaoAlternativaLabels(safeItem, alternativasCount),
+          enunciado: richTextToPlainText(safeItem.enunciado || ''),
+          anulada: safeItem.anulada === true,
+        };
+
+        if (disciplinaKey !== '') {
+          disciplinasMap[disciplinaKey] = {
+            value: disciplinaKey,
+            label: disciplinaNome,
+          };
+        }
+        if (habilidadeKey !== '') {
+          habilidadesMap[habilidadeKey] = {
+            value: habilidadeKey,
+            label: habilidadeNome,
+          };
+        }
+      });
+
+      safeAvaliacao.reportMeta = {
+        questionMetaMap: questionMetaMap,
+        disciplinas: Object.keys(disciplinasMap).map(function (key) { return disciplinasMap[key]; }).sort(function (left, right) {
+          return String(left.label || '').localeCompare(String(right.label || ''), 'pt-BR', { sensitivity: 'base' });
+        }),
+        habilidades: Object.keys(habilidadesMap).map(function (key) { return habilidadesMap[key]; }).sort(function (left, right) {
+          return String(left.label || '').localeCompare(String(right.label || ''), 'pt-BR', { sensitivity: 'base' });
+        }),
+        totalQuestoes: itens.length,
+      };
+
+      return safeAvaliacao.reportMeta;
+    }
+
+    function buildAvaliacaoReportRoster(avaliacao) {
+      var safeAvaliacao = avaliacao && typeof avaliacao === 'object' ? avaliacao : null;
+      if (!safeAvaliacao) {
+        return [];
+      }
+
+      if (Array.isArray(safeAvaliacao.reportRoster)) {
+        return safeAvaliacao.reportRoster.slice();
+      }
+
+      var turmaIds = Array.isArray(safeAvaliacao.turmaIds) ? safeAvaliacao.turmaIds.slice() : [];
+      var alunoIds = Array.isArray(safeAvaliacao.alunoIds) ? safeAvaliacao.alunoIds.slice() : [];
+      if (!turmaIds.length) {
+        safeAvaliacao.reportRoster = [];
+        return [];
+      }
+
+      var alunosDaAvaliacao = alunosOptions.filter(function (aluno) {
+        return turmaIds.indexOf(Number(aluno && aluno.turmaId || 0)) !== -1;
+      });
+
+      if (alunoIds.length) {
+        alunosDaAvaliacao = alunosDaAvaliacao.filter(function (aluno) {
+          return alunoIds.indexOf(Number(aluno && aluno.id || 0)) !== -1;
+        });
+      }
+
+      var alunosPorTurma = {};
+      alunosDaAvaliacao.forEach(function (aluno) {
+        var turmaId = Number(aluno && aluno.turmaId || 0);
+        if (turmaId <= 0) {
+          return;
+        }
+        if (!alunosPorTurma[turmaId]) {
+          alunosPorTurma[turmaId] = [];
+        }
+        alunosPorTurma[turmaId].push(aluno);
+      });
+
+      var roster = [];
+      Object.keys(alunosPorTurma).sort(function (leftKey, rightKey) {
+        var leftTurma = alunosPorTurma[leftKey] && alunosPorTurma[leftKey][0]
+          ? String(alunosPorTurma[leftKey][0].turmaNome || '')
+          : '';
+        var rightTurma = alunosPorTurma[rightKey] && alunosPorTurma[rightKey][0]
+          ? String(alunosPorTurma[rightKey][0].turmaNome || '')
+          : '';
+        return leftTurma.localeCompare(rightTurma, 'pt-BR', { sensitivity: 'base' });
+      }).forEach(function (turmaKey) {
+        var turmaId = Number(turmaKey || 0);
+        var alunosDaTurma = Array.isArray(alunosPorTurma[turmaKey]) ? alunosPorTurma[turmaKey].slice() : [];
+        alunosDaTurma.sort(function (left, right) {
+          var nomeComparison = String(left && left.nome || '').localeCompare(String(right && right.nome || ''), 'pt-BR', { sensitivity: 'base' });
+          if (nomeComparison !== 0) {
+            return nomeComparison;
+          }
+          return Number(left && left.id || 0) - Number(right && right.id || 0);
+        });
+
+        alunosDaTurma.forEach(function (aluno, index) {
+          var numeracao = index + 1;
+          roster.push({
+            avaliacaoId: safeAvaliacao.id,
+            avaliacaoNome: safeAvaliacao.nome,
+            aplicacao: safeAvaliacao.aplicacao,
+            alunoId: Number(aluno && aluno.id || 0),
+            alunoNome: String(aluno && aluno.nome || '').trim(),
+            turmaId: turmaId,
+            turmaNome: String(aluno && aluno.turmaNome || '').trim() || ('Turma #' + turmaId),
+            numeracao: numeracao,
+            numeracaoLabel: 'Nº ' + String(numeracao).padStart(2, '0'),
+          });
+        });
+      });
+
+      safeAvaliacao.reportRoster = roster.slice();
+      return roster;
+    }
+
+    function collectReportSelectedEvaluationIds() {
+      return Array.isArray(reportFiltersState.avaliacaoIds) ? reportFiltersState.avaliacaoIds.slice().filter(function (value) {
+        return Number(value || 0) > 0;
+      }) : [];
+    }
+
+    function setAvaliacaoReportStatus(message, tone) {
+      if (!reportStatusElement) {
+        return;
+      }
+
+      reportStatusElement.className = 'small text-secondary';
+      if (tone === 'danger') {
+        reportStatusElement.className = 'small text-danger';
+      } else if (tone === 'success') {
+        reportStatusElement.className = 'small text-success';
+      }
+      reportStatusElement.textContent = String(message || '').trim();
+    }
+
+    function syncAvaliacaoReportHeaderButtons() {
+      var isResultsStage = reportViewState.stage === 'results';
+
+      if (reportBackButton) {
+        reportBackButton.classList.toggle('d-none', !isResultsStage);
+      }
+      if (reportPrintButton) {
+        reportPrintButton.classList.toggle('d-none', !isResultsStage);
+        reportPrintButton.disabled = !isResultsStage || !reportPrintSnapshot || reportViewState.isDirty === true;
+      }
+    }
+
+    function setAvaliacaoReportStage(stageKey) {
+      var safeStage = String(stageKey || '').trim() === 'results' ? 'results' : 'filters';
+      reportViewState.stage = safeStage;
+
+      if (reportFiltersStageElement) {
+        reportFiltersStageElement.hidden = safeStage !== 'filters';
+        reportFiltersStageElement.classList.toggle('is-active', safeStage === 'filters');
+      }
+      if (reportResultsStageElement) {
+        reportResultsStageElement.hidden = safeStage !== 'results';
+        reportResultsStageElement.classList.toggle('is-active', safeStage === 'results');
+      }
+
+      syncAvaliacaoReportHeaderButtons();
+    }
+
+    function renderAvaliacaoReportGeneratedMeta() {
+      if (!reportGeneratedMetaElement) {
+        return;
+      }
+
+      if (reportCurrentSummary && reportViewState.isDirty === true) {
+        reportGeneratedMetaElement.textContent = 'Os filtros foram alterados. Gere novamente para atualizar a leitura consolidada.';
+        return;
+      }
+
+      if (reportCurrentSummary && String(reportGeneratedAt || '').trim() !== '') {
+        reportGeneratedMetaElement.textContent = 'Emitido em ' + String(reportGeneratedAt).trim() + '.';
+        return;
+      }
+
+      reportGeneratedMetaElement.textContent = 'Gere o relatório para visualizar a leitura consolidada.';
+    }
+
+    function renderAvaliacaoReportWaitingState(title, text) {
+      if (!(reportRoot instanceof HTMLElement)) {
+        return;
+      }
+
+      reportRoot.innerHTML = '<div class="admin-avaliacao-stats-empty">'
+        + '<div class="admin-avaliacao-stats-empty-title">' + escapeHtml(String(title || 'Relatório pedagógico consolidado')) + '</div>'
+        + '<div class="admin-avaliacao-stats-empty-text">' + escapeHtml(String(text || 'Gere o relatório para abrir os comparativos consolidados.')) + '</div>'
+        + '</div>';
+    }
+
+    function clearAvaliacaoReportOutput(title, text) {
+      reportCurrentRows = [];
+      reportCurrentSummary = null;
+      reportGeneratedAt = '';
+      reportPrintSnapshot = null;
+      reportViewState.isDirty = false;
+      renderAvaliacaoReportGeneratedMeta();
+      syncAvaliacaoReportHeaderButtons();
+      renderAvaliacaoReportWaitingState(title, text);
+    }
+
+    function markAvaliacaoReportAsDirty(message) {
+      if (reportCurrentSummary) {
+        reportViewState.isDirty = true;
+        reportPrintSnapshot = null;
+        renderAvaliacaoReportGeneratedMeta();
+        syncAvaliacaoReportHeaderButtons();
+      }
+
+      if (message) {
+        setAvaliacaoReportStatus(message, '');
+      }
+    }
+
+    function getAvaliacaoReportDatasetOptions(datasetKey) {
+      if (!(reportRoot instanceof HTMLElement)) {
+        return [];
+      }
+
+      try {
+        var parsed = JSON.parse(String(reportRoot.dataset[datasetKey] || '[]'));
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (error) {
+        return [];
+      }
+    }
+
+    function getAvaliacaoReportOptionLabels(datasetKey, values) {
+      var safeValues = normalizeStatsFilterValues(values, Array.isArray(values) ? values : [values]);
+      if (!hasActiveStatsFilterValues(safeValues)) {
+        return [];
+      }
+
+      var options = getAvaliacaoReportDatasetOptions(datasetKey);
+      return safeValues.map(function (safeValue) {
+        var match = options.find(function (option) {
+          return String(option && option.value || '') === safeValue;
+        });
+        return String(match && match.label || '').trim();
+      }).filter(Boolean);
+    }
+
+    function getAvaliacaoReportCycleLabel(value) {
+      var safeValue = Number(value || 0);
+      if (safeValue === 1) {
+        return '1º ciclo';
+      }
+      if (safeValue === 2) {
+        return '2º ciclo';
+      }
+      return 'Sem ciclo informado';
+    }
+
+    function getAvaliacaoReportBimestreLabel(value) {
+      var safeValue = Number(value || 0);
+      if (safeValue >= 1 && safeValue <= 4) {
+        return String(safeValue) + 'º bimestre';
+      }
+      return 'Sem bimestre informado';
+    }
+
+    function buildAvaliacaoReportFilterSummaryChips(includeEvaluationChip) {
+      var chips = [];
+      var selectedEvaluationIds = collectReportSelectedEvaluationIds();
+      if (includeEvaluationChip !== false && selectedEvaluationIds.length) {
+        chips.push('<span class="admin-avaliacao-selector-chip">' + escapeHtml(String(selectedEvaluationIds.length) + ' avaliação(ões)') + '</span>');
+      }
+
+      getAvaliacaoReportOptionLabels('reportTurmaOptions', reportFiltersState.turmaValues).forEach(function (label) {
+        chips.push(renderStatsFilterChip(label, 'Turma'));
+      });
+      getAvaliacaoReportOptionLabels('reportDisciplinaOptions', reportFiltersState.disciplinaValues).forEach(function (label) {
+        chips.push(renderStatsFilterChip(label, 'Disciplina'));
+      });
+      getAvaliacaoReportOptionLabels('reportHabilidadeOptions', reportFiltersState.habilidadeValues).forEach(function (label) {
+        chips.push(renderStatsFilterChip(label, 'Habilidade'));
+      });
+      getAvaliacaoReportOptionLabels('reportAlunoOptions', reportFiltersState.alunoValues).forEach(function (label) {
+        chips.push(renderStatsFilterChip(label, 'Estudante'));
+      });
+      getAvaliacaoReportOptionLabels('reportAnoOptions', reportFiltersState.anoValues).forEach(function (label) {
+        chips.push(renderStatsFilterChip(label, 'Ano'));
+      });
+      getAvaliacaoReportOptionLabels('reportBimestreOptions', reportFiltersState.bimestreValues).forEach(function (label) {
+        chips.push(renderStatsFilterChip(label, 'Bimestre'));
+      });
+      getAvaliacaoReportOptionLabels('reportCicloOptions', reportFiltersState.cicloValues).forEach(function (label) {
+        chips.push(renderStatsFilterChip(label, 'Ciclo'));
+      });
+      getAvaliacaoReportOptionLabels('reportPresenceOptions', reportFiltersState.presenceValues).forEach(function (label) {
+        chips.push(renderStatsFilterChip(label, 'Presença'));
+      });
+      getAvaliacaoReportOptionLabels('reportFlagOptions', reportFiltersState.flagValues).forEach(function (label) {
+        chips.push(renderStatsFilterChip(label, 'Marcador'));
+      });
+
+      return chips;
+    }
+
+    function countAvaliacaoReportActiveFilters() {
+      var total = 0;
+      [
+        reportFiltersState.turmaValues,
+        reportFiltersState.disciplinaValues,
+        reportFiltersState.habilidadeValues,
+        reportFiltersState.alunoValues,
+        reportFiltersState.anoValues,
+        reportFiltersState.bimestreValues,
+        reportFiltersState.cicloValues,
+        reportFiltersState.presenceValues,
+        reportFiltersState.flagValues,
+      ].forEach(function (values) {
+        if (hasActiveStatsFilterValues(values)) {
+          total += normalizeStatsFilterValues(values, Array.isArray(values) ? values : [values]).filter(function (value) {
+            return value !== 'all';
+          }).length;
+        }
+      });
+
+      return total;
+    }
+
+    function renderAvaliacaoReportSummaryChips() {
+      if (!reportSummaryElement) {
+        return;
+      }
+
+      var chips = buildAvaliacaoReportFilterSummaryChips(true);
+
+      reportSummaryElement.innerHTML = chips.length
+        ? chips.join('')
+        : '<span class="admin-avaliacao-selector-chip is-muted">Nenhum recorte ativo</span>';
+    }
+
+    function renderAvaliacaoReportSelectionSummary() {
+      if (!reportEvaluationSummaryElement) {
+        return;
+      }
+
+      var selectedIds = collectReportSelectedEvaluationIds();
+      var selectedAvaliacoes = avaliacoesCatalog.filter(function (avaliacao) {
+        return selectedIds.indexOf(Number(avaliacao && avaliacao.id || 0)) !== -1;
+      });
+
+      if (reportEvaluationCountElement) {
+        reportEvaluationCountElement.textContent = String(selectedAvaliacoes.length);
+      }
+
+      if (!selectedAvaliacoes.length) {
+        reportEvaluationSummaryElement.innerHTML = '<div class="small text-secondary">Nenhuma avaliação selecionada.</div>';
+        return;
+      }
+
+      var grouped = {};
+      selectedAvaliacoes.forEach(function (avaliacao) {
+        var groupKey = String(avaliacao.ciclo || 0) + '|' + String(avaliacao.bimestre || 0);
+        if (!grouped[groupKey]) {
+          grouped[groupKey] = {
+            ciclo: Number(avaliacao.ciclo || 0),
+            bimestre: Number(avaliacao.bimestre || 0),
+            label: getAvaliacaoReportCycleLabel(avaliacao.ciclo) + ' • ' + getAvaliacaoReportBimestreLabel(avaliacao.bimestre),
+            items: [],
+          };
+        }
+        grouped[groupKey].items.push(avaliacao);
+      });
+
+      var summaryGroups = Object.keys(grouped).map(function (key) {
+        return grouped[key];
+      }).sort(function (left, right) {
+        if (left.ciclo !== right.ciclo) {
+          return left.ciclo - right.ciclo;
+        }
+        if (left.bimestre !== right.bimestre) {
+          return left.bimestre - right.bimestre;
+        }
+        return String(left.label || '').localeCompare(String(right.label || ''), 'pt-BR', { sensitivity: 'base' });
+      });
+
+      reportEvaluationSummaryElement.innerHTML = summaryGroups.map(function (group) {
+        var chips = group.items.slice(0, 4).map(function (avaliacao) {
+          return '<span class="admin-avaliacao-selector-chip">' + escapeHtml(avaliacao.nome) + '</span>';
+        }).join('');
+        var extra = group.items.length > 4
+          ? '<span class="admin-avaliacao-selector-chip is-muted">+' + escapeHtml(String(group.items.length - 4)) + '</span>'
+          : '';
+        return '<div class="admin-avaliacoes-report-mini-group">'
+          + '<div class="admin-avaliacoes-report-mini-group-title">' + escapeHtml(group.label) + '</div>'
+          + '<div class="admin-avaliacao-selector-chip-list">' + chips + extra + '</div>'
+          + '</div>';
+      }).join('');
+    }
+
+    function renderAvaliacaoReportFiltersSummary() {
+      if (!reportFiltersSummaryElement) {
+        return;
+      }
+
+      var chips = buildAvaliacaoReportFilterSummaryChips(false);
+      if (reportFiltersCountElement) {
+        reportFiltersCountElement.textContent = String(countAvaliacaoReportActiveFilters());
+      }
+
+      reportFiltersSummaryElement.innerHTML = chips.length
+        ? '<div class="admin-avaliacao-selector-chip-list">' + chips.join('') + '</div>'
+        : '<div class="small text-secondary">Nenhum recorte adicional ativo.</div>';
+    }
+
+    function getAvaliacaoReportFilterGroupDefinitions() {
+      var staticOptions = getAvaliacaoReportStaticOptions();
+      return {
+        ReportTurma: {
+          key: 'ReportTurma',
+          stateKey: 'turmaValues',
+          datasetKey: 'reportTurmaOptions',
+          title: 'Turmas',
+          description: 'Filtre pelas turmas vinculadas ao conjunto de avaliações selecionado.',
+          defaultLabel: 'Todas as turmas',
+          searchPlaceholder: 'Buscar turma...',
+          options: reportDynamicOptions.turmas,
+        },
+        ReportAluno: {
+          key: 'ReportAluno',
+          stateKey: 'alunoValues',
+          datasetKey: 'reportAlunoOptions',
+          title: 'Estudantes por turma',
+          description: 'Estudantes organizados por turma para seleção mais precisa.',
+          defaultLabel: 'Todos os estudantes',
+          searchPlaceholder: 'Buscar estudante...',
+          options: reportDynamicOptions.alunos,
+          groupedByTurma: true,
+        },
+        ReportDisciplina: {
+          key: 'ReportDisciplina',
+          stateKey: 'disciplinaValues',
+          datasetKey: 'reportDisciplinaOptions',
+          title: 'Componentes curriculares',
+          description: 'Restrinja a leitura pedagógica a disciplinas específicas.',
+          defaultLabel: 'Todos os componentes',
+          searchPlaceholder: 'Buscar componente...',
+          options: reportDynamicOptions.disciplinas,
+        },
+        ReportHabilidade: {
+          key: 'ReportHabilidade',
+          stateKey: 'habilidadeValues',
+          datasetKey: 'reportHabilidadeOptions',
+          title: 'Habilidades',
+          description: 'Aplique recorte fino por habilidade avaliada.',
+          defaultLabel: 'Todas as habilidades',
+          searchPlaceholder: 'Buscar habilidade...',
+          options: reportDynamicOptions.habilidades,
+        },
+        ReportAno: {
+          key: 'ReportAno',
+          stateKey: 'anoValues',
+          datasetKey: 'reportAnoOptions',
+          title: 'Anos de aplicação',
+          description: 'Separe as leituras por ano de aplicação das avaliações.',
+          defaultLabel: 'Todos os anos',
+          searchPlaceholder: 'Buscar ano...',
+          options: staticOptions.anos,
+        },
+        ReportBimestre: {
+          key: 'ReportBimestre',
+          stateKey: 'bimestreValues',
+          datasetKey: 'reportBimestreOptions',
+          title: 'Bimestres',
+          description: 'Compare o recorte por bimestre.',
+          defaultLabel: 'Todos os bimestres',
+          searchPlaceholder: 'Buscar bimestre...',
+          options: staticOptions.bimestres,
+        },
+        ReportCiclo: {
+          key: 'ReportCiclo',
+          stateKey: 'cicloValues',
+          datasetKey: 'reportCicloOptions',
+          title: 'Ciclos',
+          description: 'Isole leituras por ciclo.',
+          defaultLabel: 'Todos os ciclos',
+          searchPlaceholder: 'Buscar ciclo...',
+          options: staticOptions.ciclos,
+        },
+        ReportPresence: {
+          key: 'ReportPresence',
+          stateKey: 'presenceValues',
+          datasetKey: 'reportPresenceOptions',
+          title: 'Presença na avaliação',
+          description: 'Pendências, ausências, correções e gabaritos zerados.',
+          defaultLabel: 'Todos os status',
+          searchPlaceholder: 'Buscar status...',
+          options: staticOptions.presencas,
+        },
+        ReportFlag: {
+          key: 'ReportFlag',
+          stateKey: 'flagValues',
+          datasetKey: 'reportFlagOptions',
+          title: 'Marcadores adicionais',
+          description: 'Recuperação, simulado, adaptada e outros marcadores.',
+          defaultLabel: 'Todos os marcadores',
+          searchPlaceholder: 'Buscar marcador...',
+          options: staticOptions.flags,
+        },
+      };
+    }
+
+    function getAvaliacaoReportFilterGroupDefinition(groupKey) {
+      var safeKey = String(groupKey || '').trim();
+      var definitions = getAvaliacaoReportFilterGroupDefinitions();
+      return definitions[safeKey] || null;
+    }
+
+    function renderAvaliacaoReportFilterGroupsSummary() {
+      if (!(reportFilterGroupsSummaryElement instanceof HTMLElement)) {
+        return;
+      }
+
+      var definitions = getAvaliacaoReportFilterGroupDefinitions();
+      var orderedKeys = ['ReportTurma', 'ReportAluno', 'ReportDisciplina', 'ReportHabilidade', 'ReportAno', 'ReportBimestre', 'ReportCiclo', 'ReportPresence', 'ReportFlag'];
+
+      reportFilterGroupsSummaryElement.innerHTML = orderedKeys.map(function (groupKey) {
+        var definition = definitions[groupKey];
+        if (!definition) {
+          return '';
+        }
+
+        var activeLabels = getAvaliacaoReportOptionLabels(definition.datasetKey, reportFiltersState[definition.stateKey]);
+        var visibleLabels = activeLabels.slice(0, 3);
+        var moreCount = activeLabels.length > visibleLabels.length ? activeLabels.length - visibleLabels.length : 0;
+
+        return '<section class="admin-avaliacoes-report-filter-hub-card">'
+          + '<div class="admin-avaliacoes-report-filter-hub-head">'
+          + '<div>'
+          + '<div class="admin-avaliacoes-report-filter-hub-title">' + escapeHtml(definition.title) + '</div>'
+          + '<div class="admin-avaliacoes-report-filter-hub-text">' + escapeHtml(definition.description) + '</div>'
+          + '</div>'
+          + '<span class="badge text-bg-light">' + escapeHtml(String(activeLabels.length)) + '</span>'
+          + '</div>'
+          + '<div class="admin-avaliacoes-report-filter-hub-body">'
+          + (visibleLabels.length
+            ? '<div class="admin-avaliacao-selector-chip-list">'
+              + visibleLabels.map(function (label) {
+                return '<span class="admin-avaliacao-selector-chip">' + escapeHtml(label) + '</span>';
+              }).join('')
+              + (moreCount > 0 ? '<span class="admin-avaliacao-selector-chip is-muted">+' + escapeHtml(String(moreCount)) + '</span>' : '')
+              + '</div>'
+            : '<div class="small text-secondary">' + escapeHtml(definition.defaultLabel) + '</div>')
+          + '</div>'
+          + '<div class="mt-3">'
+          + '<button type="button" class="btn btn-outline-primary btn-sm js-admin-avaliacao-report-open-filter-group" data-report-filter-group="' + escapeHtml(groupKey) + '">Selecionar opções</button>'
+          + '</div>'
+          + '</section>';
+      }).join('');
+    }
+
+    function renderAvaliacaoReportActiveFilterOptions() {
+      if (!(reportFilterOptionsList instanceof HTMLElement)) {
+        return;
+      }
+
+      var definition = getAvaliacaoReportFilterGroupDefinition(reportFilterOptionPickerState.groupKey);
+      if (!definition) {
+        reportFilterOptionsList.innerHTML = '<div class="small text-secondary">Nenhum grupo selecionado.</div>';
+        return;
+      }
+
+      if (reportFilterOptionsModalLabel) {
+        reportFilterOptionsModalLabel.textContent = definition.title;
+      }
+      if (reportFilterOptionsModalSummary) {
+        reportFilterOptionsModalSummary.textContent = definition.description;
+      }
+      if (reportFilterOptionsSearchInput) {
+        reportFilterOptionsSearchInput.placeholder = definition.searchPlaceholder;
+      }
+
+      if (definition.groupedByTurma === true) {
+        renderAvaliacaoReportAlunoCards(reportFilterOptionsList);
+      } else {
+        renderAvaliacaoReportCheckboxList(
+          reportFilterOptionsList,
+          definition.key,
+          definition.options,
+          reportFiltersState[definition.stateKey],
+          definition.defaultLabel
+        );
+      }
+
+      applyAvaliacaoReportOptionSearch(reportFilterOptionsList, reportFilterOptionsSearchInput ? reportFilterOptionsSearchInput.value : '');
+    }
+
+    function openAvaliacaoReportFilterOptionsModal(groupKey) {
+      var definition = getAvaliacaoReportFilterGroupDefinition(groupKey);
+      if (!definition || !reportFilterOptionsModalInstance) {
+        return;
+      }
+
+      reportFilterOptionPickerState.groupKey = definition.key;
+      if (reportFilterOptionsSearchInput) {
+        reportFilterOptionsSearchInput.value = '';
+      }
+      renderAvaliacaoReportActiveFilterOptions();
+      reportFilterOptionsModalInstance.show();
+    }
+
+    function getAvaliacaoReportStaticOptions() {
+      var anosMap = {};
+      avaliacoesCatalog.forEach(function (avaliacao) {
+        var rawDate = String(avaliacao && avaliacao.aplicacao || '').trim();
+        if (rawDate.length >= 4) {
+          var yearValue = rawDate.slice(0, 4);
+          if (/^\d{4}$/.test(yearValue)) {
+            anosMap[yearValue] = {
+              value: yearValue,
+              label: yearValue,
+            };
+          }
+        }
+      });
+
+      return {
+        anos: Object.keys(anosMap).map(function (key) { return anosMap[key]; }).sort(function (left, right) {
+          return String(right.value || '').localeCompare(String(left.value || ''), 'pt-BR', { sensitivity: 'base' });
+        }),
+        bimestres: [1, 2, 3, 4].map(function (value) {
+          return { value: String(value), label: String(value) + 'º bimestre' };
+        }),
+        ciclos: [
+          { value: '1', label: '1º ciclo' },
+          { value: '2', label: '2º ciclo' },
+          { value: '0', label: 'Sem ciclo informado' },
+        ],
+        presencas: [
+          { value: 'corrigida', label: 'Corrigida' },
+          { value: 'gabarito_zerado', label: 'Gabarito zerado' },
+          { value: 'ausente', label: 'Ausente' },
+          { value: 'pendente', label: 'Pendente' },
+        ],
+        flags: [
+          { value: 'regular', label: 'Avaliação regular' },
+          { value: 'recuperacao', label: 'Recuperação' },
+          { value: 'simulado', label: 'Simulado' },
+          { value: 'adaptada', label: 'Com nota adaptada' },
+          { value: 'com_gabarito', label: 'Com gabarito configurado' },
+        ],
+      };
+    }
+
+    function buildAvaliacaoReportDynamicOptions(selectedEvaluationIds) {
+      var selectedIds = Array.isArray(selectedEvaluationIds) && selectedEvaluationIds.length
+        ? selectedEvaluationIds.slice()
+        : avaliacoesCatalog.map(function (avaliacao) { return avaliacao.id; });
+      var turmasMap = {};
+      var disciplinasMap = {};
+      var habilidadesMap = {};
+      var alunosMap = {};
+
+      avaliacoesCatalog.forEach(function (avaliacao) {
+        if (selectedIds.indexOf(Number(avaliacao && avaliacao.id || 0)) === -1) {
+          return;
+        }
+
+        var meta = buildAvaliacaoReportMeta(avaliacao);
+        var roster = buildAvaliacaoReportRoster(avaliacao);
+
+        (Array.isArray(avaliacao.turmaIds) ? avaliacao.turmaIds : []).forEach(function (turmaId) {
+          var safeTurmaId = Number(turmaId || 0);
+          if (safeTurmaId <= 0 || turmasMap[String(safeTurmaId)]) {
+            return;
+          }
+
+          var turmaMatch = turmasOptions.find(function (turma) {
+            return Number(turma && turma.id || 0) === safeTurmaId;
+          });
+          var turmaLabel = turmaMatch
+            ? String(turmaMatch.nome || '').trim()
+            : ((Array.isArray(avaliacao.turmaLabels) && avaliacao.turmaLabels.length)
+              ? String(avaliacao.turmaLabels[0] || '').trim()
+              : ('Turma #' + safeTurmaId));
+          turmasMap[String(safeTurmaId)] = {
+            value: String(safeTurmaId),
+            label: turmaLabel,
+          };
+        });
+
+        meta.disciplinas.forEach(function (item) {
+          disciplinasMap[String(item.value || '')] = item;
+        });
+
+        meta.habilidades.forEach(function (item) {
+          habilidadesMap[String(item.value || '')] = item;
+        });
+
+        roster.forEach(function (record) {
+          var alunoId = Number(record && record.alunoId || 0);
+          if (alunoId <= 0) {
+            return;
+          }
+          if (!alunosMap[String(alunoId)]) {
+            alunosMap[String(alunoId)] = {
+              value: String(alunoId),
+              label: String(record.alunoNome || '').trim(),
+              turmaId: String(record.turmaId || ''),
+              turmaLabel: String(record.turmaNome || '').trim() || 'Turma não informada',
+            };
+            return;
+          }
+
+          if (String(alunosMap[String(alunoId)].turmaLabel || '').trim() === '' && String(record.turmaNome || '').trim() !== '') {
+            alunosMap[String(alunoId)] = {
+              value: String(alunoId),
+              label: String(record.alunoNome || '').trim(),
+              turmaId: String(record.turmaId || ''),
+              turmaLabel: String(record.turmaNome || '').trim(),
+            };
+          }
+        });
+      });
+
+      var turmaOptions = Object.keys(turmasMap).map(function (key) { return turmasMap[key]; }).sort(function (left, right) {
+          return String(left.label || '').localeCompare(String(right.label || ''), 'pt-BR', { sensitivity: 'base' });
+        });
+      var activeTurmaValues = normalizeStatsFilterValues(reportFiltersState.turmaValues, turmaOptions.map(function (item) {
+        return item.value;
+      }));
+      var alunoOptions = Object.keys(alunosMap).map(function (key) { return alunosMap[key]; }).filter(function (item) {
+        if (!hasActiveStatsFilterValues(activeTurmaValues)) {
+          return true;
+        }
+        return activeTurmaValues.indexOf(String(item && item.turmaId || '')) !== -1;
+      }).sort(function (left, right) {
+        if (String(left.turmaLabel || '') !== String(right.turmaLabel || '')) {
+          return String(left.turmaLabel || '').localeCompare(String(right.turmaLabel || ''), 'pt-BR', { sensitivity: 'base' });
+        }
+        return String(left.label || '').localeCompare(String(right.label || ''), 'pt-BR', { sensitivity: 'base' });
+      });
+
+      return {
+        turmas: turmaOptions,
+        disciplinas: Object.keys(disciplinasMap).map(function (key) { return disciplinasMap[key]; }).sort(function (left, right) {
+          return String(left.label || '').localeCompare(String(right.label || ''), 'pt-BR', { sensitivity: 'base' });
+        }),
+        habilidades: Object.keys(habilidadesMap).map(function (key) { return habilidadesMap[key]; }).sort(function (left, right) {
+          return String(left.label || '').localeCompare(String(right.label || ''), 'pt-BR', { sensitivity: 'base' });
+        }),
+        alunos: alunoOptions,
+      };
+    }
+
+    function buildAvaliacaoReportFilterOptionMarkup(option, config) {
+      var safeConfig = config && typeof config === 'object' ? config : {};
+      var safeOption = option && typeof option === 'object' ? option : {};
+      var optionValue = String(safeOption.value || '').trim() || 'all';
+      var optionLabel = String(safeOption.label || '').trim();
+      var optionSubtitle = String(safeOption.subtitle || '').trim();
+      var searchText = String(safeOption.searchText || (optionLabel + ' ' + optionSubtitle)).trim();
+      var selectedValues = normalizeStatsFilterValues(safeConfig.selectedValues, [optionValue]);
+      var optionId = String(safeConfig.optionId || 'adminAvaliacoesReportFilterOption');
+      var inputClass = safeConfig.mode === 'evaluation'
+        ? 'js-admin-avaliacao-report-evaluation-option'
+        : 'js-admin-avaliacao-stats-filter-option';
+      var extraAttrs = safeConfig.mode === 'evaluation'
+        ? ''
+        : ' data-filter-group="' + escapeHtml(String(safeConfig.groupName || '').trim()) + '"';
+
+      return '<label class="admin-avaliacoes-report-option-row js-admin-avaliacao-report-option-entry">'
+        + '<input type="checkbox" class="form-check-input admin-avaliacoes-report-option-input ' + inputClass + '"'
+        + ' id="' + escapeHtml(optionId) + '"'
+        + extraAttrs
+        + ' data-filter-search="' + escapeHtml(normalizeSearchValue(searchText)) + '"'
+        + ' value="' + escapeHtml(optionValue) + '"'
+        + (selectedValues.indexOf(optionValue) !== -1 ? ' checked' : '')
+        + '>'
+        + '<span class="admin-avaliacoes-report-option-copy">'
+        + '<span class="admin-avaliacoes-report-option-title">' + escapeHtml(optionLabel) + '</span>'
+        + (optionSubtitle !== '' ? '<span class="admin-avaliacoes-report-option-meta">' + escapeHtml(optionSubtitle) + '</span>' : '')
+        + '</span>'
+        + '</label>';
+    }
+
+    function syncAvaliacaoReportGroupedListVisibility(listElement) {
+      if (!(listElement instanceof HTMLElement)) {
+        return;
+      }
+
+      listElement.querySelectorAll('.admin-avaliacoes-report-group').forEach(function (groupElement) {
+        if (!(groupElement instanceof HTMLElement)) {
+          return;
+        }
+
+        var visibleEntries = groupElement.querySelectorAll('.js-admin-avaliacao-report-option-entry:not(.d-none)').length;
+        groupElement.classList.toggle('d-none', visibleEntries === 0);
+      });
+    }
+
+    function applyAvaliacaoReportOptionSearch(listElement, query) {
+      if (!(listElement instanceof HTMLElement)) {
+        return;
+      }
+
+      var normalizedQuery = normalizeSearchValue(query || '');
+      listElement.querySelectorAll('.js-admin-avaliacao-report-option-entry').forEach(function (row) {
+        if (!(row instanceof HTMLElement)) {
+          return;
+        }
+
+        var input = row.querySelector('input[type="checkbox"]');
+        var searchableText = input instanceof HTMLElement ? String(input.getAttribute('data-filter-search') || '') : '';
+        var shouldShow = normalizedQuery === '' || searchableText.indexOf(normalizedQuery) !== -1;
+        row.classList.toggle('d-none', !shouldShow);
+      });
+
+      syncAvaliacaoReportGroupedListVisibility(listElement);
+    }
+
+    function renderAvaliacaoReportCheckboxList(listElement, groupName, options, selectedValues, defaultLabel) {
+      if (!(listElement instanceof HTMLElement)) {
+        return;
+      }
+
+      var safeGroupName = String(groupName || '').trim();
+      var validValues = [{ value: 'all' }].concat(Array.isArray(options) ? options : []).map(function (option) {
+        return String(option && option.value || option || '').trim();
+      });
+      var safeSelectedValues = normalizeStatsFilterValues(selectedValues, validValues);
+      var safeOptions = Array.isArray(options) ? options : [];
+      var items = [{ value: 'all', label: String(defaultLabel || 'Todos'), subtitle: '' }].concat(safeOptions.filter(function (option) {
+        return String(option && option.value || '').trim() !== 'all';
+      }).map(function (option) {
+        return {
+          value: String(option && option.value || ''),
+          label: String(option && option.label || ''),
+          subtitle: String(option && option.subtitle || ''),
+        };
+      })).filter(function (option) {
+        return String(option.label || '').trim() !== '';
+      });
+
+      listElement.innerHTML = '<div class="admin-avaliacoes-report-compact-list">'
+        + items.map(function (option, index) {
+          return buildAvaliacaoReportFilterOptionMarkup(option, {
+            mode: 'filter',
+            groupName: safeGroupName,
+            selectedValues: safeSelectedValues,
+            optionId: 'adminAvaliacoesReport' + safeGroupName + '_' + String(index + 1),
+          });
+        }).join('')
+        + '</div>';
+    }
+
+    function buildAvaliacaoReportEvaluationGroups() {
+      var groupsMap = {};
+
+      avaliacoesCatalog.slice().sort(function (left, right) {
+        if (Number(left.ciclo || 0) !== Number(right.ciclo || 0)) {
+          return Number(left.ciclo || 0) - Number(right.ciclo || 0);
+        }
+        if (Number(left.bimestre || 0) !== Number(right.bimestre || 0)) {
+          return Number(left.bimestre || 0) - Number(right.bimestre || 0);
+        }
+        return String(left.nome || '').localeCompare(String(right.nome || ''), 'pt-BR', { sensitivity: 'base' });
+      }).forEach(function (avaliacao) {
+        var ciclo = Number(avaliacao.ciclo || 0);
+        var bimestre = Number(avaliacao.bimestre || 0);
+        var groupKey = String(ciclo) + '|' + String(bimestre);
+        var metaBits = [];
+
+        if (String(avaliacao.aplicacao || '').trim() !== '') {
+          metaBits.push(formatAvaliacaoAplicacao(avaliacao.aplicacao));
+        }
+        if (avaliacao.isRecuperacao) {
+          metaBits.push('Recuperação');
+        }
+        if (avaliacao.isSimulado) {
+          metaBits.push('Simulado');
+        }
+
+        if (!groupsMap[groupKey]) {
+          groupsMap[groupKey] = {
+            ciclo: ciclo,
+            bimestre: bimestre,
+            label: getAvaliacaoReportCycleLabel(ciclo) + ' • ' + getAvaliacaoReportBimestreLabel(bimestre),
+            items: [],
+          };
+        }
+
+        groupsMap[groupKey].items.push({
+          value: String(avaliacao.id),
+          label: String(avaliacao.nome || '').trim(),
+          subtitle: metaBits.join(' • ') || 'Sem metadados adicionais',
+          searchText: [avaliacao.nome, getAvaliacaoReportCycleLabel(ciclo), getAvaliacaoReportBimestreLabel(bimestre), metaBits.join(' ')].join(' '),
+        });
+      });
+
+      return Object.keys(groupsMap).map(function (key) {
+        var group = groupsMap[key];
+        group.items = group.items.slice().sort(function (left, right) {
+          return String(left.label || '').localeCompare(String(right.label || ''), 'pt-BR', { sensitivity: 'base' });
+        });
+        return group;
+      }).sort(function (left, right) {
+        if (left.ciclo !== right.ciclo) {
+          return left.ciclo - right.ciclo;
+        }
+        if (left.bimestre !== right.bimestre) {
+          return left.bimestre - right.bimestre;
+        }
+        return String(left.label || '').localeCompare(String(right.label || ''), 'pt-BR', { sensitivity: 'base' });
+      });
+    }
+
+    function buildAvaliacaoReportAlunoGroups() {
+      var groupsMap = {};
+      reportDynamicOptions.alunos.forEach(function (aluno) {
+        var turmaLabel = String(aluno && aluno.turmaLabel || '').trim() || 'Turma não informada';
+        var groupKey = String(aluno && aluno.turmaId || '') + '|' + turmaLabel;
+        if (!groupsMap[groupKey]) {
+          groupsMap[groupKey] = {
+            turmaLabel: turmaLabel,
+            items: [],
+          };
+        }
+        groupsMap[groupKey].items.push({
+          value: String(aluno && aluno.value || ''),
+          label: String(aluno && aluno.label || '').trim(),
+          subtitle: turmaLabel,
+          searchText: [String(aluno && aluno.label || ''), turmaLabel].join(' '),
+        });
+      });
+
+      return Object.keys(groupsMap).map(function (key) {
+        var group = groupsMap[key];
+        group.items = group.items.slice().sort(function (left, right) {
+          return String(left.label || '').localeCompare(String(right.label || ''), 'pt-BR', { sensitivity: 'base' });
+        });
+        return group;
+      }).sort(function (left, right) {
+        return String(left.turmaLabel || '').localeCompare(String(right.turmaLabel || ''), 'pt-BR', { sensitivity: 'base' });
+      });
+    }
+
+    function renderAvaliacaoReportEvaluationCards() {
+      if (!(reportEvaluationList instanceof HTMLElement)) {
+        return;
+      }
+
+      var selectedIds = collectReportSelectedEvaluationIds();
+
+      reportEvaluationList.innerHTML = buildAvaliacaoReportEvaluationGroups().map(function (group, groupIndex) {
+        return '<section class="admin-avaliacoes-report-group">'
+          + '<div class="admin-avaliacoes-report-group-header">'
+          + '<div class="admin-avaliacoes-report-group-title">' + escapeHtml(group.label) + '</div>'
+          + '<div class="admin-avaliacoes-report-group-meta">' + escapeHtml(String(group.items.length) + ' avaliação(ões)') + '</div>'
+          + '</div>'
+          + '<div class="admin-avaliacoes-report-compact-list">'
+          + group.items.map(function (option, optionIndex) {
+            return buildAvaliacaoReportFilterOptionMarkup(option, {
+              mode: 'evaluation',
+              selectedValues: selectedIds,
+              optionId: 'adminAvaliacoesReportEvaluation_' + String(groupIndex + 1) + '_' + String(optionIndex + 1),
+            });
+          }).join('')
+          + '</div>'
+          + '</section>';
+      }).join('');
+
+      applyAvaliacaoReportOptionSearch(reportEvaluationList, reportEvaluationSearchInput ? reportEvaluationSearchInput.value : '');
+    }
+
+    function renderAvaliacaoReportAlunoCards(listElement) {
+      var targetList = listElement instanceof HTMLElement ? listElement : reportFilterOptionsList;
+      if (!(targetList instanceof HTMLElement)) {
+        return;
+      }
+
+      var selectedValues = normalizeStatsFilterValues(reportFiltersState.alunoValues, reportDynamicOptions.alunos.map(function (item) {
+        return item.value;
+      }));
+      var groups = buildAvaliacaoReportAlunoGroups();
+
+      targetList.innerHTML = '<div class="admin-avaliacoes-report-compact-list">'
+        + buildAvaliacaoReportFilterOptionMarkup({
+        value: 'all',
+        label: 'Todos os estudantes',
+        subtitle: 'Mantém o relatório aberto para qualquer turma e estudante',
+        searchText: 'todos os estudantes todas as turmas',
+      }, {
+        mode: 'filter',
+        groupName: 'ReportAluno',
+        selectedValues: selectedValues,
+        optionId: 'adminAvaliacoesReportAluno_all',
+      })
+        + '</div>'
+        + groups.map(function (group, groupIndex) {
+        return '<section class="admin-avaliacoes-report-group">'
+          + '<div class="admin-avaliacoes-report-group-header">'
+          + '<div class="admin-avaliacoes-report-group-title">' + escapeHtml(group.turmaLabel) + '</div>'
+          + '<div class="admin-avaliacoes-report-group-meta">' + escapeHtml(String(group.items.length) + ' estudante(s)') + '</div>'
+          + '</div>'
+          + '<div class="admin-avaliacoes-report-compact-list">'
+          + group.items.map(function (option, optionIndex) {
+            return buildAvaliacaoReportFilterOptionMarkup(option, {
+              mode: 'filter',
+              groupName: 'ReportAluno',
+              selectedValues: selectedValues,
+              optionId: 'adminAvaliacoesReportAluno_' + String(groupIndex + 1) + '_' + String(optionIndex + 1),
+            });
+          }).join('')
+          + '</div>'
+          + '</section>';
+      }).join('')
+        + (!groups.length
+          ? '<div class="admin-avaliacao-stats-filter-empty">Nenhum estudante disponível para as turmas filtradas.</div>'
+          : '');
+
+      applyAvaliacaoReportOptionSearch(targetList, reportFilterOptionsSearchInput ? reportFilterOptionsSearchInput.value : '');
+    }
+
+    function renderAvaliacaoReportFilterControls() {
+      if (!reportModalElement || !(reportRoot instanceof HTMLElement)) {
+        return;
+      }
+
+      var selectedEvaluationIds = collectReportSelectedEvaluationIds();
+      reportDynamicOptions = buildAvaliacaoReportDynamicOptions(selectedEvaluationIds);
+      var staticOptions = getAvaliacaoReportStaticOptions();
+
+      reportRoot.dataset.reportTurmaOptions = JSON.stringify(reportDynamicOptions.turmas);
+      reportRoot.dataset.reportDisciplinaOptions = JSON.stringify(reportDynamicOptions.disciplinas);
+      reportRoot.dataset.reportHabilidadeOptions = JSON.stringify(reportDynamicOptions.habilidades);
+      reportRoot.dataset.reportAlunoOptions = JSON.stringify(reportDynamicOptions.alunos);
+      reportRoot.dataset.reportAnoOptions = JSON.stringify(staticOptions.anos);
+      reportRoot.dataset.reportBimestreOptions = JSON.stringify(staticOptions.bimestres);
+      reportRoot.dataset.reportCicloOptions = JSON.stringify(staticOptions.ciclos);
+      reportRoot.dataset.reportPresenceOptions = JSON.stringify(staticOptions.presencas);
+      reportRoot.dataset.reportFlagOptions = JSON.stringify(staticOptions.flags);
+
+      reportFiltersState.turmaValues = normalizeStatsFilterValues(reportFiltersState.turmaValues, reportDynamicOptions.turmas.map(function (item) { return item.value; }));
+      reportFiltersState.disciplinaValues = normalizeStatsFilterValues(reportFiltersState.disciplinaValues, reportDynamicOptions.disciplinas.map(function (item) { return item.value; }));
+      reportFiltersState.habilidadeValues = normalizeStatsFilterValues(reportFiltersState.habilidadeValues, reportDynamicOptions.habilidades.map(function (item) { return item.value; }));
+      reportFiltersState.alunoValues = normalizeStatsFilterValues(reportFiltersState.alunoValues, reportDynamicOptions.alunos.map(function (item) { return item.value; }));
+      reportFiltersState.anoValues = normalizeStatsFilterValues(reportFiltersState.anoValues, staticOptions.anos.map(function (item) { return item.value; }));
+      reportFiltersState.bimestreValues = normalizeStatsFilterValues(reportFiltersState.bimestreValues, staticOptions.bimestres.map(function (item) { return item.value; }));
+      reportFiltersState.cicloValues = normalizeStatsFilterValues(reportFiltersState.cicloValues, staticOptions.ciclos.map(function (item) { return item.value; }));
+      reportFiltersState.presenceValues = normalizeStatsFilterValues(reportFiltersState.presenceValues, staticOptions.presencas.map(function (item) { return item.value; }));
+      reportFiltersState.flagValues = normalizeStatsFilterValues(reportFiltersState.flagValues, staticOptions.flags.map(function (item) { return item.value; }));
+
+      renderAvaliacaoReportEvaluationCards();
+      applyAvaliacaoReportOptionSearch(reportEvaluationList, reportEvaluationSearchInput ? reportEvaluationSearchInput.value : '');
+      renderAvaliacaoReportSelectionSummary();
+      renderAvaliacaoReportFiltersSummary();
+      renderAvaliacaoReportFilterGroupsSummary();
+      renderAvaliacaoReportSummaryChips();
+      renderAvaliacaoReportGeneratedMeta();
+
+      if (reportFilterOptionPickerState.groupKey !== '' && reportFilterOptionsModalElement && reportFilterOptionsModalElement.classList.contains('show')) {
+        renderAvaliacaoReportActiveFilterOptions();
+      }
+    }
+
+    function resetAvaliacaoReportRefinementFilters() {
+      reportFiltersState.turmaValues = ['all'];
+      reportFiltersState.disciplinaValues = ['all'];
+      reportFiltersState.habilidadeValues = ['all'];
+      reportFiltersState.alunoValues = ['all'];
+      reportFiltersState.anoValues = ['all'];
+      reportFiltersState.bimestreValues = ['all'];
+      reportFiltersState.cicloValues = ['all'];
+      reportFiltersState.presenceValues = ['all'];
+      reportFiltersState.flagValues = ['all'];
+
+      if (reportTurmaSearchInput) {
+        reportTurmaSearchInput.value = '';
+      }
+      if (reportDisciplinaSearchInput) {
+        reportDisciplinaSearchInput.value = '';
+      }
+      if (reportHabilidadeSearchInput) {
+        reportHabilidadeSearchInput.value = '';
+      }
+      if (reportAlunoSearchInput) {
+        reportAlunoSearchInput.value = '';
+      }
+      if (reportFilterOptionsSearchInput) {
+        reportFilterOptionsSearchInput.value = '';
+      }
+    }
+
+    function resetAvaliacaoReportFilters() {
+      reportFiltersState.avaliacaoIds = avaliacoesCatalog.map(function (avaliacao) { return avaliacao.id; });
+      resetAvaliacaoReportRefinementFilters();
+
+      if (reportTypeSelect) {
+        reportTypeSelect.value = 'completo';
+      }
+      if (reportCriticalThresholdSelect) {
+        reportCriticalThresholdSelect.value = '50';
+      }
+      if (reportEvaluationSearchInput) {
+        reportEvaluationSearchInput.value = '';
+      }
+
+      renderAvaliacaoReportFilterControls();
+    }
+
+    function getAvaliacaoReportById(avaliacaoId) {
+      var safeId = Number(avaliacaoId || 0);
+      if (safeId <= 0) {
+        return null;
+      }
+
+      for (var index = 0; index < avaliacoesCatalog.length; index += 1) {
+        if (Number(avaliacoesCatalog[index] && avaliacoesCatalog[index].id || 0) === safeId) {
+          return avaliacoesCatalog[index];
+        }
+      }
+
+      return null;
+    }
+
+    function fetchAvaliacaoReportCorrecoes(avaliacaoId) {
+      var safeId = Number(avaliacaoId || 0);
+      if (safeId <= 0) {
+        return Promise.resolve([]);
+      }
+
+      return fetch(getCorrecaoListUrl() + '?id=' + encodeURIComponent(String(safeId)), {
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      })
+        .then(function (response) {
+          if (!response.ok) {
+            throw new Error('Não foi possível carregar as correções da avaliação #' + safeId + '.');
+          }
+          return response.json();
+        })
+        .then(function (payload) {
+          if (!payload || payload.ok !== true) {
+            throw new Error(payload && payload.message ? payload.message : 'Erro ao carregar correções da avaliação #' + safeId + '.');
+          }
+          reportDataCache[String(safeId)] = {
+            rows: Array.isArray(payload.rows) ? payload.rows.slice() : [],
+            stats: payload && payload.stats && typeof payload.stats === 'object' ? payload.stats : {},
+            loadedAt: Date.now(),
+          };
+          return reportDataCache[String(safeId)].rows.slice();
+        });
+    }
+
+    function ensureAvaliacaoReportCache(avaliacaoIds) {
+      var safeIds = Array.isArray(avaliacaoIds) ? avaliacaoIds.map(Number).filter(Boolean) : [];
+      var pendingLoads = safeIds.map(function (avaliacaoId) {
+        var cacheKey = String(avaliacaoId);
+        if (reportDataCache[cacheKey] && Array.isArray(reportDataCache[cacheKey].rows)) {
+          return Promise.resolve(reportDataCache[cacheKey].rows.slice());
+        }
+        return fetchAvaliacaoReportCorrecoes(avaliacaoId);
+      });
+
+      return Promise.all(pendingLoads);
+    }
+
+    function buildAvaliacaoReportRecords(selectedEvaluationIds) {
+      var selectedIds = Array.isArray(selectedEvaluationIds) && selectedEvaluationIds.length
+        ? selectedEvaluationIds.map(Number).filter(Boolean)
+        : avaliacoesCatalog.map(function (avaliacao) { return avaliacao.id; });
+      var records = [];
+
+      selectedIds.forEach(function (avaliacaoId) {
+        var avaliacao = getAvaliacaoReportById(avaliacaoId);
+        if (!avaliacao) {
+          return;
+        }
+
+        var meta = buildAvaliacaoReportMeta(avaliacao);
+        var roster = buildAvaliacaoReportRoster(avaliacao);
+        var cacheEntry = reportDataCache[String(avaliacaoId)] && typeof reportDataCache[String(avaliacaoId)] === 'object'
+          ? reportDataCache[String(avaliacaoId)]
+          : { rows: [] };
+        var correctionMap = {};
+        var seenRosterKeys = {};
+        var disciplinaValues = meta.disciplinas.map(function (item) { return String(item.value || ''); }).filter(Boolean);
+        var habilidadeValues = meta.habilidades.map(function (item) { return String(item.value || ''); }).filter(Boolean);
+
+        (Array.isArray(cacheEntry.rows) ? cacheEntry.rows : []).forEach(function (row) {
+          var key = String(Number(row && row.aluno_id || 0)) + ':' + String(Number(row && row.turma_id || 0));
+          correctionMap[key] = row;
+        });
+
+        roster.forEach(function (record) {
+          var key = String(Number(record && record.alunoId || 0)) + ':' + String(Number(record && record.turmaId || 0));
+          var correction = correctionMap[key] || null;
+          seenRosterKeys[key] = true;
+          var status = correction ? normalizeCorrecaoStatus(correction.status) : 'pendente';
+          var snapshot = correction ? buildCorrecaoSnapshotFromRow(correction) : null;
+          var adaptedSummary = correction ? formatCorrecaoAdaptedGradesSummary(correction.correcoes) : '';
+          var anoAplicacao = String(avaliacao.aplicacao || '').trim().slice(0, 4);
+          var flagTokens = [];
+
+          if (avaliacao.isRecuperacao) {
+            flagTokens.push('recuperacao');
+          } else {
+            flagTokens.push('regular');
+          }
+          if (avaliacao.isSimulado) {
+            flagTokens.push('simulado');
+          }
+          if (adaptedSummary !== '') {
+            flagTokens.push('adaptada');
+          }
+          if (meta.totalQuestoes > 0) {
+            flagTokens.push('com_gabarito');
+          }
+
+          records.push({
+            key: String(avaliacaoId) + ':' + key,
+            evaluationId: avaliacao.id,
+            evaluationNome: avaliacao.nome,
+            evaluationDescricao: avaliacao.descricao,
+            aplicacao: avaliacao.aplicacao,
+            anoAplicacao: /^\d{4}$/.test(anoAplicacao) ? anoAplicacao : '',
+            bimestre: Number(avaliacao.bimestre || 0),
+            ciclo: Number(avaliacao.ciclo || 0),
+            isRecuperacao: avaliacao.isRecuperacao === true,
+            isSimulado: avaliacao.isSimulado === true,
+            alunoId: Number(record.alunoId || 0),
+            alunoNome: String(record.alunoNome || '').trim(),
+            turmaId: Number(record.turmaId || 0),
+            turmaNome: String(record.turmaNome || '').trim(),
+            numeracao: String(record.numeracaoLabel || record.numeracao || '').trim(),
+            status: status,
+            correction: correction,
+            snapshot: snapshot,
+            questionMetaMap: meta.questionMetaMap,
+            disciplinaValues: disciplinaValues.slice(),
+            habilidadeValues: habilidadeValues.slice(),
+            isAdapted: adaptedSummary !== '',
+            adaptedSummary: adaptedSummary,
+            hasGabarito: meta.totalQuestoes > 0,
+            flagTokens: flagTokens,
+          });
+        });
+
+        (Array.isArray(cacheEntry.rows) ? cacheEntry.rows : []).forEach(function (row) {
+          var alunoId = Number(row && row.aluno_id || 0);
+          var turmaId = Number(row && row.turma_id || 0);
+          var rosterKey = String(alunoId) + ':' + String(turmaId);
+          if (alunoId <= 0 || turmaId <= 0 || seenRosterKeys[rosterKey]) {
+            return;
+          }
+
+          var status = normalizeCorrecaoStatus(row.status);
+          var snapshot = buildCorrecaoSnapshotFromRow(row);
+          var adaptedSummary = formatCorrecaoAdaptedGradesSummary(row.correcoes);
+          var rawYear = String(avaliacao.aplicacao || '').trim().slice(0, 4);
+          var extraFlags = [];
+
+          if (avaliacao.isRecuperacao) {
+            extraFlags.push('recuperacao');
+          } else {
+            extraFlags.push('regular');
+          }
+          if (avaliacao.isSimulado) {
+            extraFlags.push('simulado');
+          }
+          if (adaptedSummary !== '') {
+            extraFlags.push('adaptada');
+          }
+          if (meta.totalQuestoes > 0) {
+            extraFlags.push('com_gabarito');
+          }
+
+          records.push({
+            key: String(avaliacaoId) + ':' + rosterKey,
+            evaluationId: avaliacao.id,
+            evaluationNome: avaliacao.nome,
+            evaluationDescricao: avaliacao.descricao,
+            aplicacao: avaliacao.aplicacao,
+            anoAplicacao: /^\d{4}$/.test(rawYear) ? rawYear : '',
+            bimestre: Number(avaliacao.bimestre || 0),
+            ciclo: Number(avaliacao.ciclo || 0),
+            isRecuperacao: avaliacao.isRecuperacao === true,
+            isSimulado: avaliacao.isSimulado === true,
+            alunoId: alunoId,
+            alunoNome: String(row && row.aluno_nome || '').trim() || 'Estudante não identificado',
+            turmaId: turmaId,
+            turmaNome: String(row && row.turma_nome || '').trim() || ('Turma #' + turmaId),
+            numeracao: String(row && row.numeracao || '').trim(),
+            status: status,
+            correction: row,
+            snapshot: snapshot,
+            questionMetaMap: meta.questionMetaMap,
+            disciplinaValues: disciplinaValues.slice(),
+            habilidadeValues: habilidadeValues.slice(),
+            isAdapted: adaptedSummary !== '',
+            adaptedSummary: adaptedSummary,
+            hasGabarito: meta.totalQuestoes > 0,
+            flagTokens: extraFlags,
+          });
+        });
+      });
+
+      return records;
+    }
+
+    function recordMatchesAvaliacaoReportFilters(record) {
+      var safeRecord = record && typeof record === 'object' ? record : null;
+      if (!safeRecord) {
+        return false;
+      }
+
+      if (hasActiveStatsFilterValues(reportFiltersState.turmaValues) && reportFiltersState.turmaValues.indexOf(String(safeRecord.turmaId || '')) === -1) {
+        return false;
+      }
+      if (hasActiveStatsFilterValues(reportFiltersState.alunoValues) && reportFiltersState.alunoValues.indexOf(String(safeRecord.alunoId || '')) === -1) {
+        return false;
+      }
+      if (hasActiveStatsFilterValues(reportFiltersState.anoValues) && reportFiltersState.anoValues.indexOf(String(safeRecord.anoAplicacao || '')) === -1) {
+        return false;
+      }
+      if (hasActiveStatsFilterValues(reportFiltersState.bimestreValues) && reportFiltersState.bimestreValues.indexOf(String(safeRecord.bimestre || '0')) === -1) {
+        return false;
+      }
+      if (hasActiveStatsFilterValues(reportFiltersState.cicloValues) && reportFiltersState.cicloValues.indexOf(String(safeRecord.ciclo || '0')) === -1) {
+        return false;
+      }
+      if (hasActiveStatsFilterValues(reportFiltersState.presenceValues) && reportFiltersState.presenceValues.indexOf(String(safeRecord.status || '')) === -1) {
+        return false;
+      }
+      if (hasActiveStatsFilterValues(reportFiltersState.flagValues)) {
+        var flagMatch = Array.isArray(safeRecord.flagTokens) && safeRecord.flagTokens.some(function (token) {
+          return reportFiltersState.flagValues.indexOf(String(token || '')) !== -1;
+        });
+        if (!flagMatch) {
+          return false;
+        }
+      }
+      if (hasActiveStatsFilterValues(reportFiltersState.disciplinaValues)) {
+        var disciplinaMatch = Array.isArray(safeRecord.disciplinaValues) && safeRecord.disciplinaValues.some(function (value) {
+          return reportFiltersState.disciplinaValues.indexOf(String(value || '')) !== -1;
+        });
+        if (!disciplinaMatch) {
+          return false;
+        }
+      }
+      if (hasActiveStatsFilterValues(reportFiltersState.habilidadeValues)) {
+        var habilidadeMatch = Array.isArray(safeRecord.habilidadeValues) && safeRecord.habilidadeValues.some(function (value) {
+          return reportFiltersState.habilidadeValues.indexOf(String(value || '')) !== -1;
+        });
+        if (!habilidadeMatch) {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    function buildAvaliacaoReportNormalizedRows(records) {
+      var disciplinaFilterActive = hasActiveStatsFilterValues(reportFiltersState.disciplinaValues);
+      var habilidadeFilterActive = hasActiveStatsFilterValues(reportFiltersState.habilidadeValues);
+
+      return (Array.isArray(records) ? records : []).map(function (record) {
+        var safeRecord = record && typeof record === 'object' ? record : null;
+        if (!safeRecord || !safeRecord.correction || safeRecord.status === 'pendente' || safeRecord.status === 'ausente') {
+          return null;
+        }
+
+        var snapshot = safeRecord.snapshot && typeof safeRecord.snapshot === 'object'
+          ? safeRecord.snapshot
+          : buildCorrecaoSnapshotFromRow(safeRecord.correction);
+        var safeCorrecoes = Array.isArray(snapshot && snapshot.correcoes) ? snapshot.correcoes : [];
+        var filteredCorrecoes = [];
+        var earnedPoints = 0;
+        var totalPoints = 0;
+        var acertos = 0;
+
+        safeCorrecoes.forEach(function (correcao, correctionIndex) {
+          var questionNumber = Number(correcao && correcao.questionNumber ? correcao.questionNumber : (correctionIndex + 1));
+          var meta = safeRecord.questionMetaMap && safeRecord.questionMetaMap[String(questionNumber)]
+            ? safeRecord.questionMetaMap[String(questionNumber)]
+            : null;
+          if (!meta) {
+            return;
+          }
+
+          if (disciplinaFilterActive && reportFiltersState.disciplinaValues.indexOf(String(meta.disciplinaKey || '')) === -1) {
+            return;
+          }
+          if (habilidadeFilterActive && reportFiltersState.habilidadeValues.indexOf(String(meta.habilidadeKey || '')) === -1) {
+            return;
+          }
+
+          filteredCorrecoes.push(correcao);
+          earnedPoints += Number(correcao && correcao.pontuacao || 0);
+          totalPoints += Number(correcao && correcao.pontuacao_maxima || meta.peso || 0);
+          if (correcao && correcao.isCorrect === true) {
+            acertos += 1;
+          }
+        });
+
+        if ((disciplinaFilterActive || habilidadeFilterActive) && !filteredCorrecoes.length) {
+          return null;
+        }
+
+        var percentual = totalPoints > 0 ? (earnedPoints / totalPoints) * 100 : 0;
+        return {
+          id: Number(safeRecord.correction && safeRecord.correction.id || 0),
+          evaluationId: Number(safeRecord.evaluationId || 0),
+          evaluationNome: String(safeRecord.evaluationNome || '').trim(),
+          alunoId: Number(safeRecord.alunoId || 0),
+          turmaId: Number(safeRecord.turmaId || 0),
+          alunoNome: String(safeRecord.alunoNome || '').trim(),
+          turmaNome: String(safeRecord.turmaNome || '').trim(),
+          percentual: Math.round(percentual * 100) / 100,
+          pontuacao: Math.round(earnedPoints * 100) / 100,
+          pontuacaoTotal: Math.round(totalPoints * 100) / 100,
+          acertos: acertos,
+          totalQuestoes: filteredCorrecoes.length,
+          respostas: snapshot && snapshot.respostas && typeof snapshot.respostas === 'object' ? snapshot.respostas : {},
+          correcoes: filteredCorrecoes,
+          isAdapted: formatCorrecaoAdaptedGradesSummary(filteredCorrecoes) !== '',
+          adaptedGrade: getCorrecaoAdaptedGradeFromCorrecoes(filteredCorrecoes),
+          adaptedSummary: formatCorrecaoAdaptedGradesSummary(filteredCorrecoes),
+          status: normalizeCorrecaoStatus(safeRecord.status),
+          corrigidoEm: String(safeRecord.correction && (safeRecord.correction.corrigido_em || safeRecord.correction.created_at) || '').trim(),
+          numeracao: String(safeRecord.numeracao || '').trim(),
+          questionMetaMap: safeRecord.questionMetaMap || {},
+          bimestre: Number(safeRecord.bimestre || 0),
+          ciclo: Number(safeRecord.ciclo || 0),
+          isRecuperacao: safeRecord.isRecuperacao === true,
+          isSimulado: safeRecord.isSimulado === true,
+          aplicacao: String(safeRecord.aplicacao || '').trim(),
+        };
+      }).filter(function (item) {
+        return !!item;
+      });
+    }
+
+    function buildAvaliacaoReportDataset(normalizedRows, filteredRecords) {
+      var safeRows = Array.isArray(normalizedRows) ? normalizedRows : [];
+      var safeRecords = Array.isArray(filteredRecords) ? filteredRecords : [];
+      var hasAdaptedRows = safeRows.some(function (row) {
+        return row && row.isAdapted === true;
+      });
+      var evaluationMap = {};
+      var turmaMap = {};
+      var disciplinaMap = {};
+      var habilidadeMap = {};
+      var alunoMap = {};
+      var questionMap = {};
+      var allSkills = {};
+      var uniqueStudentMap = {};
+      var overallEarnedPoints = 0;
+      var overallTotalPoints = 0;
+
+      safeRecords.forEach(function (record) {
+        var safeRecord = record && typeof record === 'object' ? record : {};
+        var evaluationKey = String(Number(safeRecord.evaluationId || 0));
+        var turmaKey = String(Number(safeRecord.turmaId || 0));
+        var alunoKey = String(Number(safeRecord.alunoId || 0));
+        var status = normalizeCorrecaoStatus(safeRecord.status);
+
+        if (alunoKey !== '0') {
+          uniqueStudentMap[alunoKey] = true;
+        }
+
+        var evaluationEntry = ensureStatsAggregateEntry(evaluationMap, evaluationKey, {
+          id: Number(safeRecord.evaluationId || 0),
+          nome: String(safeRecord.evaluationNome || '').trim() || 'Avaliação',
+          aplicacao: String(safeRecord.aplicacao || '').trim(),
+          bimestre: Number(safeRecord.bimestre || 0),
+          ciclo: Number(safeRecord.ciclo || 0),
+          isRecuperacao: safeRecord.isRecuperacao === true,
+          isSimulado: safeRecord.isSimulado === true,
+          totalEsperado: 0,
+          totalCorrigidos: 0,
+          totalPendentes: 0,
+          totalAusentes: 0,
+          totalZerados: 0,
+          percentualSum: 0,
+          correctionCount: 0,
+          earnedPoints: 0,
+          totalPoints: 0,
+          turmas: {},
+        });
+        evaluationEntry.totalEsperado += 1;
+        evaluationEntry.turmas[turmaKey] = String(safeRecord.turmaNome || '').trim() || ('Turma #' + turmaKey);
+        if (status === 'pendente') {
+          evaluationEntry.totalPendentes += 1;
+        } else if (status === 'ausente') {
+          evaluationEntry.totalAusentes += 1;
+        } else {
+          evaluationEntry.totalCorrigidos += 1;
+          if (status === 'gabarito_zerado') {
+            evaluationEntry.totalZerados += 1;
+          }
+        }
+
+        var turmaEntry = ensureStatsAggregateEntry(turmaMap, turmaKey, {
+          id: Number(safeRecord.turmaId || 0),
+          nome: String(safeRecord.turmaNome || '').trim() || 'Turma não informada',
+          totalEsperado: 0,
+          totalCorrigidos: 0,
+          totalPendentes: 0,
+          totalAusentes: 0,
+          totalZerados: 0,
+          percentualSum: 0,
+          correctionCount: 0,
+          earnedPoints: 0,
+          totalPoints: 0,
+        });
+        turmaEntry.totalEsperado += 1;
+        if (status === 'pendente') {
+          turmaEntry.totalPendentes += 1;
+        } else if (status === 'ausente') {
+          turmaEntry.totalAusentes += 1;
+        } else {
+          turmaEntry.totalCorrigidos += 1;
+          if (status === 'gabarito_zerado') {
+            turmaEntry.totalZerados += 1;
+          }
+        }
+
+        var alunoEntry = ensureStatsAggregateEntry(alunoMap, alunoKey, {
+          alunoId: Number(safeRecord.alunoId || 0),
+          alunoNome: String(safeRecord.alunoNome || '').trim() || 'Estudante não identificado',
+          turmaNome: String(safeRecord.turmaNome || '').trim() || 'Turma não informada',
+          avaliacoesEsperadas: 0,
+          corrigidas: 0,
+          pendentes: 0,
+          ausencias: 0,
+          zerados: 0,
+          percentualSum: 0,
+          correctionCount: 0,
+          earnedPoints: 0,
+          totalPoints: 0,
+          habilidades: {},
+        });
+        alunoEntry.avaliacoesEsperadas += 1;
+        if (status === 'pendente') {
+          alunoEntry.pendentes += 1;
+        } else if (status === 'ausente') {
+          alunoEntry.ausencias += 1;
+        } else {
+          alunoEntry.corrigidas += 1;
+          if (status === 'gabarito_zerado') {
+            alunoEntry.zerados += 1;
+          }
+        }
+      });
+
+      safeRows.forEach(function (row) {
+        overallEarnedPoints += Number(row.pontuacao || 0);
+        overallTotalPoints += Number(row.pontuacaoTotal || 0);
+
+        var evaluationKey = String(Number(row.evaluationId || 0));
+        var turmaKey = String(Number(row.turmaId || 0));
+        var alunoKey = String(Number(row.alunoId || 0));
+        var evaluationEntry = ensureStatsAggregateEntry(evaluationMap, evaluationKey, {
+          id: Number(row.evaluationId || 0),
+          nome: String(row.evaluationNome || '').trim() || 'Avaliação',
+          aplicacao: String(row.aplicacao || '').trim(),
+          bimestre: Number(row.bimestre || 0),
+          ciclo: Number(row.ciclo || 0),
+          isRecuperacao: row.isRecuperacao === true,
+          isSimulado: row.isSimulado === true,
+          totalEsperado: 0,
+          totalCorrigidos: 0,
+          totalPendentes: 0,
+          totalAusentes: 0,
+          totalZerados: 0,
+          percentualSum: 0,
+          correctionCount: 0,
+          earnedPoints: 0,
+          totalPoints: 0,
+          turmas: {},
+        });
+        evaluationEntry.percentualSum += Number(row.percentual || 0);
+        evaluationEntry.correctionCount += 1;
+        evaluationEntry.earnedPoints += Number(row.pontuacao || 0);
+        evaluationEntry.totalPoints += Number(row.pontuacaoTotal || 0);
+
+        var turmaEntry = ensureStatsAggregateEntry(turmaMap, turmaKey, {
+          id: Number(row.turmaId || 0),
+          nome: String(row.turmaNome || '').trim() || 'Turma não informada',
+          totalEsperado: 0,
+          totalCorrigidos: 0,
+          totalPendentes: 0,
+          totalAusentes: 0,
+          totalZerados: 0,
+          percentualSum: 0,
+          correctionCount: 0,
+          earnedPoints: 0,
+          totalPoints: 0,
+        });
+        turmaEntry.percentualSum += Number(row.percentual || 0);
+        turmaEntry.correctionCount += 1;
+        turmaEntry.earnedPoints += Number(row.pontuacao || 0);
+        turmaEntry.totalPoints += Number(row.pontuacaoTotal || 0);
+
+        var alunoEntry = ensureStatsAggregateEntry(alunoMap, alunoKey, {
+          alunoId: Number(row.alunoId || 0),
+          alunoNome: String(row.alunoNome || '').trim() || 'Estudante não identificado',
+          turmaNome: String(row.turmaNome || '').trim() || 'Turma não informada',
+          avaliacoesEsperadas: 0,
+          corrigidas: 0,
+          pendentes: 0,
+          ausencias: 0,
+          zerados: 0,
+          percentualSum: 0,
+          correctionCount: 0,
+          earnedPoints: 0,
+          totalPoints: 0,
+          habilidades: {},
+        });
+        alunoEntry.percentualSum += Number(row.percentual || 0);
+        alunoEntry.correctionCount += 1;
+        alunoEntry.earnedPoints += Number(row.pontuacao || 0);
+        alunoEntry.totalPoints += Number(row.pontuacaoTotal || 0);
+
+        row.correcoes.forEach(function (correcao, correctionIndex) {
+          var questionNumber = Number(correcao && correcao.questionNumber ? correcao.questionNumber : (correctionIndex + 1));
+          var meta = row.questionMetaMap && row.questionMetaMap[String(questionNumber)]
+            ? row.questionMetaMap[String(questionNumber)]
+            : null;
+          if (!meta) {
+            return;
+          }
+
+          var questionKey = String(row.evaluationId) + '|' + String(questionNumber);
+          var earnedPoints = Number(correcao && correcao.pontuacao || 0);
+          var totalPoints = Number(correcao && correcao.pontuacao_maxima || meta.peso || 0);
+          var earnedRatio = getCorrecaoCorrectionEarnedRatio(correcao);
+          var isAdaptedCorrection = isCorrecaoAdaptedItem(correcao);
+          var questionMastered = getStatsQuestionMasteryLevel(meta, earnedPoints, totalPoints, correcao);
+          var studentAnswer = getStatsCorrecaoStudentAnswer(correcao);
+          var effectiveIsCorrect = (correcao && correcao.isCorrect) || (meta.anulada === true && studentAnswer !== '');
+
+          var questionEntry = ensureStatsAggregateEntry(questionMap, questionKey, {
+            key: questionKey,
+            evaluationId: Number(row.evaluationId || 0),
+            evaluationNome: String(row.evaluationNome || '').trim() || 'Avaliação',
+            questionNumber: questionNumber,
+            disciplina: meta.disciplina,
+            habilidade: meta.habilidade,
+            tipo: meta.tipo,
+            tipoLabel: meta.tipoLabel,
+            correta: meta.correta,
+            anulada: meta.anulada === true,
+            alternativas: Array.isArray(meta.alternativas) ? meta.alternativas.slice() : [],
+            enunciado: meta.enunciado,
+            total: 0,
+            corretas: 0,
+            incorretas: 0,
+            brancos: 0,
+            earnedPoints: 0,
+            totalPoints: 0,
+            alternativaCounts: {},
+            alternativasErradas: {},
+          });
+          questionEntry.total += 1;
+          questionEntry.earnedPoints += earnedPoints;
+          questionEntry.totalPoints += totalPoints;
+
+          if (meta.tipo !== 'discursiva') {
+            if (studentAnswer === '' && !isAdaptedCorrection) {
+              questionEntry.brancos += 1;
+            } else {
+              questionEntry.corretas += earnedRatio;
+              questionEntry.incorretas += Math.max(0, 1 - earnedRatio);
+            }
+
+            if (studentAnswer !== '') {
+              questionEntry.alternativaCounts[studentAnswer] = Number(questionEntry.alternativaCounts[studentAnswer] || 0) + 1;
+              if (!effectiveIsCorrect) {
+                questionEntry.alternativasErradas[studentAnswer] = Number(questionEntry.alternativasErradas[studentAnswer] || 0) + 1;
+              }
+            }
+          } else {
+            questionEntry.corretas += earnedRatio;
+            questionEntry.incorretas += Math.max(0, 1 - earnedRatio);
+          }
+
+          var disciplinaEntry = ensureStatsAggregateEntry(disciplinaMap, String(meta.disciplinaKey || meta.disciplina), {
+            nome: meta.disciplina,
+            earnedPoints: 0,
+            totalPoints: 0,
+            totalQuestoes: 0,
+            corretas: 0,
+            brancos: 0,
+          });
+          disciplinaEntry.earnedPoints += earnedPoints;
+          disciplinaEntry.totalPoints += totalPoints;
+          disciplinaEntry.totalQuestoes += 1;
+          disciplinaEntry.corretas += earnedRatio;
+          disciplinaEntry.brancos += studentAnswer === '' && !isAdaptedCorrection ? 1 : 0;
+
+          var skillKey = String(meta.habilidadeKey || meta.habilidadeCodigo || meta.habilidade);
+          var habilidadeEntry = ensureStatsAggregateEntry(habilidadeMap, skillKey, {
+            nome: meta.habilidade,
+            earnedPoints: 0,
+            totalPoints: 0,
+            totalQuestoes: 0,
+            masteryUnitsEarned: 0,
+            masteryUnitsTotal: 0,
+            alunosAtingiram: 0,
+            alunosNaoAtingiram: 0,
+          });
+          habilidadeEntry.earnedPoints += earnedPoints;
+          habilidadeEntry.totalPoints += totalPoints;
+          habilidadeEntry.totalQuestoes += 1;
+          habilidadeEntry.masteryUnitsTotal += 1;
+          habilidadeEntry.masteryUnitsEarned += questionMastered ? 1 : 0;
+          allSkills[skillKey] = { nome: meta.habilidade };
+
+          if (!alunoEntry.habilidades[skillKey]) {
+            alunoEntry.habilidades[skillKey] = {
+              habilidade: meta.habilidade,
+              earnedPoints: 0,
+              totalPoints: 0,
+              masteryUnitsEarned: 0,
+              masteryUnitsTotal: 0,
+            };
+          }
+          alunoEntry.habilidades[skillKey].earnedPoints += earnedPoints;
+          alunoEntry.habilidades[skillKey].totalPoints += totalPoints;
+          alunoEntry.habilidades[skillKey].masteryUnitsTotal += 1;
+          alunoEntry.habilidades[skillKey].masteryUnitsEarned += questionMastered ? 1 : 0;
+        });
+      });
+
+      Object.keys(alunoMap).forEach(function (alunoKey) {
+        var alunoEntry = alunoMap[alunoKey];
+        var habilidadesAtingidas = [];
+        var habilidadesPendentes = [];
+
+        Object.keys(allSkills).forEach(function (skillKey) {
+          var skillLabel = allSkills[skillKey] && allSkills[skillKey].nome
+            ? allSkills[skillKey].nome
+            : skillKey;
+          var skillEntry = alunoEntry.habilidades[skillKey] || {
+            habilidade: skillLabel,
+            earnedPoints: 0,
+            totalPoints: 0,
+            masteryUnitsEarned: 0,
+            masteryUnitsTotal: 0,
+          };
+          if (getStatsSkillMasteryLevel(skillEntry)) {
+            habilidadesAtingidas.push(skillLabel);
+          } else {
+            habilidadesPendentes.push(skillLabel);
+          }
+        });
+
+        alunoEntry.percentual = alunoEntry.correctionCount > 0
+          ? (alunoEntry.percentualSum / alunoEntry.correctionCount)
+          : 0;
+        alunoEntry.habilidadesAtingidas = habilidadesAtingidas;
+        alunoEntry.habilidadesPendentes = habilidadesPendentes;
+      });
+
+      var uniqueStudentCount = Object.keys(uniqueStudentMap).length;
+      Object.keys(habilidadeMap).forEach(function (skillKey) {
+        var reachedCount = 0;
+        var pendingCount = 0;
+        Object.keys(alunoMap).forEach(function (alunoKey) {
+          var skillEntry = alunoMap[alunoKey].habilidades[skillKey] || {
+            habilidade: habilidadeMap[skillKey].nome,
+            earnedPoints: 0,
+            totalPoints: 0,
+            masteryUnitsEarned: 0,
+            masteryUnitsTotal: 0,
+          };
+          if (getStatsSkillMasteryLevel(skillEntry)) {
+            reachedCount += 1;
+          } else {
+            pendingCount += 1;
+          }
+        });
+
+        habilidadeMap[skillKey].alunosAtingiram = reachedCount;
+        habilidadeMap[skillKey].alunosNaoAtingiram = pendingCount;
+        habilidadeMap[skillKey].alcancePercent = uniqueStudentCount > 0 ? ((reachedCount / uniqueStudentCount) * 100) : 0;
+        habilidadeMap[skillKey].masteryPercent = habilidadeMap[skillKey].totalPoints > 0
+          ? ((habilidadeMap[skillKey].earnedPoints / habilidadeMap[skillKey].totalPoints) * 100)
+          : 0;
+      });
+
+      var evaluationStats = Object.keys(evaluationMap).map(function (key) {
+        var item = evaluationMap[key];
+        item.mediaPercentual = item.correctionCount > 0 ? (item.percentualSum / item.correctionCount) : 0;
+        item.masteryPercent = item.totalPoints > 0 ? ((item.earnedPoints / item.totalPoints) * 100) : 0;
+        item.totalTurmas = Object.keys(item.turmas || {}).filter(Boolean).length;
+        return item;
+      }).sort(function (left, right) {
+        return right.mediaPercentual - left.mediaPercentual || String(left.nome || '').localeCompare(String(right.nome || ''), 'pt-BR', { sensitivity: 'base' });
+      });
+
+      var turmaStats = Object.keys(turmaMap).map(function (key) {
+        var item = turmaMap[key];
+        item.mediaPercentual = item.correctionCount > 0 ? (item.percentualSum / item.correctionCount) : 0;
+        item.masteryPercent = item.totalPoints > 0 ? ((item.earnedPoints / item.totalPoints) * 100) : 0;
+        return item;
+      }).sort(function (left, right) {
+        return right.mediaPercentual - left.mediaPercentual || String(left.nome || '').localeCompare(String(right.nome || ''), 'pt-BR', { sensitivity: 'base' });
+      });
+
+      var disciplinaStats = Object.keys(disciplinaMap).map(function (key) {
+        var item = disciplinaMap[key];
+        item.masteryPercent = item.totalPoints > 0 ? ((item.earnedPoints / item.totalPoints) * 100) : 0;
+        return item;
+      }).sort(function (left, right) {
+        return right.masteryPercent - left.masteryPercent || String(left.nome || '').localeCompare(String(right.nome || ''), 'pt-BR', { sensitivity: 'base' });
+      });
+
+      var habilidadeStats = Object.keys(habilidadeMap).map(function (key) {
+        return habilidadeMap[key];
+      }).sort(function (left, right) {
+        return right.masteryPercent - left.masteryPercent || String(left.nome || '').localeCompare(String(right.nome || ''), 'pt-BR', { sensitivity: 'base' });
+      });
+
+      var questionStats = Object.keys(questionMap).map(function (key) {
+        var item = questionMap[key];
+        item.acertoPercent = item.total > 0 ? ((item.corretas / item.total) * 100) : 0;
+        item.erroPercent = item.total > 0 ? ((item.incorretas / item.total) * 100) : 0;
+        item.brancoPercent = item.total > 0 ? ((item.brancos / item.total) * 100) : 0;
+        item.masteryPercent = item.totalPoints > 0 ? ((item.earnedPoints / item.totalPoints) * 100) : item.acertoPercent;
+        return item;
+      }).sort(function (left, right) {
+        if (left.masteryPercent !== right.masteryPercent) {
+          return left.masteryPercent - right.masteryPercent;
+        }
+        if (String(left.evaluationNome || '') !== String(right.evaluationNome || '')) {
+          return String(left.evaluationNome || '').localeCompare(String(right.evaluationNome || ''), 'pt-BR', { sensitivity: 'base' });
+        }
+        return Number(left.questionNumber || 0) - Number(right.questionNumber || 0);
+      });
+
+      var alunoStats = Object.keys(alunoMap).map(function (key) {
+        return alunoMap[key];
+      }).sort(function (left, right) {
+        return right.percentual - left.percentual || String(left.alunoNome || '').localeCompare(String(right.alunoNome || ''), 'pt-BR', { sensitivity: 'base' });
+      });
+
+      return {
+        totalCorrecoes: safeRows.length,
+        totalAvaliacoes: evaluationStats.length,
+        totalEsperado: safeRecords.length,
+        totalEstudantes: uniqueStudentCount,
+        totalPendentes: safeRecords.filter(function (item) { return normalizeCorrecaoStatus(item.status) === 'pendente'; }).length,
+        totalAusencias: safeRecords.filter(function (item) { return normalizeCorrecaoStatus(item.status) === 'ausente'; }).length,
+        totalZerados: safeRecords.filter(function (item) { return normalizeCorrecaoStatus(item.status) === 'gabarito_zerado'; }).length,
+        totalCorrigidos: safeRecords.filter(function (item) {
+          var status = normalizeCorrecaoStatus(item.status);
+          return status === 'corrigida' || status === 'gabarito_zerado';
+        }).length,
+        hasAdaptedRows: hasAdaptedRows,
+        mediaPercentual: safeRows.length > 0
+          ? (safeRows.reduce(function (sum, row) { return sum + Number(row.percentual || 0); }, 0) / safeRows.length)
+          : 0,
+        pontuacaoTotal: overallTotalPoints,
+        pontuacaoObtida: overallEarnedPoints,
+        evaluationStats: evaluationStats,
+        turmaStats: turmaStats,
+        disciplinaStats: disciplinaStats,
+        habilidadeStats: habilidadeStats,
+        questionStats: questionStats,
+        alunoStats: alunoStats,
+      };
+    }
+
+    function buildAvaliacaoReportInsights(dataset, criticalThreshold) {
+      var threshold = Number(criticalThreshold || 50);
+      if (!Number.isFinite(threshold)) {
+        threshold = 50;
+      }
+
+      var insights = [];
+      var recommendations = [];
+      var criticalQuestions = (dataset.questionStats || []).filter(function (item) {
+        return Number(item.masteryPercent || 0) < threshold;
+      }).slice(0, 5);
+      var criticalDisciplines = (dataset.disciplinaStats || []).filter(function (item) {
+        return Number(item.masteryPercent || 0) < threshold;
+      }).slice(0, 4);
+      var pendingTurmas = (dataset.turmaStats || []).filter(function (item) {
+        return Number(item.totalPendentes || 0) > 0 || Number(item.totalAusentes || 0) > 0;
+      }).slice(0, 4);
+      var pendingEvaluations = (dataset.evaluationStats || []).filter(function (item) {
+        return Number(item.totalPendentes || 0) > 0 || Number(item.totalAusentes || 0) > 0;
+      }).slice(0, 4);
+      var criticalSkills = (dataset.habilidadeStats || []).filter(function (item) {
+        return Number(item.alcancePercent || 0) < threshold;
+      }).slice(0, 4);
+      var criticalStudents = (dataset.alunoStats || []).filter(function (item) {
+        return Number(item.correctionCount || 0) > 0 && Number(item.percentual || 0) < threshold;
+      }).slice(0, 5);
+
+      if (criticalQuestions.length) {
+        insights.push({
+          title: 'Questões mais críticas',
+          text: criticalQuestions.map(function (item) {
+            return item.evaluationNome + ' • Q' + item.questionNumber + ' (' + formatStatsPercent(item.masteryPercent) + ')';
+          }).join(' • '),
+        });
+      }
+      if (criticalDisciplines.length) {
+        insights.push({
+          title: 'Componentes com domínio frágil',
+          text: criticalDisciplines.map(function (item) {
+            return item.nome + ' (' + formatStatsPercent(item.masteryPercent) + ')';
+          }).join(' • '),
+        });
+      }
+      if (criticalSkills.length) {
+        insights.push({
+          title: 'Habilidades menos alcançadas',
+          text: criticalSkills.map(function (item) {
+            return item.nome + ' (' + formatStatsPercent(item.alcancePercent) + ' de alcance)';
+          }).join(' • '),
+        });
+      }
+      if (pendingTurmas.length) {
+        insights.push({
+          title: 'Turmas com maior atenção operacional',
+          text: pendingTurmas.map(function (item) {
+            return item.nome + ' (' + item.totalPendentes + ' pendente(s), ' + item.totalAusentes + ' ausente(s))';
+          }).join(' • '),
+        });
+      }
+      if (criticalStudents.length) {
+        insights.push({
+          title: 'Estudantes em maior vulnerabilidade',
+          text: criticalStudents.map(function (item) {
+            return item.alunoNome + ' (' + formatStatsPercent(item.percentual) + ')';
+          }).join(' • '),
+        });
+      }
+
+      if (criticalDisciplines.length) {
+        recommendations.push('Priorizar retomadas dirigidas em ' + criticalDisciplines.map(function (item) { return item.nome; }).join(', ') + ', com reensino das habilidades que sustentam essas disciplinas.');
+      }
+      if (criticalSkills.length) {
+        recommendations.push('Criar uma trilha de recomposição para ' + criticalSkills.map(function (item) { return item.nome; }).join(', ') + ', incluindo atividades curtas de verificação e retomada.');
+      }
+      if (pendingEvaluations.length) {
+        recommendations.push('Fechar o ciclo avaliativo das avaliações com pendência operacional: ' + pendingEvaluations.map(function (item) { return item.nome; }).join(', ') + '.');
+      }
+      if (criticalStudents.length) {
+        recommendations.push('Acompanhar individualmente os estudantes mais críticos com intervenções orientadas por disciplina e revisão das faltas/pendências.');
+      }
+      if (!recommendations.length) {
+        recommendations.push('O recorte atual não mostrou criticidades graves; mantenha monitoramento contínuo e aprofunde a análise por turma e habilidade.');
+      }
+
+      return {
+        insights: insights,
+        recommendations: recommendations,
+      };
+    }
+
+    function renderRptPercentBar(percent, threshold) {
+      var safePercent = Number(percent || 0);
+      var safeThreshold = Number(threshold || 50);
+      var tone = safePercent >= safeThreshold ? 'ok' : (safePercent >= safeThreshold * 0.75 ? 'warn' : 'crit');
+      var barWidth = Math.max(2, Math.min(100, safePercent)).toFixed(1);
+      return '<div class="rpt-pct-cell ' + escapeHtml(tone) + '">'
+        + '<div class="rpt-pct-track"><div class="rpt-pct-fill" style="width:' + barWidth + '%"></div></div>'
+        + '<span class="rpt-pct-val">' + escapeHtml(formatStatsPercent(safePercent)) + '</span>'
+        + '</div>';
+    }
+
+    function renderAvaliacaoReportSideNav(items, activeKey) {
+      return '<nav class="rpt-nav">'
+        + items.map(function (item) {
+          var isActive = item.key === activeKey;
+          return '<button type="button" class="rpt-nav-btn js-admin-avaliacao-report-tab' + (isActive ? ' is-active' : '') + '" data-report-tab="' + escapeHtml(item.key) + '" aria-selected="' + (isActive ? 'true' : 'false') + '">'
+            + '<span class="rpt-nav-title">' + escapeHtml(item.title) + '</span>'
+            + '<span class="rpt-nav-value">' + escapeHtml(item.value) + '</span>'
+            + '</button>';
+        }).join('')
+        + '</nav>';
+    }
+
+    function renderAvaliacaoReportDetailPanel(key, title, pill, content, isActive) {
+      return '<section class="rpt-panel' + (isActive ? ' is-active' : '') + '" data-report-panel="' + escapeHtml(key) + '" aria-hidden="' + (isActive ? 'false' : 'true') + '">'
+        + '<div class="rpt-panel-head">'
+        + '<span class="rpt-panel-title">' + escapeHtml(title) + '</span>'
+        + (pill ? '<span class="rpt-panel-pill">' + escapeHtml(pill) + '</span>' : '')
+        + '</div>'
+        + '<div class="rpt-panel-body">'
+        + content
+        + '</div>'
+        + '</section>';
+    }
+
+    function applyAvaliacaoReportActiveTab(activeKey) {
+      if (!(reportRoot instanceof HTMLElement)) {
+        return;
+      }
+
+      var safeActiveKey = String(activeKey || '').trim() || 'resumo';
+      reportRoot.dataset.activeTab = safeActiveKey;
+
+      reportRoot.querySelectorAll('.js-admin-avaliacao-report-tab').forEach(function (button) {
+        if (!(button instanceof HTMLElement)) {
+          return;
+        }
+        var isActive = String(button.getAttribute('data-report-tab') || '') === safeActiveKey;
+        button.classList.toggle('is-active', isActive);
+        button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
+
+      reportRoot.querySelectorAll('[data-report-panel]').forEach(function (panel) {
+        if (!(panel instanceof HTMLElement)) {
+          return;
+        }
+        var isActive = String(panel.getAttribute('data-report-panel') || '') === safeActiveKey;
+        panel.classList.toggle('is-active', isActive);
+        panel.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+      });
+    }
+
+    function renderAvaliacaoReport(payload) {
+      if (!(reportRoot instanceof HTMLElement)) {
+        return;
+      }
+
+      var dataset = payload && payload.dataset && typeof payload.dataset === 'object' ? payload.dataset : null;
+      if (!dataset || dataset.totalEsperado <= 0) {
+        reportPrintSnapshot = null;
+        renderAvaliacaoReportWaitingState('Nenhum dado para o recorte atual', 'Ajuste os filtros ou selecione outras avaliações para montar o relatório.');
+        syncAvaliacaoReportHeaderButtons();
+        return;
+      }
+
+      var insightsBundle = payload.insights && typeof payload.insights === 'object' ? payload.insights : { insights: [], recommendations: [] };
+      var activeTab = reportTypeTabMap[String(reportTypeSelect && reportTypeSelect.value || 'completo')] || 'resumo';
+      var criticalThreshold = Number(reportCriticalThresholdSelect ? (reportCriticalThresholdSelect.value || '50') : '50') || 50;
+      var navItems = [
+        { key: 'resumo', title: 'Resumo', value: formatStatsPercent(dataset.mediaPercentual) },
+        { key: 'avaliacoes', title: 'Avaliações', value: String(dataset.totalAvaliacoes) },
+        { key: 'turmas', title: 'Turmas', value: String(dataset.turmaStats.length) },
+        { key: 'disciplinas', title: 'Disciplinas', value: String(dataset.disciplinaStats.length) },
+        { key: 'habilidades', title: 'Habilidades', value: String(dataset.habilidadeStats.length) },
+        { key: 'questoes', title: 'Questões', value: String(dataset.questionStats.length) },
+        { key: 'alunos', title: 'Estudantes', value: String(dataset.totalEstudantes) },
+        { key: 'criticos', title: 'Alertas', value: String((insightsBundle.insights || []).length) }
+      ];
+
+      // --- Resumo ---
+      var mediaPercentual = Number(dataset.mediaPercentual || 0);
+      var mediaTone = mediaPercentual >= criticalThreshold ? 'ok' : (mediaPercentual >= criticalThreshold * 0.75 ? 'warn' : 'crit');
+      var resumoContent = '<div class="rpt-stat-strip">'
+        + '<div class="rpt-stat"><span class="rpt-stat-label">Média geral</span><b class="rpt-stat-val ' + mediaTone + '">' + escapeHtml(formatStatsPercent(dataset.mediaPercentual)) + '</b></div>'
+        + '<div class="rpt-stat"><span class="rpt-stat-label">Aplicações</span><b class="rpt-stat-val">' + escapeHtml(String(dataset.totalEsperado)) + '</b></div>'
+        + '<div class="rpt-stat"><span class="rpt-stat-label">Corrigidas</span><b class="rpt-stat-val">' + escapeHtml(String(dataset.totalCorrigidos)) + '</b></div>'
+        + '<div class="rpt-stat"><span class="rpt-stat-label">Pendentes</span><b class="rpt-stat-val ' + (dataset.totalPendentes > 0 ? 'warn' : '') + '">' + escapeHtml(String(dataset.totalPendentes)) + '</b></div>'
+        + '<div class="rpt-stat"><span class="rpt-stat-label">Ausências</span><b class="rpt-stat-val ' + (dataset.totalAusencias > 0 ? 'warn' : '') + '">' + escapeHtml(String(dataset.totalAusencias)) + '</b></div>'
+        + '<div class="rpt-stat"><span class="rpt-stat-label">Zerados</span><b class="rpt-stat-val ' + (dataset.totalZerados > 0 ? 'crit' : '') + '">' + escapeHtml(String(dataset.totalZerados)) + '</b></div>'
+        + '</div>'
+        + '<div class="rpt-two-col">'
+        + '<div>'
+        + '<div class="rpt-section-head">Alertas pedagógicos</div>'
+        + (insightsBundle.insights && insightsBundle.insights.length
+          ? '<div class="rpt-alert-list">' + insightsBundle.insights.map(function (item) {
+              return '<div class="rpt-alert"><div class="rpt-alert-title">' + escapeHtml(item.title) + '</div><div class="rpt-alert-text">' + escapeHtml(item.text) + '</div></div>';
+            }).join('') + '</div>'
+          : '<div class="rpt-ok-notice">Nenhuma criticidade identificada no recorte atual.</div>')
+        + '</div>'
+        + '<div>'
+        + (insightsBundle.recommendations && insightsBundle.recommendations.length
+          ? '<div class="rpt-section-head">Encaminhamentos</div><div class="rpt-recommend-list">' + insightsBundle.recommendations.map(function (item) {
+              return '<div class="rpt-recommend"><div class="rpt-recommend-text">' + escapeHtml(item) + '</div></div>';
+            }).join('') + '</div>'
+          : '')
+        + '</div>'
+        + '</div>';
+
+      // --- Avaliações ---
+      var avaliacoesContent = '<table class="rpt-table"><thead><tr>'
+        + '<th>Avaliação</th><th>Aplicação</th><th>Média</th><th>Corrigidas</th><th>Pendentes</th><th>Ausências</th><th>Turmas</th>'
+        + '</tr></thead><tbody>'
+        + dataset.evaluationStats.map(function (item) {
+          var tags = [];
+          if (item.bimestre > 0) { tags.push(String(item.bimestre) + 'º bim.'); }
+          if (item.ciclo > 0) { tags.push(String(item.ciclo) + 'º ciclo'); }
+          if (item.isRecuperacao) { tags.push('Recup.'); }
+          if (item.isSimulado) { tags.push('Simulado'); }
+          return '<tr>'
+            + '<td class="rpt-td-name">' + escapeHtml(item.nome) + (tags.length ? '<div class="rpt-td-meta">' + escapeHtml(tags.join(' · ')) + '</div>' : '') + '</td>'
+            + '<td class="rpt-td-meta">' + escapeHtml(formatAvaliacaoAplicacao(item.aplicacao || '')) + '</td>'
+            + '<td>' + renderRptPercentBar(item.mediaPercentual, criticalThreshold) + '</td>'
+            + '<td>' + escapeHtml(String(item.totalCorrigidos || 0)) + '</td>'
+            + '<td class="' + (Number(item.totalPendentes || 0) > 0 ? 'rpt-td-warn' : '') + '">' + escapeHtml(String(item.totalPendentes || 0)) + '</td>'
+            + '<td class="' + (Number(item.totalAusentes || 0) > 0 ? 'rpt-td-warn' : '') + '">' + escapeHtml(String(item.totalAusentes || 0)) + '</td>'
+            + '<td>' + escapeHtml(String(item.totalTurmas || 0)) + '</td>'
+            + '</tr>';
+        }).join('')
+        + '</tbody></table>';
+
+      // --- Turmas ---
+      var turmasContent = '<table class="rpt-table"><thead><tr>'
+        + '<th>Turma</th><th>Média</th><th>Corrigidas</th><th>Pendentes</th><th>Ausências</th><th>Zerados</th>'
+        + '</tr></thead><tbody>'
+        + dataset.turmaStats.map(function (item) {
+          return '<tr>'
+            + '<td class="rpt-td-name">' + escapeHtml(item.nome) + '</td>'
+            + '<td>' + renderRptPercentBar(item.mediaPercentual, criticalThreshold) + '</td>'
+            + '<td>' + escapeHtml(String(item.totalCorrigidos || 0)) + '</td>'
+            + '<td class="' + (Number(item.totalPendentes || 0) > 0 ? 'rpt-td-warn' : '') + '">' + escapeHtml(String(item.totalPendentes || 0)) + '</td>'
+            + '<td class="' + (Number(item.totalAusentes || 0) > 0 ? 'rpt-td-warn' : '') + '">' + escapeHtml(String(item.totalAusentes || 0)) + '</td>'
+            + '<td class="' + (Number(item.totalZerados || 0) > 0 ? 'rpt-td-crit' : '') + '">' + escapeHtml(String(item.totalZerados || 0)) + '</td>'
+            + '</tr>';
+        }).join('')
+        + '</tbody></table>';
+
+      // --- Disciplinas ---
+      var disciplinasContent = '<table class="rpt-table"><thead><tr>'
+        + '<th>Componente curricular</th><th>Domínio</th><th>Questões</th><th>Brancos</th>'
+        + '</tr></thead><tbody>'
+        + dataset.disciplinaStats.map(function (item) {
+          return '<tr>'
+            + '<td class="rpt-td-name">' + escapeHtml(item.nome) + '</td>'
+            + '<td>' + renderRptPercentBar(item.masteryPercent, criticalThreshold) + '</td>'
+            + '<td>' + escapeHtml(String(item.totalQuestoes || 0)) + '</td>'
+            + '<td class="' + (Number(item.brancos || 0) > 0 ? 'rpt-td-warn' : '') + '">' + escapeHtml(String(item.brancos || 0)) + '</td>'
+            + '</tr>';
+        }).join('')
+        + '</tbody></table>';
+
+      // --- Habilidades ---
+      var habilidadesContent = '<div class="rpt-note">Critério de alcance: ≥ 70% da pontuação na habilidade. Aquém de ' + escapeHtml(String(criticalThreshold)) + '% sinaliza vulnerabilidade pedagógica.</div>'
+        + '<table class="rpt-table"><thead><tr>'
+        + '<th>Habilidade</th><th>Domínio</th><th>Alcance</th><th>Atingiram</th><th>Não atingiram</th>'
+        + '</tr></thead><tbody>'
+        + dataset.habilidadeStats.map(function (item) {
+          return '<tr>'
+            + '<td class="rpt-td-name">' + escapeHtml(item.nome) + '</td>'
+            + '<td>' + renderRptPercentBar(item.masteryPercent, criticalThreshold) + '</td>'
+            + '<td>' + renderRptPercentBar(item.alcancePercent, criticalThreshold) + '</td>'
+            + '<td>' + escapeHtml(String(item.alunosAtingiram || 0)) + '</td>'
+            + '<td class="' + (Number(item.alunosNaoAtingiram || 0) > 0 ? 'rpt-td-crit' : '') + '">' + escapeHtml(String(item.alunosNaoAtingiram || 0)) + '</td>'
+            + '</tr>';
+        }).join('')
+        + '</tbody></table>';
+
+      // --- Questões ---
+      var questoesContent = '<table class="rpt-table"><thead><tr>'
+        + '<th>Avaliação / Q#</th><th>Componente</th><th>Habilidade</th><th>Domínio</th><th>Acerto / Erro / Branco</th><th>Distratores</th>'
+        + '</tr></thead><tbody>'
+        + dataset.questionStats.map(function (item) {
+          return '<tr>'
+            + '<td class="rpt-td-name">' + escapeHtml(item.evaluationNome) + '<div class="rpt-td-meta">Q' + escapeHtml(String(item.questionNumber)) + ' · ' + escapeHtml(item.tipoLabel) + (item.anulada ? ' · Anulada' : '') + '</div></td>'
+            + '<td class="rpt-td-meta">' + escapeHtml(item.disciplina) + '</td>'
+            + '<td class="rpt-td-meta">' + escapeHtml(item.habilidade) + '</td>'
+            + '<td>' + renderRptPercentBar(item.masteryPercent, criticalThreshold) + '</td>'
+            + '<td><div class="admin-avaliacao-stats-stacked-track" style="min-width:6rem;height:0.45rem"><span class="admin-avaliacao-stats-stacked-segment is-correct" style="width:' + escapeHtml(String(item.acertoPercent.toFixed(1))) + '%"></span><span class="admin-avaliacao-stats-stacked-segment is-wrong" style="width:' + escapeHtml(String(item.erroPercent.toFixed(1))) + '%"></span><span class="admin-avaliacao-stats-stacked-segment is-blank" style="width:' + escapeHtml(String(item.brancoPercent.toFixed(1))) + '%"></span></div>'
+            + '<div class="rpt-td-meta" style="white-space:nowrap;margin-top:0.15rem">' + escapeHtml(formatStatsPercent(item.acertoPercent)) + ' · ' + escapeHtml(formatStatsPercent(item.erroPercent)) + ' · ' + escapeHtml(formatStatsPercent(item.brancoPercent)) + '</div></td>'
+            + '<td>' + renderStatsQuestionDistribution(item) + '</td>'
+            + '</tr>';
+        }).join('')
+        + '</tbody></table>';
+
+      // --- Estudantes agrupados por turma ---
+      var turmaGroupsMap = {};
+      dataset.alunoStats.forEach(function (item) {
+        var tKey = String(item.turmaNome || 'Sem turma');
+        if (!turmaGroupsMap[tKey]) {
+          turmaGroupsMap[tKey] = { nome: tKey, alunos: [], totalPercentual: 0, corrCount: 0 };
+        }
+        turmaGroupsMap[tKey].alunos.push(item);
+        if (Number(item.correctionCount || 0) > 0) {
+          turmaGroupsMap[tKey].totalPercentual += Number(item.percentual || 0);
+          turmaGroupsMap[tKey].corrCount += 1;
+        }
+      });
+      var alunosContent = Object.keys(turmaGroupsMap).length === 0
+        ? '<div class="rpt-note">Nenhum estudante no recorte selecionado.</div>'
+        : Object.keys(turmaGroupsMap).sort().map(function (tKey) {
+          var group = turmaGroupsMap[tKey];
+          var mediaGrupo = group.corrCount > 0 ? group.totalPercentual / group.corrCount : 0;
+          return '<div class="rpt-group">'
+            + '<div class="rpt-group-head">' + escapeHtml(group.nome)
+            + '<span class="rpt-group-meta">' + escapeHtml(String(group.alunos.length)) + ' estudante(s) · média ' + escapeHtml(formatStatsPercent(mediaGrupo)) + '</span>'
+            + '</div>'
+            + '<table class="rpt-table"><thead><tr>'
+            + '<th>Estudante</th><th>Média</th><th>Correções</th><th>Habilidades pendentes</th>'
+            + '</tr></thead><tbody>'
+            + group.alunos.map(function (item) {
+              var habPenCount = Array.isArray(item.habilidadesPendentes) ? item.habilidadesPendentes.length : 0;
+              var habOkCount = Array.isArray(item.habilidadesAtingidas) ? item.habilidadesAtingidas.length : 0;
+              return '<tr>'
+                + '<td class="rpt-td-name">' + escapeHtml(item.alunoNome) + '</td>'
+                + '<td>' + (Number(item.correctionCount || 0) > 0 ? renderRptPercentBar(item.percentual, criticalThreshold) : '<span class="rpt-td-meta">Sem correção</span>') + '</td>'
+                + '<td>' + escapeHtml(String(item.correctionCount || 0)) + ' corrigida(s)</td>'
+                + '<td>' + (habPenCount > 0 ? '<span class="rpt-crit-tag">' + escapeHtml(String(habPenCount)) + ' pendente(s)</span>' : (habOkCount > 0 ? '<span class="rpt-ok-tag">Todas atingidas</span>' : '<span class="rpt-td-meta">—</span>')) + '</td>'
+                + '</tr>';
+            }).join('')
+            + '</tbody></table>'
+            + '</div>';
+        }).join('');
+
+      // --- Críticos ---
+      var criticosContent = '<div class="rpt-two-col">'
+        + '<div>'
+        + '<div class="rpt-section-head">Alertas identificados</div>'
+        + ((insightsBundle.insights || []).length
+          ? '<div class="rpt-alert-list">' + insightsBundle.insights.map(function (item) {
+              return '<div class="rpt-alert"><div class="rpt-alert-title">' + escapeHtml(item.title) + '</div><div class="rpt-alert-text">' + escapeHtml(item.text) + '</div></div>';
+            }).join('') + '</div>'
+          : '<div class="rpt-ok-notice">Nenhuma criticidade identificada no recorte atual.</div>')
+        + '</div>'
+        + '<div>'
+        + '<div class="rpt-section-head">Plano de intervenção sugerido</div>'
+        + '<div class="rpt-recommend-list">'
+        + (insightsBundle.recommendations || []).map(function (item) {
+          return '<div class="rpt-recommend"><div class="rpt-recommend-text">' + escapeHtml(item) + '</div></div>';
+        }).join('')
+        + '</div>'
+        + '</div>'
+        + '</div>';
+
+      reportRoot.innerHTML = '<div class="admin-avaliacoes-report-readings">'
+        + renderAvaliacaoReportSideNav(navItems, activeTab)
+        + '<div class="rpt-content">'
+        + renderAvaliacaoReportDetailPanel('resumo', 'Resumo pedagógico', String(dataset.totalAvaliacoes) + ' avaliação(ões)', resumoContent, activeTab === 'resumo')
+        + renderAvaliacaoReportDetailPanel('avaliacoes', 'Comparativo entre avaliações', String(dataset.evaluationStats.length) + ' avaliação(ões)', avaliacoesContent, activeTab === 'avaliacoes')
+        + renderAvaliacaoReportDetailPanel('turmas', 'Comparativo por turma', String(dataset.turmaStats.length) + ' turma(s)', turmasContent, activeTab === 'turmas')
+        + renderAvaliacaoReportDetailPanel('disciplinas', 'Componentes curriculares', String(dataset.disciplinaStats.length) + ' componente(s)', disciplinasContent, activeTab === 'disciplinas')
+        + renderAvaliacaoReportDetailPanel('habilidades', 'Mapa de habilidades', String(dataset.habilidadeStats.length) + ' habilidade(s)', habilidadesContent, activeTab === 'habilidades')
+        + renderAvaliacaoReportDetailPanel('questoes', 'Questões e distratores', String(dataset.questionStats.length) + ' questão(ões)', questoesContent, activeTab === 'questoes')
+        + renderAvaliacaoReportDetailPanel('alunos', 'Acompanhamento por estudante', String(dataset.totalEstudantes) + ' estudante(s)', alunosContent, activeTab === 'alunos')
+        + renderAvaliacaoReportDetailPanel('criticos', 'Alertas e intervenções', String((insightsBundle.insights || []).length) + ' alerta(s)', criticosContent, activeTab === 'criticos')
+        + '</div>'
+        + '</div>';
+
+      applyAvaliacaoReportActiveTab(activeTab);
+      reportPrintSnapshot = {
+        activeTab: activeTab,
+        generatedAt: reportGeneratedAt,
+      };
+      syncAvaliacaoReportHeaderButtons();
+    }
+
+    function buildAvaliacaoReportPrintHtml() {
+      if (!(reportRoot instanceof HTMLElement)) {
+        return '';
+      }
+
+      var activeTab = String(reportRoot.dataset.activeTab || 'resumo').trim() || 'resumo';
+      var activePanel = reportRoot.querySelector('[data-report-panel="' + activeTab + '"] .rpt-panel-body');
+      if (!(activePanel instanceof HTMLElement)) {
+        return '';
+      }
+
+      return ''
+        + '<div class="admin-avaliacoes-report-print-header">'
+        + '<h1>Relatório de Avaliações</h1>'
+        + '<div class="small text-secondary">Emitido em ' + escapeHtml(reportGeneratedAt || formatDateTimePtBr(new Date().toISOString())) + '</div>'
+        + '<div class="admin-avaliacao-selector-chip-list mt-2">' + (reportSummaryElement ? reportSummaryElement.innerHTML : '') + '</div>'
+        + '</div>'
+        + '<div class="admin-avaliacoes-report-print-body">' + activePanel.innerHTML + '</div>';
+    }
+
+    function printAvaliacaoReport() {
+      var html = buildAvaliacaoReportPrintHtml();
+      if (html === '') {
+        return;
+      }
+
+      var baseUrl = '';
+      if (form && typeof form.action === 'string' && form.action.indexOf('/index.php/') !== -1) {
+        baseUrl = form.action.slice(0, form.action.indexOf('/index.php/'));
+      }
+      var styleHref = baseUrl !== ''
+        ? (baseUrl + '/public/assets/css/style.css')
+        : '/public/assets/css/style.css';
+      var printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        setAvaliacaoReportStatus('Não foi possível abrir a janela de impressão.', 'danger');
+        return;
+      }
+
+      printWindow.document.write('<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório de Avaliações</title><link rel="stylesheet" href="' + styleHref + '"><style>body{padding:24px;background:#fff;color:#17212b;font-family:Arial,sans-serif}.admin-avaliacoes-report-print-header{margin-bottom:24px}.admin-avaliacoes-report-print-header h1{font-size:28px;margin:0 0 8px}.admin-avaliacoes-report-tabs-wrap,.btn,.admin-avaliacao-stats-filters-actions{display:none !important}.admin-avaliacao-stats-detail-panel{display:block !important;max-height:none !important;overflow:visible !important}.admin-avaliacao-stats-card{box-shadow:none !important;border:1px solid #d7e0ea !important}.admin-avaliacao-stats-table-wrap{overflow:visible !important}.admin-avaliacao-stats-table th{position:static !important}</style></head><body>' + html + '</body></html>');
+      printWindow.document.close();
+      printWindow.focus();
+      window.setTimeout(function () {
+        printWindow.print();
+      }, 250);
+    }
+
+    function generateAvaliacaoReport() {
+      var selectedEvaluationIds = collectReportSelectedEvaluationIds();
+      if (!selectedEvaluationIds.length) {
+        setAvaliacaoReportStatus('Selecione pelo menos uma avaliação para gerar o relatório.', 'danger');
+        clearAvaliacaoReportOutput('Nenhuma avaliação selecionada', 'Abra o modal de avaliações e marque uma ou mais opções para montar o relatório.');
+        setAvaliacaoReportStage('filters');
+        return;
+      }
+
+      setAvaliacaoReportStatus('Gerando relatório consolidado...', '');
+      reportViewState.isDirty = false;
+      syncAvaliacaoReportHeaderButtons();
+
+      ensureAvaliacaoReportCache(selectedEvaluationIds)
+        .then(function () {
+          renderAvaliacaoReportFilterControls();
+          var records = buildAvaliacaoReportRecords(selectedEvaluationIds).filter(recordMatchesAvaliacaoReportFilters);
+          var normalizedRows = buildAvaliacaoReportNormalizedRows(records);
+          var dataset = buildAvaliacaoReportDataset(normalizedRows, records);
+          var insights = buildAvaliacaoReportInsights(dataset, reportCriticalThresholdSelect ? reportCriticalThresholdSelect.value : '50');
+          reportCurrentRows = records.slice();
+          reportCurrentSummary = dataset;
+          reportGeneratedAt = formatDateTimePtBr(new Date().toISOString());
+          reportViewState.isDirty = false;
+          renderAvaliacaoReport({ dataset: dataset, insights: insights });
+          renderAvaliacaoReportGeneratedMeta();
+          setAvaliacaoReportStage('results');
+          setAvaliacaoReportStatus('Relatório atualizado com ' + String(dataset.totalAvaliacoes) + ' avaliação(ões), ' + String(dataset.totalEstudantes) + ' estudante(s) e ' + String(dataset.totalEsperado) + ' aplicação(ões) previstas.', 'success');
+        })
+        .catch(function (error) {
+          setAvaliacaoReportStatus(error && error.message ? error.message : 'Não foi possível gerar o relatório agora.', 'danger');
+          clearAvaliacaoReportOutput('Falha ao montar o relatório', 'Tente novamente em instantes. Se o problema persistir, revise se as avaliações selecionadas possuem gabarito e correções acessíveis.');
+          setAvaliacaoReportStage('filters');
+        });
+    }
+
     if (statsRoot && statsRoot.dataset.statsTabsBound !== '1') {
       statsRoot.dataset.statsTabsBound = '1';
       statsRoot.addEventListener('click', function (event) {
@@ -13235,6 +15856,290 @@
         }
         renderAvaliacaoStats();
       });
+    }
+
+    if (reportRoot && reportRoot.dataset.reportTabsBound !== '1') {
+      reportRoot.dataset.reportTabsBound = '1';
+      reportRoot.addEventListener('click', function (event) {
+        var target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+
+        var reportTab = target.closest('.js-admin-avaliacao-report-tab');
+        if (reportTab instanceof HTMLElement) {
+          applyAvaliacaoReportActiveTab(reportTab.getAttribute('data-report-tab') || 'resumo');
+        }
+      });
+    }
+
+    if (reportModalElement) {
+      reportModalElement.addEventListener('hidden.bs.modal', function () {
+        if (reportSelectionModalInstance) {
+          blurActiveElementIfInside(reportSelectionModalElement);
+          reportSelectionModalInstance.hide();
+        }
+        if (reportFiltersModalInstance) {
+          blurActiveElementIfInside(reportFiltersModalElement);
+          reportFiltersModalInstance.hide();
+        }
+        if (reportFilterOptionsModalInstance) {
+          blurActiveElementIfInside(reportFilterOptionsModalElement);
+          reportFilterOptionsModalInstance.hide();
+        }
+      });
+    }
+
+    if (reportFiltersModalElement) {
+      reportFiltersModalElement.addEventListener('hidden.bs.modal', function () {
+        if (reportFilterOptionsModalInstance) {
+          blurActiveElementIfInside(reportFilterOptionsModalElement);
+          reportFilterOptionsModalInstance.hide();
+        }
+      });
+
+      reportFiltersModalElement.addEventListener('click', function (event) {
+        var target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+
+        var trigger = target.closest('.js-admin-avaliacao-report-open-filter-group');
+        if (trigger instanceof HTMLElement) {
+          openAvaliacaoReportFilterOptionsModal(trigger.getAttribute('data-report-filter-group') || '');
+        }
+      });
+    }
+
+    if (reportOpenButton) {
+      reportOpenButton.addEventListener('click', function () {
+        resetAvaliacaoReportFilters();
+        clearAvaliacaoReportOutput('Relatório pedagógico consolidado', 'Gere o relatório para abrir comparativos de avaliações, turmas, disciplinas, habilidades, questões, estudantes e pontos críticos.');
+        setAvaliacaoReportStage('filters');
+        setAvaliacaoReportStatus('Selecione os filtros e gere o relatório.', '');
+        if (reportModalInstance) {
+          reportModalInstance.show();
+        }
+      });
+    }
+
+    if (reportBackButton) {
+      reportBackButton.addEventListener('click', function () {
+        setAvaliacaoReportStage('filters');
+        if (reportViewState.isDirty) {
+          setAvaliacaoReportStatus('Os filtros foram alterados. Gere o relatório novamente para atualizar a leitura.', '');
+          return;
+        }
+        setAvaliacaoReportStatus('Revise os filtros e gere novamente se precisar atualizar o relatório.', '');
+      });
+    }
+
+    if (reportOpenSelectionButton) {
+      reportOpenSelectionButton.addEventListener('click', function () {
+        if (reportSelectionModalInstance) {
+          reportSelectionModalInstance.show();
+        }
+      });
+    }
+
+    if (reportOpenFiltersButton) {
+      reportOpenFiltersButton.addEventListener('click', function () {
+        if (reportFiltersModalInstance) {
+          reportFiltersModalInstance.show();
+        }
+      });
+    }
+
+    if (reportEvaluationSearchInput) {
+      reportEvaluationSearchInput.addEventListener('input', function () {
+        applyAvaliacaoReportOptionSearch(reportEvaluationList, reportEvaluationSearchInput.value);
+      });
+    }
+
+    if (reportFilterOptionsSearchInput) {
+      reportFilterOptionsSearchInput.addEventListener('input', function () {
+        applyAvaliacaoReportOptionSearch(reportFilterOptionsList, reportFilterOptionsSearchInput.value);
+      });
+    }
+
+    if (reportSelectAllButton) {
+      reportSelectAllButton.addEventListener('click', function () {
+        reportFiltersState.avaliacaoIds = avaliacoesCatalog.map(function (avaliacao) { return avaliacao.id; });
+        renderAvaliacaoReportFilterControls();
+        markAvaliacaoReportAsDirty('Avaliações alteradas. Gere o relatório para atualizar a leitura.');
+      });
+    }
+
+    if (reportSelectionSelectAllButton) {
+      reportSelectionSelectAllButton.addEventListener('click', function () {
+        reportFiltersState.avaliacaoIds = avaliacoesCatalog.map(function (avaliacao) { return avaliacao.id; });
+        renderAvaliacaoReportFilterControls();
+        markAvaliacaoReportAsDirty('Avaliações alteradas. Gere o relatório para atualizar a leitura.');
+      });
+    }
+
+    if (reportClearAllButton) {
+      reportClearAllButton.addEventListener('click', function () {
+        reportFiltersState.avaliacaoIds = [];
+        renderAvaliacaoReportFilterControls();
+        clearAvaliacaoReportOutput('Nenhuma avaliação selecionada', 'Abra o modal de avaliações e marque uma ou mais opções para montar o relatório.');
+        setAvaliacaoReportStage('filters');
+        setAvaliacaoReportStatus('Selecione ao menos uma avaliação para gerar o relatório.', '');
+      });
+    }
+
+    if (reportSelectionClearButton) {
+      reportSelectionClearButton.addEventListener('click', function () {
+        reportFiltersState.avaliacaoIds = [];
+        renderAvaliacaoReportFilterControls();
+        clearAvaliacaoReportOutput('Nenhuma avaliação selecionada', 'Abra o modal de avaliações e marque uma ou mais opções para montar o relatório.');
+        setAvaliacaoReportStage('filters');
+        setAvaliacaoReportStatus('Selecione ao menos uma avaliação para gerar o relatório.', '');
+      });
+    }
+
+    if (reportGenerateButton) {
+      reportGenerateButton.addEventListener('click', function () {
+        generateAvaliacaoReport();
+      });
+    }
+
+    if (reportResetButton) {
+      reportResetButton.addEventListener('click', function () {
+        resetAvaliacaoReportFilters();
+        clearAvaliacaoReportOutput('Relatório pedagógico consolidado', 'Os filtros foram redefinidos. Gere novamente para montar a leitura atualizada.');
+        setAvaliacaoReportStage('filters');
+        setAvaliacaoReportStatus('Filtros redefinidos. Gere o relatório novamente para consolidar o novo recorte.', '');
+      });
+    }
+
+    if (reportFiltersClearButton) {
+      reportFiltersClearButton.addEventListener('click', function () {
+        resetAvaliacaoReportRefinementFilters();
+        renderAvaliacaoReportFilterControls();
+        markAvaliacaoReportAsDirty('Recortes pedagógicos limpos. Gere o relatório novamente para consolidar o novo recorte.');
+        setAvaliacaoReportStage('filters');
+        setAvaliacaoReportStatus('Recortes pedagógicos limpos. Gere o relatório novamente para consolidar o novo recorte.', '');
+      });
+    }
+
+    if (reportPrintButton) {
+      reportPrintButton.addEventListener('click', function () {
+        printAvaliacaoReport();
+      });
+    }
+
+    if (reportTypeSelect) {
+      reportTypeSelect.addEventListener('change', function () {
+        markAvaliacaoReportAsDirty('Tipo de relatório alterado. Gere novamente para atualizar a leitura.');
+      });
+    }
+
+    if (reportCriticalThresholdSelect) {
+      reportCriticalThresholdSelect.addEventListener('change', function () {
+        markAvaliacaoReportAsDirty('Faixa crítica alterada. Gere novamente para atualizar a leitura.');
+      });
+    }
+
+    if (reportSelectionModalElement) {
+      reportSelectionModalElement.addEventListener('change', function (event) {
+        var target = event.target;
+        if (!(target instanceof HTMLInputElement)) {
+          return;
+        }
+
+        if (!target.classList.contains('js-admin-avaliacao-report-evaluation-option')) {
+          return;
+        }
+
+        var avaliacaoId = Number(target.value || 0);
+        if (avaliacaoId > 0) {
+          if (target.checked) {
+            if (reportFiltersState.avaliacaoIds.indexOf(avaliacaoId) === -1) {
+              reportFiltersState.avaliacaoIds.push(avaliacaoId);
+            }
+          } else {
+            reportFiltersState.avaliacaoIds = reportFiltersState.avaliacaoIds.filter(function (currentId) {
+              return currentId !== avaliacaoId;
+            });
+          }
+          renderAvaliacaoReportFilterControls();
+          markAvaliacaoReportAsDirty('Avaliações alteradas. Gere o relatório para atualizar a leitura.');
+        }
+      });
+    }
+
+    if (reportFilterOptionsModalElement) {
+      reportFilterOptionsModalElement.addEventListener('change', function (event) {
+        var target = event.target;
+        if (!(target instanceof HTMLInputElement)) {
+          return;
+        }
+
+        if (!target.classList.contains('js-admin-avaliacao-stats-filter-option')) {
+          return;
+        }
+
+        var groupName = String(target.getAttribute('data-filter-group') || '').trim();
+        var selectedValue = String(target.value || 'all');
+        var stateKeyMap = {
+          ReportTurma: 'turmaValues',
+          ReportDisciplina: 'disciplinaValues',
+          ReportHabilidade: 'habilidadeValues',
+          ReportAluno: 'alunoValues',
+          ReportAno: 'anoValues',
+          ReportBimestre: 'bimestreValues',
+          ReportCiclo: 'cicloValues',
+          ReportPresence: 'presenceValues',
+          ReportFlag: 'flagValues',
+        };
+        var stateKey = stateKeyMap[groupName] || '';
+        if (stateKey === '') {
+          return;
+        }
+
+        var currentValues = Array.isArray(reportFiltersState[stateKey]) ? reportFiltersState[stateKey].slice() : ['all'];
+        if (selectedValue === 'all') {
+          currentValues = ['all'];
+        } else if (target.checked) {
+          currentValues = currentValues.filter(function (value) {
+            return value !== 'all' && value !== selectedValue;
+          });
+          currentValues.push(selectedValue);
+        } else {
+          currentValues = currentValues.filter(function (value) {
+            return value !== 'all' && value !== selectedValue;
+          });
+          if (!currentValues.length) {
+            currentValues = ['all'];
+          }
+        }
+
+        reportFiltersState[stateKey] = currentValues;
+        renderAvaliacaoReportFilterControls();
+        markAvaliacaoReportAsDirty('Recortes pedagógicos alterados. Gere o relatório para atualizar a leitura.');
+      });
+    }
+
+    if (reportFilterOptionsClearButton) {
+      reportFilterOptionsClearButton.addEventListener('click', function () {
+        var definition = getAvaliacaoReportFilterGroupDefinition(reportFilterOptionPickerState.groupKey);
+        if (!definition) {
+          return;
+        }
+
+        reportFiltersState[definition.stateKey] = ['all'];
+        if (reportFilterOptionsSearchInput) {
+          reportFilterOptionsSearchInput.value = '';
+        }
+        renderAvaliacaoReportFilterControls();
+        markAvaliacaoReportAsDirty('Recorte limpo. Gere o relatório para atualizar a leitura.');
+      });
+    }
+
+    if (reportModalElement) {
+      setAvaliacaoReportStage('filters');
+      renderAvaliacaoReportGeneratedMeta();
     }
 
     function renderCorrecoesTable(rows, stats) {

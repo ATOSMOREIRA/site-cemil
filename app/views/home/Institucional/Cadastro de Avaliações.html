@@ -15,6 +15,7 @@ $isAdminViewer = (($isAdmin ?? false) === true);
 $currentYear = (int) ($currentYear ?? (int) date('Y'));
 $turmasMap = [];
 $avaliacaoTurmas = [];
+$avaliacoesReportCatalog = [];
 foreach ($turmas as $turmaOption) {
     $turmaOptionId = (int) ($turmaOption['id'] ?? 0);
     $turmaOptionNome = trim((string) ($turmaOption['nome'] ?? $turmaOption['turma'] ?? ''));
@@ -25,6 +26,48 @@ foreach ($turmas as $turmaOption) {
             $avaliacaoTurmas[] = $turmaOption;
         }
     }
+}
+
+foreach ($avaliacoes as $avaliacaoOption) {
+    if (!is_array($avaliacaoOption)) {
+        continue;
+    }
+
+    $reportId = (int) ($avaliacaoOption['id'] ?? 0);
+    if ($reportId <= 0) {
+        continue;
+    }
+
+    $reportNome = trim((string) ($avaliacaoOption['nome'] ?? ''));
+    $reportTurmasIds = is_array($avaliacaoOption['turmas_relacionadas_ids'] ?? null)
+        ? array_values(array_unique(array_map('intval', $avaliacaoOption['turmas_relacionadas_ids'])))
+        : [];
+    $reportTurmasNomes = [];
+    foreach ($reportTurmasIds as $reportTurmaId) {
+        if ($reportTurmaId > 0 && isset($turmasMap[$reportTurmaId])) {
+            $reportTurmasNomes[] = $turmasMap[$reportTurmaId];
+        }
+    }
+
+    $avaliacoesReportCatalog[] = [
+        'id' => $reportId,
+        'nome' => $reportNome !== '' ? $reportNome : 'Avaliação ' . $reportId,
+        'is_recuperacao' => (int) (($avaliacaoOption['is_recuperacao'] ?? 0) ? 1 : 0),
+        'ciclo' => (int) ($avaliacaoOption['ciclo'] ?? 0),
+        'is_simulado' => (int) (($avaliacaoOption['is_simulado'] ?? 0) ? 1 : 0),
+        'bimestre' => (int) ($avaliacaoOption['bimestre'] ?? 0),
+        'aplicacao' => trim((string) ($avaliacaoOption['aplicacao'] ?? '')),
+        'autor_id' => (int) ($avaliacaoOption['autor_id'] ?? 0),
+        'autor_nome' => trim((string) ($avaliacaoOption['autor_nome'] ?? '')),
+        'descricao' => trim((string) ($avaliacaoOption['descricao'] ?? '')),
+        'gabarito' => trim((string) ($avaliacaoOption['gabarito'] ?? '')),
+        'turmas_relacionadas_ids' => $reportTurmasIds,
+        'turmas_relacionadas_nomes' => $reportTurmasNomes,
+        'alunos_relacionados_ids' => is_array($avaliacaoOption['alunos_relacionados_ids'] ?? null)
+            ? array_values(array_unique(array_map('intval', $avaliacaoOption['alunos_relacionados_ids'])))
+            : [],
+        'alunos_relacionados_explicit' => trim((string) ($avaliacaoOption['alunos_relacionados'] ?? '')) !== '',
+    ];
 }
 ?>
 
@@ -40,6 +83,14 @@ foreach ($turmas as $turmaOption) {
                             <button type="button" class="btn btn-danger btn-sm js-admin-avaliacao-new">
                                 <i class="las la-plus me-1"></i>Nova avaliação
                             </button>
+                            <?php endif; ?>
+                            <?php if ($canManageAvaliacoes): ?>
+                            <button type="button" class="btn btn-outline-info btn-sm"
+                                id="adminAvaliacoesOpenReportBtn">
+                                <i class="las la-chart-bar me-1"></i>Relatório de Avaliações
+                            </button>
+                            <?php endif; ?>
+                            <?php if ($canEditAvaliacoes): ?>
                             <button type="button" class="btn btn-outline-danger btn-sm"
                                 id="adminAvaliacoesDeleteSelectedBtn" disabled>
                                 <i class="las la-trash-alt me-1"></i>Excluir selecionadas
@@ -317,6 +368,263 @@ foreach ($turmas as $turmaOption) {
                     <div id="adminAvaliacoesTableEmpty" class="alert alert-light border mt-3 d-none" role="alert">
                         Nenhuma avaliação encontrada para a busca.
                     </div>
+
+                    <?php if ($canManageAvaliacoes): ?>
+                    <div class="modal fade admin-info-form-modal" id="adminAvaliacoesReportModal" tabindex="-1"
+                        data-bs-backdrop="static" aria-labelledby="adminAvaliacoesReportModalLabel"
+                        aria-hidden="true">
+                        <div class="modal-dialog modal-fullscreen">
+                            <div class="modal-content site-modal-content admin-avaliacoes-report-modal-content">
+                                <div class="modal-header">
+                                    <div>
+                                        <div class="small text-secondary">Leitura pedagógica multiavaliação</div>
+                                        <h2 class="h5 mb-0" id="adminAvaliacoesReportModalLabel">Relatório de
+                                            Avaliações</h2>
+                                        <div class="small text-secondary mt-1" id="adminAvaliacoesReportStatus">Selecione os filtros e gere o relatório.</div>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm d-none"
+                                            id="adminAvaliacoesReportBackBtn">
+                                            <i class="las la-arrow-left me-1"></i>Filtros
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                            id="adminAvaliacoesReportPrintBtn" disabled>
+                                            <i class="las la-print me-1"></i>Imprimir
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                            data-bs-dismiss="modal">Fechar</button>
+                                    </div>
+                                </div>
+                                <div class="modal-body admin-avaliacoes-report-modal-body">
+                                    <div class="admin-avaliacoes-report-stage-shell">
+                                        <section class="admin-avaliacoes-report-stage is-active"
+                                            id="adminAvaliacoesReportFiltersStage">
+                                            <div class="admin-avaliacoes-report-config-grid">
+                                                <div class="admin-avaliacao-selector-summary-card admin-avaliacoes-report-config-card is-controls">
+                                                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                                        <div>
+                                                            <div class="fw-semibold">Configuração da leitura</div>
+                                                            <div class="small text-secondary">Defina o foco do relatório e a faixa de criticidade antes de emitir.</div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="row g-2">
+                                                        <div class="col-12">
+                                                            <label class="form-label form-label-sm mb-1"
+                                                                for="adminAvaliacoesReportType">Tipo de relatório</label>
+                                                            <select class="form-select form-select-sm"
+                                                                id="adminAvaliacoesReportType">
+                                                                <option value="completo">Completo</option>
+                                                                <option value="resumo">Resumo executivo</option>
+                                                                <option value="turmas">Comparativo por turmas</option>
+                                                                <option value="disciplinas">Foco em componentes curriculares</option>
+                                                                <option value="habilidades">Foco em habilidades</option>
+                                                                <option value="estudantes">Foco em estudantes</option>
+                                                                <option value="criticos">Pontos críticos e intervenção</option>
+                                                            </select>
+                                                        </div>
+                                                        <div class="col-12">
+                                                            <label class="form-label form-label-sm mb-1"
+                                                                for="adminAvaliacoesReportCriticalThreshold">Faixa crítica</label>
+                                                            <select class="form-select form-select-sm"
+                                                                id="adminAvaliacoesReportCriticalThreshold">
+                                                                <option value="40">Abaixo de 40%</option>
+                                                                <option value="50" selected>Abaixo de 50%</option>
+                                                                <option value="60">Abaixo de 60%</option>
+                                                                <option value="70">Abaixo de 70%</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="d-flex flex-wrap gap-2 mt-3">
+                                                        <button type="button" class="btn btn-primary btn-sm"
+                                                            id="adminAvaliacoesReportGenerateBtn">
+                                                            <i class="las la-play me-1"></i>Gerar relatório
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                                            id="adminAvaliacoesReportResetBtn">
+                                                            <i class="las la-undo me-1"></i>Resetar tudo
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <div class="admin-avaliacao-selector-summary-card admin-avaliacoes-report-config-card is-evaluations">
+                                                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                                        <div>
+                                                            <div class="fw-semibold">Avaliações selecionadas</div>
+                                                            <div class="small text-secondary">Agrupadas por ciclo e bimestre para revisão rápida.</div>
+                                                        </div>
+                                                        <span class="badge text-bg-light"
+                                                            id="adminAvaliacoesReportEvaluationCount">0</span>
+                                                    </div>
+                                                    <div id="adminAvaliacoesReportEvaluationSummary"
+                                                        class="admin-avaliacao-selector-summary-body admin-avaliacoes-report-compact-summary">
+                                                        <div class="small text-secondary">Nenhuma avaliação selecionada.</div>
+                                                    </div>
+                                                    <div class="d-flex flex-wrap gap-2 mt-3">
+                                                        <button type="button" class="btn btn-outline-primary btn-sm"
+                                                            id="adminAvaliacoesReportOpenSelectionBtn">
+                                                            <i class="las la-tasks me-1"></i>Selecionar avaliações
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-primary btn-sm"
+                                                            id="adminAvaliacoesReportSelectAllBtn">Todas</button>
+                                                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                                            id="adminAvaliacoesReportClearAllBtn">Limpar</button>
+                                                    </div>
+                                                </div>
+
+                                                <div class="admin-avaliacao-selector-summary-card admin-avaliacoes-report-config-card is-filters">
+                                                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                                        <div>
+                                                            <div class="fw-semibold">Recortes pedagógicos</div>
+                                                            <div class="small text-secondary">Turmas, estudantes, habilidades, presença e outros filtros auxiliares.</div>
+                                                        </div>
+                                                        <span class="badge text-bg-light"
+                                                            id="adminAvaliacoesReportFiltersCount">0</span>
+                                                    </div>
+                                                    <div id="adminAvaliacoesReportFiltersSummary"
+                                                        class="admin-avaliacao-selector-summary-body admin-avaliacoes-report-compact-summary">
+                                                        <div class="small text-secondary">Nenhum recorte adicional ativo.</div>
+                                                    </div>
+                                                    <div class="d-flex flex-wrap gap-2 mt-3">
+                                                        <button type="button" class="btn btn-outline-primary btn-sm"
+                                                            id="adminAvaliacoesReportOpenFiltersBtn">
+                                                            <i class="las la-filter me-1"></i>Selecionar filtros
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </section>
+
+                                        <section class="admin-avaliacoes-report-stage admin-avaliacoes-report-stage-results"
+                                            id="adminAvaliacoesReportResultsStage" hidden>
+                                            <div class="admin-avaliacoes-report-result-bar">
+                                                <div class="admin-avaliacoes-report-result-meta"
+                                                    id="adminAvaliacoesReportGeneratedMeta">Gere o relatório para visualizar a leitura consolidada.</div>
+                                                <div class="admin-avaliacao-selector-summary-body admin-avaliacoes-report-summary-wrap">
+                                                    <div id="adminAvaliacoesReportSummary" class="admin-avaliacao-selector-chip-list">
+                                                        <span class="admin-avaliacao-selector-chip is-muted">Nenhum recorte ativo</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div id="adminAvaliacoesReportRoot" class="admin-avaliacao-stats-root">
+                                                <div class="admin-avaliacao-stats-empty">
+                                                    <div class="admin-avaliacao-stats-empty-title">Relatório pedagógico consolidado</div>
+                                                    <div class="admin-avaliacao-stats-empty-text">Gere o relatório para abrir os comparativos por avaliação, turma, disciplina, habilidade, questão e estudante, com foco em criticidade, intervenção e impressão.</div>
+                                                </div>
+                                            </div>
+                                        </section>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal fade admin-info-form-modal admin-avaliacao-selector-modal"
+                        id="adminAvaliacoesReportSelectionModal" tabindex="-1"
+                        aria-labelledby="adminAvaliacoesReportSelectionModalLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+                            <div class="modal-content site-modal-content admin-avaliacoes-report-picker-modal-content">
+                                <div class="modal-header">
+                                    <div>
+                                        <div class="small text-secondary">Agrupamento por ciclo e bimestre</div>
+                                        <h2 class="h6 mb-0" id="adminAvaliacoesReportSelectionModalLabel">Selecionar
+                                            avaliações</h2>
+                                    </div>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                        aria-label="Fechar"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                                        <div class="small text-secondary">Marque uma ou mais avaliações para compor o
+                                            relatório consolidado.</div>
+                                        <div class="d-flex flex-wrap gap-2">
+                                            <button type="button" class="btn btn-outline-primary btn-sm"
+                                                id="adminAvaliacoesReportSelectionSelectAllBtn">Todas</button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                                id="adminAvaliacoesReportSelectionClearBtn">Limpar</button>
+                                        </div>
+                                    </div>
+                                    <input type="search"
+                                        class="form-control form-control-sm admin-avaliacao-stats-filter-search mb-3"
+                                        id="adminAvaliacoesReportEvaluationSearch"
+                                        placeholder="Buscar avaliação por nome, ciclo, bimestre ou data..."
+                                        autocomplete="off">
+                                    <div id="adminAvaliacoesReportEvaluationList"
+                                        class="admin-avaliacoes-report-group-list"></div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-primary btn-sm"
+                                        data-bs-dismiss="modal">Concluir seleção</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal fade admin-info-form-modal admin-avaliacao-selector-modal"
+                        id="adminAvaliacoesReportFiltersPickerModal" tabindex="-1"
+                        aria-labelledby="adminAvaliacoesReportFiltersPickerModalLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+                            <div class="modal-content site-modal-content admin-avaliacoes-report-picker-modal-content">
+                                <div class="modal-header">
+                                    <div>
+                                        <div class="small text-secondary">Refinamento após escolher as avaliações</div>
+                                        <h2 class="h6 mb-0" id="adminAvaliacoesReportFiltersPickerModalLabel">Selecionar
+                                            filtros pedagógicos</h2>
+                                    </div>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                        aria-label="Fechar"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p class="small text-secondary mb-3">Os estudantes aparecem agrupados por turma, e
+                                        os demais recortes continuam válidos mesmo depois da emissão do relatório.</p>
+                                    <div id="adminAvaliacoesReportFilterGroupsSummary"
+                                        class="admin-avaliacoes-report-filter-hub"></div>
+                                </div>
+                                <div class="modal-footer justify-content-between">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                                        id="adminAvaliacoesReportFiltersClearBtn">Limpar recortes</button>
+                                    <button type="button" class="btn btn-primary btn-sm"
+                                        data-bs-dismiss="modal">Concluir filtros</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal fade admin-info-form-modal admin-avaliacao-selector-modal"
+                        id="adminAvaliacoesReportFilterOptionsModal" tabindex="-1"
+                        aria-labelledby="adminAvaliacoesReportFilterOptionsModalLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+                            <div class="modal-content site-modal-content admin-avaliacoes-report-picker-modal-content">
+                                <div class="modal-header">
+                                    <div>
+                                        <div class="small text-secondary" id="adminAvaliacoesReportFilterOptionsModalSummary">
+                                            Selecione as opções desejadas para este recorte.</div>
+                                        <h2 class="h6 mb-0" id="adminAvaliacoesReportFilterOptionsModalLabel">Selecionar
+                                            opções</h2>
+                                    </div>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                        aria-label="Fechar"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-3">
+                                        <input type="search"
+                                            class="form-control form-control-sm admin-avaliacao-stats-filter-search admin-avaliacoes-report-option-modal-search"
+                                            id="adminAvaliacoesReportFilterOptionsSearch"
+                                            placeholder="Buscar opção..." autocomplete="off">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                            id="adminAvaliacoesReportFilterOptionsClearBtn">Limpar este grupo</button>
+                                    </div>
+                                    <div id="adminAvaliacoesReportFilterOptionsList"
+                                        class="admin-avaliacoes-report-group-list"></div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-primary btn-sm"
+                                        data-bs-dismiss="modal">Concluir seleção</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endif; ?>
 
                     <div class="modal fade admin-info-form-modal admin-avaliacao-selector-modal"
                         id="adminAvaliacoesFiltersModal" tabindex="-1"
@@ -1872,6 +2180,10 @@ foreach ($turmas as $turmaOption) {
     id="adminAvaliacoesDisciplinasData"><?= htmlspecialchars((string) json_encode($disciplinas, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_NOQUOTES, 'UTF-8'); ?></script>
 <script type="application/json"
     id="adminAvaliacoesDefaultGabaritoData"><?= htmlspecialchars((string) json_encode($defaultGabaritoPreset, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_NOQUOTES, 'UTF-8'); ?></script>
+<script type="application/json"
+    id="adminAvaliacoesCatalogData"><?= htmlspecialchars((string) json_encode($avaliacoesReportCatalog, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_NOQUOTES, 'UTF-8'); ?></script>
+<script type="application/json"
+    id="adminAvaliacoesTurmasData"><?= htmlspecialchars((string) json_encode($turmas, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_NOQUOTES, 'UTF-8'); ?></script>
 <script>
     window.__useDedicatedAvaliacoesScript = true;
 </script>

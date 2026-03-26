@@ -11,5 +11,14 @@
   <?php if (isset($_SESSION['auth'])): ?>
   <script src="<?= BASE_URL; ?>/public/assets/js/chatbot.js?v=<?= filemtime(__DIR__ . '/../../../public/assets/js/chatbot.js'); ?>"></script>
   <?php endif; ?>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        var swUrl   = <?= json_encode(rtrim(BASE_URL, '/') . '/sw.js', JSON_UNESCAPED_SLASHES); ?>;
+        var swScope = <?= json_encode(BASE_URL === '' ? '/' : rtrim(BASE_URL, '/') . '/', JSON_UNESCAPED_SLASHES); ?>;
+        navigator.serviceWorker.register(swUrl, { scope: swScope }).catch(function () {});
+      });
+    }
+  </script>
 </body>
 </html>

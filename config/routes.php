@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 return [
     '/' => ['HomeController', 'index'],
+    '/manifest.webmanifest' => ['PwaController', 'manifest'],
+    '/sw.js' => ['PwaController', 'serviceWorker'],
     '/api/instagram-posts' => ['HomeController', 'instagramPosts'],
     '/api/chatbot' => ['HomeController', 'apiChatbot'],
     '/404' => ['HomeController', 'notFound'],
