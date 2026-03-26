@@ -16,6 +16,9 @@ class AlunoModel
                     nome VARCHAR(150) NOT NULL,
                     matricula VARCHAR(30) NOT NULL,
                     desempenho LONGTEXT NULL,
+                    ativo TINYINT(1) NOT NULL DEFAULT 1,
+                    situacao VARCHAR(40) NOT NULL DEFAULT "Cursando",
+                    historico LONGTEXT NULL,
                     turma_id INT NULL,
                     turma VARCHAR(120) NOT NULL,
                     data_nascimento DATE NULL,
@@ -41,6 +44,9 @@ class AlunoModel
             'nome' => 'ADD COLUMN nome VARCHAR(150) NOT NULL DEFAULT ""',
             'matricula' => 'ADD COLUMN matricula VARCHAR(30) NOT NULL DEFAULT ""',
             'desempenho' => 'ADD COLUMN desempenho LONGTEXT NULL AFTER matricula',
+            'ativo' => 'ADD COLUMN ativo TINYINT(1) NOT NULL DEFAULT 1 AFTER desempenho',
+            'situacao' => 'ADD COLUMN situacao VARCHAR(40) NOT NULL DEFAULT "Cursando" AFTER ativo',
+            'historico' => 'ADD COLUMN historico LONGTEXT NULL AFTER situacao',
             'turma_id' => 'ADD COLUMN turma_id INT NULL',
             'turma' => 'ADD COLUMN turma VARCHAR(120) NOT NULL DEFAULT ""',
             'data_nascimento' => 'ADD COLUMN data_nascimento DATE NULL',
@@ -91,27 +97,37 @@ class AlunoModel
         }
     }
 
-    public function getAllOrdered(): array
+    public function getAllOrdered(bool $onlyActive = false): array
     {
         $this->ensureTableStructure();
 
         $pdo = Database::connection();
-        $statement = $pdo->query('SELECT id, nome, matricula, desempenho, turma_id, turma, data_nascimento, data_entrada, data_saida, rg, cpf, necessidade_deficiencia, responsavel, telefone, email, created_at, updated_at FROM alunos ORDER BY nome ASC, id DESC');
+        $sql = 'SELECT id, nome, matricula, desempenho, ativo, situacao, historico, turma_id, turma, data_nascimento, data_entrada, data_saida, rg, cpf, necessidade_deficiencia, responsavel, telefone, email, created_at, updated_at FROM alunos';
+        if ($onlyActive) {
+            $sql .= ' WHERE ativo = 1';
+        }
+        $sql .= ' ORDER BY nome ASC, id DESC';
+        $statement = $pdo->query($sql);
 
         return $statement?->fetchAll() ?: [];
     }
 
-    public function getSimpleOptions(): array
+    public function getSimpleOptions(bool $onlyActive = true): array
     {
         $this->ensureTableStructure();
 
         $pdo = Database::connection();
-        $statement = $pdo->query('SELECT id, nome, matricula, turma_id, turma FROM alunos ORDER BY nome ASC, id ASC');
+        $sql = 'SELECT id, nome, matricula, ativo, situacao, turma_id, turma FROM alunos';
+        if ($onlyActive) {
+            $sql .= ' WHERE ativo = 1';
+        }
+        $sql .= ' ORDER BY nome ASC, id ASC';
+        $statement = $pdo->query($sql);
 
         return $statement?->fetchAll() ?: [];
     }
 
-    public function getByTurmaId(int $turmaId): array
+    public function getByTurmaId(int $turmaId, bool $onlyActive = true): array
     {
         $this->ensureTableStructure();
 
@@ -120,7 +136,12 @@ class AlunoModel
         }
 
         $pdo = Database::connection();
-        $statement = $pdo->prepare('SELECT id, nome, matricula, turma_id, turma FROM alunos WHERE turma_id = :turma_id ORDER BY nome ASC, id ASC');
+        $sql = 'SELECT id, nome, matricula, ativo, situacao, turma_id, turma FROM alunos WHERE turma_id = :turma_id';
+        if ($onlyActive) {
+            $sql .= ' AND ativo = 1';
+        }
+        $sql .= ' ORDER BY nome ASC, id ASC';
+        $statement = $pdo->prepare($sql);
         $statement->execute(['turma_id' => $turmaId]);
 
         return $statement->fetchAll() ?: [];
@@ -135,14 +156,14 @@ class AlunoModel
         $this->ensureTableStructure();
 
         $pdo = Database::connection();
-        $statement = $pdo->prepare('SELECT id, nome, matricula, desempenho, turma_id, turma, data_nascimento, data_entrada, data_saida, rg, cpf, necessidade_deficiencia, responsavel, telefone, email, created_at, updated_at FROM alunos WHERE id = :id LIMIT 1');
+        $statement = $pdo->prepare('SELECT id, nome, matricula, desempenho, ativo, situacao, historico, turma_id, turma, data_nascimento, data_entrada, data_saida, rg, cpf, necessidade_deficiencia, responsavel, telefone, email, created_at, updated_at FROM alunos WHERE id = :id LIMIT 1');
         $statement->execute(['id' => $id]);
         $row = $statement->fetch();
 
         return is_array($row) ? $row : null;
     }
 
-    public function findByMatricula(string $matricula): ?array
+    public function findByMatricula(string $matricula, ?bool $onlyActive = null): ?array
     {
         $matricula = trim($matricula);
         if ($matricula === '') {
@@ -152,7 +173,16 @@ class AlunoModel
         $this->ensureTableStructure();
 
         $pdo = Database::connection();
-        $statement = $pdo->prepare('SELECT id, nome, matricula, desempenho, turma_id, turma, data_nascimento, data_entrada, data_saida, rg, cpf, necessidade_deficiencia, responsavel, telefone, email, created_at, updated_at FROM alunos WHERE matricula = :matricula LIMIT 1');
+        $sql = 'SELECT id, nome, matricula, desempenho, ativo, situacao, historico, turma_id, turma, data_nascimento, data_entrada, data_saida, rg, cpf, necessidade_deficiencia, responsavel, telefone, email, created_at, updated_at FROM alunos WHERE matricula = :matricula';
+        if ($onlyActive === true) {
+            $sql .= ' AND ativo = 1';
+        } elseif ($onlyActive === false) {
+            $sql .= ' AND ativo = 0';
+        }
+        $sql .= $onlyActive === null
+            ? ' ORDER BY ativo DESC, id DESC LIMIT 1'
+            : ' ORDER BY id DESC LIMIT 1';
+        $statement = $pdo->prepare($sql);
         $statement->execute(['matricula' => $matricula]);
         $row = $statement->fetch();
 
@@ -181,12 +211,12 @@ class AlunoModel
         return (int) ($statement->fetchColumn() ?: 0) > 0;
     }
 
-    public function create(string $nome, string $matricula, ?int $turmaId, string $turma, ?string $dataNascimento, ?string $dataEntrada, ?string $dataSaida, ?string $rg, ?string $cpf, ?string $necessidadeDeficiencia, ?string $responsavel, ?string $telefone, ?string $email): int
+    public function create(string $nome, string $matricula, ?int $turmaId, string $turma, ?string $dataNascimento, ?string $dataEntrada, ?string $dataSaida, ?string $rg, ?string $cpf, ?string $necessidadeDeficiencia, ?string $responsavel, ?string $telefone, ?string $email, bool $ativo = true, ?string $situacao = 'Cursando', ?string $historico = null): int
     {
         $this->ensureTableStructure();
 
         $pdo = Database::connection();
-        $statement = $pdo->prepare('INSERT INTO alunos (nome, matricula, turma_id, turma, data_nascimento, data_entrada, data_saida, rg, cpf, necessidade_deficiencia, responsavel, telefone, email) VALUES (:nome, :matricula, :turma_id, :turma, :data_nascimento, :data_entrada, :data_saida, :rg, :cpf, :necessidade_deficiencia, :responsavel, :telefone, :email)');
+        $statement = $pdo->prepare('INSERT INTO alunos (nome, matricula, turma_id, turma, data_nascimento, data_entrada, data_saida, rg, cpf, necessidade_deficiencia, responsavel, telefone, email, ativo, situacao, historico) VALUES (:nome, :matricula, :turma_id, :turma, :data_nascimento, :data_entrada, :data_saida, :rg, :cpf, :necessidade_deficiencia, :responsavel, :telefone, :email, :ativo, :situacao, :historico)');
         $statement->execute([
             'nome' => $nome,
             'matricula' => $matricula,
@@ -201,12 +231,15 @@ class AlunoModel
             'responsavel' => $responsavel,
             'telefone' => $telefone,
             'email' => $email,
+            'ativo' => $ativo ? 1 : 0,
+            'situacao' => $situacao !== null && trim($situacao) !== '' ? trim($situacao) : 'Cursando',
+            'historico' => $historico,
         ]);
 
         return (int) $pdo->lastInsertId();
     }
 
-    public function update(int $id, string $nome, string $matricula, ?int $turmaId, string $turma, ?string $dataNascimento, ?string $dataEntrada, ?string $dataSaida, ?string $rg, ?string $cpf, ?string $necessidadeDeficiencia, ?string $responsavel, ?string $telefone, ?string $email): void
+    public function update(int $id, string $nome, string $matricula, ?int $turmaId, string $turma, ?string $dataNascimento, ?string $dataEntrada, ?string $dataSaida, ?string $rg, ?string $cpf, ?string $necessidadeDeficiencia, ?string $responsavel, ?string $telefone, ?string $email, ?bool $ativo = null, ?string $situacao = null, ?string $historico = null): void
     {
         if ($id <= 0) {
             throw new InvalidArgumentException('ID inválido para atualização.');
@@ -215,7 +248,7 @@ class AlunoModel
         $this->ensureTableStructure();
 
         $pdo = Database::connection();
-        $statement = $pdo->prepare('UPDATE alunos SET nome = :nome, matricula = :matricula, turma_id = :turma_id, turma = :turma, data_nascimento = :data_nascimento, data_entrada = :data_entrada, data_saida = :data_saida, rg = :rg, cpf = :cpf, necessidade_deficiencia = :necessidade_deficiencia, responsavel = :responsavel, telefone = :telefone, email = :email WHERE id = :id');
+        $statement = $pdo->prepare('UPDATE alunos SET nome = :nome, matricula = :matricula, turma_id = :turma_id, turma = :turma, data_nascimento = :data_nascimento, data_entrada = :data_entrada, data_saida = :data_saida, rg = :rg, cpf = :cpf, necessidade_deficiencia = :necessidade_deficiencia, responsavel = :responsavel, telefone = :telefone, email = :email, ativo = COALESCE(:ativo, ativo), situacao = COALESCE(:situacao, situacao), historico = COALESCE(:historico, historico) WHERE id = :id');
         $statement->execute([
             'nome' => $nome,
             'matricula' => $matricula,
@@ -230,6 +263,9 @@ class AlunoModel
             'responsavel' => $responsavel,
             'telefone' => $telefone,
             'email' => $email,
+            'ativo' => $ativo === null ? null : ($ativo ? 1 : 0),
+            'situacao' => $situacao,
+            'historico' => $historico,
             'id' => $id,
         ]);
     }

@@ -249,19 +249,12 @@
 							<th>Nome</th>
 							<th>Matrícula</th>
 							<th>Turma</th>
-							<th>Data Nascimento</th>
-							<th>Entrada</th>
-							<th>Data de saída</th>
-							<th>RG</th>
-							<th>CPF</th>
-							<th>Necessidade/Deficiência</th>
-							<th>Responsável</th>
 							<th class="text-end">Ações</th>
 						</tr>
 					</thead>
 					<tbody id="alunosBody">
 						<tr>
-							<td colspan="12" class="muted-empty">Nenhum estudante cadastrado.</td>
+							<td colspan="5" class="muted-empty">Nenhum estudante cadastrado.</td>
 						</tr>
 					</tbody>
 				</table>
@@ -295,6 +288,16 @@
 								<label class="form-label" for="turmaAluno">Turma</label>
 								<select id="turmaAluno" class="form-select" required>
 									<option value="">Selecione uma turma</option>
+								</select>
+							</div>
+
+							<div class="col-md-3">
+								<label class="form-label" for="situacaoAluno">Situação</label>
+								<select id="situacaoAluno" class="form-select" required>
+									<option value="Cursando">Cursando</option>
+									<option value="Remanejado">Remanejado</option>
+									<option value="Desalocado">Desalocado</option>
+									<option value="Transferido">Transferido</option>
 								</select>
 							</div>
 
@@ -409,6 +412,7 @@
 									<th>Linha</th>
 									<th>Nome</th>
 									<th>Matrícula</th>
+									<th>Situação</th>
 									<th>Turma</th>
 									<th>Nascimento</th>
 									<th>Entrada</th>
@@ -424,7 +428,7 @@
 							</thead>
 							<tbody id="importPreviewBody">
 								<tr>
-									<td colspan="16" class="muted-empty">Nenhuma pré-visualização carregada.</td>
+									<td colspan="17" class="muted-empty">Nenhuma pré-visualização carregada.</td>
 								</tr>
 							</tbody>
 						</table>
@@ -480,6 +484,7 @@
 			var nomeInput = document.getElementById('nomeAluno');
 			var matriculaInput = document.getElementById('matriculaAluno');
 			var turmaInput = document.getElementById('turmaAluno');
+			var situacaoInput = document.getElementById('situacaoAluno');
 			var nascimentoInput = document.getElementById('dataNascimentoAluno');
 			var entradaInput = document.getElementById('dataEntradaAluno');
 			var dataSaidaInput = document.getElementById('dataSaidaAluno');
@@ -510,6 +515,7 @@
 			var importPreviewFieldDefinitions = [
 				{ key: 'nome', label: 'Nome' },
 				{ key: 'matricula', label: 'Matrícula' },
+				{ key: 'situacao', label: 'Situação' },
 				{ key: 'turma', label: 'Turma' },
 				{ key: 'data_nascimento', label: 'Data de nascimento' },
 				{ key: 'data_entrada', label: 'Entrada' },
@@ -666,6 +672,7 @@
 				nomeInput.value = '';
 				matriculaInput.value = '';
 				renderTurmaOptions(0);
+				situacaoInput.value = 'Cursando';
 				nascimentoInput.value = '';
 				entradaInput.value = '';
 				dataSaidaInput.value = '';
@@ -675,6 +682,26 @@
 				responsavelInput.value = '';
 				telefoneInput.value = '';
 				emailInput.value = '';
+				updateSituacaoFieldState();
+			}
+
+			function isSituacaoInativa(situacao) {
+				return ['Remanejado', 'Desalocado', 'Transferido'].indexOf(String(situacao || '')) !== -1;
+			}
+
+			function updateSituacaoFieldState() {
+				if (!situacaoInput || !dataSaidaInput) {
+					return;
+				}
+
+				var situacaoAtual = String(situacaoInput.value || 'Cursando');
+				var exigeSaida = isSituacaoInativa(situacaoAtual);
+				dataSaidaInput.disabled = !exigeSaida;
+				dataSaidaInput.required = exigeSaida;
+
+				if (!exigeSaida) {
+					dataSaidaInput.value = '';
+				}
 			}
 
 			function openFormModal() {
@@ -776,6 +803,15 @@
 
 				if (field === 'cpf') {
 					return formatCpfValue(textValue);
+				}
+
+				if (field === 'situacao') {
+					var normalized = normalize(textValue);
+					if (normalized === 'remanejado') return 'Remanejado';
+					if (normalized === 'desalocado') return 'Desalocado';
+					if (normalized === 'transferido') return 'Transferido';
+					if (normalized === 'cursando' || normalized === '') return 'Cursando';
+					return textValue;
 				}
 
 				return textValue;
@@ -884,6 +920,10 @@
 
 				for (var index = 0; index < alunos.length; index += 1) {
 					var aluno = alunos[index];
+					if (Number(aluno && aluno.ativo || 1) !== 1) {
+						continue;
+					}
+
 					if (String(aluno && aluno.matricula || '').trim() === normalizedMatricula) {
 						return aluno;
 					}
@@ -896,6 +936,7 @@
 				var messages = [];
 				var nome = String(row && row.nome || '').trim();
 				var matricula = String(row && row.matricula || '').trim();
+				var situacao = String(row && row.situacao || 'Cursando').trim() || 'Cursando';
 				var matriculaMapped = previewImportMapping && Object.prototype.hasOwnProperty.call(previewImportMapping, 'matricula')
 					? previewImportMapping.matricula !== null
 					: true;
@@ -903,16 +944,28 @@
 				var turmaInfo = findTurmaByName(turmaNome);
 				var dataEntrada = String(row && row.data_entrada || '').trim();
 				var dataSaida = String(row && row.data_saida || '').trim();
+				if (situacao === 'Cursando') {
+					dataSaida = '';
+				}
 				var cpf = String(row && row.cpf || '').trim();
 				var email = String(row && row.email || '').trim();
 				var existing = findAlunoByMatricula(matricula);
+				var situacaoValida = ['Cursando', 'Remanejado', 'Desalocado', 'Transferido'].indexOf(situacao) !== -1;
 
 				if (nome === '') {
 					messages.push('Informe o nome.');
 				}
 
+				if (!situacaoValida) {
+					messages.push('Situação inválida.');
+				}
+
 				if (matriculaMapped && matricula === '') {
 					messages.push('Informe a matrícula.');
+				}
+
+				if (situacao !== 'Cursando' && dataSaida === '') {
+					messages.push('Informe a data de saída para esta situação.');
 				}
 
 				if (turmaNome === '') {
@@ -933,15 +986,42 @@
 					messages.push('E-mail inválido.');
 				}
 
+				var hasChanges = true;
+				if (existing && messages.length === 0) {
+					hasChanges = previewRowHasChanges(row, existing, turmaInfo, situacao, dataSaida);
+				}
+
 				return {
 					messages: messages,
 					canImport: messages.length === 0,
-					action: messages.length > 0 ? 'review' : (existing ? 'update' : 'create'),
+					action: messages.length > 0 ? 'review' : (existing ? (hasChanges ? 'update' : 'no_change') : 'create'),
 					turmaId: turmaInfo ? Number(turmaInfo.id || 0) : 0,
 					turmaNome: turmaInfo ? String(turmaInfo.nome || turmaNome) : turmaNome,
 					existingId: existing ? Number(existing.id || 0) : 0,
 					existingNome: existing ? String(existing.nome || '') : ''
 				};
+			}
+
+			function previewRowHasChanges(row, existing, turmaInfo, situacao, dataSaida) {
+				var expectedSituacao = situacao === 'Cursando' ? 'Cursando' : situacao;
+				var expectedDataSaida = situacao === 'Cursando' ? '' : String(dataSaida || '').trim();
+				var existingSituacao = String(existing && existing.situacao || 'Cursando').trim() || 'Cursando';
+				var existingDataSaida = String(existing && existing.data_saida || '').trim();
+				var turmaIdAtual = turmaInfo ? Number(turmaInfo.id || 0) : 0;
+
+				return String(row && row.nome || '').trim() !== String(existing && existing.nome || '').trim()
+					|| String(row && row.matricula || '').trim() !== String(existing && existing.matricula || '').trim()
+					|| turmaIdAtual !== Number(existing && existing.turma_id || 0)
+					|| String(row && row.data_nascimento || '').trim() !== String(existing && existing.data_nascimento || '').trim()
+					|| String(row && row.data_entrada || '').trim() !== String(existing && existing.data_entrada || '').trim()
+					|| expectedDataSaida !== existingDataSaida
+					|| String(row && row.rg || '').trim() !== String(existing && existing.rg || '').trim()
+					|| formatCpfValue(row && row.cpf || '') !== formatCpfValue(existing && existing.cpf || '')
+					|| String(row && row.necessidade_deficiencia || '').trim() !== String(existing && existing.necessidade_deficiencia || '').trim()
+					|| String(row && row.responsavel || '').trim() !== String(existing && existing.responsavel || '').trim()
+					|| String(row && row.telefone || '').trim() !== String(existing && existing.telefone || '').trim()
+					|| String(row && row.email || '').trim() !== String(existing && existing.email || '').trim()
+					|| expectedSituacao !== existingSituacao;
 			}
 
 			function getPreviewActionBadge(action) {
@@ -951,6 +1031,10 @@
 
 				if (action === 'update') {
 					return '<span class="badge text-bg-info">Atualizar</span>';
+				}
+
+				if (action === 'no_change') {
+					return '<span class="badge text-bg-secondary">Sem alterações</span>';
 				}
 
 				return '<span class="badge text-bg-warning">Revisar</span>';
@@ -978,6 +1062,7 @@
 					total: previewImportRows.length,
 					create: 0,
 					update: 0,
+					no_change: 0,
 					review: 0,
 					selected: 0
 				};
@@ -994,6 +1079,7 @@
 					'<span class="badge text-bg-secondary">Total: ' + summary.total + '</span>',
 					'<span class="badge text-bg-success">Novos: ' + summary.create + '</span>',
 					'<span class="badge text-bg-info">Atualizar: ' + summary.update + '</span>',
+					'<span class="badge text-bg-secondary">Sem alterações: ' + summary.no_change + '</span>',
 					'<span class="badge text-bg-warning">Revisão: ' + summary.review + '</span>',
 					'<span class="badge text-bg-dark">Selecionados: ' + summary.selected + '</span>'
 				].join('');
@@ -1007,7 +1093,8 @@
 
 				if (importPreviewSelectAll) {
 					var selectableRows = previewImportRows.filter(function (row) {
-						return analyzePreviewRow(row).canImport;
+						var rowState = analyzePreviewRow(row);
+						return rowState.canImport && rowState.action !== 'no_change';
 					});
 					var selectedCount = selectableRows.filter(function (row) {
 						return row.selected;
@@ -1041,26 +1128,26 @@
 					row.selected = false;
 				}
 
-				tableRow.classList.remove('is-create', 'is-update', 'is-review');
-				tableRow.classList.add(state.action === 'create' ? 'is-create' : (state.action === 'update' ? 'is-update' : 'is-review'));
+				tableRow.classList.remove('is-create', 'is-update', 'is-review', 'is-no-change');
+				tableRow.classList.add(state.action === 'create' ? 'is-create' : (state.action === 'update' ? 'is-update' : (state.action === 'no_change' ? 'is-no-change' : 'is-review')));
 
 				var checkbox = tableRow.querySelector('.js-import-preview-select');
 				if (checkbox) {
 					checkbox.checked = Boolean(row.selected && state.canImport);
-					checkbox.disabled = !state.canImport;
+					checkbox.disabled = !state.canImport || state.action === 'no_change';
 				}
 
 				var statusCell = tableRow.querySelector('.js-import-preview-status');
 				if (statusCell) {
 					statusCell.innerHTML = getPreviewActionBadge(state.action)
-						+ (state.action === 'update' && state.existingNome ? '<div class="small text-secondary mt-1">Já existe: ' + escapeHtml(state.existingNome) + '</div>' : '');
+						+ ((state.action === 'update' || state.action === 'no_change') && state.existingNome ? '<div class="small text-secondary mt-1">Já existe: ' + escapeHtml(state.existingNome) + '</div>' : '');
 				}
 
 				var messagesCell = tableRow.querySelector('.js-import-preview-messages');
 				if (messagesCell) {
 					messagesCell.innerHTML = state.messages.length
 						? state.messages.map(function (message) { return '<div>' + escapeHtml(message) + '</div>'; }).join('')
-						: '<span class="text-success">Pronto para importar.</span>';
+						: (state.action === 'no_change' ? '<span class="text-secondary">Nenhuma alteração detectada.</span>' : '<span class="text-success">Pronto para importar.</span>');
 				}
 
 				updateImportPreviewSummary();
@@ -1072,7 +1159,7 @@
 				}
 
 				if (!previewImportRows.length) {
-					importPreviewBody.innerHTML = '<tr><td colspan="16" class="muted-empty">Nenhuma pré-visualização carregada.</td></tr>';
+					importPreviewBody.innerHTML = '<tr><td colspan="17" class="muted-empty">Nenhuma pré-visualização carregada.</td></tr>';
 					updateImportPreviewSummary();
 					return;
 				}
@@ -1086,16 +1173,17 @@
 					row.existing_nome = state.existingNome;
 					row.messages = state.messages.slice();
 					if (typeof row.selected !== 'boolean') {
-						row.selected = state.canImport;
+						row.selected = state.canImport && state.action !== 'no_change';
 					}
 
 					return [
-						'<tr class="import-preview-row ' + (state.action === 'create' ? 'is-create' : (state.action === 'update' ? 'is-update' : 'is-review')) + '" data-row-index="' + index + '">',
-						'<td><input type="checkbox" class="form-check-input js-import-preview-select" data-row-index="' + index + '"' + (row.selected && state.canImport ? ' checked' : '') + (state.canImport ? '' : ' disabled') + '></td>',
-						'<td class="import-preview-status js-import-preview-status">' + getPreviewActionBadge(state.action) + (state.action === 'update' && state.existingNome ? '<div class="small text-secondary mt-1">Já existe: ' + escapeHtml(state.existingNome) + '</div>' : '') + '</td>',
+						'<tr class="import-preview-row ' + (state.action === 'create' ? 'is-create' : (state.action === 'update' ? 'is-update' : (state.action === 'no_change' ? 'is-no-change' : 'is-review'))) + '" data-row-index="' + index + '">',
+						'<td><input type="checkbox" class="form-check-input js-import-preview-select" data-row-index="' + index + '"' + (row.selected && state.canImport ? ' checked' : '') + (state.canImport && state.action !== 'no_change' ? '' : ' disabled') + '></td>',
+						'<td class="import-preview-status js-import-preview-status">' + getPreviewActionBadge(state.action) + ((state.action === 'update' || state.action === 'no_change') && state.existingNome ? '<div class="small text-secondary mt-1">Já existe: ' + escapeHtml(state.existingNome) + '</div>' : '') + '</td>',
 						'<td>' + escapeHtml(String(row.line || '')) + '</td>',
 						'<td><input type="text" class="form-control form-control-sm js-import-preview-field" data-row-index="' + index + '" data-field="nome" value="' + escapeAttribute(row.nome || '') + '"></td>',
 						'<td><input type="text" class="form-control form-control-sm js-import-preview-field" data-row-index="' + index + '" data-field="matricula" value="' + escapeAttribute(row.matricula || '') + '"></td>',
+						'<td><select class="form-select form-select-sm js-import-preview-field" data-row-index="' + index + '" data-field="situacao"><option value="Cursando"' + (String(row.situacao || 'Cursando') === 'Cursando' ? ' selected' : '') + '>Cursando</option><option value="Remanejado"' + (String(row.situacao || '') === 'Remanejado' ? ' selected' : '') + '>Remanejado</option><option value="Desalocado"' + (String(row.situacao || '') === 'Desalocado' ? ' selected' : '') + '>Desalocado</option><option value="Transferido"' + (String(row.situacao || '') === 'Transferido' ? ' selected' : '') + '>Transferido</option></select></td>',
 						'<td><select class="form-select form-select-sm js-import-preview-field" data-row-index="' + index + '" data-field="turma">' + buildImportPreviewTurmaOptions(row.turma || '') + '</select></td>',
 						'<td><input type="date" class="form-control form-control-sm js-import-preview-field" data-row-index="' + index + '" data-field="data_nascimento" value="' + escapeAttribute(row.data_nascimento || '') + '"></td>',
 						'<td><input type="date" class="form-control form-control-sm js-import-preview-field" data-row-index="' + index + '" data-field="data_entrada" value="' + escapeAttribute(row.data_entrada || '') + '"></td>',
@@ -1106,7 +1194,7 @@
 						'<td><input type="text" class="form-control form-control-sm js-import-preview-field" data-row-index="' + index + '" data-field="responsavel" value="' + escapeAttribute(row.responsavel || '') + '"></td>',
 						'<td><input type="text" class="form-control form-control-sm js-import-preview-field" data-row-index="' + index + '" data-field="telefone" value="' + escapeAttribute(row.telefone || '') + '"></td>',
 						'<td><input type="email" class="form-control form-control-sm js-import-preview-field" data-row-index="' + index + '" data-field="email" value="' + escapeAttribute(row.email || '') + '"></td>',
-						'<td class="import-preview-messages js-import-preview-messages">' + (state.messages.length ? state.messages.map(function (message) { return '<div>' + escapeHtml(message) + '</div>'; }).join('') : '<span class="text-success">Pronto para importar.</span>') + '</td>',
+						'<td class="import-preview-messages js-import-preview-messages">' + (state.messages.length ? state.messages.map(function (message) { return '<div>' + escapeHtml(message) + '</div>'; }).join('') : (state.action === 'no_change' ? '<span class="text-secondary">Nenhuma alteração detectada.</span>' : '<span class="text-success">Pronto para importar.</span>')) + '</td>',
 						'</tr>'
 					].join('');
 				}).join('');
@@ -1143,7 +1231,7 @@
 				filteredAlunoIds = filtered.map(function (item) { return Number(item.id || 0); }).filter(function (id) { return id > 0; });
 
 				if (!filtered.length) {
-					body.innerHTML = '<tr><td colspan="12" class="muted-empty">Nenhum estudante encontrado.</td></tr>';
+					body.innerHTML = '<tr><td colspan="5" class="muted-empty">Nenhum estudante encontrado.</td></tr>';
 					updateBulkSelectionState();
 					return;
 				}
@@ -1157,13 +1245,6 @@
 						'<td>' + escapeHtml(item.nome) + '</td>',
 						'<td>' + escapeHtml(item.matricula) + '</td>',
 						'<td>' + escapeHtml(item.turma) + '</td>',
-						'<td>' + escapeHtml(formatDateToView(item.data_nascimento)) + '</td>',
-						'<td>' + escapeHtml(formatDateToView(item.data_entrada)) + '</td>',
-						'<td>' + escapeHtml(formatDateToView(item.data_saida)) + '</td>',
-						'<td>' + escapeHtml(item.rg || '-') + '</td>',
-						'<td>' + escapeHtml(item.cpf || '-') + '</td>',
-						'<td>' + escapeHtml(item.necessidade_deficiencia || '-') + '</td>',
-						'<td>' + escapeHtml(item.responsavel || '-') + '</td>',
 						'<td class="text-end">',
 						'<button type="button" class="btn btn-outline-secondary btn-sm me-1" data-copy="' + item.id + '"><i class="las la-copy me-1"></i>Copiar</button>',
 						'<button type="button" class="btn btn-outline-primary btn-sm me-1" data-edit="' + item.id + '"><i class="las la-pen me-1"></i>Editar</button>',
@@ -1376,6 +1457,7 @@
 				payload.append('nome', nomeInput.value.trim());
 				payload.append('matricula', matriculaInput.value.trim());
 				payload.append('turma_id', String(Number(turmaInput.value || 0)));
+				payload.append('situacao', situacaoInput.value);
 				payload.append('nascimento', nascimentoInput.value);
 				payload.append('entrada', entradaInput.value);
 				payload.append('data_saida', dataSaidaInput.value);
@@ -1423,6 +1505,10 @@
 				openFormModal();
 				nomeInput.focus();
 			});
+
+			if (situacaoInput) {
+				situacaoInput.addEventListener('change', updateSituacaoFieldState);
+			}
 
 			if (btnImportarAlunos && importarArquivoInput) {
 				btnImportarAlunos.addEventListener('click', function () {
@@ -1595,6 +1681,7 @@
 							selected: true,
 							nome: String(row.nome || '').trim(),
 							matricula: String(row.matricula || '').trim(),
+							situacao: String(row.situacao || 'Cursando').trim() || 'Cursando',
 							turma: String(row.turma || '').trim(),
 							data_nascimento: String(row.data_nascimento || '').trim(),
 							data_entrada: String(row.data_entrada || '').trim(),
@@ -1809,6 +1896,7 @@
 					nomeInput.value = alunoCopiado.nome || '';
 					matriculaInput.value = alunoCopiado.matricula || '';
 					renderTurmaOptions(Number(alunoCopiado.turma_id || 0));
+					situacaoInput.value = alunoCopiado.situacao || 'Cursando';
 					nascimentoInput.value = alunoCopiado.data_nascimento || '';
 					entradaInput.value = alunoCopiado.data_entrada || '';
 					dataSaidaInput.value = alunoCopiado.data_saida || '';
@@ -1818,6 +1906,7 @@
 					responsavelInput.value = alunoCopiado.responsavel || '';
 					telefoneInput.value = alunoCopiado.telefone || '';
 					emailInput.value = alunoCopiado.email || '';
+					updateSituacaoFieldState();
 					if (modalTitulo) {
 						modalTitulo.textContent = 'Copiar estudante';
 					}
@@ -1837,6 +1926,7 @@
 					nomeInput.value = aluno.nome || '';
 					matriculaInput.value = aluno.matricula || '';
 					renderTurmaOptions(Number(aluno.turma_id || 0));
+					situacaoInput.value = aluno.situacao || 'Cursando';
 					nascimentoInput.value = aluno.data_nascimento || '';
 					entradaInput.value = aluno.data_entrada || '';
 					dataSaidaInput.value = aluno.data_saida || '';
@@ -1846,6 +1936,7 @@
 					responsavelInput.value = aluno.responsavel || '';
 					telefoneInput.value = aluno.telefone || '';
 					emailInput.value = aluno.email || '';
+					updateSituacaoFieldState();
 					if (modalTitulo) {
 						modalTitulo.textContent = 'Editar estudante';
 					}

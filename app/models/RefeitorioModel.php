@@ -158,14 +158,34 @@ class RefeitorioModel
 
     public function buscarAlunoPorMatricula(string $matricula): ?array
     {
+        $anoAtual = (int) date('Y');
         $pdo  = Database::connection();
         $stmt = $pdo->prepare(
-            'SELECT a.id, a.nome, a.matricula, a.turma, a.turma_id, a.data_saida
+            'SELECT a.id, a.nome, a.matricula, a.turma, a.turma_id, a.data_saida, a.ativo, a.situacao, t.ano_letivo
                FROM alunos a
+               JOIN turmas t ON t.id = a.turma_id
               WHERE a.matricula = :matricula
+                AND t.ano_letivo = :ano_letivo
               LIMIT 1'
         );
-        $stmt->execute(['matricula' => $matricula]);
+        $stmt->execute(['matricula' => $matricula, 'ano_letivo' => $anoAtual]);
+        $row = $stmt->fetch();
+        return $row !== false ? $row : null;
+    }
+
+    public function buscarAlunoPorId(int $id): ?array
+    {
+        $anoAtual = (int) date('Y');
+        $pdo  = Database::connection();
+        $stmt = $pdo->prepare(
+            'SELECT a.id, a.nome, a.matricula, a.turma, a.turma_id, a.data_saida, a.ativo, a.situacao, t.ano_letivo
+               FROM alunos a
+               JOIN turmas t ON t.id = a.turma_id
+              WHERE a.id = :id
+                AND t.ano_letivo = :ano_letivo
+              LIMIT 1'
+        );
+        $stmt->execute(['id' => $id, 'ano_letivo' => $anoAtual]);
         $row = $stmt->fetch();
         return $row !== false ? $row : null;
     }
@@ -177,11 +197,12 @@ class RefeitorioModel
     public function pesquisarAlunos(string $q, int $turmaId, int $tipoId): array
     {
         $pdo   = Database::connection();
+        $anoAtual = (int) date('Y');
         $today = date('Y-m-d');
         $like  = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $q) . '%';
 
         $where  = '(a.nome LIKE :q1 OR a.turma LIKE :q2)';
-        $params = ['q1' => $like, 'q2' => $like, 'today' => $today, 'tipo' => $tipoId];
+        $params = ['q1' => $like, 'q2' => $like, 'today' => $today, 'tipo' => $tipoId, 'ano_letivo' => $anoAtual];
 
         if ($turmaId > 0) {
             $where  .= ' AND a.turma_id = :turma_id';
@@ -192,12 +213,14 @@ class RefeitorioModel
             "SELECT a.id, a.nome, a.matricula, a.turma,
                     CASE WHEN r.id IS NOT NULL THEN 1 ELSE 0 END AS ja_consumiu
                FROM alunos a
+                JOIN turmas t ON t.id = a.turma_id
                LEFT JOIN refeitorio_registros r
                     ON r.aluno_id = a.id
                    AND r.tipo_refeicao_id = :tipo
                    AND r.data = :today
               WHERE {$where}
-                AND (a.data_saida IS NULL OR a.data_saida > :today)
+                 AND a.ativo = 1
+                  AND t.ano_letivo = :ano_letivo
               ORDER BY a.nome
               LIMIT 25"
         );
@@ -364,9 +387,10 @@ class RefeitorioModel
     public function listarAlunosParaQr(?int $turmaId = null): array
     {
         $pdo  = Database::connection();
+        $anoAtual = (int) date('Y');
 
-        $where  = 'WHERE (a.data_saida IS NULL OR a.data_saida >= CURDATE())';
-        $params = [];
+        $where  = 'WHERE a.ativo = 1 AND t.ano_letivo = :ano_letivo';
+        $params = ['ano_letivo' => $anoAtual];
 
         if ($turmaId !== null && $turmaId > 0) {
             $where          .= ' AND a.turma_id = :turma';
@@ -376,6 +400,7 @@ class RefeitorioModel
         $stmt = $pdo->prepare(
             "SELECT a.id, a.nome, a.matricula, a.turma
                FROM alunos a
+               JOIN turmas t ON t.id = a.turma_id
                {$where}
               ORDER BY a.turma, a.nome"
         );

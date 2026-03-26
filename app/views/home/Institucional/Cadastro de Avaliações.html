@@ -12,12 +12,18 @@ $canManageAvaliacoes = (($canManageAvaliacoes ?? false) === true) || (($isAdmin 
 $canEditAvaliacoes = (($canEditAvaliacoes ?? false) === true) || (($isAdmin ?? false) === true);
 $currentUserId = (int) ($currentUserId ?? 0);
 $isAdminViewer = (($isAdmin ?? false) === true);
+$currentYear = (int) ($currentYear ?? (int) date('Y'));
 $turmasMap = [];
+$avaliacaoTurmas = [];
 foreach ($turmas as $turmaOption) {
     $turmaOptionId = (int) ($turmaOption['id'] ?? 0);
     $turmaOptionNome = trim((string) ($turmaOption['nome'] ?? $turmaOption['turma'] ?? ''));
+    $turmaOptionAnoLetivo = (int) ($turmaOption['ano_letivo'] ?? 0);
     if ($turmaOptionId > 0 && $turmaOptionNome !== '') {
         $turmasMap[$turmaOptionId] = $turmaOptionNome;
+        if ($turmaOptionAnoLetivo === $currentYear) {
+            $avaliacaoTurmas[] = $turmaOption;
+        }
     }
 }
 ?>
@@ -58,7 +64,7 @@ foreach ($turmas as $turmaOption) {
                                     <i class="las la-filter me-1"></i>Filtros
                                 </button>
                                 <div class="institutional-avaliacoes-page-size-wrap">
-                                    
+
                                     <select class="form-select form-select-sm" id="adminAvaliacoesPageSize">
                                         <option value="all">Todas</option>
                                         <option value="10">10</option>
@@ -320,31 +326,37 @@ foreach ($turmas as $turmaOption) {
                                 <div class="modal-header">
                                     <div>
                                         <div class="small text-secondary">Filtros da listagem</div>
-                                        <h2 class="h6 mb-0" id="adminAvaliacoesFiltersModalLabel">Selecionar filtros</h2>
+                                        <h2 class="h6 mb-0" id="adminAvaliacoesFiltersModalLabel">Selecionar filtros
+                                        </h2>
                                     </div>
                                     <button type="button" class="btn-close" data-bs-dismiss="modal"
                                         aria-label="Fechar"></button>
                                 </div>
                                 <div class="modal-body institutional-avaliacoes-filters-modal-body">
-                                    <div class="institutional-avaliacoes-filters-wrap institutional-avaliacoes-filters-modal-wrap">
+                                    <div
+                                        class="institutional-avaliacoes-filters-wrap institutional-avaliacoes-filters-modal-wrap">
                                         <div class="institutional-avaliacoes-filter-group">
                                             <span class="institutional-avaliacoes-filter-label">Ciclos</span>
-                                            <div class="institutional-avaliacoes-filter-chip-list" id="adminAvaliacoesCycleFilters">
+                                            <div class="institutional-avaliacoes-filter-chip-list"
+                                                id="adminAvaliacoesCycleFilters">
                                             </div>
                                         </div>
                                         <div class="institutional-avaliacoes-filter-group">
                                             <span class="institutional-avaliacoes-filter-label">Bimestres</span>
-                                            <div class="institutional-avaliacoes-filter-chip-list" id="adminAvaliacoesBimestreFilters">
+                                            <div class="institutional-avaliacoes-filter-chip-list"
+                                                id="adminAvaliacoesBimestreFilters">
                                             </div>
                                         </div>
                                         <div class="institutional-avaliacoes-filter-group">
                                             <span class="institutional-avaliacoes-filter-label">Anos</span>
-                                            <div class="institutional-avaliacoes-filter-chip-list" id="adminAvaliacoesAnoFilters">
+                                            <div class="institutional-avaliacoes-filter-chip-list"
+                                                id="adminAvaliacoesAnoFilters">
                                             </div>
                                         </div>
                                         <div class="institutional-avaliacoes-filter-group">
                                             <span class="institutional-avaliacoes-filter-label">Turmas</span>
-                                            <div class="institutional-avaliacoes-filter-chip-list" id="adminAvaliacoesTurmaFilters">
+                                            <div class="institutional-avaliacoes-filter-chip-list"
+                                                id="adminAvaliacoesTurmaFilters">
                                             </div>
                                         </div>
                                     </div>
@@ -528,7 +540,8 @@ foreach ($turmas as $turmaOption) {
                                         </div>
                                     </div>
                                     <div class="form-text">Escolha apenas os estudantes que realmente farão a avaliação.
-                                        Ao mudar as turmas, a lista manual será preservada para os estudantes ainda válidos.</div>
+                                        Ao mudar as turmas, a lista manual será preservada para os estudantes ainda
+                                        válidos.</div>
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label" for="adminAvaliacaoDescricao">Descrição</label>
@@ -569,11 +582,11 @@ foreach ($turmas as $turmaOption) {
                                             </div>
                                             <div class="border rounded p-2 admin-avaliacao-turmas-list"
                                                 id="adminAvaliacaoTurmasList">
-                                                <?php if ($turmas === []): ?>
+                                                <?php if ($avaliacaoTurmas === []): ?>
                                                 <div class="small text-secondary">Nenhuma turma cadastrada. Cadastre em
                                                     "Cadastro de Turmas".</div>
                                                 <?php endif; ?>
-                                                <?php foreach ($turmas as $turmaOption): ?>
+                                                <?php foreach ($avaliacaoTurmas as $turmaOption): ?>
                                                 <?php
                                                     $turmaOptionId = (int) ($turmaOption['id'] ?? 0);
                                                     $turmaOptionNome = trim((string) ($turmaOption['nome'] ?? ''));
@@ -1062,10 +1075,15 @@ foreach ($turmas as $turmaOption) {
                                                 id="adminAvaliacaoCorrecaoEdicaoSummary">Revise as respostas e notas
                                                 antes de salvar as alterações.</div>
                                             <div class="mb-3">
-                                                <div class="small fw-semibold text-dark mb-1">Lançar notas adaptadas por disciplina</div>
+                                                <div class="small fw-semibold text-dark mb-1">Lançar notas adaptadas por
+                                                    disciplina</div>
                                                 <div class="small text-secondary mb-2"
-                                                    id="adminAvaliacaoCorrecaoEdicaoNotasAdaptadasHelp">Ao preencher uma nota adaptada, apenas as questões daquela disciplina ficam bloqueadas. As demais disciplinas continuam com lançamento por questão.</div>
-                                                <div class="row g-2" id="adminAvaliacaoCorrecaoEdicaoNotasAdaptadas"></div>
+                                                    id="adminAvaliacaoCorrecaoEdicaoNotasAdaptadasHelp">Ao preencher uma
+                                                    nota adaptada, apenas as questões daquela disciplina ficam
+                                                    bloqueadas. As demais disciplinas continuam com lançamento por
+                                                    questão.</div>
+                                                <div class="row g-2" id="adminAvaliacaoCorrecaoEdicaoNotasAdaptadas">
+                                                </div>
                                             </div>
                                             <div class="admin-avaliacao-correcao-edicao-list"
                                                 id="adminAvaliacaoCorrecaoEdicaoList"></div>
@@ -1102,39 +1120,56 @@ foreach ($turmas as $turmaOption) {
                                         <div class="modal-body">
                                             <div class="row g-3">
                                                 <div class="col-12">
-                                                    <label class="form-label" for="adminAvaliacaoCorrecaoImportFile">Arquivo da planilha</label>
+                                                    <label class="form-label"
+                                                        for="adminAvaliacaoCorrecaoImportFile">Arquivo da
+                                                        planilha</label>
                                                     <input type="file" class="form-control"
                                                         id="adminAvaliacaoCorrecaoImportFile"
                                                         accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
-                                                    <div class="form-text">Envie um arquivo CSV ou XLSX. As colunas das questões devem trazer 1 para acerto e 0 para erro.</div>
+                                                    <div class="form-text">Envie um arquivo CSV ou XLSX. As colunas das
+                                                        questões devem trazer 1 para acerto e 0 para erro.</div>
                                                 </div>
                                                 <div class="col-md-4">
-                                                    <label class="form-label" for="adminAvaliacaoCorrecaoImportSheet">Aba da planilha</label>
-                                                    <select class="form-select" id="adminAvaliacaoCorrecaoImportSheet" disabled>
+                                                    <label class="form-label"
+                                                        for="adminAvaliacaoCorrecaoImportSheet">Aba da planilha</label>
+                                                    <select class="form-select" id="adminAvaliacaoCorrecaoImportSheet"
+                                                        disabled>
                                                         <option value="">Selecione o arquivo primeiro</option>
                                                     </select>
                                                 </div>
                                                 <div class="col-md-4">
-                                                    <label class="form-label" for="adminAvaliacaoCorrecaoImportHeaderRow">Linha de cabeçalho</label>
-                                                    <select class="form-select" id="adminAvaliacaoCorrecaoImportHeaderRow" disabled>
+                                                    <label class="form-label"
+                                                        for="adminAvaliacaoCorrecaoImportHeaderRow">Linha de
+                                                        cabeçalho</label>
+                                                    <select class="form-select"
+                                                        id="adminAvaliacaoCorrecaoImportHeaderRow" disabled>
                                                         <option value="">Selecione a aba primeiro</option>
                                                     </select>
                                                 </div>
                                                 <div class="col-md-4">
-                                                    <label class="form-label" for="adminAvaliacaoCorrecaoImportNameColumn">Coluna do estudante</label>
-                                                    <select class="form-select" id="adminAvaliacaoCorrecaoImportNameColumn" disabled>
+                                                    <label class="form-label"
+                                                        for="adminAvaliacaoCorrecaoImportNameColumn">Coluna do
+                                                        estudante</label>
+                                                    <select class="form-select"
+                                                        id="adminAvaliacaoCorrecaoImportNameColumn" disabled>
                                                         <option value="">Selecione o cabeçalho</option>
                                                     </select>
                                                 </div>
                                                 <div class="col-md-6">
-                                                    <label class="form-label" for="adminAvaliacaoCorrecaoImportFirstColumn">Coluna da 1ª questão</label>
-                                                    <select class="form-select" id="adminAvaliacaoCorrecaoImportFirstColumn" disabled>
+                                                    <label class="form-label"
+                                                        for="adminAvaliacaoCorrecaoImportFirstColumn">Coluna da 1ª
+                                                        questão</label>
+                                                    <select class="form-select"
+                                                        id="adminAvaliacaoCorrecaoImportFirstColumn" disabled>
                                                         <option value="">Selecione o cabeçalho</option>
                                                     </select>
                                                 </div>
                                                 <div class="col-md-6">
-                                                    <label class="form-label" for="adminAvaliacaoCorrecaoImportLastColumn">Coluna da última questão</label>
-                                                    <select class="form-select" id="adminAvaliacaoCorrecaoImportLastColumn" disabled>
+                                                    <label class="form-label"
+                                                        for="adminAvaliacaoCorrecaoImportLastColumn">Coluna da última
+                                                        questão</label>
+                                                    <select class="form-select"
+                                                        id="adminAvaliacaoCorrecaoImportLastColumn" disabled>
                                                         <option value="">Selecione o cabeçalho</option>
                                                     </select>
                                                 </div>
@@ -1156,7 +1191,9 @@ foreach ($turmas as $turmaOption) {
                                                             </thead>
                                                             <tbody id="adminAvaliacaoCorrecaoImportPreviewBody">
                                                                 <tr>
-                                                                    <td colspan="2" class="text-center text-secondary py-4">Nenhuma pré-visualização carregada.</td>
+                                                                    <td colspan="2"
+                                                                        class="text-center text-secondary py-4">Nenhuma
+                                                                        pré-visualização carregada.</td>
                                                                 </tr>
                                                             </tbody>
                                                         </table>
@@ -1165,7 +1202,9 @@ foreach ($turmas as $turmaOption) {
                                             </div>
                                         </div>
                                         <div class="modal-footer justify-content-between">
-                                            <div class="small text-secondary" id="adminAvaliacaoCorrecaoImportSummary">A importação atualiza ou cria correções pelo nome do estudante vinculado à avaliação.</div>
+                                            <div class="small text-secondary" id="adminAvaliacaoCorrecaoImportSummary">A
+                                                importação atualiza ou cria correções pelo nome do estudante vinculado à
+                                                avaliação.</div>
                                             <div class="d-flex gap-2">
                                                 <button type="button" class="btn btn-outline-secondary btn-sm"
                                                     data-bs-dismiss="modal">Cancelar</button>
@@ -1576,7 +1615,8 @@ foreach ($turmas as $turmaOption) {
                                         <div
                                             class="border rounded p-3 bg-light admin-avaliacao-impressao-controls-panel">
                                             <div class="small text-secondary" id="adminAvaliacaoImpressaoResumo">A
-                                                visualização A4 será montada com os estudantes vinculados à avaliação.</div>
+                                                visualização A4 será montada com os estudantes vinculados à avaliação.
+                                            </div>
                                             <div class="mt-3">
                                                 <div
                                                     class="d-flex align-items-center justify-content-between gap-2 mb-2">
@@ -1605,7 +1645,8 @@ foreach ($turmas as $turmaOption) {
                                             </div>
                                             <div class="small text-secondary mt-3" id="adminAvaliacaoImpressaoStatus">
                                                 Cada folha será preenchida automaticamente com numeração por turma,
-                                                dados do estudante, turma e QR Code com os ids da avaliação, estudante e turma.
+                                                dados do estudante, turma e QR Code com os ids da avaliação, estudante e
+                                                turma.
                                             </div>
                                         </div>
                                     </div>

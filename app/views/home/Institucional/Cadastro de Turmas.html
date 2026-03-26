@@ -129,6 +129,17 @@
       position: fixed;
       inset: 0;
     }
+
+    .turmas-filter-summary {
+      font-size: .875rem;
+      color: #6c757d;
+    }
+
+    .turmas-ano-filter-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: .75rem;
+    }
   </style>
   <div id="statusMensagemTurmas" class="top-status d-none" role="alert" aria-live="polite"></div>
   <div class="container-fluid px-0 institutional-page-root">
@@ -136,6 +147,7 @@
       <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
         <h1 class="h4 fw-bold mb-0">Cadastro de Turmas</h1>
         <div class="d-flex gap-2 align-items-center">
+          <button id="btnFiltrarAnoLetivoTurmas" class="btn btn-outline-primary btn-sm" type="button"><i class="las la-filter me-1"></i>Ano letivo</button>
           <button id="btnNovaTurma" class="btn btn-danger btn-sm" type="button"><i class="las la-plus me-1"></i>Nova turma</button>
           <button id="btnExcluirSelecionadosTurmas" class="btn btn-outline-danger btn-sm" type="button" disabled><i class="las la-trash-alt me-1"></i>Excluir selecionadas</button>
           <a id="btnVoltarTurmas" href="#" target="_top" class="btn btn-outline-secondary btn-sm">
@@ -145,6 +157,7 @@
       </div>
       <div class="mb-3">
         <input type="search" class="form-control form-control-sm" id="buscaTurmas" placeholder="Buscar por nome, ano ou turno">
+        <div class="turmas-filter-summary mt-2" id="filtroAnoLetivoTurmasResumo">Filtrando pelo ano letivo atual.</div>
       </div>
 
       <div class="table-responsive table-scroll-only border rounded bg-white">
@@ -281,10 +294,37 @@
       </div>
     </div>
   </div>
+
+  <div class="modal fade" id="modalFiltroAnoLetivoTurmas" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content site-modal-content">
+        <div class="modal-header">
+          <div>
+            <h2 class="modal-title fs-5 mb-1">Filtrar anos letivos</h2>
+            <div class="small text-secondary">Marque os anos das turmas que deseja visualizar.</div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <div id="filtroAnoLetivoTurmasLista" class="turmas-ano-filter-list">
+            <div class="small text-secondary">Nenhum ano letivo disponível.</div>
+          </div>
+        </div>
+        <div class="modal-footer justify-content-between">
+          <div class="d-flex gap-2 flex-wrap">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnFiltroAnoLetivoAtualTurmas">Ano atual</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnFiltroAnoLetivoLimparTurmas">Mostrar todos</button>
+          </div>
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
   <script>
     (function () {
       function startPage() {
       var isEmbeddedIframe = window.parent !== window;
+      var currentAnoLetivo = new Date().getFullYear();
       var pageRoot = document.querySelector('.institutional-page-root');
       if (isEmbeddedIframe) {
         if (pageRoot) {
@@ -298,11 +338,16 @@
       var confirmarExclusaoModal = confirmModalElement ? new bootstrap.Modal(confirmModalElement) : null;
       var descricaoModalElement = document.getElementById('modalDescricaoTurma');
       var descricaoModal = descricaoModalElement ? new bootstrap.Modal(descricaoModalElement) : null;
+      var filtroAnoLetivoModalElement = document.getElementById('modalFiltroAnoLetivoTurmas');
+      var filtroAnoLetivoModal = filtroAnoLetivoModalElement ? new bootstrap.Modal(filtroAnoLetivoModalElement) : null;
+      var btnFiltrarAnoLetivoTurmas = document.getElementById('btnFiltrarAnoLetivoTurmas');
       var btnNovaTurma = document.getElementById('btnNovaTurma');
       var btnVoltarTurmas = document.getElementById('btnVoltarTurmas');
       var btnExcluirSelecionados = document.getElementById('btnExcluirSelecionadosTurmas');
       var btnCancelar = document.getElementById('btnCancelar');
       var btnConfirmarExclusao = document.getElementById('btnConfirmarExclusaoTurma');
+      var btnFiltroAnoLetivoAtualTurmas = document.getElementById('btnFiltroAnoLetivoAtualTurmas');
+      var btnFiltroAnoLetivoLimparTurmas = document.getElementById('btnFiltroAnoLetivoLimparTurmas');
       var selectAllTurmas = document.getElementById('selectAllTurmas');
       var form = document.getElementById('formTurma');
       var modalTitulo = document.getElementById('modalTurmaTitulo');
@@ -310,6 +355,8 @@
       var modalDescricaoTitulo = document.getElementById('modalDescricaoTurmaTitulo');
       var modalDescricaoTexto = document.getElementById('modalDescricaoTurmaTexto');
       var buscaInput = document.getElementById('buscaTurmas');
+      var filtroAnoLetivoTurmasResumo = document.getElementById('filtroAnoLetivoTurmasResumo');
+      var filtroAnoLetivoTurmasLista = document.getElementById('filtroAnoLetivoTurmasLista');
       var body = document.getElementById('turmasBody');
       var statusMensagem = document.getElementById('statusMensagemTurmas');
 
@@ -328,6 +375,9 @@
       var selectedTurmaIdsForDelete = [];
       var pendingDeleteTurmaIds = [];
       var filteredTurmaIds = [];
+      var availableAnoLetivoFilters = [];
+      var selectedAnoLetivoFilters = [];
+      var anoLetivoFilterInitialized = false;
       var statusTimer = null;
       var pollIntervalMs = 5000;
       var pollTimer = null;
@@ -362,6 +412,15 @@
         btnVoltarTurmas.addEventListener('click', function (event) {
           event.preventDefault();
           window.top.location.href = buildEndpoint('/institucional');
+        });
+      }
+
+      if (btnFiltrarAnoLetivoTurmas) {
+        btnFiltrarAnoLetivoTurmas.addEventListener('click', function () {
+          renderAnoLetivoFilterOptions();
+          if (filtroAnoLetivoModal) {
+            filtroAnoLetivoModal.show();
+          }
         });
       }
 
@@ -463,17 +522,107 @@
           (modalElement && modalElement.classList.contains('show'))
           || (confirmModalElement && confirmModalElement.classList.contains('show'))
           || (descricaoModalElement && descricaoModalElement.classList.contains('show'))
+          || (filtroAnoLetivoModalElement && filtroAnoLetivoModalElement.classList.contains('show'))
         );
+      }
+
+      function renderAnoLetivoFilterOptions() {
+        if (!filtroAnoLetivoTurmasLista) {
+          return;
+        }
+
+        if (!availableAnoLetivoFilters.length) {
+          filtroAnoLetivoTurmasLista.innerHTML = '<div class="small text-secondary">Nenhum ano letivo disponível.</div>';
+          return;
+        }
+
+        filtroAnoLetivoTurmasLista.innerHTML = availableAnoLetivoFilters.map(function (ano) {
+          var checkedAttr = selectedAnoLetivoFilters.indexOf(ano) !== -1 ? ' checked' : '';
+          return [
+            '<div class="form-check border rounded px-3 py-2">',
+            '<input class="form-check-input js-ano-letivo-filter" type="checkbox" value="' + ano + '" id="filtroAnoLetivoTurma_' + ano + '"' + checkedAttr + '>',
+            '<label class="form-check-label fw-semibold" for="filtroAnoLetivoTurma_' + ano + '">',
+            escapeHtml(String(ano)),
+            '</label>',
+            '</div>'
+          ].join('');
+        }).join('');
+
+        filtroAnoLetivoTurmasLista.querySelectorAll('.js-ano-letivo-filter').forEach(function (checkbox) {
+          checkbox.addEventListener('change', applyAnoLetivoFilterSelection);
+        });
+      }
+
+      function updateAnoLetivoFilterSummary() {
+        var resumo = 'Mostrando todos os anos letivos.';
+        var botao = '<i class="las la-filter me-1"></i>Ano letivo';
+
+        if (selectedAnoLetivoFilters.length === 1) {
+          resumo = 'Filtrando pelo ano letivo ' + selectedAnoLetivoFilters[0] + '.';
+          botao = '<i class="las la-filter me-1"></i>Ano letivo: ' + selectedAnoLetivoFilters[0];
+        } else if (selectedAnoLetivoFilters.length > 1) {
+          resumo = 'Filtrando por ' + selectedAnoLetivoFilters.length + ' anos letivos.';
+          botao = '<i class="las la-filter me-1"></i>Anos letivos (' + selectedAnoLetivoFilters.length + ')';
+        }
+
+        if (filtroAnoLetivoTurmasResumo) {
+          filtroAnoLetivoTurmasResumo.textContent = resumo;
+        }
+
+        if (btnFiltrarAnoLetivoTurmas) {
+          btnFiltrarAnoLetivoTurmas.innerHTML = botao;
+        }
+      }
+
+      function syncAnoLetivoFilterState() {
+        availableAnoLetivoFilters = turmas
+          .map(function (item) { return Number(item.ano_letivo || 0); })
+          .filter(function (ano, index, arr) { return ano > 0 && arr.indexOf(ano) === index; })
+          .sort(function (left, right) { return right - left; });
+
+        if (!anoLetivoFilterInitialized) {
+          selectedAnoLetivoFilters = availableAnoLetivoFilters.indexOf(currentAnoLetivo) !== -1
+            ? [currentAnoLetivo]
+            : [];
+          anoLetivoFilterInitialized = true;
+        } else {
+          selectedAnoLetivoFilters = selectedAnoLetivoFilters.filter(function (ano) {
+            return availableAnoLetivoFilters.indexOf(ano) !== -1;
+          });
+        }
+
+        renderAnoLetivoFilterOptions();
+        updateAnoLetivoFilterSummary();
+      }
+
+      function applyAnoLetivoFilterSelection() {
+        if (!filtroAnoLetivoTurmasLista) {
+          return;
+        }
+
+        selectedAnoLetivoFilters = Array.prototype.slice.call(
+          filtroAnoLetivoTurmasLista.querySelectorAll('.js-ano-letivo-filter:checked')
+        ).map(function (checkbox) {
+          return Number(checkbox.value || 0);
+        }).filter(function (ano) {
+          return ano > 0;
+        });
+
+        updateAnoLetivoFilterSummary();
+        render();
       }
 
       function render() {
         var term = normalize(buscaInput.value);
         var filtered = turmas.filter(function (item) {
+          var anoLetivo = Number(item.ano_letivo || 0);
           var relatedNames = Array.isArray(item.alunos_relacionados)
             ? item.alunos_relacionados.map(function (aluno) { return String(aluno.nome || ''); }).join(' ')
             : '';
           var haystack = normalize(item.nome + ' ' + item.ano_letivo + ' ' + item.turno + ' ' + item.descricao + ' ' + String(item.ano_escolar || '') + ' ' + relatedNames);
-          return term === '' || haystack.indexOf(term) !== -1;
+          var matchesSearch = term === '' || haystack.indexOf(term) !== -1;
+          var matchesAno = !selectedAnoLetivoFilters.length || selectedAnoLetivoFilters.indexOf(anoLetivo) !== -1;
+          return matchesSearch && matchesAno;
         });
         filteredTurmaIds = filtered.map(function (item) { return Number(item.id || 0); }).filter(function (id) { return id > 0; });
 
@@ -628,6 +777,24 @@
           .catch(function (error) {
             showStatus(error && error.message ? error.message : 'Erro ao carregar estudantes.', true);
           });
+      }
+
+      if (btnFiltroAnoLetivoAtualTurmas) {
+        btnFiltroAnoLetivoAtualTurmas.addEventListener('click', function () {
+          selectedAnoLetivoFilters = availableAnoLetivoFilters.indexOf(currentAnoLetivo) !== -1
+            ? [currentAnoLetivo]
+            : [];
+          renderAnoLetivoFilterOptions();
+          applyAnoLetivoFilterSelection();
+        });
+      }
+
+      if (btnFiltroAnoLetivoLimparTurmas) {
+        btnFiltroAnoLetivoLimparTurmas.addEventListener('click', function () {
+          selectedAnoLetivoFilters = [];
+          renderAnoLetivoFilterOptions();
+          applyAnoLetivoFilterSelection();
+        });
       }
 
       form.addEventListener('submit', function (event) {
@@ -951,6 +1118,7 @@
 
             lastServerSignature = signature;
             turmas = serverData;
+            syncAnoLetivoFilterState();
             var validIds = turmas.map(function (item) { return Number(item.id || 0); });
             selectedTurmaIdsForDelete = selectedTurmaIdsForDelete.filter(function (id) {
               return validIds.indexOf(id) !== -1;
@@ -1010,7 +1178,7 @@
         }
       }
 
-      [modalElement, confirmModalElement, descricaoModalElement].forEach(function (modalNode) {
+      [modalElement, confirmModalElement, descricaoModalElement, filtroAnoLetivoModalElement].forEach(function (modalNode) {
         if (!modalNode) {
           return;
         }

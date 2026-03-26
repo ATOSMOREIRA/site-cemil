@@ -62,7 +62,7 @@ class AlunoDesempenhoService
 
         $alunos = !empty($turmaIds)
             ? $this->loadAlunosByTurmas($turmaIds)
-            : $this->alunoModel->getAllOrdered();
+            : $this->alunoModel->getAllOrdered(true);
 
         if ($busca !== '') {
             $alunos = array_values(array_filter($alunos, function (array $aluno) use ($busca): bool {
@@ -1132,14 +1132,14 @@ class AlunoDesempenhoService
     private function loadAlunosByTurmas(array $turmaIds): array
     {
         if (empty($turmaIds)) {
-            return $this->alunoModel->getAllOrdered();
+            return $this->alunoModel->getAllOrdered(true);
         }
 
         $pdo  = Database::connection();
         $placeholders = implode(',', array_fill(0, count($turmaIds), '?'));
         $stmt = $pdo->prepare(
             "SELECT id, nome, matricula, desempenho, turma_id, turma
-             FROM alunos WHERE turma_id IN ($placeholders) ORDER BY nome ASC, id ASC"
+             FROM alunos WHERE ativo = 1 AND turma_id IN ($placeholders) ORDER BY nome ASC, id ASC"
         );
         $stmt->execute(array_values($turmaIds));
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];

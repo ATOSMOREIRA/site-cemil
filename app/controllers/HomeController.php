@@ -1700,7 +1700,7 @@ class HomeController extends Controller
                     $stats = [];
                     foreach ([
                         'alunos_total'  => 'SELECT COUNT(*) FROM alunos',
-                        'alunos_ativos' => 'SELECT COUNT(*) FROM alunos WHERE data_saida IS NULL OR data_saida >= CURDATE()',
+                        'alunos_ativos' => 'SELECT COUNT(*) FROM alunos WHERE ativo = 1',
                         'turmas'        => 'SELECT COUNT(*) FROM turmas',
                         'avaliacoes'    => 'SELECT COUNT(*) FROM avaliacoes',
                         'usuarios'      => 'SELECT COUNT(*) FROM usuarios',
@@ -1739,7 +1739,7 @@ class HomeController extends Controller
                 case 'listar_alunos':
                     $nome   = trim((string) ($input['nome']   ?? ''));
                     $limite = max(1, min(200, (int) ($input['limite'] ?? 50)));
-                    $sql    = 'SELECT id, nome, matricula, turma_id, turma, data_nascimento, responsavel, telefone, email FROM alunos WHERE 1=1';
+                    $sql    = 'SELECT id, nome, matricula, turma_id, turma, data_nascimento, responsavel, telefone, email FROM alunos WHERE ativo = 1';
                     $params = [];
 
                     if ($turmaIds !== []) {
@@ -1764,10 +1764,10 @@ class HomeController extends Controller
                     $matricula = trim((string) ($input['matricula'] ?? ''));
 
                     if ($id > 0) {
-                        $stmt = $pdo->prepare('SELECT id, nome, matricula, turma_id, turma, data_nascimento, responsavel, telefone, email FROM alunos WHERE id = ? LIMIT 1');
+                        $stmt = $pdo->prepare('SELECT id, nome, matricula, turma_id, turma, data_nascimento, responsavel, telefone, email FROM alunos WHERE id = ? AND ativo = 1 LIMIT 1');
                         $stmt->execute([$id]);
                     } elseif ($matricula !== '') {
-                        $stmt = $pdo->prepare('SELECT id, nome, matricula, turma_id, turma, data_nascimento, responsavel, telefone, email FROM alunos WHERE matricula = ? LIMIT 1');
+                        $stmt = $pdo->prepare('SELECT id, nome, matricula, turma_id, turma, data_nascimento, responsavel, telefone, email FROM alunos WHERE matricula = ? AND ativo = 1 LIMIT 1');
                         $stmt->execute([$matricula]);
                     } else {
                         return json_encode(['erro' => 'Informe id ou matricula.']);
@@ -1793,7 +1793,7 @@ class HomeController extends Controller
                 case 'listar_correcoes':
                     $avalId  = (int) ($input['avaliacao_id'] ?? 0);
                     $alunoId = (int) ($input['aluno_id']     ?? 0);
-                    $sql     = 'SELECT ac.id, ac.avaliacao_id, ac.aluno_id, al.nome AS aluno_nome, av.nome AS avaliacao_nome FROM avaliacoes_correcoes ac JOIN alunos al ON al.id = ac.aluno_id JOIN avaliacoes av ON av.id = ac.avaliacao_id WHERE 1=1';
+                    $sql     = 'SELECT ac.id, ac.avaliacao_id, ac.aluno_id, al.nome AS aluno_nome, av.nome AS avaliacao_nome FROM avaliacoes_correcoes ac JOIN alunos al ON al.id = ac.aluno_id AND al.ativo = 1 JOIN avaliacoes av ON av.id = ac.avaliacao_id WHERE 1=1';
                     $params  = [];
                     if ($avalId  > 0) { $sql .= ' AND ac.avaliacao_id = ?'; $params[] = $avalId; }
                     if ($alunoId > 0) { $sql .= ' AND ac.aluno_id = ?';     $params[] = $alunoId; }
@@ -1808,7 +1808,7 @@ class HomeController extends Controller
                         return json_encode(['erro' => 'aluno_id inválido.']);
                     }
 
-                    $stmt = $pdo->prepare('SELECT id, nome, matricula, turma, desempenho FROM alunos WHERE id = ? LIMIT 1');
+                    $stmt = $pdo->prepare('SELECT id, nome, matricula, turma, desempenho FROM alunos WHERE id = ? AND ativo = 1 LIMIT 1');
                     $stmt->execute([$alunoId]);
                     $row = $stmt->fetch(PDO::FETCH_ASSOC);
                     if (!$row) {
@@ -1838,7 +1838,7 @@ class HomeController extends Controller
                         return json_encode(['erro' => 'data_inicio e data_fim são obrigatórios.']);
                     }
 
-                    $sql    = 'SELECT r.data, r.horario, a.nome AS aluno, a.turma, t.nome AS refeicao, r.obs FROM refeitorio_registros r JOIN alunos a ON a.id = r.aluno_id JOIN refeitorio_tipos_refeicao t ON t.id = r.tipo_refeicao_id WHERE r.data BETWEEN ? AND ?';
+                    $sql    = 'SELECT r.data, r.horario, a.nome AS aluno, a.turma, t.nome AS refeicao, r.obs FROM refeitorio_registros r JOIN alunos a ON a.id = r.aluno_id AND a.ativo = 1 JOIN refeitorio_tipos_refeicao t ON t.id = r.tipo_refeicao_id WHERE r.data BETWEEN ? AND ?';
                     $params = [$ini, $fim];
                     if ($turmaId > 0) { $sql .= ' AND a.turma_id = ?'; $params[] = $turmaId; }
                     $sql .= ' ORDER BY r.data DESC, r.horario DESC LIMIT 500';

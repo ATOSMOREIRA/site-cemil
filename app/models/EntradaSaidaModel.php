@@ -205,14 +205,17 @@ class EntradaSaidaModel
 
     public function buscarAlunoPorMatricula(string $matricula): ?array
     {
+        $anoAtual = (int) date('Y');
         $pdo = Database::connection();
         $stmt = $pdo->prepare(
-            'SELECT a.id, a.nome, a.matricula, a.turma, a.turma_id, a.data_saida
+            'SELECT a.id, a.nome, a.matricula, a.turma, a.turma_id, a.data_saida, a.ativo, a.situacao, t.ano_letivo
                FROM alunos a
+               JOIN turmas t ON t.id = a.turma_id
               WHERE a.matricula = :matricula
+                AND t.ano_letivo = :ano_letivo
               LIMIT 1'
         );
-        $stmt->execute(['matricula' => $matricula]);
+        $stmt->execute(['matricula' => $matricula, 'ano_letivo' => $anoAtual]);
         $row = $stmt->fetch();
 
         return $row !== false ? $row : null;
@@ -220,14 +223,17 @@ class EntradaSaidaModel
 
     public function buscarAlunoPorId(int $id): ?array
     {
+        $anoAtual = (int) date('Y');
         $pdo = Database::connection();
         $stmt = $pdo->prepare(
-            'SELECT a.id, a.nome, a.matricula, a.turma, a.turma_id, a.data_saida
+            'SELECT a.id, a.nome, a.matricula, a.turma, a.turma_id, a.data_saida, a.ativo, a.situacao, t.ano_letivo
                FROM alunos a
+               JOIN turmas t ON t.id = a.turma_id
               WHERE a.id = :id
+                AND t.ano_letivo = :ano_letivo
               LIMIT 1'
         );
-        $stmt->execute(['id' => $id]);
+        $stmt->execute(['id' => $id, 'ano_letivo' => $anoAtual]);
         $row = $stmt->fetch();
 
         return $row !== false ? $row : null;
@@ -235,13 +241,14 @@ class EntradaSaidaModel
 
     public function pesquisarAlunos(string $q, int $turmaId, int $tipoId, string $data): array
     {
+        $anoAtual = (int) date('Y');
         $pdo = Database::connection();
         $like = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $q) . '%';
         $where = '(a.nome LIKE :q1 OR a.turma LIKE :q2)';
         $params = [
             'q1' => $like,
             'q2' => $like,
-            'today' => $data,
+            'ano_letivo' => $anoAtual,
         ];
 
         if ($turmaId > 0) {
@@ -252,8 +259,10 @@ class EntradaSaidaModel
         $stmt = $pdo->prepare(
             "SELECT a.id, a.nome, a.matricula, a.turma
                FROM alunos a
+               JOIN turmas t ON t.id = a.turma_id
               WHERE {$where}
-                AND (a.data_saida IS NULL OR a.data_saida > :today)
+                AND a.ativo = 1
+                AND t.ano_letivo = :ano_letivo
               ORDER BY a.nome
               LIMIT 25"
         );
@@ -265,7 +274,17 @@ class EntradaSaidaModel
 
         $items = [];
         foreach ($rows as $row) {
-            $avaliacao = $this->avaliarMovimentacao((int) $row['id'], $tipoId, $data);
+            try {
+                $avaliacao = $this->avaliarMovimentacao((int) $row['id'], $tipoId, $data);
+            } catch (Throwable) {
+                $avaliacao = [
+                    'permitido' => false,
+                    'message' => 'Não foi possível avaliar a movimentação deste estudante no momento.',
+                    'ultima_movimentacao' => null,
+                    'estado_atual' => 'sem_registro',
+                ];
+            }
+
             $items[] = [
                 'id' => (int) $row['id'],
                 'nome' => $row['nome'],
@@ -283,6 +302,7 @@ class EntradaSaidaModel
 
     public function pesquisarAlunosParaLiberacao(string $q, int $turmaId, string $data): array
     {
+        $anoAtual = (int) date('Y');
         $pdo = Database::connection();
         $like = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $q) . '%';
         $where = '(a.nome LIKE :q1 OR a.turma LIKE :q2 OR a.matricula LIKE :q3)';
@@ -290,7 +310,7 @@ class EntradaSaidaModel
             'q1' => $like,
             'q2' => $like,
             'q3' => $like,
-            'today' => $data,
+            'ano_letivo' => $anoAtual,
         ];
 
         if ($turmaId > 0) {
@@ -301,8 +321,10 @@ class EntradaSaidaModel
         $stmt = $pdo->prepare(
             "SELECT a.id, a.nome, a.matricula, a.turma
                FROM alunos a
+               JOIN turmas t ON t.id = a.turma_id
               WHERE {$where}
-                AND (a.data_saida IS NULL OR a.data_saida > :today)
+                AND a.ativo = 1
+                AND t.ano_letivo = :ano_letivo
               ORDER BY a.nome
               LIMIT 25"
         );
@@ -314,8 +336,14 @@ class EntradaSaidaModel
 
         $items = [];
         foreach ($rows as $row) {
-            $ultima = $this->buscarUltimaMovimentacaoDoDia((int) $row['id'], $data);
-            $liberacao = $this->buscarLiberacaoSaidaAtiva((int) $row['id'], $data);
+            try {
+                $ultima = $this->buscarUltimaMovimentacaoDoDia((int) $row['id'], $data);
+                $liberacao = $this->buscarLiberacaoSaidaAtiva((int) $row['id'], $data);
+            } catch (Throwable) {
+                $ultima = null;
+                $liberacao = null;
+            }
+
             $estadoAtual = 'sem_registro';
             if ($ultima !== null) {
                 $estadoAtual = ($ultima['natureza'] ?? '') === 'saida' ? 'fora' : 'dentro';
@@ -682,8 +710,9 @@ class EntradaSaidaModel
     public function listarAlunosParaQr(?int $turmaId = null): array
     {
         $pdo = Database::connection();
-        $where = 'WHERE (a.data_saida IS NULL OR a.data_saida >= CURDATE())';
-        $params = [];
+        $anoAtual = (int) date('Y');
+        $where = 'WHERE a.ativo = 1 AND t.ano_letivo = :ano_letivo';
+        $params = ['ano_letivo' => $anoAtual];
 
         if ($turmaId !== null && $turmaId > 0) {
             $where .= ' AND a.turma_id = :turma';
@@ -693,6 +722,7 @@ class EntradaSaidaModel
         $stmt = $pdo->prepare(
             "SELECT a.id, a.nome, a.matricula, a.turma
                FROM alunos a
+               JOIN turmas t ON t.id = a.turma_id
                {$where}
               ORDER BY a.turma, a.nome"
         );
@@ -749,11 +779,12 @@ class EntradaSaidaModel
     public function totalAlunosAtivos(?int $turmaId = null): int
     {
         $pdo = Database::connection();
-        $sql = 'SELECT COUNT(*) FROM alunos WHERE data_saida IS NULL OR data_saida >= CURDATE()';
-        $params = [];
+        $anoAtual = (int) date('Y');
+        $sql = 'SELECT COUNT(*) FROM alunos a JOIN turmas t ON t.id = a.turma_id WHERE a.ativo = 1 AND t.ano_letivo = :ano_letivo';
+        $params = ['ano_letivo' => $anoAtual];
 
         if ($turmaId !== null && $turmaId > 0) {
-            $sql = 'SELECT COUNT(*) FROM alunos WHERE turma_id = :turma_id AND (data_saida IS NULL OR data_saida >= CURDATE())';
+            $sql = 'SELECT COUNT(*) FROM alunos a JOIN turmas t ON t.id = a.turma_id WHERE a.turma_id = :turma_id AND a.ativo = 1 AND t.ano_letivo = :ano_letivo';
             $params['turma_id'] = $turmaId;
         }
 

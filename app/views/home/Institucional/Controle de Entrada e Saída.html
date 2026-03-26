@@ -2458,16 +2458,36 @@
 				var fd = new FormData();
 				Object.keys(data).forEach(function (k) { fd.append(k, data[k] ?? ''); });
 				fetch(url, { method: 'POST', body: fd })
-					.then(function (r) { return r.json(); })
+					.then(parseJsonResponse)
 					.then(cb)
 					.catch(function (e) { showStatus('Erro de comunicação: ' + e.message, 'error'); });
 			}
 
 			function get(url, cb) {
 				fetch(url)
-					.then(function (r) { return r.json(); })
+					.then(parseJsonResponse)
 					.then(cb)
 					.catch(function (e) { showStatus('Erro de comunicação: ' + e.message, 'error'); });
+			}
+
+			function parseJsonResponse(response) {
+				return response.text().then(function (text) {
+					var payload = String(text || '').trim();
+					if (payload === '') {
+						throw new Error('Resposta vazia do servidor.');
+					}
+
+					try {
+						return JSON.parse(payload);
+					} catch (error) {
+						var resumo = payload
+							.replace(/<br\s*\/?>/gi, ' ')
+							.replace(/<[^>]+>/g, ' ')
+							.replace(/\s+/g, ' ')
+							.trim();
+						throw new Error(resumo ? ('Resposta inválida do servidor: ' + resumo.substring(0, 180)) : 'Resposta inválida do servidor.');
+					}
+				});
 			}
 
 			/* --------------------------------------------------------

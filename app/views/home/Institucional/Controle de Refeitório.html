@@ -2480,7 +2480,15 @@
 				['filtroTurmaQr', 'relTurma', 'gerencTurma'].forEach(function (id) {
 					var sel = document.getElementById(id);
 					var html = '<option value="">Todas</option>';
-					state.turmas.forEach(function (t) {
+					var turmas = state.turmas;
+					if (id === 'filtroTurmaQr') {
+						var anoAtual = new Date().getFullYear();
+						turmas = state.turmas.filter(function (t) {
+							return Number(t && t.ano_letivo || 0) === anoAtual;
+						});
+					}
+
+					turmas.forEach(function (t) {
 						html += '<option value="' + esc(t.id) + '">' + esc(t.nome) + '</option>';
 					});
 					sel.innerHTML = html;
@@ -2602,24 +2610,18 @@
 
 			var _ultimaMatriculaScaneada = null;
 			var _bloqueioScan = false;
+			var _ultimaVerificacaoMudancaQrEm = 0;
 
-			function tickScanner() {
-				if (!state.scanAtivo) return;
-				state.animFrameId = requestAnimationFrame(tickScanner);
-
-				if (_bloqueioScan) return;
-
-				var video = document.getElementById('scannerVideo');
-				var canvas = document.getElementById('scannerCanvas');
-
-				if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
+			function lerQrAtualNoScanner(video, canvas) {
+				if (!video || !canvas || video.readyState !== video.HAVE_ENOUGH_DATA) {
+					return null;
+				}
 
 				canvas.width = video.videoWidth;
 				canvas.height = video.videoHeight;
 				var ctx = canvas.getContext('2d');
 				ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-				// Lê apenas a região da mira de QR quando ela estiver visível
 				var frame = document.getElementById('qrTargetFrame');
 				var frameRect = frame.getBoundingClientRect();
 				var imageData;
@@ -2640,11 +2642,36 @@
 				}
 
 				var code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+				return code && code.data ? String(code.data).trim() : null;
+			}
 
-				if (code && code.data && code.data !== _ultimaMatriculaScaneada) {
-					_ultimaMatriculaScaneada = code.data;
+			function tickScanner() {
+				if (!state.scanAtivo) return;
+				state.animFrameId = requestAnimationFrame(tickScanner);
+
+				var video = document.getElementById('scannerVideo');
+				var canvas = document.getElementById('scannerCanvas');
+				var qrLido = lerQrAtualNoScanner(video, canvas);
+
+				if (_bloqueioScan) {
+					var agora = Date.now();
+					if (agora - _ultimaVerificacaoMudancaQrEm < 350) {
+						return;
+					}
+
+					_ultimaVerificacaoMudancaQrEm = agora;
+					if (!qrLido || qrLido === _ultimaMatriculaScaneada) {
+						return;
+					}
+
+					_bloqueioScan = false;
+				}
+
+				if (qrLido && qrLido !== _ultimaMatriculaScaneada) {
+					_ultimaMatriculaScaneada = qrLido;
 					_bloqueioScan = true;
-					buscarAluno(code.data.trim());
+					_ultimaVerificacaoMudancaQrEm = Date.now();
+					buscarAluno(qrLido);
 				}
 			}
 
@@ -2783,6 +2810,7 @@
 				state.tipoAtualId = 0;
 				_ultimaMatriculaScaneada = null;
 				_bloqueioScan = false;
+				_ultimaVerificacaoMudancaQrEm = 0;
 			}
 
 			/* --------------------------------------------------------

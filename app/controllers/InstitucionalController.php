@@ -93,6 +93,7 @@ class InstitucionalController extends HomeController
 		$nome = trim((string) ($_POST['nome'] ?? ''));
 		$matricula = trim((string) ($_POST['matricula'] ?? ''));
 		$turmaId = (int) ($_POST['turma_id'] ?? 0);
+		$situacao = $this->normalizeAlunoImportSituacao($_POST['situacao'] ?? 'Cursando');
 		$dataNascimento = trim((string) ($_POST['nascimento'] ?? ''));
 		$dataEntrada = trim((string) ($_POST['entrada'] ?? ''));
 		$dataSaida = trim((string) ($_POST['data_saida'] ?? ''));
@@ -105,6 +106,10 @@ class InstitucionalController extends HomeController
 
 		if ($nome === '' || $matricula === '' || $turmaId <= 0) {
 			$this->respondJson(['ok' => false, 'message' => 'Preencha os campos obrigatórios e selecione uma turma.'], 422);
+		}
+
+		if ($situacao === null) {
+			$this->respondJson(['ok' => false, 'message' => 'Situação inválida.'], 422);
 		}
 
 		$normalizedDate = null;
@@ -137,9 +142,17 @@ class InstitucionalController extends HomeController
 			$normalizedExitDate = $dateObject->format('Y-m-d');
 		}
 
+		if (!$this->isAlunoImportSituacaoInativa($situacao)) {
+			$normalizedExitDate = null;
+		} elseif ($normalizedExitDate === null) {
+			$this->respondJson(['ok' => false, 'message' => 'Informe a data de saída para a situação selecionada.'], 422);
+		}
+
 		if ($normalizedEntryDate !== null && $normalizedExitDate !== null && $normalizedExitDate < $normalizedEntryDate) {
 			$this->respondJson(['ok' => false, 'message' => 'A data de saída não pode ser anterior à data de entrada.'], 422);
 		}
+
+		$ativo = !$this->isAlunoImportSituacaoInativa($situacao);
 
 		$normalizedCpf = '';
 		if ($cpf !== '') {
@@ -190,7 +203,10 @@ class InstitucionalController extends HomeController
 					$necessidadeDeficiencia !== '' ? $necessidadeDeficiencia : null,
 					$responsavel !== '' ? $responsavel : null,
 					$telefone !== '' ? $telefone : null,
-					$email !== '' ? $email : null
+					$email !== '' ? $email : null,
+					$ativo,
+					$situacao,
+					null
 				);
 			} else {
 				$existing = $alunoModel->findById($id);
@@ -212,7 +228,10 @@ class InstitucionalController extends HomeController
 					$necessidadeDeficiencia !== '' ? $necessidadeDeficiencia : null,
 					$responsavel !== '' ? $responsavel : null,
 					$telefone !== '' ? $telefone : null,
-					$email !== '' ? $email : null
+					$email !== '' ? $email : null,
+					$ativo,
+					$situacao,
+					null
 				);
 			}
 		} catch (Throwable) {
@@ -376,13 +395,17 @@ class InstitucionalController extends HomeController
 		$turmaModel = new TurmaModel();
 		$turmasByKey = $this->buildTurmasByImportKey($turmaModel);
 		$analyzedRows = $this->analyzeAlunoImportRows($rows, $turmasByKey, $alunoModel);
+		$sortedRows = $this->sortAlunoImportRowsForProcessing($analyzedRows);
+		$turmasById = $this->buildTurmasByIdMap($turmaModel);
 
 		$createdCount = 0;
 		$updatedCount = 0;
+		$inactivatedCount = 0;
+		$unchangedCount = 0;
 		$skippedCount = 0;
 		$warnings = [];
 
-		foreach ($analyzedRows as $row) {
+		foreach ($sortedRows as $row) {
 			if (!is_array($row)) {
 				continue;
 			}
@@ -390,6 +413,12 @@ class InstitucionalController extends HomeController
 			$lineNumber = (int) ($row['line'] ?? 0);
 			$messages = isset($row['messages']) && is_array($row['messages']) ? $row['messages'] : [];
 			$shouldImport = !empty($row['selected']);
+			$action = (string) ($row['action'] ?? 'review');
+
+			if ($action === 'no_change') {
+				$unchangedCount += 1;
+				continue;
+			}
 
 			if (!$shouldImport) {
 				$skippedCount += 1;
@@ -404,46 +433,173 @@ class InstitucionalController extends HomeController
 			}
 
 			try {
+				$situacao = $this->normalizeAlunoImportSituacao($row['situacao'] ?? null) ?? 'Cursando';
+				$dataSaidaImport = $this->isAlunoImportSituacaoInativa($situacao)
+					? $this->normalizeNullableText($row['data_saida'] ?? null, 20)
+					: null;
 				$matricula = trim((string) ($row['matricula'] ?? ''));
 				if ($matricula === '') {
 					$matricula = $this->generateAlunoImportAutoMatricula($alunoModel);
 				}
 
-				if ((string) ($row['action'] ?? '') === 'update' && (int) ($row['existing_id'] ?? 0) > 0) {
+				$existingActive = $matricula !== '' ? $alunoModel->findByMatricula($matricula, true) : null;
+				$existingInactive = $matricula !== '' ? $alunoModel->findByMatricula($matricula, false) : null;
+				if ($this->isAlunoImportSituacaoInativa($situacao)) {
+					if (!is_array($existingActive)) {
+						$historicoNovo = $this->appendAlunoHistoricoEntry(
+							'',
+							$this->buildAlunoImportHistoricoEntry($situacao, $row, null, null)
+						);
+						$alunoModel->create(
+							(string) ($row['nome'] ?? ''),
+							$matricula,
+							(int) ($row['turma_id'] ?? 0),
+							(string) ($row['turma'] ?? ''),
+							$this->normalizeNullableText($row['data_nascimento'] ?? null, 20),
+							$this->normalizeNullableText($row['data_entrada'] ?? null, 20),
+							$dataSaidaImport,
+							$this->normalizeNullableText($row['rg'] ?? null, 20),
+							$this->normalizeNullableText($row['cpf'] ?? null, 14),
+							$this->normalizeNullableText($row['necessidade_deficiencia'] ?? null, 255),
+							$this->normalizeNullableText($row['responsavel'] ?? null, 150),
+							$this->normalizeNullableText($row['telefone'] ?? null, 25),
+							$this->normalizeNullableText($row['email'] ?? null, 180),
+							false,
+							$situacao,
+							$historicoNovo
+						);
+						$createdCount += 1;
+						$inactivatedCount += 1;
+						continue;
+					}
+
+					$historico = $this->appendAlunoHistoricoEntry(
+						(string) ($existingActive['historico'] ?? ''),
+						$this->buildAlunoImportHistoricoEntry($situacao, $row, $existingActive, null)
+					);
+					$matriculaArquivada = $this->generateAlunoArchivedMatricula((string) ($existingActive['matricula'] ?? ''), (int) ($existingActive['id'] ?? 0), $alunoModel);
+
 					$alunoModel->update(
-						(int) ($row['existing_id'] ?? 0),
+						(int) ($existingActive['id'] ?? 0),
+						(string) ($existingActive['nome'] ?? ''),
+						$matriculaArquivada,
+						(int) ($existingActive['turma_id'] ?? 0),
+						(string) ($existingActive['turma'] ?? ''),
+						$this->normalizeNullableText($existingActive['data_nascimento'] ?? null, 20),
+						$this->normalizeNullableText($existingActive['data_entrada'] ?? null, 20),
+						$dataSaidaImport ?? $this->normalizeNullableText($existingActive['data_saida'] ?? null, 20),
+						$this->normalizeNullableText($existingActive['rg'] ?? null, 20),
+						$this->normalizeNullableText($existingActive['cpf'] ?? null, 14),
+						$this->normalizeNullableText($existingActive['necessidade_deficiencia'] ?? null, 255),
+						$this->normalizeNullableText($existingActive['responsavel'] ?? null, 150),
+						$this->normalizeNullableText($existingActive['telefone'] ?? null, 25),
+						$this->normalizeNullableText($existingActive['email'] ?? null, 180),
+						false,
+						$situacao,
+						$historico
+					);
+					$updatedCount += 1;
+					$inactivatedCount += 1;
+					continue;
+				}
+
+				if (is_array($existingActive) && (int) ($existingActive['turma_id'] ?? 0) !== (int) ($row['turma_id'] ?? 0)) {
+					$origemTurma = $turmasById[(int) ($existingActive['turma_id'] ?? 0)] ?? null;
+					$destinoTurma = $turmasById[(int) ($row['turma_id'] ?? 0)] ?? null;
+					if ($this->shouldPreserveAlunoHistoryOnTurmaChange($origemTurma, $destinoTurma)) {
+						$historicoAnterior = $this->appendAlunoHistoricoEntry(
+							(string) ($existingActive['historico'] ?? ''),
+							$this->buildAlunoImportHistoricoEntry('Remanejado', $row, $existingActive, $destinoTurma)
+						);
+						$matriculaArquivada = $this->generateAlunoArchivedMatricula((string) ($existingActive['matricula'] ?? ''), (int) ($existingActive['id'] ?? 0), $alunoModel);
+						$alunoModel->update(
+							(int) ($existingActive['id'] ?? 0),
+							(string) ($existingActive['nome'] ?? ''),
+							$matriculaArquivada,
+							(int) ($existingActive['turma_id'] ?? 0),
+							(string) ($existingActive['turma'] ?? ''),
+							$this->normalizeNullableText($existingActive['data_nascimento'] ?? null, 20),
+							$this->normalizeNullableText($existingActive['data_entrada'] ?? null, 20),
+							$dataSaidaImport,
+							$this->normalizeNullableText($existingActive['rg'] ?? null, 20),
+							$this->normalizeNullableText($existingActive['cpf'] ?? null, 14),
+							$this->normalizeNullableText($existingActive['necessidade_deficiencia'] ?? null, 255),
+							$this->normalizeNullableText($existingActive['responsavel'] ?? null, 150),
+							$this->normalizeNullableText($existingActive['telefone'] ?? null, 25),
+							$this->normalizeNullableText($existingActive['email'] ?? null, 180),
+							false,
+							'Remanejado',
+							$historicoAnterior
+						);
+						$inactivatedCount += 1;
+						$existingActive = null;
+					}
+				}
+
+				if (is_array($existingActive) && (int) ($existingActive['id'] ?? 0) > 0) {
+					$alunoModel->update(
+						(int) ($existingActive['id'] ?? 0),
 						(string) ($row['nome'] ?? ''),
 						$matricula,
 						(int) ($row['turma_id'] ?? 0),
 						(string) ($row['turma'] ?? ''),
 						$this->normalizeNullableText($row['data_nascimento'] ?? null, 20),
 						$this->normalizeNullableText($row['data_entrada'] ?? null, 20),
-						$this->normalizeNullableText($row['data_saida'] ?? null, 20),
+						$dataSaidaImport,
 						$this->normalizeNullableText($row['rg'] ?? null, 20),
 						$this->normalizeNullableText($row['cpf'] ?? null, 14),
 						$this->normalizeNullableText($row['necessidade_deficiencia'] ?? null, 255),
 						$this->normalizeNullableText($row['responsavel'] ?? null, 150),
 						$this->normalizeNullableText($row['telefone'] ?? null, 25),
-						$this->normalizeNullableText($row['email'] ?? null, 180)
+						$this->normalizeNullableText($row['email'] ?? null, 180),
+						true,
+						'Cursando',
+						$this->clearAlunoHistoricoIfNeeded($existingActive['historico'] ?? null, false)
 					);
 					$updatedCount += 1;
 				} else {
-					$alunoModel->create(
-						(string) ($row['nome'] ?? ''),
-						$matricula,
-						(int) ($row['turma_id'] ?? 0),
-						(string) ($row['turma'] ?? ''),
-						$this->normalizeNullableText($row['data_nascimento'] ?? null, 20),
-						$this->normalizeNullableText($row['data_entrada'] ?? null, 20),
-						$this->normalizeNullableText($row['data_saida'] ?? null, 20),
-						$this->normalizeNullableText($row['rg'] ?? null, 20),
-						$this->normalizeNullableText($row['cpf'] ?? null, 14),
-						$this->normalizeNullableText($row['necessidade_deficiencia'] ?? null, 255),
-						$this->normalizeNullableText($row['responsavel'] ?? null, 150),
-						$this->normalizeNullableText($row['telefone'] ?? null, 25),
-						$this->normalizeNullableText($row['email'] ?? null, 180)
-					);
-					$createdCount += 1;
+					if (is_array($existingInactive) && (int) ($existingInactive['id'] ?? 0) > 0) {
+						$alunoModel->update(
+							(int) ($existingInactive['id'] ?? 0),
+							(string) ($row['nome'] ?? ''),
+							$matricula,
+							(int) ($row['turma_id'] ?? 0),
+							(string) ($row['turma'] ?? ''),
+							$this->normalizeNullableText($row['data_nascimento'] ?? null, 20),
+							$this->normalizeNullableText($row['data_entrada'] ?? null, 20),
+							null,
+							$this->normalizeNullableText($row['rg'] ?? null, 20),
+							$this->normalizeNullableText($row['cpf'] ?? null, 14),
+							$this->normalizeNullableText($row['necessidade_deficiencia'] ?? null, 255),
+							$this->normalizeNullableText($row['responsavel'] ?? null, 150),
+							$this->normalizeNullableText($row['telefone'] ?? null, 25),
+							$this->normalizeNullableText($row['email'] ?? null, 180),
+							true,
+							'Cursando',
+							$this->clearAlunoHistoricoIfNeeded($existingInactive['historico'] ?? null, false)
+						);
+						$updatedCount += 1;
+					} else {
+						$alunoModel->create(
+							(string) ($row['nome'] ?? ''),
+							$matricula,
+							(int) ($row['turma_id'] ?? 0),
+							(string) ($row['turma'] ?? ''),
+							$this->normalizeNullableText($row['data_nascimento'] ?? null, 20),
+							$this->normalizeNullableText($row['data_entrada'] ?? null, 20),
+							$dataSaidaImport,
+							$this->normalizeNullableText($row['rg'] ?? null, 20),
+							$this->normalizeNullableText($row['cpf'] ?? null, 14),
+							$this->normalizeNullableText($row['necessidade_deficiencia'] ?? null, 255),
+							$this->normalizeNullableText($row['responsavel'] ?? null, 150),
+							$this->normalizeNullableText($row['telefone'] ?? null, 25),
+							$this->normalizeNullableText($row['email'] ?? null, 180),
+							true,
+							'Cursando',
+							null
+						);
+						$createdCount += 1;
+					}
 				}
 			} catch (Throwable) {
 				$skippedCount += 1;
@@ -458,8 +614,23 @@ class InstitucionalController extends HomeController
 		if ($updatedCount > 0) {
 			$messageParts[] = $updatedCount . ' atualizado(s)';
 		}
+		if ($inactivatedCount > 0) {
+			$messageParts[] = $inactivatedCount . ' inativado(s)';
+		}
+		if ($unchangedCount > 0) {
+			$messageParts[] = $unchangedCount . ' sem alteração';
+		}
 		if ($skippedCount > 0) {
 			$messageParts[] = $skippedCount . ' ignorado(s)';
+		}
+
+		$missingSummary = $this->inactivateMissingImportedStudents($sortedRows, $alunoModel, $turmasById);
+		if (($missingSummary['count'] ?? 0) > 0) {
+			$messageParts[] = (int) $missingSummary['count'] . ' ausente(s) inativado(s)';
+			$inactivatedCount += (int) $missingSummary['count'];
+		}
+		if (!empty($missingSummary['warnings']) && is_array($missingSummary['warnings'])) {
+			$warnings = array_merge($warnings, $missingSummary['warnings']);
 		}
 
 		if ($messageParts === []) {
@@ -472,6 +643,8 @@ class InstitucionalController extends HomeController
 			'summary' => [
 				'created' => $createdCount,
 				'updated' => $updatedCount,
+				'inactivated' => $inactivatedCount,
+				'unchanged' => $unchangedCount,
 				'skipped' => $skippedCount,
 				'warnings' => array_slice($warnings, 0, 20),
 			],
@@ -481,7 +654,7 @@ class InstitucionalController extends HomeController
 	private function buildTurmasByImportKey(TurmaModel $turmaModel): array
 	{
 		try {
-			$turmas = $turmaModel->getSimpleOptions();
+			$turmas = $turmaModel->getAllOrdered();
 		} catch (Throwable) {
 			$turmas = [];
 		}
@@ -524,6 +697,8 @@ class InstitucionalController extends HomeController
 	{
 		$nome = trim((string) ($row['nome'] ?? ''));
 		$matricula = trim((string) ($row['matricula'] ?? ''));
+		$situacaoRaw = trim((string) ($row['situacao'] ?? ''));
+		$situacao = $this->normalizeAlunoImportSituacao($situacaoRaw);
 		$turmaNomeRaw = trim((string) ($row['turma'] ?? ''));
 		$turmaKey = $this->normalizeImportKey($turmaNomeRaw);
 		$messages = [];
@@ -532,6 +707,12 @@ class InstitucionalController extends HomeController
 
 		if ($nome === '') {
 			$messages[] = 'Informe o nome.';
+		}
+
+		if ($situacao === null) {
+			$messages[] = 'Situação inválida. Use Cursando, Remanejado, Desalocado ou Transferido.';
+		} else {
+			$situacaoRaw = $situacao;
 		}
 
 		if ($turmaKey === '') {
@@ -551,6 +732,11 @@ class InstitucionalController extends HomeController
 		$rawEntrada = trim((string) ($row['data_entrada'] ?? ''));
 		$rawSaida = trim((string) ($row['data_saida'] ?? ''));
 
+		if (!$this->isAlunoImportSituacaoInativa($situacaoRaw)) {
+			$rawSaida = '';
+			$dataSaida = null;
+		}
+
 		if ($rawNascimento !== '' && $dataNascimento === null) {
 			$messages[] = 'Data de nascimento inválida.';
 		}
@@ -561,6 +747,10 @@ class InstitucionalController extends HomeController
 
 		if ($rawSaida !== '' && $dataSaida === null) {
 			$messages[] = 'Data de saída inválida.';
+		}
+
+		if ($this->isAlunoImportSituacaoInativa($situacaoRaw) && $rawSaida === '') {
+			$messages[] = 'Informe a data de saída para esta situação.';
 		}
 
 		if ($dataEntrada !== null && $dataSaida !== null && $dataSaida < $dataEntrada) {
@@ -584,18 +774,36 @@ class InstitucionalController extends HomeController
 		}
 
 		$existing = $matricula !== '' ? $alunoModel->findByMatricula($matricula) : null;
-		$action = is_array($existing) ? 'update' : 'create';
+		$hasChanges = is_array($existing)
+			? $this->alunoImportRowHasChanges([
+				'nome' => $nome,
+				'matricula' => $matricula,
+				'situacao' => $situacaoRaw !== '' ? $situacaoRaw : 'Cursando',
+				'turma_id' => $turmaId,
+				'data_nascimento' => $dataNascimento,
+				'data_entrada' => $dataEntrada,
+				'data_saida' => $dataSaida,
+				'rg' => $rg,
+				'cpf' => $cpf,
+				'necessidade_deficiencia' => $this->normalizeNullableText($row['necessidade_deficiencia'] ?? null, 255),
+				'responsavel' => $this->normalizeNullableText($row['responsavel'] ?? null, 150),
+				'telefone' => $this->normalizeNullableText($row['telefone'] ?? null, 25),
+				'email' => $email,
+			], $existing)
+			: true;
+		$action = is_array($existing) ? ($hasChanges ? 'update' : 'no_change') : 'create';
 		$canImport = $messages === [];
 
 		return [
 			'line' => $lineNumber,
-			'selected' => $canImport,
+			'selected' => $canImport && $action !== 'no_change',
 			'can_import' => $canImport,
 			'action' => $canImport ? $action : 'review',
 			'existing_id' => is_array($existing) ? (int) ($existing['id'] ?? 0) : 0,
 			'existing_nome' => is_array($existing) ? trim((string) ($existing['nome'] ?? '')) : '',
 			'nome' => $nome,
 			'matricula' => $matricula,
+			'situacao' => $situacaoRaw !== '' ? $situacaoRaw : 'Cursando',
 			'turma' => $turmaNome,
 			'turma_id' => $turmaId,
 			'data_nascimento' => $dataNascimento,
@@ -622,6 +830,269 @@ class InstitucionalController extends HomeController
 		}
 
 		throw new RuntimeException('Não foi possível gerar uma matrícula automática única para a importação.');
+	}
+
+	private function normalizeAlunoImportSituacao($value): ?string
+	{
+		$raw = trim((string) ($value ?? ''));
+		if ($raw === '') {
+			return 'Cursando';
+		}
+
+		$normalized = $this->normalizeImportKey($raw);
+		return match ($normalized) {
+			'cursando' => 'Cursando',
+			'remanejado' => 'Remanejado',
+			'desalocado' => 'Desalocado',
+			'transferido' => 'Transferido',
+			default => null,
+		};
+	}
+
+	private function isAlunoImportSituacaoInativa(string $situacao): bool
+	{
+		return in_array($situacao, ['Remanejado', 'Desalocado', 'Transferido'], true);
+	}
+
+	private function alunoImportRowHasChanges(array $row, array $existing): bool
+	{
+		$expectedSituacao = $this->isAlunoImportSituacaoInativa((string) ($row['situacao'] ?? 'Cursando'))
+			? (string) ($row['situacao'] ?? 'Cursando')
+			: 'Cursando';
+		$expectedDataSaida = $this->isAlunoImportSituacaoInativa($expectedSituacao)
+			? $this->normalizeNullableText($row['data_saida'] ?? null, 20)
+			: null;
+
+		return trim((string) ($row['nome'] ?? '')) !== trim((string) ($existing['nome'] ?? ''))
+			|| trim((string) ($row['matricula'] ?? '')) !== trim((string) ($existing['matricula'] ?? ''))
+			|| (int) ($existing['ativo'] ?? 1) !== 1
+			|| (int) ($row['turma_id'] ?? 0) !== (int) ($existing['turma_id'] ?? 0)
+			|| $this->normalizeNullableText($row['data_nascimento'] ?? null, 20) !== $this->normalizeNullableText($existing['data_nascimento'] ?? null, 20)
+			|| $this->normalizeNullableText($row['data_entrada'] ?? null, 20) !== $this->normalizeNullableText($existing['data_entrada'] ?? null, 20)
+			|| $expectedDataSaida !== $this->normalizeNullableText($existing['data_saida'] ?? null, 20)
+			|| $this->normalizeNullableText($row['rg'] ?? null, 20) !== $this->normalizeNullableText($existing['rg'] ?? null, 20)
+			|| $this->normalizeNullableText($row['cpf'] ?? null, 14) !== $this->normalizeNullableText($existing['cpf'] ?? null, 14)
+			|| $this->normalizeNullableText($row['necessidade_deficiencia'] ?? null, 255) !== $this->normalizeNullableText($existing['necessidade_deficiencia'] ?? null, 255)
+			|| $this->normalizeNullableText($row['responsavel'] ?? null, 150) !== $this->normalizeNullableText($existing['responsavel'] ?? null, 150)
+			|| $this->normalizeNullableText($row['telefone'] ?? null, 25) !== $this->normalizeNullableText($existing['telefone'] ?? null, 25)
+			|| $this->normalizeNullableText($row['email'] ?? null, 180) !== $this->normalizeNullableText($existing['email'] ?? null, 180)
+			|| $expectedSituacao !== (trim((string) ($existing['situacao'] ?? '')) !== '' ? trim((string) ($existing['situacao'] ?? '')) : 'Cursando');
+	}
+
+	private function sortAlunoImportRowsForProcessing(array $rows): array
+	{
+		$sorted = array_values(array_filter($rows, static fn ($row): bool => is_array($row)));
+		usort($sorted, function (array $left, array $right): int {
+			$leftMatricula = trim((string) ($left['matricula'] ?? ''));
+			$rightMatricula = trim((string) ($right['matricula'] ?? ''));
+			$matriculaCompare = strcmp($leftMatricula, $rightMatricula);
+			if ($matriculaCompare !== 0) {
+				return $matriculaCompare;
+			}
+
+			$priority = static function (string $situacao): int {
+				return match ($situacao) {
+					'Transferido' => 0,
+					'Remanejado' => 1,
+					'Desalocado' => 2,
+					default => 3,
+				};
+			};
+
+			$leftPriority = $priority((string) ($left['situacao'] ?? 'Cursando'));
+			$rightPriority = $priority((string) ($right['situacao'] ?? 'Cursando'));
+			if ($leftPriority !== $rightPriority) {
+				return $leftPriority <=> $rightPriority;
+			}
+
+			return ((int) ($left['line'] ?? 0)) <=> ((int) ($right['line'] ?? 0));
+		});
+
+		return $sorted;
+	}
+
+	private function buildTurmasByIdMap(TurmaModel $turmaModel): array
+	{
+		try {
+			$turmas = $turmaModel->getAllOrdered();
+		} catch (Throwable) {
+			$turmas = [];
+		}
+
+		$result = [];
+		foreach ($turmas as $turma) {
+			if (!is_array($turma)) {
+				continue;
+			}
+
+			$id = (int) ($turma['id'] ?? 0);
+			if ($id > 0) {
+				$result[$id] = $turma;
+			}
+		}
+
+		return $result;
+	}
+
+	private function shouldPreserveAlunoHistoryOnTurmaChange(?array $origemTurma, ?array $destinoTurma): bool
+	{
+		if (!is_array($origemTurma) || !is_array($destinoTurma)) {
+			return false;
+		}
+
+		$anoOrigem = (int) ($origemTurma['ano_letivo'] ?? 0);
+		$anoDestino = (int) ($destinoTurma['ano_letivo'] ?? 0);
+		if ($anoOrigem <= 0 || $anoDestino <= 0 || $anoOrigem !== $anoDestino) {
+			return false;
+		}
+
+		$anoEscolarOrigem = $this->normalizeImportKey((string) ($origemTurma['ano_escolar'] ?? ''));
+		$anoEscolarDestino = $this->normalizeImportKey((string) ($destinoTurma['ano_escolar'] ?? ''));
+		return $anoEscolarOrigem !== '' && $anoEscolarOrigem === $anoEscolarDestino;
+	}
+
+	private function generateAlunoArchivedMatricula(string $baseMatricula, int $excludedId, AlunoModel $alunoModel): string
+	{
+		$prefix = substr(preg_replace('/\s+/', '', trim($baseMatricula)) ?: 'ALUNO', 0, 18);
+		for ($attempt = 0; $attempt < 20; $attempt++) {
+			$candidate = substr($prefix . '_H' . date('ymdHis') . strtoupper(substr(bin2hex(random_bytes(2)), 0, 4)), 0, 30);
+			if (!$alunoModel->existsMatriculaForAnotherRecord($candidate, $excludedId)) {
+				return $candidate;
+			}
+		}
+
+		throw new RuntimeException('Não foi possível gerar uma matrícula histórica única para preservar o registro anterior.');
+	}
+
+	private function buildAlunoImportHistoricoEntry(string $situacao, array $row, ?array $existingAluno, ?array $destinoTurma): string
+	{
+		$dataSaida = trim((string) ($row['data_saida'] ?? ''));
+		$trechos = ['[' . date('d/m/Y H:i') . '] ' . $situacao . ' via importação'];
+		if ($dataSaida !== '') {
+			$trechos[] = 'saída em ' . date('d/m/Y', strtotime($dataSaida));
+		}
+		if (is_array($existingAluno)) {
+			$turmaOrigem = trim((string) ($existingAluno['turma'] ?? ''));
+			if ($turmaOrigem !== '') {
+				$trechos[] = 'origem ' . $turmaOrigem;
+			}
+		}
+		if (is_array($destinoTurma)) {
+			$turmaDestino = trim((string) ($destinoTurma['nome'] ?? ''));
+			if ($turmaDestino !== '') {
+				$trechos[] = 'destino ' . $turmaDestino;
+			}
+		}
+
+		return implode(' | ', $trechos);
+	}
+
+	private function appendAlunoHistoricoEntry(string $historicoAtual, string $entrada): string
+	{
+		$historicoAtual = trim($historicoAtual);
+		$entrada = trim($entrada);
+		if ($entrada === '') {
+			return $historicoAtual;
+		}
+
+		return $historicoAtual === '' ? $entrada : ($historicoAtual . PHP_EOL . $entrada);
+	}
+
+	private function clearAlunoHistoricoIfNeeded($historicoAtual, bool $clear): ?string
+	{
+		if ($clear) {
+			return null;
+		}
+
+		$historico = trim((string) ($historicoAtual ?? ''));
+		return $historico !== '' ? $historico : null;
+	}
+
+	private function inactivateMissingImportedStudents(array $rows, AlunoModel $alunoModel, array $turmasById): array
+	{
+		$matriculasPresentes = [];
+		$escopos = [];
+		foreach ($rows as $row) {
+			if (!is_array($row) || empty($row['selected']) || empty($row['can_import'])) {
+				continue;
+			}
+
+			$turmaId = (int) ($row['turma_id'] ?? 0);
+			$turma = $turmasById[$turmaId] ?? null;
+			if (!is_array($turma)) {
+				continue;
+			}
+
+			$escopoChave = (int) ($turma['ano_letivo'] ?? 0) . '|' . $this->normalizeImportKey((string) ($turma['ano_escolar'] ?? ''));
+			if ($escopoChave !== '0|') {
+				$escopos[$escopoChave] = true;
+			}
+
+			$matricula = trim((string) ($row['matricula'] ?? ''));
+			if ($matricula !== '' && !$this->isAlunoImportSituacaoInativa((string) ($row['situacao'] ?? 'Cursando'))) {
+				$matriculasPresentes[$matricula] = true;
+			}
+		}
+
+		if ($matriculasPresentes === [] || $escopos === []) {
+			return ['count' => 0, 'warnings' => []];
+		}
+
+		$ativos = $alunoModel->getAllOrdered(true);
+		$count = 0;
+		$warnings = [];
+		foreach ($ativos as $aluno) {
+			if (!is_array($aluno)) {
+				continue;
+			}
+
+			$turmaId = (int) ($aluno['turma_id'] ?? 0);
+			$turma = $turmasById[$turmaId] ?? null;
+			if (!is_array($turma)) {
+				continue;
+			}
+
+			$escopoChave = (int) ($turma['ano_letivo'] ?? 0) . '|' . $this->normalizeImportKey((string) ($turma['ano_escolar'] ?? ''));
+			if (!isset($escopos[$escopoChave])) {
+				continue;
+			}
+
+			$matricula = trim((string) ($aluno['matricula'] ?? ''));
+			if ($matricula === '' || isset($matriculasPresentes[$matricula])) {
+				continue;
+			}
+
+			$historico = $this->appendAlunoHistoricoEntry(
+				(string) ($aluno['historico'] ?? ''),
+				'[' . date('d/m/Y H:i') . '] Inativado automaticamente por ausência na importação.'
+			);
+			$matriculaArquivada = $this->generateAlunoArchivedMatricula($matricula, (int) ($aluno['id'] ?? 0), $alunoModel);
+			$alunoModel->update(
+				(int) ($aluno['id'] ?? 0),
+				(string) ($aluno['nome'] ?? ''),
+				$matriculaArquivada,
+				(int) ($aluno['turma_id'] ?? 0),
+				(string) ($aluno['turma'] ?? ''),
+				$this->normalizeNullableText($aluno['data_nascimento'] ?? null, 20),
+				$this->normalizeNullableText($aluno['data_entrada'] ?? null, 20),
+				$this->normalizeNullableText($aluno['data_saida'] ?? null, 20),
+				$this->normalizeNullableText($aluno['rg'] ?? null, 20),
+				$this->normalizeNullableText($aluno['cpf'] ?? null, 14),
+				$this->normalizeNullableText($aluno['necessidade_deficiencia'] ?? null, 255),
+				$this->normalizeNullableText($aluno['responsavel'] ?? null, 150),
+				$this->normalizeNullableText($aluno['telefone'] ?? null, 25),
+				$this->normalizeNullableText($aluno['email'] ?? null, 180),
+				false,
+				(string) ($aluno['situacao'] ?? 'Cursando'),
+				$historico
+			);
+			$count += 1;
+			if ($count <= 20) {
+				$warnings[] = 'Estudante ausente inativado: ' . trim((string) ($aluno['nome'] ?? '')) . '.';
+			}
+		}
+
+		return ['count' => $count, 'warnings' => $warnings];
 	}
 
 	private function summarizeAlunoImportPreview(array $rows): array
@@ -889,7 +1360,7 @@ class InstitucionalController extends HomeController
 		}
 
 		try {
-			$turmas = $turmaModel->getSimpleOptions();
+			$turmas = $turmaModel->getAllOrdered();
 		} catch (Throwable) {
 			$turmas = [];
 		}
@@ -2623,7 +3094,7 @@ class InstitucionalController extends HomeController
 		}
 
 		try {
-			$turmas = $turmaModel->getSimpleOptions();
+			$turmas = $turmaModel->getAllOrdered();
 		} catch (Throwable) {
 			$turmas = [];
 		}
@@ -2670,6 +3141,7 @@ class InstitucionalController extends HomeController
 			'canEditAvaliacoes' => $canEditAvaliacoes,
 			'currentUserId' => $usuarioId,
 			'isAdmin' => $isAdmin,
+			'currentYear' => (int) date('Y'),
 		]);
 	}
 
@@ -2691,7 +3163,7 @@ class InstitucionalController extends HomeController
 		}
 
 		try {
-			$alunos = $alunoModel->getAllOrdered();
+			$alunos = $alunoModel->getAllOrdered(true);
 		} catch (Throwable) {
 			$alunos = [];
 		}
@@ -4505,7 +4977,10 @@ class InstitucionalController extends HomeController
 
 	private function resolveFirstWorksheetPath(array $archiveEntries): string
 	{
+		$workbookXml = $archiveEntries['xl/workbook.xml'] ?? null;
 		$workbookRelsXml = $archiveEntries['xl/_rels/workbook.xml.rels'] ?? null;
+		$relations = [];
+
 		if (is_string($workbookRelsXml) && trim($workbookRelsXml) !== '') {
 			$rels = @simplexml_load_string($workbookRelsXml);
 			if ($rels instanceof SimpleXMLElement) {
@@ -4515,10 +4990,67 @@ class InstitucionalController extends HomeController
 				}
 
 				foreach ($relationshipNodes as $relationship) {
-					$type = (string) ($relationship['Type'] ?? '');
-					$target = (string) ($relationship['Target'] ?? '');
-					if (str_ends_with($type, '/worksheet') && $target !== '') {
-						return str_starts_with($target, 'xl/') ? $target : 'xl/' . ltrim($target, '/');
+					if (!$relationship instanceof SimpleXMLElement) {
+						continue;
+					}
+
+					$relationId = trim((string) ($relationship['Id'] ?? ''));
+					$type = trim((string) ($relationship['Type'] ?? ''));
+					$target = trim((string) ($relationship['Target'] ?? ''));
+					if ($relationId === '' || $target === '' || !str_ends_with($type, '/worksheet')) {
+						continue;
+					}
+
+					$relations[$relationId] = $this->resolveXlsxArchivePath('xl/workbook.xml', $target, $archiveEntries);
+				}
+			}
+		}
+
+		if (is_string($workbookXml) && trim($workbookXml) !== '') {
+			$workbook = @simplexml_load_string($workbookXml);
+			if ($workbook instanceof SimpleXMLElement) {
+				$sheetNodes = $workbook->xpath('//*[local-name()="sheets"]/*[local-name()="sheet"]');
+				if (!is_array($sheetNodes)) {
+					$sheetNodes = [];
+				}
+
+				foreach ($sheetNodes as $sheetNode) {
+					if (!$sheetNode instanceof SimpleXMLElement) {
+						continue;
+					}
+
+					$relationAttributes = $sheetNode->attributes('r', true);
+					$relationId = trim((string) ($relationAttributes['id'] ?? $sheetNode['id'] ?? ''));
+					$targetPath = $relationId !== '' ? ($relations[$relationId] ?? '') : '';
+					if ($targetPath !== '' && isset($archiveEntries[$targetPath])) {
+						return $targetPath;
+					}
+				}
+			}
+		}
+
+		if (is_string($workbookRelsXml) && trim($workbookRelsXml) !== '') {
+			$rels = @simplexml_load_string($workbookRelsXml);
+			if ($rels instanceof SimpleXMLElement) {
+				$relationshipNodes = $rels->xpath('//*[local-name()="Relationship"]');
+				if (!is_array($relationshipNodes)) {
+					$relationshipNodes = [];
+				}
+
+				foreach ($relationshipNodes as $relationship) {
+					if (!$relationship instanceof SimpleXMLElement) {
+						continue;
+					}
+
+					$type = trim((string) ($relationship['Type'] ?? ''));
+					$target = trim((string) ($relationship['Target'] ?? ''));
+					if (!str_ends_with($type, '/worksheet') || $target === '') {
+						continue;
+					}
+
+					$targetPath = $this->resolveXlsxArchivePath('xl/workbook.xml', $target, $archiveEntries);
+					if ($targetPath !== '' && isset($archiveEntries[$targetPath])) {
+						return $targetPath;
 					}
 				}
 			}
@@ -4530,6 +5062,74 @@ class InstitucionalController extends HomeController
 		}
 
 		throw new RuntimeException('Não foi possível localizar a primeira aba da planilha XLSX.');
+	}
+
+	private function resolveXlsxArchivePath(string $basePartPath, string $targetPath, array $archiveEntries): string
+	{
+		$targetPath = str_replace('\\', '/', trim($targetPath));
+		if ($targetPath === '') {
+			return '';
+		}
+
+		$candidates = [];
+		if (preg_match('#^[a-zA-Z]+://#', $targetPath) === 1) {
+			return '';
+		}
+
+		if (str_starts_with($targetPath, '/')) {
+			$candidates[] = ltrim($targetPath, '/');
+		} else {
+			$baseDirectory = str_replace('\\', '/', dirname($basePartPath));
+			$combinedPath = ($baseDirectory !== '' && $baseDirectory !== '.') ? ($baseDirectory . '/' . $targetPath) : $targetPath;
+			$candidates[] = $combinedPath;
+			$candidates[] = $targetPath;
+			$candidates[] = 'xl/' . ltrim($targetPath, '/');
+		}
+
+		foreach ($candidates as $candidate) {
+			$normalized = $this->normalizeXlsxArchivePath($candidate);
+			if ($normalized !== '' && isset($archiveEntries[$normalized])) {
+				return $normalized;
+			}
+		}
+
+		$normalizedTarget = $this->normalizeXlsxArchivePath($targetPath);
+		$targetSuffix = $normalizedTarget !== '' ? ltrim($normalizedTarget, '/') : '';
+		if ($targetSuffix !== '') {
+			foreach (array_keys($archiveEntries) as $entryPath) {
+				$normalizedEntry = $this->normalizeXlsxArchivePath((string) $entryPath);
+				if ($normalizedEntry !== '' && str_ends_with($normalizedEntry, '/' . $targetSuffix)) {
+					return $normalizedEntry;
+				}
+			}
+		}
+
+		return '';
+	}
+
+	private function normalizeXlsxArchivePath(string $path): string
+	{
+		$path = str_replace('\\', '/', trim($path));
+		if ($path === '') {
+			return '';
+		}
+
+		$segments = explode('/', $path);
+		$normalizedSegments = [];
+		foreach ($segments as $segment) {
+			if ($segment === '' || $segment === '.') {
+				continue;
+			}
+
+			if ($segment === '..') {
+				array_pop($normalizedSegments);
+				continue;
+			}
+
+			$normalizedSegments[] = $segment;
+		}
+
+		return implode('/', $normalizedSegments);
 	}
 
 	private function extractXlsxCellValue(SimpleXMLElement $cellNode, array $sharedStrings)
@@ -4587,6 +5187,7 @@ class InstitucionalController extends HomeController
 		$mapping = [
 			'nome' => null,
 			'matricula' => null,
+			'situacao' => null,
 			'turma' => null,
 			'data_nascimento' => null,
 			'data_entrada' => null,
@@ -4604,6 +5205,7 @@ class InstitucionalController extends HomeController
 			$field = match ($headerKey) {
 				'turma', 'serie', 'classe' => 'turma',
 				'matricula', 'registro', 'ra' => 'matricula',
+				'situacao', 'status', 'situacaoacademica' => 'situacao',
 				'nome', 'nomecompleto', 'aluno', 'nomedoaluno' => 'nome',
 				'datanascimento', 'nascimento', 'dtnascimento', 'datanasc' => 'data_nascimento',
 				'entrada', 'dataentrada', 'dtentrada' => 'data_entrada',
@@ -4647,6 +5249,7 @@ class InstitucionalController extends HomeController
 				'selected' => true,
 				'nome' => (string) ($this->normalizeNullableText($this->extractAlunoImportMatrixValue($values, $mapping['nome'] ?? null), 150) ?? ''),
 				'matricula' => (string) ($this->normalizeNullableText($this->extractAlunoImportMatrixValue($values, $mapping['matricula'] ?? null), 30) ?? ''),
+				'situacao' => (string) ($this->normalizeNullableText($this->extractAlunoImportMatrixValue($values, $mapping['situacao'] ?? null), 40) ?? 'Cursando'),
 				'turma' => (string) ($this->normalizeNullableText($this->extractAlunoImportMatrixValue($values, $mapping['turma'] ?? null), 150) ?? ''),
 				'data_nascimento' => $this->normalizeImportedDateValue($this->extractAlunoImportMatrixValue($values, $mapping['data_nascimento'] ?? null)),
 				'data_entrada' => $this->normalizeImportedDateValue($this->extractAlunoImportMatrixValue($values, $mapping['data_entrada'] ?? null)),
@@ -6053,7 +6656,11 @@ class InstitucionalController extends HomeController
 		$aluno = $model->buscarAlunoPorMatricula($matricula);
 
 		if ($aluno === null) {
-			$this->respondJson(['ok' => false, 'message' => 'Aluno não encontrado para esta matrícula.'], 404);
+			$this->respondJson(['ok' => false, 'message' => 'Estudante não encontrado nas turmas do ano atual para esta matrícula.'], 404);
+		}
+
+		if ((int) ($aluno['ativo'] ?? 1) !== 1) {
+			$this->respondJson(['ok' => false, 'message' => 'Este estudante está inativo no cadastro.'], 409);
 		}
 
 		$today      = date('Y-m-d');
@@ -6136,6 +6743,15 @@ class InstitucionalController extends HomeController
 
 		$model  = new RefeitorioModel();
 		$model->ensureTableStructure();
+		$aluno = $model->buscarAlunoPorId($alunoId);
+
+		if ($aluno === null) {
+			$this->respondJson(['ok' => false, 'message' => 'Estudante não encontrado nas turmas do ano atual.'], 404);
+		}
+
+		if ((int) ($aluno['ativo'] ?? 1) !== 1) {
+			$this->respondJson(['ok' => false, 'message' => 'Este estudante está inativo no cadastro.'], 409);
+		}
 
 		$today   = date('Y-m-d');
 		$horario = date('H:i:s');
@@ -6456,11 +7072,11 @@ class InstitucionalController extends HomeController
 		$aluno = $model->buscarAlunoPorMatricula($matricula);
 
 		if ($aluno === null) {
-			$this->respondJson(['ok' => false, 'message' => 'Aluno não encontrado para esta matrícula.'], 404);
+			$this->respondJson(['ok' => false, 'message' => 'Estudante não encontrado nas turmas do ano atual para esta matrícula.'], 404);
 		}
 
 		$today = date('Y-m-d');
-		if (!empty($aluno['data_saida']) && (string) $aluno['data_saida'] <= $today) {
+		if ((int) ($aluno['ativo'] ?? 1) !== 1) {
 			$this->respondJson(['ok' => false, 'message' => 'Este estudante está inativo no cadastro.'], 409);
 		}
 
@@ -6507,9 +7123,15 @@ class InstitucionalController extends HomeController
 		$model = new EntradaSaidaModel();
 		$model->ensureTableStructure();
 
+		try {
+			$alunos = $model->pesquisarAlunos($q, $turmaId, $tipoId, date('Y-m-d'));
+		} catch (Throwable $e) {
+			$this->respondJson(['ok' => false, 'message' => 'Erro ao buscar estudantes: ' . $e->getMessage()], 500);
+		}
+
 		$this->respondJson([
 			'ok' => true,
-			'alunos' => $model->pesquisarAlunos($q, $turmaId, $tipoId, date('Y-m-d')),
+			'alunos' => $alunos,
 		]);
 	}
 
@@ -6529,9 +7151,15 @@ class InstitucionalController extends HomeController
 		$model = new EntradaSaidaModel();
 		$model->ensureTableStructure();
 
+		try {
+			$alunos = $model->pesquisarAlunosParaLiberacao($q, $turmaId, date('Y-m-d'));
+		} catch (Throwable $e) {
+			$this->respondJson(['ok' => false, 'message' => 'Erro ao buscar estudantes para liberação: ' . $e->getMessage()], 500);
+		}
+
 		$this->respondJson([
 			'ok' => true,
-			'alunos' => $model->pesquisarAlunosParaLiberacao($q, $turmaId, date('Y-m-d')),
+			'alunos' => $alunos,
 		]);
 	}
 
@@ -6557,6 +7185,15 @@ class InstitucionalController extends HomeController
 		$model->ensureTableStructure();
 		$today = date('Y-m-d');
 		$horario = date('H:i:s');
+		$aluno = $model->buscarAlunoPorId($alunoId);
+
+		if ($aluno === null) {
+			$this->respondJson(['ok' => false, 'message' => 'Estudante não encontrado nas turmas do ano atual.'], 404);
+		}
+
+		if ((int) ($aluno['ativo'] ?? 1) !== 1) {
+			$this->respondJson(['ok' => false, 'message' => 'Este estudante está inativo no cadastro.'], 409);
+		}
 
 		try {
 			$avaliacao = $model->avaliarMovimentacao($alunoId, $tipoId, $today, $horario);
@@ -6606,10 +7243,10 @@ class InstitucionalController extends HomeController
 		$aluno = $model->buscarAlunoPorId($alunoId);
 
 		if ($aluno === null) {
-			$this->respondJson(['ok' => false, 'message' => 'Estudante não encontrado.'], 404);
+			$this->respondJson(['ok' => false, 'message' => 'Estudante não encontrado nas turmas do ano atual.'], 404);
 		}
 
-		if (!empty($aluno['data_saida']) && (string) $aluno['data_saida'] <= $today) {
+		if ((int) ($aluno['ativo'] ?? 1) !== 1) {
 			$this->respondJson(['ok' => false, 'message' => 'Este estudante está inativo no cadastro.'], 409);
 		}
 
