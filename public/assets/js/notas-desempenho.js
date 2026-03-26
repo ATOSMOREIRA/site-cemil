@@ -28,6 +28,11 @@
     return fmtDecimal(v);
   }
 
+  function formatAdaptedGradeLabel(value) {
+    var number = Number(value);
+    return isFinite(number) ? number.toFixed(1).replace('.', ',') + '/10' : '';
+  }
+
   function fmtPct(v) {
     if (v === null || v === undefined) return '-';
     var n = Number(v);
@@ -1083,8 +1088,11 @@
         ? '<div class="table-responsive"><table class="table table-sm table-bordered mb-0">'
           + '<thead><tr><th>Avaliação</th><th class="text-center">Data</th><th class="text-center">Acertos</th><th class="text-center">Nota</th><th class="text-center">Correção</th></tr></thead><tbody>'
           + fontesFiltradasPorBimestre.map(function (src) {
+            var adaptedBadge = src && src.is_adapted
+              ? ' <span class="badge bg-info text-dark">Nota adaptada ' + esc(formatAdaptedGradeLabel(src.adapted_grade)) + '</span>'
+              : '';
             return '<tr>'
-              + '<td>' + esc(src.avaliacao_nome || 'Avaliação') + '</td>'
+              + '<td>' + esc(src.avaliacao_nome || 'Avaliação') + adaptedBadge + '</td>'
               + '<td class="text-center">' + esc(fmtDate(src.aplicacao || '')) + '</td>'
               + '<td class="text-center">' + esc(String(src.corretas || 0)) + '/' + esc(String(src.total || 0)) + '</td>'
               + '<td class="text-center fw-semibold">' + esc(fmtNota(src.nota)) + '</td>'
@@ -1325,6 +1333,66 @@
       });
     }
 
+    function normalizeCorrecaoDisciplinaAdaptedGradeInputValue(rawValue) {
+      return String(rawValue == null ? '' : rawValue).trim().replace(',', '.');
+    }
+
+    function parseCorrecaoDisciplinaAdaptedGradeValue(rawValue) {
+      var normalized = normalizeCorrecaoDisciplinaAdaptedGradeInputValue(rawValue);
+      if (normalized === '') {
+        return null;
+      }
+
+      if (!/^(?:\d+|\d*\.\d{1,2})$/.test(normalized)) {
+        throw new Error('A nota adaptada deve usar no máximo 2 casas decimais.');
+      }
+
+      var parsed = Number(normalized);
+      if (!isFinite(parsed) || parsed < 0 || parsed > 10) {
+        throw new Error('A nota adaptada deve ficar entre 0 e 10.');
+      }
+
+      return Math.round(parsed * 100) / 100;
+    }
+
+    function getCorrecaoDisciplinaAdaptedGradeInput() {
+      return correcaoDisciplinaBody
+        ? correcaoDisciplinaBody.querySelector('.js-notas-correcao-adapted-grade')
+        : null;
+    }
+
+    function setCorrecaoDisciplinaAdaptedModeState() {
+      if (!correcaoDisciplinaBody) {
+        return;
+      }
+
+      var adaptedInput = getCorrecaoDisciplinaAdaptedGradeInput();
+      var hasAdaptedGrade = adaptedInput instanceof HTMLInputElement && String(adaptedInput.value || '').trim() !== '';
+      var hint = correcaoDisciplinaBody.querySelector('.js-notas-correcao-adapted-hint');
+      if (hint) {
+        hint.textContent = hasAdaptedGrade
+          ? 'As respostas desta disciplina ficam preservadas, mas a pontuação será recalculada pela nota adaptada.'
+          : 'Se preencher a nota adaptada, as questões desta disciplina ficam bloqueadas e a pontuação passa a ser calculada por ela.';
+      }
+
+      correcaoDisciplinaBody.querySelectorAll('.js-notas-correcao-input').forEach(function (input) {
+        if (!(input instanceof HTMLInputElement)) {
+          return;
+        }
+        if (adaptedInput && input === adaptedInput) {
+          return;
+        }
+        input.disabled = hasAdaptedGrade;
+      });
+
+      correcaoDisciplinaBody.querySelectorAll('.js-notas-correcao-item-answer').forEach(function (wrap) {
+        if (!(wrap instanceof HTMLElement)) {
+          return;
+        }
+        wrap.classList.toggle('opacity-50', hasAdaptedGrade);
+      });
+    }
+
     function renderCorrecaoDisciplinaForm(payload) {
       if (!correcaoDisciplinaBody) {
         return;
@@ -1337,7 +1405,14 @@
         return;
       }
 
-      var html = '<div class="d-grid gap-2">';
+      var adaptedValue = data && data.adapted_grade != null ? normalizeCorrecaoDisciplinaAdaptedGradeInputValue(data.adapted_grade) : '';
+      var html = ''
+        + '<div class="border rounded bg-light p-3 mb-3">'
+        + '<label class="form-label mb-1" for="notasDesempenhoCorrecaoDisciplinaAdaptedGrade">Nota adaptada da disciplina</label>'
+        + '<input type="number" step="0.01" min="0" max="10" class="form-control form-control-sm js-notas-correcao-adapted-grade" id="notasDesempenhoCorrecaoDisciplinaAdaptedGrade" value="' + esc(adaptedValue) + '">'
+        + '<div class="small text-secondary mt-2 js-notas-correcao-adapted-hint">Se preencher a nota adaptada, as questões desta disciplina ficam bloqueadas e a pontuação passa a ser calculada por ela.</div>'
+        + '</div>'
+        + '<div class="d-grid gap-2">';
       questoes.forEach(function (q) {
         var number = Number(q && q.question_number ? q.question_number : 0);
         var tipo = String(q && q.tipo ? q.tipo : 'objetiva');
@@ -1418,6 +1493,7 @@
 
       correcaoDisciplinaBody.innerHTML = html;
       refreshAllCorrecaoDisciplinaPreviews();
+      setCorrecaoDisciplinaAdaptedModeState();
     }
 
     function openCorrecaoDisciplinaModal(options) {
@@ -1472,7 +1548,10 @@
           correcaoDisciplinaState.payload = payload.data || null;
           if (correcaoDisciplinaResumo) {
             var p = payload.data || {};
-            correcaoDisciplinaResumo.textContent = String(p.aluno_nome || '-') + ' • ' + String(p.turma_nome || '-') + ' • ' + String(p.avaliacao_nome || '-');
+            var adaptedLabel = p && p.adapted_grade != null
+              ? ' • Nota adaptada ' + formatAdaptedGradeLabel(p.adapted_grade)
+              : '';
+            correcaoDisciplinaResumo.textContent = String(p.aluno_nome || '-') + ' • ' + String(p.turma_nome || '-') + ' • ' + String(p.avaliacao_nome || '-') + adaptedLabel;
           }
           renderCorrecaoDisciplinaForm(payload.data || {});
         })
@@ -2009,8 +2088,11 @@
         }
 
         var respostasDisciplina;
+        var adaptedGrade;
         try {
           respostasDisciplina = collectCorrecaoDisciplinaAnswers();
+          var adaptedInput = getCorrecaoDisciplinaAdaptedGradeInput();
+          adaptedGrade = parseCorrecaoDisciplinaAdaptedGradeValue(adaptedInput ? adaptedInput.value : '');
         } catch (error) {
           setCorrecaoDisciplinaError(error && error.message ? error.message : 'Não foi possível validar as respostas.');
           return;
@@ -2028,6 +2110,7 @@
             body.set('correcao_id', String(payload.correcao_id || 0));
             body.set('disciplina', String(payload.disciplina || ''));
             body.set('respostas_disciplina_json', JSON.stringify(respostasDisciplina));
+            body.set('adapted_grade', adaptedGrade === null ? '' : String(adaptedGrade));
 
             return fetch(buildEndpoint('/institucional/notas-desempenho/correcao-disciplina/salvar'), {
               method: 'POST',
@@ -2069,6 +2152,13 @@
     if (correcaoDisciplinaBody) {
       correcaoDisciplinaBody.addEventListener('change', function (event) {
         var target = event.target;
+        if (target instanceof HTMLInputElement && target.classList.contains('js-notas-correcao-adapted-grade')) {
+          target.value = normalizeCorrecaoDisciplinaAdaptedGradeInputValue(target.value);
+          setCorrecaoDisciplinaAdaptedModeState();
+          setCorrecaoDisciplinaError('');
+          return;
+        }
+
         if (!(target instanceof HTMLElement) || !target.classList.contains('js-notas-correcao-input')) {
           return;
         }
@@ -2081,6 +2171,12 @@
 
       correcaoDisciplinaBody.addEventListener('input', function (event) {
         var target = event.target;
+        if (target instanceof HTMLInputElement && target.classList.contains('js-notas-correcao-adapted-grade')) {
+          setCorrecaoDisciplinaAdaptedModeState();
+          setCorrecaoDisciplinaError('');
+          return;
+        }
+
         if (!(target instanceof HTMLElement) || !target.classList.contains('js-notas-correcao-input')) {
           return;
         }

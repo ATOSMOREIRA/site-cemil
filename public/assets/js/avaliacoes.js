@@ -242,6 +242,7 @@
     var correcaoRevisaoSaveBtn = document.getElementById('adminAvaliacaoCorrecaoRevisaoSaveBtn');
     var correcaoEdicaoModalElement = document.getElementById('adminAvaliacaoCorrecaoEdicaoModal');
     var correcaoEdicaoSummary = document.getElementById('adminAvaliacaoCorrecaoEdicaoSummary');
+    var correcaoEdicaoAdaptedGradesWrap = document.getElementById('adminAvaliacaoCorrecaoEdicaoNotasAdaptadas');
     var correcaoEdicaoList = document.getElementById('adminAvaliacaoCorrecaoEdicaoList');
     var correcaoEdicaoError = document.getElementById('adminAvaliacaoCorrecaoEdicaoError');
     var correcaoEdicaoBlankBtn = document.getElementById('adminAvaliacaoCorrecaoEdicaoBlankBtn');
@@ -588,6 +589,7 @@
     var correcaoRevisaoRejecter = null;
     var correcaoEdicaoCurrentRowId = 0;
     var correcaoEdicaoCurrentRowData = null;
+    var correcaoEdicaoAdaptedDisciplineInputs = [];
     var correcaoImportPreviewData = null;
     var correcaoImportLoading = false;
     var correcaoAutoReadFingerprint = '';
@@ -1625,15 +1627,10 @@
       }
 
       // info de disciplina para filtrar
-      var disciplinaId = String(item.disciplina || '').trim();
-      var disciplinaNome = '';
-      if (disciplinaId !== '') {
-        var discMatch = disciplinasOptions.filter(function (d) { return String(d.id) === disciplinaId; });
-        if (discMatch.length > 0) { disciplinaNome = discMatch[0].nome; }
-      }
+      var disciplinaFiltroInfo = getQuestaoDisciplinaFiltroInfo(item);
       if (habilidadeSelectorDisciplinaInfo) {
-        habilidadeSelectorDisciplinaInfo.textContent = disciplinaNome
-          ? 'Filtrando pela disciplina: ' + disciplinaNome
+        habilidadeSelectorDisciplinaInfo.textContent = disciplinaFiltroInfo.nome
+          ? 'Filtrando pela disciplina: ' + disciplinaFiltroInfo.nome
           : 'Nenhuma disciplina selecionada — mostrando todas as habilidades';
       }
 
@@ -1666,7 +1663,7 @@
       if (habilidadeSelectorBsModal) { habilidadeSelectorBsModal.show(); }
 
       habilidadeFetchCache(function (cache) {
-        renderHabilidadeSelectorList(cache, disciplinaNome);
+        renderHabilidadeSelectorList(cache, disciplinaFiltroInfo);
       });
     }
 
@@ -1723,6 +1720,27 @@
         });
     }
 
+    function getHabilidadeDisciplinaIdsForSelector(habilidade) {
+      return String(habilidade && habilidade.disciplina_id ? habilidade.disciplina_id : '')
+        .split(',')
+        .map(function (item) { return String(item || '').trim(); })
+        .filter(Boolean);
+    }
+
+    function getQuestaoDisciplinaFiltroInfo(questionItem) {
+      var disciplinaId = String(questionItem && questionItem.disciplina || '').trim();
+      var disciplinaNome = '';
+      if (disciplinaId !== '') {
+        var discMatch = disciplinasOptions.filter(function (d) { return String(d.id) === disciplinaId; });
+        if (discMatch.length > 0) { disciplinaNome = String(discMatch[0].nome || '').trim(); }
+      }
+
+      return {
+        id: disciplinaId,
+        nome: disciplinaNome
+      };
+    }
+
     function getStatsSkillDisplayLabel(value, fallbackValue) {
       var safeValue = sanitizeQuestaoMetaField(value);
       if (safeValue === '') {
@@ -1764,15 +1782,23 @@
 
       var searchValue = habilidadeNormalize(habilidadeSelectorSearch ? habilidadeSelectorSearch.value : '');
       var filterDoc = habilidadeSelectorActiveFilter;
-      var disciplinaNorm = habilidadeNormalize(disciplinaFiltro || '');
+      var disciplinaNorm = habilidadeNormalize(
+        typeof disciplinaFiltro === 'string'
+          ? disciplinaFiltro
+          : (disciplinaFiltro && typeof disciplinaFiltro === 'object' ? disciplinaFiltro.nome : '')
+      );
 
       var filtered = cache.habilidades.filter(function (h) {
         if (filterDoc !== 'todos') {
           if (String(h.documento || '').toUpperCase() !== filterDoc.toUpperCase()) { return false; }
         }
         if (disciplinaNorm !== '') {
-          var discNome = habilidadeNormalize(cache.disciplinasMap[String(h.disciplina_id)] || '');
-          if (discNome !== disciplinaNorm) { return false; }
+          var habilidadeDisciplinaIds = getHabilidadeDisciplinaIdsForSelector(h);
+          var hasMatchingDisciplina = habilidadeDisciplinaIds.some(function (disciplinaId) {
+            var discNome = habilidadeNormalize(cache.disciplinasMap[String(disciplinaId)] || '');
+            return discNome === disciplinaNorm;
+          });
+          if (!hasMatchingDisciplina) { return false; }
         }
         if (searchValue !== '') {
           var hay = habilidadeNormalize(String(h.codigo || '') + ' ' + String(h.descricao || '') + ' ' + String(h.documento || ''));
@@ -1794,6 +1820,9 @@
         var codigo = String(h.codigo || '').trim();
         var descricao = String(h.descricao || '').trim();
         var documento = String(h.documento || '').toUpperCase();
+        var disciplinaLabels = getHabilidadeDisciplinaIdsForSelector(h).map(function (disciplinaId) {
+          return String(cache.disciplinasMap[String(disciplinaId)] || '').trim();
+        }).filter(Boolean);
         var isChecked = habilidadeSelectorSelected.indexOf(codigo) !== -1;
         var safeId = 'adminHbSel_' + i;
         var docBadge = documento === 'BNCC'
@@ -1804,9 +1833,12 @@
               ? '<span class="badge text-bg-warning text-dark ms-1" style="font-size:.65rem">Matriz</span>'
               : '';
         var descTrunc = descricao.length > 120 ? (descricao.slice(0, 120) + '…') : descricao;
+        var disciplinaMeta = disciplinaLabels.length > 0
+          ? '<span class="text-secondary d-block" style="font-size:.68rem">' + esc(disciplinaLabels.join(', ')) + '</span>'
+          : '';
         html += '<label class="d-flex align-items-start gap-2 px-2 py-1 border-bottom hb-selector-row" for="' + safeId + '" style="cursor:pointer;' + (isChecked ? 'background:#f0f7ff;' : '') + '">'
           + '<input type="radio" id="' + safeId + '" name="adminHbSel" value="' + esc(codigo) + '"' + (isChecked ? ' checked' : '') + ' class="mt-1 flex-shrink-0 js-admin-hb-radio">'
-          + '<span class="small"><strong>' + esc(codigo) + '</strong>' + docBadge + '<br><span class="text-secondary" style="font-size:.72rem">' + esc(descTrunc) + '</span></span>'
+          + '<span class="small"><strong>' + esc(codigo) + '</strong>' + docBadge + disciplinaMeta + '<span class="text-secondary" style="font-size:.72rem">' + esc(descTrunc) + '</span></span>'
           + '</label>';
       }
       if (filtered.length > maxRender) {
@@ -8455,6 +8487,305 @@
       return normalizedValue.replace('.', ',');
     }
 
+    function normalizeCorrecaoAdaptedGradeInputValue(rawValue) {
+      return normalizeCorrecaoDiscursivaScoreInputValue(rawValue, 10);
+    }
+
+    function parseCorrecaoAdaptedGradeValue(rawValue) {
+      var normalized = String(rawValue || '').trim().replace(',', '.');
+      if (normalized === '') {
+        return null;
+      }
+
+      if (!/^(?:\d+|\d*\.\d{1,2})$/.test(normalized)) {
+        throw new Error('A nota adaptada deve usar no máximo 2 casas decimais.');
+      }
+
+      var parsed = Number.parseFloat(normalized);
+      if (!Number.isFinite(parsed) || parsed < 0 || parsed > 10) {
+        throw new Error('A nota adaptada deve ficar entre 0 e 10.');
+      }
+
+      return Math.round(parsed * 100) / 100;
+    }
+
+    function getCorrecaoQuestionItemByNumber(questionNumber) {
+      var safeNumber = clampInt(questionNumber, 1, 9999, 0);
+      if (safeNumber <= 0 || !Array.isArray(gabaritoQuestoesItens)) {
+        return null;
+      }
+
+      return gabaritoQuestoesItens[safeNumber - 1] || null;
+    }
+
+    function buildCorrecaoAdaptedDisciplineMap() {
+      var groups = {};
+      var order = [];
+
+      (Array.isArray(gabaritoQuestoesItens) ? gabaritoQuestoesItens : []).forEach(function (item, index) {
+        var safeItem = sanitizeQuestaoItem(item);
+        var disciplinaId = String(safeItem && safeItem.disciplina || '').trim();
+        var disciplinaNome = getQuestaoDisciplinaNome(safeItem);
+        var key = disciplinaId !== '' ? disciplinaId : ('disciplina:' + disciplinaNome);
+        if (!groups[key]) {
+          groups[key] = {
+            key: key,
+            disciplinaId: disciplinaId,
+            disciplinaNome: disciplinaNome,
+            questionNumbers: [],
+            totalPoints: 0,
+          };
+          order.push(key);
+        }
+
+        groups[key].questionNumbers.push(index + 1);
+        groups[key].totalPoints += sanitizeQuestaoPeso(safeItem && safeItem.peso, 1);
+      });
+
+      return order.map(function (key) {
+        var group = groups[key];
+        group.totalPoints = Math.round(Number(group.totalPoints || 0) * 100) / 100;
+        return group;
+      });
+    }
+
+    function isCorrecaoAdaptedItem(correction) {
+      if (!correction || typeof correction !== 'object') {
+        return false;
+      }
+
+      return correction.adaptedMode === true
+        || String(correction.manualLaunchMode || '').trim().toLowerCase() === 'adaptada'
+        || Number.isFinite(Number(correction.adaptedRatio))
+        || Number.isFinite(Number(correction.adaptedGrade));
+    }
+
+    function getCorrecaoCorrectionEarnedRatio(correction) {
+      if (!correction || typeof correction !== 'object') {
+        return 0;
+      }
+
+      var totalPoints = Number(correction.pontuacao_maxima || correction.peso || 0);
+      var earnedPoints = Number(correction.pontuacao || 0);
+      if (Number.isFinite(totalPoints) && totalPoints > 0 && Number.isFinite(earnedPoints)) {
+        return clampFloat(earnedPoints / totalPoints, 0, 1, 0);
+      }
+
+      return correction.isCorrect === true ? 1 : 0;
+    }
+
+    function getCorrecaoAdaptedGradesByDisciplina(correcoes) {
+      if (!Array.isArray(correcoes) || !correcoes.length) {
+        return null;
+      }
+
+      var adaptedItems = correcoes.filter(isCorrecaoAdaptedItem);
+      if (!adaptedItems.length) {
+        return null;
+      }
+
+      var groups = {};
+      adaptedItems.forEach(function (item) {
+        var questionNumber = clampInt(item && item.questionNumber, 1, 9999, 0);
+        var questionItem = getCorrecaoQuestionItemByNumber(questionNumber);
+        var disciplinaNome = String(item && item.adaptedDisciplineName || '').trim() || getQuestaoDisciplinaNome(questionItem);
+        var disciplinaId = String(item && item.adaptedDisciplineId || (questionItem && questionItem.disciplina) || '').trim();
+        var groupKey = disciplinaId !== '' ? disciplinaId : ('disciplina:' + disciplinaNome);
+        var itemGrade = Number(item && item.adaptedGrade);
+
+        if (!Number.isFinite(itemGrade)) {
+          itemGrade = Math.round(getCorrecaoCorrectionEarnedRatio(item) * 1000) / 100;
+        }
+
+        itemGrade = Math.round(itemGrade * 100) / 100;
+        if (!Number.isFinite(itemGrade)) {
+          return;
+        }
+
+        if (!groups[groupKey]) {
+          groups[groupKey] = {
+            key: groupKey,
+            disciplinaId: disciplinaId,
+            disciplinaNome: disciplinaNome,
+            adaptedGrade: itemGrade,
+          };
+          return;
+        }
+
+        if (Math.abs(Number(groups[groupKey].adaptedGrade || 0) - itemGrade) > 0.02) {
+          groups[groupKey].adaptedGrade = null;
+        }
+      });
+
+      var result = Object.keys(groups).map(function (key) {
+        return groups[key];
+      }).filter(function (item) {
+        return Number.isFinite(Number(item && item.adaptedGrade));
+      });
+
+      return result.length ? result : null;
+    }
+
+    function getCorrecaoAdaptedGradeFromCorrecoes(correcoes) {
+      var adaptedGroups = getCorrecaoAdaptedGradesByDisciplina(correcoes);
+      if (!Array.isArray(adaptedGroups) || adaptedGroups.length !== 1) {
+        return null;
+      }
+
+      return Math.round(Number(adaptedGroups[0].adaptedGrade || 0) * 100) / 100;
+    }
+
+    function formatCorrecaoAdaptedGradeLabel(adaptedGrade) {
+      var safeGrade = Number(adaptedGrade);
+      if (!Number.isFinite(safeGrade)) {
+        return '';
+      }
+
+      return String(safeGrade.toFixed(2)).replace('.', ',').replace(/,00$/, '') + '/10';
+    }
+
+    function formatCorrecaoAdaptedGradesSummary(correcoes) {
+      var adaptedGroups = getCorrecaoAdaptedGradesByDisciplina(correcoes);
+      if (!Array.isArray(adaptedGroups) || !adaptedGroups.length) {
+        return '';
+      }
+
+      if (adaptedGroups.length === 1) {
+        return 'Nota adaptada ' + formatCorrecaoAdaptedGradeLabel(adaptedGroups[0].adaptedGrade);
+      }
+
+      return 'Notas adaptadas: ' + adaptedGroups.map(function (group) {
+        return String(group.disciplinaNome || 'Disciplina') + ' ' + formatCorrecaoAdaptedGradeLabel(group.adaptedGrade);
+      }).join(' | ');
+    }
+
+    function renderCorrecaoEdicaoAdaptedGradeInputs(prefilledGrades) {
+      correcaoEdicaoAdaptedDisciplineInputs = [];
+      if (!correcaoEdicaoAdaptedGradesWrap) {
+        return;
+      }
+
+      correcaoEdicaoAdaptedGradesWrap.innerHTML = '';
+      var groups = buildCorrecaoAdaptedDisciplineMap();
+      var normalizedPrefilled = {};
+
+      (Array.isArray(prefilledGrades) ? prefilledGrades : []).forEach(function (item) {
+        if (!item || typeof item !== 'object') {
+          return;
+        }
+
+        var key = String(item.key || item.disciplinaId || item.disciplinaNome || '').trim();
+        if (key !== '') {
+          normalizedPrefilled[key] = item.adaptedGrade;
+        }
+      });
+
+      groups.forEach(function (group) {
+        var col = document.createElement('div');
+        col.className = 'col-12 col-md-6 col-xl-4';
+
+        var safeKey = group.key.replace(/[^a-z0-9_-]+/gi, '_');
+        var label = document.createElement('label');
+        label.className = 'form-label form-label-sm';
+        label.setAttribute('for', 'adminAvaliacaoCorrecaoEdicaoNotaAdaptada_' + safeKey);
+        label.textContent = group.disciplinaNome;
+        col.appendChild(label);
+
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'form-control form-control-sm js-admin-correcao-adapted-grade-input';
+        input.id = 'adminAvaliacaoCorrecaoEdicaoNotaAdaptada_' + safeKey;
+        input.placeholder = '0,0 a 10,0';
+        input.autocomplete = 'off';
+        input.setAttribute('inputmode', 'decimal');
+        input.setAttribute('data-discipline-key', group.key);
+        input.setAttribute('data-discipline-id', group.disciplinaId);
+        input.setAttribute('data-discipline-name', group.disciplinaNome);
+        if (Object.prototype.hasOwnProperty.call(normalizedPrefilled, group.key) && normalizedPrefilled[group.key] !== null && normalizedPrefilled[group.key] !== undefined) {
+          input.value = normalizeCorrecaoAdaptedGradeInputValue(normalizedPrefilled[group.key]);
+        }
+        col.appendChild(input);
+
+        var help = document.createElement('div');
+        help.className = 'form-text';
+        help.textContent = 'Questões: ' + group.questionNumbers.join(', ');
+        col.appendChild(help);
+
+        correcaoEdicaoAdaptedGradesWrap.appendChild(col);
+        correcaoEdicaoAdaptedDisciplineInputs.push(input);
+      });
+    }
+
+    function getCorrecaoEdicaoAdaptedGradesPayload() {
+      var result = {};
+
+      correcaoEdicaoAdaptedDisciplineInputs.forEach(function (input) {
+        if (!(input instanceof HTMLInputElement)) {
+          return;
+        }
+
+        var rawValue = String(input.value || '').trim();
+        if (rawValue === '') {
+          return;
+        }
+
+        var key = String(input.getAttribute('data-discipline-key') || '').trim();
+        result[key] = {
+          key: key,
+          disciplinaId: String(input.getAttribute('data-discipline-id') || '').trim(),
+          disciplinaNome: String(input.getAttribute('data-discipline-name') || '').trim() || 'Disciplina',
+          adaptedGrade: parseCorrecaoAdaptedGradeValue(rawValue),
+        };
+      });
+
+      return Object.keys(result).length ? result : null;
+    }
+
+    function getCorrecaoEdicaoAdaptedDisciplineKeys() {
+      var map = {};
+      correcaoEdicaoAdaptedDisciplineInputs.forEach(function (input) {
+        if (!(input instanceof HTMLInputElement)) {
+          return;
+        }
+
+        var key = String(input.getAttribute('data-discipline-key') || '').trim();
+        if (key !== '' && String(input.value || '').trim() !== '') {
+          map[key] = true;
+        }
+      });
+
+      return map;
+    }
+
+    function setCorrecaoEdicaoAdaptedModeState() {
+      var adaptedDisciplineKeys = getCorrecaoEdicaoAdaptedDisciplineKeys();
+      if (!correcaoEdicaoList) {
+        return;
+      }
+
+      correcaoEdicaoList.querySelectorAll('.admin-avaliacao-correcao-edicao-item[data-question-number]').forEach(function (itemElement) {
+        if (!(itemElement instanceof HTMLElement)) {
+          return;
+        }
+
+        var disciplineKey = String(itemElement.getAttribute('data-discipline-key') || '').trim();
+        var shouldDisable = disciplineKey !== '' && adaptedDisciplineKeys[disciplineKey] === true;
+
+        itemElement.querySelectorAll('input').forEach(function (input) {
+          if (!(input instanceof HTMLInputElement)) {
+            return;
+          }
+
+          if (shouldDisable) {
+            input.setAttribute('disabled', 'disabled');
+          } else {
+            input.removeAttribute('disabled');
+          }
+        });
+
+        itemElement.classList.toggle('opacity-50', shouldDisable);
+      });
+    }
     function collectCorrecaoDiscursivaScoresFromModal() {
       if (!correcaoDiscursivaList) {
         return {};
@@ -11293,6 +11624,8 @@
         var correcoes = snapshot && Array.isArray(snapshot.correcoes)
           ? snapshot.correcoes
           : (Array.isArray(safeRow.correcoes) ? safeRow.correcoes : []);
+        var adaptedGrade = getCorrecaoAdaptedGradeFromCorrecoes(correcoes);
+        var adaptedSummary = formatCorrecaoAdaptedGradesSummary(correcoes);
 
         return {
           id: Number(safeRow.id || 0),
@@ -11307,6 +11640,9 @@
           totalQuestoes: snapshot ? Number(snapshot.total_questoes || 0) : Number(safeRow.total_questoes || 0),
           respostas: respostas,
           correcoes: correcoes,
+          isAdapted: adaptedSummary !== '',
+          adaptedGrade: adaptedGrade,
+          adaptedSummary: adaptedSummary,
           status: normalizeCorrecaoStatus(safeRow.status),
           corrigidoEm: String(safeRow.corrigido_em || safeRow.created_at || '').trim(),
           numeracao: String(safeRow.numeracao || '').trim(),
@@ -11609,6 +11945,9 @@
 
     function buildAvaliacaoStatsDatasetFromNormalizedRows(normalizedRows) {
       var safeRows = Array.isArray(normalizedRows) ? normalizedRows : [];
+      var hasAdaptedRows = safeRows.some(function (row) {
+        return row && row.isAdapted === true;
+      });
       var questionMeta = getStatsQuestionMetaMap();
       var questionStats = buildStatsQuestionDistributionMap(questionMeta);
       var turmaCoverageMap = getStatsTurmaCoverageMap(safeRows);
@@ -11667,6 +12006,8 @@
           };
           var earnedPoints = Number(correcao && correcao.pontuacao || 0);
           var totalPoints = Number(correcao && correcao.pontuacao_maxima || meta.peso || 0);
+          var earnedRatio = getCorrecaoCorrectionEarnedRatio(correcao);
+          var isAdaptedCorrection = isCorrecaoAdaptedItem(correcao);
           var questionMastered = getStatsQuestionMasteryLevel(meta, earnedPoints, totalPoints, correcao);
           var studentAnswer = getStatsCorrecaoStudentAnswer(correcao);
           var questionEntry = questionStats[questionKey] || ensureStatsAggregateEntry(questionStats, questionKey, {
@@ -11695,12 +12036,11 @@
           questionEntry.totalPoints += totalPoints;
 
           if (meta.tipo !== 'discursiva') {
-            if (studentAnswer === '') {
+            if (studentAnswer === '' && !isAdaptedCorrection) {
               questionEntry.brancos += 1;
-            } else if (effectiveIsCorrect) {
-              questionEntry.corretas += 1;
             } else {
-              questionEntry.incorretas += 1;
+              questionEntry.corretas += earnedRatio;
+              questionEntry.incorretas += Math.max(0, 1 - earnedRatio);
             }
 
             if (studentAnswer !== '') {
@@ -11709,8 +12049,9 @@
                 questionEntry.alternativasErradas[studentAnswer] = Number(questionEntry.alternativasErradas[studentAnswer] || 0) + 1;
               }
             }
-          } else if (totalPoints > 0 && earnedPoints >= totalPoints) {
-            questionEntry.corretas += 1;
+          } else {
+            questionEntry.corretas += earnedRatio;
+            questionEntry.incorretas += Math.max(0, 1 - earnedRatio);
           }
 
           var disciplinaEntry = ensureStatsAggregateEntry(disciplinaMap, meta.disciplina, {
@@ -11724,8 +12065,8 @@
           disciplinaEntry.earnedPoints += earnedPoints;
           disciplinaEntry.totalPoints += totalPoints;
           disciplinaEntry.totalQuestoes += 1;
-          disciplinaEntry.corretas += effectiveIsCorrect ? 1 : 0;
-          disciplinaEntry.brancos += studentAnswer === '' ? 1 : 0;
+          disciplinaEntry.corretas += earnedRatio;
+          disciplinaEntry.brancos += studentAnswer === '' && !isAdaptedCorrection ? 1 : 0;
 
           var skillKey = String(meta.habilidadeCodigo || meta.habilidade || 'Habilidade não informada');
           var habilidadeEntry = ensureStatsAggregateEntry(habilidadeMap, skillKey, {
@@ -11861,6 +12202,7 @@
 
       return {
         totalCorrecoes: safeRows.length,
+        hasAdaptedRows: hasAdaptedRows,
         mediaPercentual: safeRows.length > 0
           ? (safeRows.reduce(function (sum, row) { return sum + Number(row.percentual || 0); }, 0) / safeRows.length)
           : 0,
@@ -12232,13 +12574,13 @@
       var hardestQuestions = dataset.questionStats.filter(function (item) {
         return item.tipo !== 'discursiva';
       }).slice().sort(function (left, right) {
-        return left.acertoPercent - right.acertoPercent;
+        return left.masteryPercent - right.masteryPercent;
       }).slice(0, 3);
       if (hardestQuestions.length) {
         insights.push({
           title: 'Questões com maior dificuldade',
           text: hardestQuestions.map(function (item) {
-            return 'Q' + item.questionNumber + ' (' + formatStatsPercent(item.acertoPercent) + ' de acerto)';
+            return 'Q' + item.questionNumber + ' (' + formatStatsPercent(dataset.hasAdaptedRows ? item.masteryPercent : item.acertoPercent) + (dataset.hasAdaptedRows ? ' de domínio' : ' de acerto') + ')';
           }).join(' • '),
         });
       }
@@ -12452,6 +12794,16 @@
       })[0] || null;
       var insights = buildAvaliacaoStatsInsights(dataset);
 
+      var turmaTitle = dataset.hasAdaptedRows ? 'Domínio por turma' : 'Acertos por turma';
+      var turmaSubtitle = dataset.hasAdaptedRows
+        ? 'Média percentual de domínio e volume de estudantes corrigidos.'
+        : 'Média percentual e volume de estudantes corrigidos.';
+      var questaoMetricTitle = dataset.hasAdaptedRows ? 'Domínio' : 'Acerto';
+      var questaoFluxoLabel = dataset.hasAdaptedRows ? 'Fluxo de domínio' : 'Fluxo de resposta';
+      var resumoModoNota = dataset.hasAdaptedRows
+        ? '<div class="admin-avaliacao-stats-section-note">Este recorte inclui correções com <span class="admin-avaliacao-stats-highlight">nota adaptada</span>; os percentuais abaixo representam domínio proporcional por pontuação.</div>'
+        : '';
+
       var currentActiveTab = String(statsRoot.dataset.activeTab || '').trim();
       var navItems = [
         {
@@ -12462,7 +12814,7 @@
         },
         {
           key: 'turmas',
-          title: 'Acertos por turma',
+          title: turmaTitle,
           value: bestTurma ? bestTurma.nome : '-',
           meta: bestTurma ? ('Melhor média: ' + formatStatsPercent(bestTurma.mediaPercentual)) : 'Sem turmas avaliadas',
         },
@@ -12501,6 +12853,7 @@
           { value: 'indicadores', label: 'Indicadores' },
           { value: 'insights', label: 'Insights' },
         ], 'resumo')
+        + resumoModoNota
         + '<div class="admin-avaliacao-stats-kpi-grid">'
         + '  <div' + buildStatsFilterableAttrs('media geral aproveitamento medio avaliacao', ['indicadores']) + '><div class="admin-avaliacao-stats-kpi"><div class="admin-avaliacao-stats-kpi-label">Média geral</div><div class="admin-avaliacao-stats-kpi-value">' + escapeHtml(formatStatsPercent(dataset.mediaPercentual)) + '</div><div class="admin-avaliacao-stats-kpi-meta">Aproveitamento médio da avaliação</div></div></div>'
         + '  <div' + buildStatsFilterableAttrs('melhor turma ' + (bestTurma ? bestTurma.nome : ''), ['indicadores']) + '><div class="admin-avaliacao-stats-kpi"><div class="admin-avaliacao-stats-kpi-label">Melhor turma</div><div class="admin-avaliacao-stats-kpi-value">' + escapeHtml(bestTurma ? bestTurma.nome : '-') + '</div><div class="admin-avaliacao-stats-kpi-meta">' + escapeHtml(bestTurma ? formatStatsPercent(bestTurma.mediaPercentual) : 'Sem dados') + '</div></div></div>'
@@ -12607,13 +12960,14 @@
         { value: 'discursiva', label: 'Discursivas' },
         { value: 'critica', label: 'Críticas abaixo de 50%' },
       ], 'questoes')
-        + '<div class="admin-avaliacao-stats-table-wrap"><table class="admin-avaliacao-stats-table"><thead><tr><th>Questão</th><th>Contexto</th><th>Acerto</th><th>Fluxo de resposta</th><th>Distribuição por distratores</th></tr></thead><tbody>'
+        + (dataset.hasAdaptedRows ? '<div class="admin-avaliacao-stats-section-note">Quando houver nota adaptada, cada questão contribui com domínio proporcional ao peso lançado.</div>' : '')
+        + '<div class="admin-avaliacao-stats-table-wrap"><table class="admin-avaliacao-stats-table"><thead><tr><th>Questão</th><th>Contexto</th><th>' + questaoMetricTitle + '</th><th>' + questaoFluxoLabel + '</th><th>Distribuição por distratores</th></tr></thead><tbody>'
         + dataset.questionStats.map(function (item) {
           return '<tr' + buildStatsFilterableAttrs('questao ' + item.questionNumber + ' ' + item.disciplina + ' ' + item.habilidade + ' ' + item.tipoLabel + ' ' + (item.correta || ''), [item.tipo === 'discursiva' ? 'discursiva' : 'objetiva', item.masteryPercent < 50 ? 'critica' : 'regular']) + '>'
             + '<td><strong>Q' + escapeHtml(String(item.questionNumber)) + '</strong><div class="admin-avaliacao-stats-micro">' + escapeHtml(item.tipoLabel) + '</div></td>'
             + '<td><div><strong>' + escapeHtml(item.disciplina) + '</strong></div><div class="admin-avaliacao-stats-micro">' + escapeHtml(item.habilidade) + '</div></td>'
             + '<td><div><strong>' + escapeHtml(formatStatsPercent(item.masteryPercent)) + '</strong></div><div class="admin-avaliacao-stats-micro">' + (item.anulada ? 'Anulada' : 'Gabarito: ' + escapeHtml(item.correta || 'Discursiva')) + '</div></td>'
-            + '<td><div class="admin-avaliacao-stats-stacked-track"><span class="admin-avaliacao-stats-stacked-segment is-correct" style="width:' + escapeHtml(String(item.acertoPercent.toFixed(2))) + '%"></span><span class="admin-avaliacao-stats-stacked-segment is-wrong" style="width:' + escapeHtml(String(item.erroPercent.toFixed(2))) + '%"></span><span class="admin-avaliacao-stats-stacked-segment is-blank" style="width:' + escapeHtml(String(item.brancoPercent.toFixed(2))) + '%"></span></div><div class="admin-avaliacao-stats-micro">Acertos ' + escapeHtml(formatStatsPercent(item.acertoPercent)) + ' • Erros ' + escapeHtml(formatStatsPercent(item.erroPercent)) + ' • Brancos ' + escapeHtml(formatStatsPercent(item.brancoPercent)) + '</div></td>'
+            + '<td><div class="admin-avaliacao-stats-stacked-track"><span class="admin-avaliacao-stats-stacked-segment is-correct" style="width:' + escapeHtml(String(item.acertoPercent.toFixed(2))) + '%"></span><span class="admin-avaliacao-stats-stacked-segment is-wrong" style="width:' + escapeHtml(String(item.erroPercent.toFixed(2))) + '%"></span><span class="admin-avaliacao-stats-stacked-segment is-blank" style="width:' + escapeHtml(String(item.brancoPercent.toFixed(2))) + '%"></span></div><div class="admin-avaliacao-stats-micro">' + (dataset.hasAdaptedRows ? ('Domínio ' + escapeHtml(formatStatsPercent(item.masteryPercent)) + ' • Complemento ' + escapeHtml(formatStatsPercent(Math.max(0, 100 - item.masteryPercent))) + ' • Brancos ' + escapeHtml(formatStatsPercent(item.brancoPercent))) : ('Acertos ' + escapeHtml(formatStatsPercent(item.acertoPercent)) + ' • Erros ' + escapeHtml(formatStatsPercent(item.erroPercent)) + ' • Brancos ' + escapeHtml(formatStatsPercent(item.brancoPercent)))) + '</div></td>'
             + '<td>' + renderStatsQuestionDistribution(item) + '</td>'
             + '</tr>';
         }).join('')
@@ -12642,7 +12996,7 @@
         + renderStatsSideNav(navItems, activeTab)
         + '<div class="admin-avaliacao-stats-detail">'
         + renderStatsDetailPanel('resumo', 'Resumo pedagógico', 'Leitura consolidada por turma, disciplina, habilidade, questão e estudante.', String(dataset.totalCorrecoes) + ' correções', resumoContent, activeTab === 'resumo')
-        + renderStatsDetailPanel('turmas', 'Acertos por turma', 'Média percentual e volume de estudantes corrigidos.', bestTurma ? ('Destaque: ' + bestTurma.nome) : '', turmasContent, activeTab === 'turmas')
+        + renderStatsDetailPanel('turmas', turmaTitle, turmaSubtitle, bestTurma ? ('Destaque: ' + bestTurma.nome) : '', turmasContent, activeTab === 'turmas')
         + renderStatsDetailPanel('disciplinas', 'Desempenho por disciplina', 'Domínio percentual e volume de respostas em branco por disciplina.', strongestDisciplina ? ('Top: ' + strongestDisciplina.nome) : '', disciplinasContent, activeTab === 'disciplinas')
         + renderStatsDetailPanel('habilidades', 'Habilidades e alcance pedagógico', 'Domínio da habilidade e percentual de estudantes que a atingiram.', String(dataset.habilidadeStats.length) + ' habilidades', habilidadesContent, activeTab === 'habilidades')
         + renderStatsDetailPanel('questoes', 'Questão por questão', 'Acertos, brancos, dificuldade e distribuição das alternativas marcadas.', weakestQuestion ? ('Crítica: Q' + weakestQuestion.questionNumber) : '', questoesContent, activeTab === 'questoes')
@@ -12883,13 +13237,16 @@
             var statusMeta = getCorrecaoStatusMeta(row.status);
             var earnedScore = Number(row.pontuacao);
             var totalScore = Number(row.pontuacaoTotal);
+            var adaptedBadge = row.isAdapted && String(row.adaptedSummary || '').trim() !== ''
+              ? ' <span class="badge text-bg-info">' + escapeHtml(row.adaptedSummary) + '</span>'
+              : '';
             var resultLabel = statusMeta.resultLabel !== ''
               ? statusMeta.resultLabel
               : (Number.isFinite(earnedScore) && Number.isFinite(totalScore) && totalScore > 0
                 ? (formatCorrecaoScoreValue(earnedScore) + '/' + formatCorrecaoScoreValue(totalScore))
                 : (String(row.acertos || 0) + '/' + String(row.totalQuestoes || 0)));
             return '<tr>'
-              + '<td>' + escapeHtml(row.alunoNome || '-') + (statusMeta.key !== 'corrigida' ? ' <span class="badge ' + escapeHtml(statusMeta.badgeClass) + '">' + escapeHtml(statusMeta.label) + '</span>' : '') + '</td>'
+              + '<td>' + escapeHtml(row.alunoNome || '-') + (statusMeta.key !== 'corrigida' ? ' <span class="badge ' + escapeHtml(statusMeta.badgeClass) + '">' + escapeHtml(statusMeta.label) + '</span>' : '') + adaptedBadge + '</td>'
               + '<td>' + escapeHtml(row.turmaNome || '-') + '</td>'
               + '<td>' + escapeHtml(row.numeracao || '-') + '</td>'
               + '<td>' + escapeHtml(resultLabel) + '</td>'
@@ -13011,6 +13368,10 @@
             : (totalScore > 0
               ? (formatCorrecaoScoreValue(earnedScore) + '/' + formatCorrecaoScoreValue(totalScore) + ' (' + String(Number(item.snapshot.percentual || 0).toFixed(2)).replace('.', ',') + '%)')
               : (String(item.snapshot.acertos || 0) + '/' + String(item.snapshot.total_questoes || 0)));
+          var adaptedSummary = item.correction ? formatCorrecaoAdaptedGradesSummary(item.correction.correcoes) : '';
+          if (adaptedSummary !== '') {
+            resultLabel += ' • ' + adaptedSummary;
+          }
         }
 
         if (item.correction) {
@@ -16056,6 +16417,176 @@
       };
     }
 
+    function buildCorrecaoAdaptedCorrections(adaptedGrade) {
+      var adaptedGradesMap = adaptedGrade && typeof adaptedGrade === 'object' ? adaptedGrade : null;
+      if (!adaptedGradesMap) {
+        throw new Error('Notas adaptadas por disciplina não informadas.');
+      }
+
+      var corrections = [];
+      var earnedPoints = 0;
+      var totalPoints = 0;
+      var score = 0;
+
+      gabaritoQuestoesItens.forEach(function (item, index) {
+        var questionNumber = index + 1;
+        var questionItem = item || createDefaultQuestaoItem(getConfiguredAlternativasCount());
+        var tipo = normalizeQuestaoTipo(questionItem.tipo);
+        var peso = sanitizeQuestaoPeso(questionItem.peso, 1);
+        var disciplinaId = String(questionItem && questionItem.disciplina || '').trim();
+        var disciplinaNome = getQuestaoDisciplinaNome(questionItem);
+        var disciplineKey = disciplinaId !== '' ? disciplinaId : ('disciplina:' + disciplinaNome);
+        var adaptedEntry = adaptedGradesMap[disciplineKey] || null;
+        if (!adaptedEntry) {
+          throw new Error('Informe a nota adaptada da disciplina ' + disciplinaNome + '.');
+        }
+
+        var safeGrade = clampFloat(adaptedEntry.adaptedGrade, 0, 10, 0);
+        var adaptedRatio = clampFloat(safeGrade / 10, 0, 1, 0);
+        var rawPoints = peso * adaptedRatio;
+        var questionPoints = Math.round(rawPoints * 100) / 100;
+
+        totalPoints += peso;
+        earnedPoints += questionPoints;
+        if (questionPoints >= peso) {
+          score += 1;
+        }
+
+        corrections.push({
+          questionNumber: questionNumber,
+          questionType: tipo,
+          peso: peso,
+          studentAnswer: null,
+          correctAnswer: tipo === 'discursiva' ? null : String(questionItem.correta || '').trim().toUpperCase(),
+          isCorrect: questionPoints >= peso,
+          pontuacao: questionPoints,
+          pontuacao_maxima: peso,
+          adaptedMode: true,
+          adaptedGrade: Math.round(safeGrade * 100) / 100,
+          adaptedRatio: adaptedRatio,
+          adaptedDisciplineId: adaptedEntry.disciplinaId,
+          adaptedDisciplineName: adaptedEntry.disciplinaNome,
+          manualLaunchMode: 'adaptada',
+        });
+      });
+
+      return {
+        score: score,
+        total: corrections.length,
+        earnedPoints: Math.round(earnedPoints * 100) / 100,
+        totalPoints: Math.round(totalPoints * 100) / 100,
+        corrections: corrections,
+      };
+    }
+
+    function buildCorrecaoMixedCorrections(studentAnswers, adaptedGradesMap) {
+      var correctAnswers = buildCorrecaoExpectedAnswersMap();
+      var hasObjectiveQuestions = gabaritoQuestoesItens.some(function (item) {
+        return isQuestaoObjetiva(item && item.tipo);
+      });
+      if (hasObjectiveQuestions && !Object.keys(correctAnswers).length) {
+        throw new Error('Configure as respostas corretas do gabarito antes de iniciar a correção.');
+      }
+
+      var safeAnswers = studentAnswers && typeof studentAnswers === 'object' ? studentAnswers : {};
+      var safeAdaptedMap = adaptedGradesMap && typeof adaptedGradesMap === 'object' ? adaptedGradesMap : {};
+      var corrections = [];
+      var score = 0;
+      var earnedPoints = 0;
+      var totalPoints = 0;
+
+      gabaritoQuestoesItens.forEach(function (item, index) {
+        var questionNumber = index + 1;
+        var questionKey = String(questionNumber);
+        var questionItem = item || createDefaultQuestaoItem(getConfiguredAlternativasCount());
+        var tipo = normalizeQuestaoTipo(questionItem.tipo);
+        var peso = sanitizeQuestaoPeso(questionItem.peso, 1);
+        var disciplinaId = String(questionItem && questionItem.disciplina || '').trim();
+        var disciplinaNome = getQuestaoDisciplinaNome(questionItem);
+        var disciplineKey = disciplinaId !== '' ? disciplinaId : ('disciplina:' + disciplinaNome);
+        var adaptedEntry = safeAdaptedMap[disciplineKey] || null;
+
+        totalPoints += peso;
+
+        if (adaptedEntry) {
+          var safeGrade = clampFloat(adaptedEntry.adaptedGrade, 0, 10, 0);
+          var adaptedRatio = clampFloat(safeGrade / 10, 0, 1, 0);
+          var questionPoints = Math.round((peso * adaptedRatio) * 100) / 100;
+          earnedPoints += questionPoints;
+          if (questionPoints >= peso) {
+            score += 1;
+          }
+
+          corrections.push({
+            questionNumber: questionNumber,
+            questionType: tipo,
+            peso: peso,
+            studentAnswer: null,
+            correctAnswer: tipo === 'discursiva' ? null : String(questionItem.correta || '').trim().toUpperCase(),
+            isCorrect: questionPoints >= peso,
+            pontuacao: questionPoints,
+            pontuacao_maxima: peso,
+            adaptedMode: true,
+            adaptedGrade: Math.round(safeGrade * 100) / 100,
+            adaptedRatio: adaptedRatio,
+            adaptedDisciplineId: adaptedEntry.disciplinaId,
+            adaptedDisciplineName: adaptedEntry.disciplinaNome,
+            manualLaunchMode: 'adaptada',
+          });
+          return;
+        }
+
+        if (tipo === 'discursiva') {
+          var discursiveScore = Object.prototype.hasOwnProperty.call(safeAnswers, questionKey)
+            ? clampFloat(safeAnswers[questionKey], 0, peso, 0)
+            : 0;
+          earnedPoints += discursiveScore;
+          corrections.push({
+            questionNumber: questionNumber,
+            questionType: tipo,
+            peso: peso,
+            studentAnswer: null,
+            correctAnswer: null,
+            isCorrect: discursiveScore >= peso,
+            pontuacao: Math.round(discursiveScore * 100) / 100,
+            pontuacao_maxima: peso,
+          });
+          return;
+        }
+
+        var correctAnswer = String(correctAnswers[questionKey] || '').trim().toUpperCase();
+        var studentAnswer = safeAnswers[questionKey]
+          ? String(safeAnswers[questionKey] || '').trim().toUpperCase()
+          : null;
+        var isCorrect = studentAnswer !== null && (questionItem.anulada === true || studentAnswer === correctAnswer);
+        if (isCorrect) {
+          score += 1;
+          earnedPoints += peso;
+        }
+
+        corrections.push({
+          questionNumber: questionNumber,
+          questionType: tipo,
+          peso: peso,
+          studentAnswer: studentAnswer,
+          correctAnswer: correctAnswer,
+          isCorrect: isCorrect,
+          pontuacao: isCorrect ? peso : 0,
+          pontuacao_maxima: peso,
+          answerConfidence: studentAnswer === null ? 'blank' : 'medium',
+          readStrength: null,
+        });
+      });
+
+      return {
+        score: score,
+        total: corrections.length,
+        earnedPoints: Math.round(earnedPoints * 100) / 100,
+        totalPoints: Math.round(totalPoints * 100) / 100,
+        corrections: corrections,
+      };
+    }
+
     function saveCorrecaoResult(resultPayload) {
       var csrfInput = form ? form.querySelector('input[name="csrf_token"]') : null;
       var csrfToken = csrfInput ? String(csrfInput.value || '').trim() : '';
@@ -16140,8 +16671,19 @@
     function resetCorrecaoEdicaoModalState() {
       correcaoEdicaoCurrentRowId = 0;
       correcaoEdicaoCurrentRowData = null;
+      correcaoEdicaoAdaptedDisciplineInputs.forEach(function (input) {
+        if (input instanceof HTMLInputElement) {
+          input.value = '';
+          input.removeAttribute('disabled');
+        }
+      });
+      correcaoEdicaoAdaptedDisciplineInputs = [];
+      if (correcaoEdicaoAdaptedGradesWrap) {
+        correcaoEdicaoAdaptedGradesWrap.innerHTML = '';
+      }
       if (correcaoEdicaoList) {
         correcaoEdicaoList.innerHTML = '';
+        correcaoEdicaoList.classList.remove('opacity-50');
       }
       if (correcaoEdicaoSummary) {
         correcaoEdicaoSummary.textContent = 'Revise as respostas e notas antes de salvar as alterações.';
@@ -16175,7 +16717,7 @@
 
     function setCorrecaoEdicaoActionButtonsDisabled(disabled) {
       var shouldDisable = disabled === true;
-      [correcaoEdicaoSaveBtn, correcaoEdicaoBlankBtn, correcaoEdicaoAbsentBtn].forEach(function (button) {
+      [correcaoEdicaoSaveBtn, correcaoEdicaoBlankBtn, correcaoEdicaoAbsentBtn].concat(correcaoEdicaoAdaptedDisciplineInputs).forEach(function (button) {
         if (!(button instanceof HTMLElement)) {
           return;
         }
@@ -16299,7 +16841,9 @@
       }
 
       var respostas;
+      var adaptedGrade = null;
       try {
+        adaptedGrade = getCorrecaoEdicaoAdaptedGradesPayload();
         respostas = collectCorrecaoEdicaoPayload();
       } catch (error) {
         if (correcaoEdicaoError) {
@@ -16310,7 +16854,9 @@
         return Promise.resolve(false);
       }
 
-      var comparison = buildCorrecaoCorrections(respostas, {}, {});
+      var comparison = adaptedGrade === null
+        ? buildCorrecaoCorrections(respostas, {}, {})
+        : buildCorrecaoMixedCorrections(respostas, adaptedGrade);
       var resultPayload = {
         avaliacao_id: Number(row.avaliacao_id || row.avaliacaoId || activeDashboardAvaliacaoId || 0),
         aluno_id: Number(row.aluno_id || row.alunoId || 0),
@@ -16319,7 +16865,7 @@
         qr_payload: String(row.qr_payload || row.qrPayload || ''),
         respostas: respostas,
         correcoes: comparison.corrections,
-        status: normalizeCorrecaoStatus(row.status),
+        status: 'corrigida',
         acertos: comparison.score,
         total_questoes: comparison.total,
         pontuacao: comparison.earnedPoints.toFixed(2),
@@ -16361,6 +16907,7 @@
       correcaoEdicaoCurrentRowId = Number(row.id || 0);
       correcaoEdicaoCurrentRowData = row;
       setCorrecaoEdicaoQuickActionsVisible(Number(row.id || 0) <= 0);
+      renderCorrecaoEdicaoAdaptedGradeInputs(getCorrecaoAdaptedGradesByDisciplina(row.correcoes));
 
       if (correcaoEdicaoSummary) {
         correcaoEdicaoSummary.textContent = String(row.aluno_nome || 'Estudante') + ' | ' + String(row.turma_nome || 'Turma') + ' | numeração ' + String(row.numeracao || '-');
@@ -16413,6 +16960,9 @@
         var wrapper = document.createElement('div');
         wrapper.className = 'admin-avaliacao-correcao-edicao-item';
         wrapper.setAttribute('data-question-number', questionKey);
+        var disciplinaId = String(safeItem && safeItem.disciplina || '').trim();
+        var disciplinaNome = getQuestaoDisciplinaNome(safeItem);
+        wrapper.setAttribute('data-discipline-key', disciplinaId !== '' ? disciplinaId : ('disciplina:' + disciplinaNome));
 
         var numberLabel = document.createElement('span');
         numberLabel.className = 'admin-gabarito-resposta-numero';
@@ -16429,7 +16979,6 @@
         typeBadge.className = 'admin-avaliacao-correcao-edicao-item-type';
         typeBadge.textContent = getQuestaoTipoLabel(tipo);
         top.appendChild(typeBadge);
-
         main.appendChild(top);
 
         var answerWrap = document.createElement('div');
@@ -16482,11 +17031,7 @@
             if (respostaCorreta !== '' && respostaCorreta === letter) {
               optionLabel.classList.add('admin-avaliacao-correcao-edicao-correct');
             }
-            if (
-              selectedResposta !== ''
-              && selectedResposta !== respostaCorreta
-              && selectedResposta === letter
-            ) {
+            if (selectedResposta !== '' && selectedResposta !== respostaCorreta && selectedResposta === letter) {
               optionLabel.classList.add('admin-avaliacao-correcao-edicao-incorrect');
             }
 
@@ -16514,7 +17059,7 @@
       });
 
       correcaoEdicaoList.appendChild(layoutWrap);
-
+      setCorrecaoEdicaoAdaptedModeState();
       correcaoEdicaoModalInstance.show();
     }
 
@@ -16526,6 +17071,10 @@
       var respostas = {};
       correcaoEdicaoList.querySelectorAll('.admin-avaliacao-correcao-edicao-item[data-question-number]').forEach(function (itemElement) {
         if (!(itemElement instanceof HTMLElement)) {
+          return;
+        }
+
+        if (itemElement.querySelector('input[disabled]')) {
           return;
         }
 
@@ -16543,6 +17092,10 @@
 
       correcaoEdicaoList.querySelectorAll('.js-admin-correcao-edit-discursiva-input').forEach(function (input) {
         if (!(input instanceof HTMLInputElement)) {
+          return;
+        }
+
+        if (input.disabled) {
           return;
         }
 
@@ -18486,26 +19039,16 @@
           b.classList.toggle('active', b === btn);
         });
         var item = gabaritoQuestoesItens[habilidadeSelectorQuestionIndex] || {};
-        var disciplinaId = String(item.disciplina || '').trim();
-        var disciplinaNome = '';
-        if (disciplinaId !== '') {
-          var match = disciplinasOptions.filter(function (d) { return String(d.id) === disciplinaId; });
-          if (match.length > 0) { disciplinaNome = match[0].nome; }
-        }
-        habilidadeFetchCache(function (cache) { renderHabilidadeSelectorList(cache, disciplinaNome); });
+        var disciplinaFiltroInfo = getQuestaoDisciplinaFiltroInfo(item);
+        habilidadeFetchCache(function (cache) { renderHabilidadeSelectorList(cache, disciplinaFiltroInfo); });
       });
     });
 
     if (habilidadeSelectorSearch) {
       habilidadeSelectorSearch.addEventListener('input', function () {
         var item = gabaritoQuestoesItens[habilidadeSelectorQuestionIndex] || {};
-        var disciplinaId = String(item.disciplina || '').trim();
-        var disciplinaNome = '';
-        if (disciplinaId !== '') {
-          var match = disciplinasOptions.filter(function (d) { return String(d.id) === disciplinaId; });
-          if (match.length > 0) { disciplinaNome = match[0].nome; }
-        }
-        habilidadeFetchCache(function (cache) { renderHabilidadeSelectorList(cache, disciplinaNome); });
+        var disciplinaFiltroInfo = getQuestaoDisciplinaFiltroInfo(item);
+        habilidadeFetchCache(function (cache) { renderHabilidadeSelectorList(cache, disciplinaFiltroInfo); });
       });
     }
 
@@ -18875,6 +19418,18 @@
       });
     }
 
+    if (correcaoEdicaoAdaptedGradesWrap) {
+      correcaoEdicaoAdaptedGradesWrap.addEventListener('input', function (event) {
+        var target = event.target;
+        if (!(target instanceof HTMLInputElement) || !target.classList.contains('js-admin-correcao-adapted-grade-input')) {
+          return;
+        }
+
+        target.value = normalizeCorrecaoAdaptedGradeInputValue(target.value);
+        setCorrecaoEdicaoAdaptedModeState();
+      });
+    }
+
     // ---- Visibilidade da save bar ao trocar de tab + sync entre abas ----
     var _dashboardTabsEl = document.getElementById('adminAvaliacaoDashboardTabs');
     if (_dashboardTabsEl) {
@@ -18959,6 +19514,7 @@
           correcaoRevisaoSaveBtn: correcaoRevisaoSaveBtn,
           correcaoRevisaoCancelBtn: correcaoRevisaoCancelBtn,
           correcaoEdicaoModalElement: correcaoEdicaoModalElement,
+          correcaoEdicaoAdaptedGradesWrap: correcaoEdicaoAdaptedGradesWrap,
           correcaoEdicaoBlankBtn: correcaoEdicaoBlankBtn,
           correcaoEdicaoAbsentBtn: correcaoEdicaoAbsentBtn,
           correcaoEdicaoSaveBtn: correcaoEdicaoSaveBtn,

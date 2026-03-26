@@ -164,6 +164,13 @@
 		.hb-filter-checklist .form-check:last-child {
 			margin-bottom: 0;
 		}
+
+		.hb-inline-dropdown .dropdown-menu {
+			width: 100%;
+			min-width: 100%;
+			max-height: 220px;
+			overflow-y: auto;
+		}
 	</style>
 
 	<div id="hbStatusBar" class="top-status d-none" role="alert" aria-live="polite"></div>
@@ -246,10 +253,21 @@
 								</select>
 							</div>
 							<div class="col-md-6">
-								<label class="form-label" for="hbFormDisciplina">Disciplina <span class="text-danger">*</span></label>
-								<select class="form-select" id="hbFormDisciplina" required>
-									<option value="">Selecione</option>
-								</select>
+								<label class="form-label">Disciplinas <span class="text-danger">*</span></label>
+								<div class="dropdown hb-inline-dropdown" id="hbFormDisciplinaDropdown">
+									<button class="btn btn-outline-secondary btn-sm w-100 text-start d-flex justify-content-between align-items-center" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" id="hbFormDisciplinaToggle">
+										<span id="hbFormDisciplinaLabel">Selecione</span>
+										<i class="las la-angle-down"></i>
+									</button>
+									<div class="dropdown-menu p-2">
+										<div class="d-flex gap-2 mb-2">
+											<button type="button" class="btn btn-outline-primary btn-sm flex-fill" id="hbFormDisciplinaSelectAll">Todas</button>
+											<button type="button" class="btn btn-outline-secondary btn-sm flex-fill" id="hbFormDisciplinaClear">Limpar</button>
+										</div>
+										<div id="hbFormDisciplinaList"></div>
+									</div>
+								</div>
+								<input type="hidden" id="hbFormDisciplina" value="">
 							</div>
 							<div class="col-md-3">
 							<label class="form-label">Ano escolar <span class="text-danger">*</span></label>
@@ -501,6 +519,10 @@
 			var formDocumento   = document.getElementById('hbFormDocumento');
 			var formTipo        = document.getElementById('hbFormTipo');
 			var formDisciplina  = document.getElementById('hbFormDisciplina');
+			var formDisciplinaLabel = document.getElementById('hbFormDisciplinaLabel');
+			var formDisciplinaList = document.getElementById('hbFormDisciplinaList');
+			var formDisciplinaSelectAll = document.getElementById('hbFormDisciplinaSelectAll');
+			var formDisciplinaClear = document.getElementById('hbFormDisciplinaClear');
 			var formAno         = document.getElementById('hbFormAno');
 			var formAnoLabel    = document.getElementById('hbFormAnoLabel');
 			var formAnoList     = document.getElementById('hbFormAnoList');
@@ -562,6 +584,36 @@
 				}
 			}
 
+			function updateDisciplinaHidden() {
+				var cbs = formDisciplinaList ? formDisciplinaList.querySelectorAll('.js-hb-disciplina-cb:checked') : [];
+				var vals = [];
+				var labels = [];
+				cbs.forEach(function (cb) {
+					vals.push(cb.value);
+					labels.push(cb.getAttribute('data-label') || '');
+				});
+				vals.sort(function (a, b) { return parseInt(a, 10) - parseInt(b, 10); });
+				if (formDisciplina) formDisciplina.value = vals.join(',');
+				if (formDisciplinaLabel) {
+					if (labels.length === 0) {
+						formDisciplinaLabel.textContent = 'Selecione';
+					} else if (labels.length <= 2) {
+						formDisciplinaLabel.textContent = labels.join(', ');
+					} else {
+						formDisciplinaLabel.textContent = labels.length + ' disciplinas selecionadas';
+					}
+				}
+			}
+
+			function setDisciplinaCheckboxes(valueStr) {
+				var selected = String(valueStr || '').split(',').map(function (v) { return v.trim(); }).filter(Boolean);
+				var cbs = formDisciplinaList ? formDisciplinaList.querySelectorAll('.js-hb-disciplina-cb') : [];
+				cbs.forEach(function (cb) {
+					cb.checked = selected.indexOf(cb.value) >= 0;
+				});
+				updateDisciplinaHidden();
+			}
+
 			function setAnoCheckboxes(valueStr) {
 				var selected = String(valueStr || '').split(',').map(function (v) { return v.trim(); });
 				var cbs = formAnoList ? formAnoList.querySelectorAll('.js-hb-ano-cb') : [];
@@ -576,6 +628,9 @@
 			if (formAnoList) {
 				formAnoList.addEventListener('change', function () { updateAnoHidden(); });
 			}
+			if (formDisciplinaList) {
+				formDisciplinaList.addEventListener('change', function () { updateDisciplinaHidden(); });
+			}
 			if (formAnoSelectAll) {
 				formAnoSelectAll.addEventListener('click', function () {
 					var cbs = formAnoList.querySelectorAll('.js-hb-ano-cb');
@@ -588,6 +643,20 @@
 					var cbs = formAnoList.querySelectorAll('.js-hb-ano-cb');
 					cbs.forEach(function (cb) { cb.checked = false; });
 					updateAnoHidden();
+				});
+			}
+			if (formDisciplinaSelectAll) {
+				formDisciplinaSelectAll.addEventListener('click', function () {
+					var cbs = formDisciplinaList ? formDisciplinaList.querySelectorAll('.js-hb-disciplina-cb') : [];
+					cbs.forEach(function (cb) { cb.checked = true; });
+					updateDisciplinaHidden();
+				});
+			}
+			if (formDisciplinaClear) {
+				formDisciplinaClear.addEventListener('click', function () {
+					var cbs = formDisciplinaList ? formDisciplinaList.querySelectorAll('.js-hb-disciplina-cb') : [];
+					cbs.forEach(function (cb) { cb.checked = false; });
+					updateDisciplinaHidden();
 				});
 			}
 
@@ -641,6 +710,19 @@
 				return anos.length ? anos.map(function (item) { return item + 'º ano'; }).join(', ') : '';
 			}
 
+			function getHabilidadeDisciplinaIds(habilidade) {
+				return String(habilidade && habilidade.disciplina_id ? habilidade.disciplina_id : '')
+					.split(',')
+					.map(function (item) { return item.trim(); })
+					.filter(Boolean);
+			}
+
+			function getHabilidadeDisciplinaNomes(habilidade) {
+				return getHabilidadeDisciplinaIds(habilidade).map(function (id) {
+					return disciplinasMap[String(id)] || '';
+				}).filter(Boolean);
+			}
+
 			function toCsvCell(value) {
 				var text = String(value == null ? '' : value).replace(/"/g, '""');
 				return '"' + text + '"';
@@ -654,14 +736,14 @@
 				}
 
 				var csvRows = [
-					['Codigo', 'Documento', 'Nome da Disciplina', 'Ano escolar', 'Descricao']
+					['Codigo', 'Documento', 'Nome das Disciplinas', 'Ano escolar', 'Descricao']
 				];
 
 				rows.forEach(function (h) {
 					csvRows.push([
 						h.codigo || '',
 						h.documento || '',
-						disciplinasMap[String(h.disciplina_id)] || '',
+						getHabilidadeDisciplinaNomes(h).join(', '),
 						formatAnoEscolar(h.ano_escolar),
 						h.descricao || ''
 					]);
@@ -726,18 +808,19 @@
 			}
 
 			function populateDisciplinaSelects(disciplinas) {
-				var formOpts = '<option value="">Selecione</option>';
 				var filterHtml = '';
+				var formHtml = '';
 
 				disciplinas.forEach(function (d) {
 					var id = String(d.id);
 					var nome = esc(d.nome || '');
-					formOpts += '<option value="' + id + '">' + nome + '</option>';
+					formHtml += '<div class="form-check"><input class="form-check-input js-hb-disciplina-cb" type="checkbox" value="' + id + '" data-label="' + nome + '" id="hbFormDisciplina_' + id + '"><label class="form-check-label" for="hbFormDisciplina_' + id + '">' + nome + '</label></div>';
 					filterHtml += '<div class="form-check"><input class="form-check-input" type="checkbox" value="' + id + '" id="hbFDisc_' + id + '"><label class="form-check-label" for="hbFDisc_' + id + '">' + nome + '</label></div>';
 				});
 
 				if (filterDiscList) filterDiscList.innerHTML = filterHtml || '<div class="small text-secondary">Nenhuma disciplina.</div>';
-				if (formDisciplina) formDisciplina.innerHTML = formOpts;
+				if (formDisciplinaList) formDisciplinaList.innerHTML = formHtml || '<div class="small text-secondary">Nenhuma disciplina.</div>';
+				updateDisciplinaHidden();
 			}
 
 			function populateAnoFilter() {
@@ -759,7 +842,10 @@
 
 				return allHabilidades.filter(function (h) {
 					if (selDocs.length  && selDocs.indexOf(String(h.documento || ''))      < 0) return false;
-					if (selDiscs.length && selDiscs.indexOf(String(h.disciplina_id || '')) < 0) return false;
+					if (selDiscs.length) {
+						var habilidadeDiscIds = getHabilidadeDisciplinaIds(h);
+						if (!selDiscs.some(function (discId) { return habilidadeDiscIds.indexOf(String(discId)) >= 0; })) return false;
+					}
 					if (selAnos.length) {
 						var hAnos = String(h.ano_escolar || '').split(',').map(function (v) { return v.trim(); });
 						if (!selAnos.some(function (a) { return hAnos.indexOf(a) >= 0; })) return false;
@@ -769,7 +855,7 @@
 					if (searchVal) {
 						var text = norm([
 							h.codigo, h.descricao, h.documento, h.tipo,
-							disciplinasMap[String(h.disciplina_id)] || '',
+							getHabilidadeDisciplinaNomes(h).join(' '),
 							h.ano_escolar, h.etapa_ensino, h.unidade_tematica, h.objeto_conhecimento
 						].join(' '));
 						if (text.indexOf(searchVal) < 0) return false;
@@ -792,7 +878,7 @@
 					var id = parseInt(h.id, 10) || 0;
 					var codigo    = esc(h.codigo || '');
 					var documento = esc(h.documento || '');
-					var discNome  = esc(disciplinasMap[String(h.disciplina_id)] || '-');
+					var discNome  = esc(getHabilidadeDisciplinaNomes(h).join(', ') || '-');
 					var anoRaw    = String(h.ano_escolar || '');
 					var ano       = anoRaw ? esc(anoRaw.split(',').map(function(v){ return v.trim() + 'º'; }).join(', ')) : '-';
 					var desc      = String(h.descricao || '');
@@ -904,12 +990,12 @@
 
 				if (viewTitle) viewTitle.textContent = 'Detalhes — ' + (h.codigo || 'Habilidade');
 
-				var discNome = disciplinasMap[String(h.disciplina_id)] || '-';
+				var discNome = getHabilidadeDisciplinaNomes(h).join(', ') || '-';
 				var html = '<div class="row g-2">'
 					+ viewField('Código', h.codigo)
 					+ viewField('Documento', h.documento)
 					+ viewField('Tipo', h.tipo)
-					+ viewField('Disciplina', discNome)
+					+ viewField('Disciplinas', discNome)
 					+ viewField('Ano escolar', (h.ano_escolar || '').split(',').map(function(v){ return v.trim() + 'º'; }).join(', '))
 					+ viewField('Etapa de ensino', h.etapa_ensino)
 					+ '</div>'
@@ -944,6 +1030,7 @@
 				if (formDocumento) formDocumento.value = 'BNCC';
 				if (formTipo)      formTipo.value = 'Habilidade';
 				if (formDisciplina) formDisciplina.value = '';
+				setDisciplinaCheckboxes('');
 				setAnoCheckboxes('');
 			}
 
@@ -965,7 +1052,7 @@
 				if (formCodigo)      formCodigo.value = h.codigo || '';
 				if (formDocumento)   formDocumento.value = h.documento || 'BNCC';
 				if (formTipo)        formTipo.value = h.tipo || 'Habilidade';
-				if (formDisciplina)  formDisciplina.value = String(h.disciplina_id || '');
+				setDisciplinaCheckboxes(String(h.disciplina_id || ''));
 				setAnoCheckboxes(h.ano_escolar || '');
 				if (formEtapa)       formEtapa.value = h.etapa_ensino || 'Ensino Fundamental';
 				if (formDescricao)   formDescricao.value = h.descricao || '';
@@ -992,7 +1079,7 @@
 						descricao:               (formDescricao ? formDescricao.value : '').trim(),
 						tipo:                    formTipo ? formTipo.value : 'Habilidade',
 						documento:               formDocumento ? formDocumento.value : 'BNCC',
-						disciplina_id:           parseInt(formDisciplina ? formDisciplina.value : '0', 10) || 0,
+						disciplina_ids:          (formDisciplina ? formDisciplina.value : '').split(',').map(function (item) { return parseInt(item, 10) || 0; }).filter(function (item) { return item > 0; }),
 						ano_escolar:             (formAno ? formAno.value : '').trim(),
 						etapa_ensino:            (formEtapa ? formEtapa.value : 'Ensino Fundamental').trim(),
 						unidade_tematica:        (formUnidade ? formUnidade.value : '').trim(),

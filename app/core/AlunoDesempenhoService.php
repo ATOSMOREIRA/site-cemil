@@ -138,6 +138,19 @@ class AlunoDesempenhoService
 
                 $allDisciplinas[$disciplina] = true;
                 $isCorrect = ($item['isCorrect'] ?? false) === true;
+                $earnedPoints = $this->normalizeNullableFloat($item['pontuacao'] ?? null);
+                $maxPoints = $this->normalizeNullableFloat($item['pontuacao_maxima'] ?? ($meta['peso'] ?? 1));
+                if ($maxPoints === null || $maxPoints <= 0) {
+                    $maxPoints = max(0.01, (float) ($meta['peso'] ?? 1));
+                }
+                if ($earnedPoints === null) {
+                    $earnedPoints = $isCorrect ? $maxPoints : 0.0;
+                }
+                if ($earnedPoints < 0) {
+                    $earnedPoints = 0.0;
+                } elseif ($earnedPoints > $maxPoints) {
+                    $earnedPoints = $maxPoints;
+                }
                 $aplicacao = trim((string) ($avaliacao['aplicacao'] ?? ''));
                 $aplicacaoTs = $aplicacao !== '' ? strtotime($aplicacao) : false;
 
@@ -177,10 +190,25 @@ class AlunoDesempenhoService
                             'aplicacao'      => $aplicacao,
                             'corretas'       => 0,
                             'total'          => 0,
+                            'pontuacao'      => 0.0,
+                            'pontuacao_total'=> 0.0,
+                            'is_adapted'     => true,
+                            'adapted_grade'  => null,
                         ];
                     }
+                    $adaptedGrade = $this->extractAdaptedGradeFromCorrectionItem($item, $earnedPoints, $maxPoints);
                     $perStudentDisciplineSources[$key][$avaliacaoId]['total']++;
                     $perStudentDisciplineSources[$key][$avaliacaoId]['corretas'] += $isCorrect ? 1 : 0;
+                    $perStudentDisciplineSources[$key][$avaliacaoId]['pontuacao'] += $earnedPoints;
+                    $perStudentDisciplineSources[$key][$avaliacaoId]['pontuacao_total'] += $maxPoints;
+                    if ($adaptedGrade === null) {
+                        $perStudentDisciplineSources[$key][$avaliacaoId]['is_adapted'] = false;
+                    } elseif ($perStudentDisciplineSources[$key][$avaliacaoId]['adapted_grade'] === null) {
+                        $perStudentDisciplineSources[$key][$avaliacaoId]['adapted_grade'] = $adaptedGrade;
+                    } elseif (abs((float) $perStudentDisciplineSources[$key][$avaliacaoId]['adapted_grade'] - $adaptedGrade) > 0.02) {
+                        $perStudentDisciplineSources[$key][$avaliacaoId]['is_adapted'] = false;
+                        $perStudentDisciplineSources[$key][$avaliacaoId]['adapted_grade'] = null;
+                    }
                 } else {
                     if (!isset($perStudentDisciplineRecoverySources[$key])) {
                         $perStudentDisciplineRecoverySources[$key] = [];
@@ -192,10 +220,14 @@ class AlunoDesempenhoService
                             'aplicacao' => $aplicacao,
                             'corretas' => 0,
                             'total' => 0,
+                            'pontuacao' => 0.0,
+                            'pontuacao_total' => 0.0,
                         ];
                     }
                     $perStudentDisciplineRecoverySources[$key][$avaliacaoId]['total']++;
                     $perStudentDisciplineRecoverySources[$key][$avaliacaoId]['corretas'] += $isCorrect ? 1 : 0;
+                    $perStudentDisciplineRecoverySources[$key][$avaliacaoId]['pontuacao'] += $earnedPoints;
+                    $perStudentDisciplineRecoverySources[$key][$avaliacaoId]['pontuacao_total'] += $maxPoints;
                 }
 
                 $dKey = $avaliacaoId . '|' . $qn;
@@ -209,10 +241,14 @@ class AlunoDesempenhoService
                         'habilidade'     => $this->normalizeLabel((string) ($meta['habilidade'] ?? '')),
                         'corretas'       => 0,
                         'total'          => 0,
+                        'pontuacao'      => 0.0,
+                        'pontuacao_total'=> 0.0,
                     ];
                 }
                 $diagnosticoMap[$dKey]['total']++;
                 $diagnosticoMap[$dKey]['corretas'] += $isCorrect ? 1 : 0;
+                $diagnosticoMap[$dKey]['pontuacao'] += $earnedPoints;
+                $diagnosticoMap[$dKey]['pontuacao_total'] += $maxPoints;
             }
         }
 
@@ -272,8 +308,16 @@ class AlunoDesempenhoService
 
                         $srcTotal = (int) ($src['total'] ?? 0);
                         $srcCorretas = (int) ($src['corretas'] ?? 0);
-                        $srcPercentual = $srcTotal > 0 ? round(($srcCorretas / $srcTotal) * 100, 2) : null;
-                        $srcNota = $srcTotal > 0 ? round(($srcCorretas / $srcTotal) * 10, 2) : null;
+                        $srcPontuacao = $this->normalizeNullableFloat($src['pontuacao'] ?? null);
+                        $srcPontuacaoTotal = $this->normalizeNullableFloat($src['pontuacao_total'] ?? null);
+                        if ($srcPontuacao === null) {
+                            $srcPontuacao = (float) $srcCorretas;
+                        }
+                        if ($srcPontuacaoTotal === null || $srcPontuacaoTotal <= 0) {
+                            $srcPontuacaoTotal = (float) $srcTotal;
+                        }
+                        $srcPercentual = $srcPontuacaoTotal > 0 ? round(($srcPontuacao / $srcPontuacaoTotal) * 100, 2) : null;
+                        $srcNota = $srcPontuacaoTotal > 0 ? round(($srcPontuacao / $srcPontuacaoTotal) * 10, 2) : null;
 
                         $avaliacaoFontes[] = [
                             'avaliacao_id'   => (int) ($src['avaliacao_id'] ?? 0),
@@ -285,8 +329,14 @@ class AlunoDesempenhoService
                             'aplicacao'      => trim((string) ($src['aplicacao'] ?? '')),
                             'corretas'       => $srcCorretas,
                             'total'          => $srcTotal,
+                            'pontuacao'      => $srcPontuacao,
+                            'pontuacao_total'=> $srcPontuacaoTotal,
                             'percentual'     => $srcPercentual,
                             'nota'           => $srcNota,
+                            'is_adapted'     => (($src['is_adapted'] ?? false) === true) && $srcTotal > 0,
+                            'adapted_grade'  => (($src['is_adapted'] ?? false) === true)
+                                ? $this->normalizeNullableFloat($src['adapted_grade'] ?? null)
+                                : null,
                         ];
                     }
                 }
@@ -1039,6 +1089,14 @@ class AlunoDesempenhoService
                 continue;
             }
 
+            $sourcePontuacao = $this->normalizeNullableFloat($source['pontuacao'] ?? null);
+            $sourcePontuacaoTotal = $this->normalizeNullableFloat($source['pontuacao_total'] ?? null);
+            if ($sourcePontuacao !== null && $sourcePontuacaoTotal !== null && $sourcePontuacaoTotal > 0) {
+                $corretas += $sourcePontuacao;
+                $total += $sourcePontuacaoTotal;
+                continue;
+            }
+
             $corretas += (int) ($source['corretas'] ?? 0);
             $total += (int) ($source['total'] ?? 0);
         }
@@ -1380,6 +1438,12 @@ class AlunoDesempenhoService
             return null;
         }
 
+        $latestPontuacao = $this->normalizeNullableFloat($latestSource['pontuacao'] ?? null);
+        $latestPontuacaoTotal = $this->normalizeNullableFloat($latestSource['pontuacao_total'] ?? null);
+        if ($latestPontuacao !== null && $latestPontuacaoTotal !== null && $latestPontuacaoTotal > 0) {
+            return round(($latestPontuacao / $latestPontuacaoTotal) * 10, 2);
+        }
+
         $latestTotal = (int) ($latestSource['total'] ?? 0);
         if ($latestTotal <= 0) {
             return null;
@@ -1466,8 +1530,14 @@ class AlunoDesempenhoService
                 ];
             }
 
-            $pct = $entry['total'] > 0
-                ? round(($entry['corretas'] / $entry['total']) * 100, 1) : 0;
+            $entryPontuacao = $this->normalizeNullableFloat($entry['pontuacao'] ?? null);
+            $entryPontuacaoTotal = $this->normalizeNullableFloat($entry['pontuacao_total'] ?? null);
+            if ($entryPontuacao !== null && $entryPontuacaoTotal !== null && $entryPontuacaoTotal > 0) {
+                $pct = round(($entryPontuacao / $entryPontuacaoTotal) * 100, 1);
+            } else {
+                $pct = $entry['total'] > 0
+                    ? round(($entry['corretas'] / $entry['total']) * 100, 1) : 0;
+            }
 
             $byAvaliacao[$avId]['questoes'][] = [
                 'numero'     => $entry['questao'],
@@ -1524,6 +1594,19 @@ class AlunoDesempenhoService
             $disciplina = $this->normalizeLabel((string) ($meta['disciplina'] ?? ''));
             $habilidade = $this->normalizeLabel((string) ($meta['habilidade'] ?? ''));
             $isCorrect  = ($item['isCorrect'] ?? false) === true;
+            $earnedPoints = $this->normalizeNullableFloat($item['pontuacao'] ?? null);
+            $maxPoints = $this->normalizeNullableFloat($item['pontuacao_maxima'] ?? ($meta['peso'] ?? 1));
+            if ($maxPoints === null || $maxPoints <= 0) {
+                $maxPoints = max(0.01, (float) ($meta['peso'] ?? 1));
+            }
+            if ($earnedPoints === null) {
+                $earnedPoints = $isCorrect ? $maxPoints : 0.0;
+            }
+            if ($earnedPoints < 0) {
+                $earnedPoints = 0.0;
+            } elseif ($earnedPoints > $maxPoints) {
+                $earnedPoints = $maxPoints;
+            }
 
             if ($disciplina !== '') $disciplinas[$disciplina] = true;
 
@@ -1531,8 +1614,8 @@ class AlunoDesempenhoService
                 if (!isset($habilidadesMap[$habilidade])) {
                     $habilidadesMap[$habilidade] = ['earned' => 0, 'total' => 0];
                 }
-                $habilidadesMap[$habilidade]['total']++;
-                if ($isCorrect) $habilidadesMap[$habilidade]['earned']++;
+                $habilidadesMap[$habilidade]['total'] += $maxPoints;
+                $habilidadesMap[$habilidade]['earned'] += $earnedPoints;
             }
         }
 
@@ -1805,6 +1888,32 @@ class AlunoDesempenhoService
         if (is_string($value)) $value = str_replace(',', '.', trim($value));
         if (!is_numeric($value)) return null;
         return round((float) $value, 2);
+    }
+
+    private function extractAdaptedGradeFromCorrectionItem(array $item, float $earnedPoints, float $maxPoints): ?float
+    {
+        $adaptedMode = ($item['adaptedMode'] ?? false) === true
+            || strtolower(trim((string) ($item['manualLaunchMode'] ?? ''))) === 'adaptada';
+
+        $adaptedGrade = $this->normalizeNullableFloat($item['adaptedGrade'] ?? null);
+        if ($adaptedGrade !== null) {
+            return $adaptedGrade;
+        }
+
+        $adaptedRatio = $this->normalizeNullableFloat($item['adaptedRatio'] ?? null);
+        if ($adaptedRatio !== null) {
+            return round($adaptedRatio * 10, 2);
+        }
+
+        if (!$adaptedMode) {
+            return null;
+        }
+
+        if ($maxPoints <= 0) {
+            return 0.0;
+        }
+
+        return round(($earnedPoints / $maxPoints) * 10, 2);
     }
 
     private function normalizeNullableDate(string $value): ?string

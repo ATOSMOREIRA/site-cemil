@@ -404,11 +404,16 @@ class InstitucionalController extends HomeController
 			}
 
 			try {
+				$matricula = trim((string) ($row['matricula'] ?? ''));
+				if ($matricula === '') {
+					$matricula = $this->generateAlunoImportAutoMatricula($alunoModel);
+				}
+
 				if ((string) ($row['action'] ?? '') === 'update' && (int) ($row['existing_id'] ?? 0) > 0) {
 					$alunoModel->update(
 						(int) ($row['existing_id'] ?? 0),
 						(string) ($row['nome'] ?? ''),
-						(string) ($row['matricula'] ?? ''),
+						$matricula,
 						(int) ($row['turma_id'] ?? 0),
 						(string) ($row['turma'] ?? ''),
 						$this->normalizeNullableText($row['data_nascimento'] ?? null, 20),
@@ -425,7 +430,7 @@ class InstitucionalController extends HomeController
 				} else {
 					$alunoModel->create(
 						(string) ($row['nome'] ?? ''),
-						(string) ($row['matricula'] ?? ''),
+						$matricula,
 						(int) ($row['turma_id'] ?? 0),
 						(string) ($row['turma'] ?? ''),
 						$this->normalizeNullableText($row['data_nascimento'] ?? null, 20),
@@ -529,10 +534,6 @@ class InstitucionalController extends HomeController
 			$messages[] = 'Informe o nome.';
 		}
 
-		if ($matricula === '') {
-			$messages[] = 'Informe a matrícula.';
-		}
-
 		if ($turmaKey === '') {
 			$messages[] = 'Informe a turma.';
 		} elseif (!isset($turmasByKey[$turmaKey])) {
@@ -608,6 +609,19 @@ class InstitucionalController extends HomeController
 			'email' => $email,
 			'messages' => $messages,
 		];
+	}
+
+	private function generateAlunoImportAutoMatricula(AlunoModel $alunoModel): string
+	{
+		for ($attempt = 0; $attempt < 20; $attempt++) {
+			$candidate = 'IMP' . date('ymdHis') . strtoupper(substr(bin2hex(random_bytes(3)), 0, 6));
+			$candidate = substr($candidate, 0, 30);
+			if (!$alunoModel->existsMatriculaForAnotherRecord($candidate)) {
+				return $candidate;
+			}
+		}
+
+		throw new RuntimeException('Não foi possível gerar uma matrícula automática única para a importação.');
 	}
 
 	private function summarizeAlunoImportPreview(array $rows): array
@@ -3131,6 +3145,7 @@ class InstitucionalController extends HomeController
 		$itens = $this->extractAvaliacaoQuestionItems($avaliacao);
 		$respostas = is_array($correcao['respostas'] ?? null) ? $correcao['respostas'] : [];
 		$correcoes = is_array($correcao['correcoes'] ?? null) ? $correcao['correcoes'] : [];
+		$adaptedDisciplineMap = $this->extractInstitutionalAdaptedDisciplineMap($correcoes, $itens);
 		$correcoesByQuestion = [];
 		foreach ($correcoes as $item) {
 			if (!is_array($item)) {
@@ -3187,6 +3202,28 @@ class InstitucionalController extends HomeController
 			$this->respondJson(['ok' => false, 'message' => 'Não há questões desta disciplina nesta avaliação.'], 404);
 		}
 
+		$currentDisciplineKey = null;
+		$currentAdaptedGrade = null;
+		foreach ($questoesDisciplina as $questaoDisciplina) {
+			$questionNumber = (int) ($questaoDisciplina['question_number'] ?? 0);
+			if ($questionNumber <= 0) {
+				continue;
+			}
+
+			$itemOrigem = $itens[$questionNumber - 1] ?? null;
+			if (!is_array($itemOrigem)) {
+				continue;
+			}
+
+			$disciplinaIdAtual = trim((string) ($itemOrigem['disciplina'] ?? ''));
+			$disciplinaNomeAtual = $this->resolveInstitutionalDisciplinaLabel($disciplinaIdAtual);
+			$currentDisciplineKey = $this->buildInstitutionalAdaptedDisciplineKey($disciplinaIdAtual, $disciplinaNomeAtual);
+			if (isset($adaptedDisciplineMap[$currentDisciplineKey])) {
+				$currentAdaptedGrade = $adaptedDisciplineMap[$currentDisciplineKey]['adaptedGrade'] ?? null;
+			}
+			break;
+		}
+
 		$this->respondJson([
 			'ok' => true,
 			'data' => [
@@ -3198,6 +3235,7 @@ class InstitucionalController extends HomeController
 				'aluno_nome' => trim((string) ($correcao['aluno_nome'] ?? '')),
 				'turma_nome' => trim((string) ($correcao['turma_nome'] ?? '')),
 				'disciplina' => $disciplina,
+				'adapted_grade' => $currentAdaptedGrade !== null ? round((float) $currentAdaptedGrade, 2) : null,
 				'questoes' => $questoesDisciplina,
 			],
 		]);
@@ -3222,13 +3260,27 @@ class InstitucionalController extends HomeController
 		$correcaoId = (int) ($_POST['correcao_id'] ?? 0);
 		$disciplina = trim((string) ($_POST['disciplina'] ?? ''));
 		$respostasRaw = trim((string) ($_POST['respostas_disciplina_json'] ?? ''));
-		if ($correcaoId <= 0 || $disciplina === '' || $respostasRaw === '') {
+		$adaptedGradeRaw = trim((string) ($_POST['adapted_grade'] ?? ''));
+		if ($correcaoId <= 0 || $disciplina === '' || ($respostasRaw === '' && $adaptedGradeRaw === '')) {
 			$this->respondJson(['ok' => false, 'message' => 'Dados inválidos para salvar a correção.'], 422);
 		}
 
-		$respostasAtualizadas = json_decode($respostasRaw, true);
+		$respostasAtualizadas = $respostasRaw !== '' ? json_decode($respostasRaw, true) : [];
 		if (!is_array($respostasAtualizadas)) {
 			$this->respondJson(['ok' => false, 'message' => 'Formato inválido de respostas.'], 422);
+		}
+
+		$adaptedGrade = null;
+		if ($adaptedGradeRaw !== '') {
+			$adaptedGradeRaw = str_replace(',', '.', $adaptedGradeRaw);
+			if (!preg_match('/^(?:\d+|\d*\.\d{1,2})$/', $adaptedGradeRaw)) {
+				$this->respondJson(['ok' => false, 'message' => 'A nota adaptada deve usar no máximo 2 casas decimais.'], 422);
+			}
+
+			$adaptedGrade = round((float) $adaptedGradeRaw, 2);
+			if ($adaptedGrade < 0 || $adaptedGrade > 10) {
+				$this->respondJson(['ok' => false, 'message' => 'A nota adaptada deve ficar entre 0 e 10.'], 422);
+			}
 		}
 
 		$correcaoModel = new AvaliacaoCorrecaoModel();
@@ -3263,6 +3315,9 @@ class InstitucionalController extends HomeController
 		$disciplina = $this->resolveInstitutionalDisciplinaLabel($disciplina);
 		$disciplinaNorm = $this->normalizeInstitutionalSearch($disciplina);
 		$respostasCompletas = is_array($correcao['respostas'] ?? null) ? $correcao['respostas'] : [];
+		$correcoesAtuais = is_array($correcao['correcoes'] ?? null) ? $correcao['correcoes'] : [];
+		$adaptedDisciplineMap = $this->extractInstitutionalAdaptedDisciplineMap($correcoesAtuais, $itens);
+		$currentDisciplineInfo = null;
 
 		foreach ($itens as $index => $item) {
 			if (!is_array($item)) {
@@ -3271,6 +3326,17 @@ class InstitucionalController extends HomeController
 
 			$itemDisciplina = $this->resolveInstitutionalDisciplinaLabel((string) ($item['disciplina'] ?? ''));
 			if ($this->normalizeInstitutionalSearch($itemDisciplina) !== $disciplinaNorm) {
+				continue;
+			}
+
+			if ($currentDisciplineInfo === null) {
+				$currentDisciplineInfo = [
+					'disciplina_id' => trim((string) ($item['disciplina'] ?? '')),
+					'disciplina_nome' => $itemDisciplina,
+				];
+			}
+
+			if ($adaptedGrade !== null) {
 				continue;
 			}
 
@@ -3295,7 +3361,27 @@ class InstitucionalController extends HomeController
 			}
 		}
 
-		$computed = $this->buildInstitutionalCorrecoesSnapshot($itens, $respostasCompletas);
+		if ($currentDisciplineInfo === null) {
+			$this->respondJson(['ok' => false, 'message' => 'Não há questões desta disciplina nesta avaliação.'], 404);
+		}
+
+		$currentDisciplineKey = $this->buildInstitutionalAdaptedDisciplineKey(
+			(string) ($currentDisciplineInfo['disciplina_id'] ?? ''),
+			(string) ($currentDisciplineInfo['disciplina_nome'] ?? '')
+		);
+
+		if ($adaptedGrade !== null) {
+			$adaptedDisciplineMap[$currentDisciplineKey] = [
+				'key' => $currentDisciplineKey,
+				'disciplinaId' => (string) ($currentDisciplineInfo['disciplina_id'] ?? ''),
+				'disciplinaNome' => (string) ($currentDisciplineInfo['disciplina_nome'] ?? $disciplina),
+				'adaptedGrade' => $adaptedGrade,
+			];
+		} else {
+			unset($adaptedDisciplineMap[$currentDisciplineKey]);
+		}
+
+		$computed = $this->buildInstitutionalCorrecoesSnapshot($itens, $respostasCompletas, $adaptedDisciplineMap);
 
 		$ok = $correcaoModel->updateById($correcaoId, [
 			'numeracao' => trim((string) ($correcao['numeracao'] ?? '')),
@@ -4632,7 +4718,7 @@ class InstitucionalController extends HomeController
 		$disciplinasByName = $this->buildDisciplinasByNormalizedName();
 		$normalized = $this->normalizeHabilidadePayload($payload, $disciplinasByName);
 
-		if ($normalized['codigo'] === '' || $normalized['descricao'] === '' || $normalized['ano_escolar'] === '' || $normalized['disciplina_id'] <= 0) {
+		if ($normalized['codigo'] === '' || $normalized['descricao'] === '' || $normalized['ano_escolar'] === '' || $normalized['disciplina_ids'] === []) {
 			$this->respondJson(['ok' => false, 'message' => 'Preencha código, descrição, disciplina e ano escolar.'], 422);
 		}
 
@@ -4714,7 +4800,7 @@ class InstitucionalController extends HomeController
 			}
 
 			$normalized = $this->normalizeHabilidadePayload($linha, $disciplinasByName);
-			if ($normalized['codigo'] === '' || $normalized['descricao'] === '' || $normalized['ano_escolar'] === '' || $normalized['disciplina_id'] <= 0) {
+			if ($normalized['codigo'] === '' || $normalized['descricao'] === '' || $normalized['ano_escolar'] === '' || $normalized['disciplina_ids'] === []) {
 				continue;
 			}
 
@@ -4793,7 +4879,7 @@ class InstitucionalController extends HomeController
 		$codigo = strtoupper(trim((string) ($payload['codigo'] ?? '')));
 		$descricao = trim((string) ($payload['descricao'] ?? ''));
 		$tipo = trim((string) ($payload['tipo'] ?? 'Habilidade'));
-		$documento = strtoupper(trim((string) ($payload['documento'] ?? 'BNCC')));
+		$documento = $this->normalizeHabilidadeDocumento((string) ($payload['documento'] ?? 'BNCC'));
 		$anoEscolarRaw = trim((string) ($payload['ano_escolar'] ?? ($payload['anoEscolar'] ?? '')));
 		// Normalizar ano_escolar para formato numérico: "1º, 2º, 3º" → "1,2,3"
 		preg_match_all('/\d+/', $anoEscolarRaw, $anoMatches);
@@ -4801,17 +4887,9 @@ class InstitucionalController extends HomeController
 		sort($anoNums, SORT_NUMERIC);
 		$anoEscolar = implode(',', $anoNums);
 		$etapaEnsino = trim((string) ($payload['etapa_ensino'] ?? 'Ensino Fundamental'));
-		$disciplinaId = (int) ($payload['disciplina_id'] ?? ($payload['disciplinaId'] ?? 0));
+		$disciplinaIds = $this->extractHabilidadeDisciplinaIds($payload, $disciplinasByName);
 
-		if ($disciplinaId <= 0) {
-			$disciplinaNome = trim((string) ($payload['disciplina_nome'] ?? ''));
-			$key = $this->normalizeImportKey($disciplinaNome);
-			if ($key !== '' && isset($disciplinasByName[$key])) {
-				$disciplinaId = (int) $disciplinasByName[$key];
-			}
-		}
-
-		if ($disciplinaId <= 0 && preg_match('/^EF\d{2}([A-Z]{2})\d{2}$/', $codigo, $matches) === 1) {
+		if ($disciplinaIds === [] && preg_match('/^EF\d{2}([A-Z]{2})\d{2}$/', $codigo, $matches) === 1) {
 			$sigla = strtoupper((string) ($matches[1] ?? ''));
 			$disciplinaBySigla = match ($sigla) {
 				'AR' => 'Arte',
@@ -4828,10 +4906,13 @@ class InstitucionalController extends HomeController
 			if ($disciplinaBySigla !== '') {
 				$key = $this->normalizeImportKey($disciplinaBySigla);
 				if ($key !== '' && isset($disciplinasByName[$key])) {
-					$disciplinaId = (int) $disciplinasByName[$key];
+					$disciplinaIds[] = (int) $disciplinasByName[$key];
 				}
 			}
 		}
+
+		$disciplinaIds = array_values(array_unique(array_filter(array_map('intval', $disciplinaIds), static fn (int $id): bool => $id > 0)));
+		sort($disciplinaIds, SORT_NUMERIC);
 
 		return [
 			'id' => (int) ($payload['id'] ?? 0),
@@ -4839,7 +4920,8 @@ class InstitucionalController extends HomeController
 			'descricao' => $descricao,
 			'tipo' => $tipo !== '' ? $tipo : 'Habilidade',
 			'documento' => $documento !== '' ? $documento : 'BNCC',
-			'disciplina_id' => $disciplinaId,
+			'disciplina_id' => implode(',', $disciplinaIds),
+			'disciplina_ids' => $disciplinaIds,
 			'ano_escolar' => $anoEscolar,
 			'etapa_ensino' => $etapaEnsino !== '' ? $etapaEnsino : 'Ensino Fundamental',
 			'unidade_tematica' => trim((string) ($payload['unidade_tematica'] ?? '')),
@@ -4853,6 +4935,70 @@ class InstitucionalController extends HomeController
 	{
 		$normalized = $this->normalizePermissionToken($value);
 		return str_replace('_', '', $normalized);
+	}
+
+	private function normalizeHabilidadeDocumento(string $value): string
+	{
+		$normalized = strtoupper(trim($value));
+
+		return match ($normalized) {
+			'DCT' => 'DCT',
+			'MATRIZ' => 'Matriz',
+			default => 'BNCC',
+		};
+	}
+
+	private function extractHabilidadeDisciplinaIds(array $payload, array $disciplinasByName): array
+	{
+		$rawIds = $payload['disciplina_ids'] ?? ($payload['disciplinaIds'] ?? ($payload['disciplina_id'] ?? ($payload['disciplinaId'] ?? [])));
+		$ids = [];
+
+		if (is_array($rawIds)) {
+			foreach ($rawIds as $rawId) {
+				$id = (int) $rawId;
+				if ($id > 0) {
+					$ids[] = $id;
+				}
+			}
+		} else {
+			foreach (preg_split('/\s*,\s*/', trim((string) $rawIds)) ?: [] as $rawId) {
+				$id = (int) $rawId;
+				if ($id > 0) {
+					$ids[] = $id;
+				}
+			}
+		}
+
+		if ($ids !== []) {
+			return $ids;
+		}
+
+		$rawNames = [];
+		foreach (['disciplina_nomes', 'disciplinaNomes', 'disciplina_nome', 'disciplinaNome'] as $field) {
+			if (!array_key_exists($field, $payload)) {
+				continue;
+			}
+
+			$value = $payload[$field];
+			if (is_array($value)) {
+				foreach ($value as $item) {
+					$rawNames[] = trim((string) $item);
+				}
+			} else {
+				foreach (preg_split('/\s*(?:\||\/|,)\s*/', (string) $value) ?: [] as $item) {
+					$rawNames[] = trim((string) $item);
+				}
+			}
+		}
+
+		foreach ($rawNames as $disciplinaNome) {
+			$key = $this->normalizeImportKey($disciplinaNome);
+			if ($key !== '' && isset($disciplinasByName[$key])) {
+				$ids[] = (int) $disciplinasByName[$key];
+			}
+		}
+
+		return $ids;
 	}
 
 	private function normalizeImportedDateValue($value): ?string
@@ -5110,7 +5256,7 @@ class InstitucionalController extends HomeController
 		return str_contains($normalized, 'discurs') ? 'discursiva' : 'objetiva';
 	}
 
-	private function buildInstitutionalCorrecoesSnapshot(array $itens, array $respostas): array
+	private function buildInstitutionalCorrecoesSnapshot(array $itens, array $respostas, array $adaptedGradesByDiscipline = []): array
 	{
 		$normalizedRespostas = [];
 		$correcoes = [];
@@ -5132,10 +5278,50 @@ class InstitucionalController extends HomeController
 				$peso = 1.0;
 			}
 
+			$disciplinaId = trim((string) ($item['disciplina'] ?? ''));
+			$disciplinaNome = $this->resolveInstitutionalDisciplinaLabel($disciplinaId);
+			$disciplineKey = $this->buildInstitutionalAdaptedDisciplineKey($disciplinaId, $disciplinaNome);
+			$adaptedEntry = $adaptedGradesByDiscipline[$disciplineKey] ?? null;
+
 			$totalQuestoes++;
 			$pontuacaoTotal += $peso;
 
 			$respostaRaw = $respostas[$key] ?? null;
+			if (is_array($adaptedEntry) && isset($adaptedEntry['adaptedGrade']) && is_numeric($adaptedEntry['adaptedGrade'])) {
+				$adaptedGrade = round((float) $adaptedEntry['adaptedGrade'], 2);
+				$adaptedRatio = max(0, min(1, $adaptedGrade / 10));
+				$earned = round($peso * $adaptedRatio, 2);
+				if ($earned >= $peso) {
+					$acertos++;
+				}
+				$pontuacao += $earned;
+
+				if ($tipo === 'discursiva') {
+					$normalizedRespostas[$key] = $respostaRaw !== null && $respostaRaw !== '' ? round((float) $respostaRaw, 2) : null;
+				} else {
+					$selectedRaw = strtoupper(trim((string) ($respostaRaw ?? '')));
+					$normalizedRespostas[$key] = preg_match('/^[A-Z]$/', $selectedRaw) ? $selectedRaw : null;
+				}
+
+				$correcoes[] = [
+					'questionNumber' => $questionNumber,
+					'selectedAnswer' => null,
+					'correctAnswer' => $tipo === 'discursiva' ? null : strtoupper(trim((string) ($item['correta'] ?? $item['resposta'] ?? ''))),
+					'isCorrect' => $earned >= $peso,
+					'pontuacao' => $earned,
+					'tipo' => $tipo,
+					'peso' => $peso,
+					'pontuacao_maxima' => $peso,
+					'adaptedMode' => true,
+					'adaptedGrade' => $adaptedGrade,
+					'adaptedRatio' => round($adaptedRatio, 4),
+					'adaptedDisciplineId' => (string) ($adaptedEntry['disciplinaId'] ?? $disciplinaId),
+					'adaptedDisciplineName' => (string) ($adaptedEntry['disciplinaNome'] ?? $disciplinaNome),
+					'manualLaunchMode' => 'adaptada',
+				];
+				continue;
+			}
+
 			if ($tipo === 'discursiva') {
 				$nota = $respostaRaw !== null && $respostaRaw !== '' ? round((float) $respostaRaw, 2) : 0.0;
 				if ($nota < 0) {
@@ -5199,6 +5385,82 @@ class InstitucionalController extends HomeController
 			'pontuacao_total' => round($pontuacaoTotal, 2),
 			'percentual' => $percentual,
 		];
+	}
+
+	private function extractInstitutionalAdaptedDisciplineMap(array $correcoes, array $itens): array
+	{
+		$result = [];
+
+		foreach ($correcoes as $item) {
+			if (!is_array($item) || !$this->isInstitutionalAdaptedCorrecaoItem($item)) {
+				continue;
+			}
+
+			$questionNumber = (int) ($item['questionNumber'] ?? 0);
+			$questionItem = $questionNumber > 0 ? ($itens[$questionNumber - 1] ?? null) : null;
+			$disciplinaId = trim((string) ($item['adaptedDisciplineId'] ?? ($questionItem['disciplina'] ?? '')));
+			$disciplinaNome = trim((string) ($item['adaptedDisciplineName'] ?? ''));
+			if ($disciplinaNome === '') {
+				$disciplinaNome = $this->resolveInstitutionalDisciplinaLabel($disciplinaId !== '' ? $disciplinaId : (string) ($questionItem['disciplina'] ?? ''));
+			}
+
+			$key = $this->buildInstitutionalAdaptedDisciplineKey($disciplinaId, $disciplinaNome);
+			$adaptedGrade = isset($item['adaptedGrade']) && is_numeric($item['adaptedGrade'])
+				? round((float) $item['adaptedGrade'], 2)
+				: round($this->getInstitutionalCorrecaoEarnedRatio($item, $questionItem) * 10, 2);
+
+			if (!isset($result[$key])) {
+				$result[$key] = [
+					'key' => $key,
+					'disciplinaId' => $disciplinaId,
+					'disciplinaNome' => $disciplinaNome,
+					'adaptedGrade' => $adaptedGrade,
+				];
+				continue;
+			}
+
+			if (abs((float) $result[$key]['adaptedGrade'] - $adaptedGrade) > 0.02) {
+				unset($result[$key]);
+			}
+		}
+
+		return $result;
+	}
+
+	private function isInstitutionalAdaptedCorrecaoItem(array $item): bool
+	{
+		return (($item['adaptedMode'] ?? false) === true)
+			|| strtolower(trim((string) ($item['manualLaunchMode'] ?? ''))) === 'adaptada'
+			|| (isset($item['adaptedGrade']) && is_numeric($item['adaptedGrade']));
+	}
+
+	private function getInstitutionalCorrecaoEarnedRatio(array $item, $questionItem = null): float
+	{
+		$peso = round((float) ($item['pontuacao_maxima'] ?? ($item['peso'] ?? (is_array($questionItem) ? ($questionItem['peso'] ?? 1) : 1))), 2);
+		if ($peso <= 0) {
+			$peso = 1.0;
+		}
+
+		$earned = round((float) ($item['pontuacao'] ?? 0), 2);
+		if ($earned < 0) {
+			$earned = 0.0;
+		}
+		if ($earned > $peso) {
+			$earned = $peso;
+		}
+
+		return $peso > 0 ? ($earned / $peso) : 0.0;
+	}
+
+	private function buildInstitutionalAdaptedDisciplineKey(string $disciplinaId, string $disciplinaNome): string
+	{
+		$disciplinaId = trim($disciplinaId);
+		if ($disciplinaId !== '') {
+			return $disciplinaId;
+		}
+
+		$normalizedName = $this->normalizeInstitutionalSearch($disciplinaNome);
+		return 'disciplina:' . $normalizedName;
 	}
 
 	private function getAvaliacaoAplicadoresOptions(): array

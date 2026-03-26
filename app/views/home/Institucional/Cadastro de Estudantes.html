@@ -896,6 +896,9 @@
 				var messages = [];
 				var nome = String(row && row.nome || '').trim();
 				var matricula = String(row && row.matricula || '').trim();
+				var matriculaMapped = previewImportMapping && Object.prototype.hasOwnProperty.call(previewImportMapping, 'matricula')
+					? previewImportMapping.matricula !== null
+					: true;
 				var turmaNome = String(row && row.turma || '').trim();
 				var turmaInfo = findTurmaByName(turmaNome);
 				var dataEntrada = String(row && row.data_entrada || '').trim();
@@ -908,7 +911,7 @@
 					messages.push('Informe o nome.');
 				}
 
-				if (matricula === '') {
+				if (matriculaMapped && matricula === '') {
 					messages.push('Informe a matrícula.');
 				}
 
