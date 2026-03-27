@@ -152,6 +152,13 @@ class HomeController extends Controller
         ]);
     }
 
+    public function sobre(): void
+    {
+        $this->render('home/Sobre', [
+            'schoolName' => SCHOOL_NAME,
+        ]);
+    }
+
     public function esqueciMinhaSenha(): void
     {
         if (isset($_SESSION['auth'])) {

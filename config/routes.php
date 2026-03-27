@@ -8,6 +8,7 @@ return [
     '/api/instagram-posts' => ['HomeController', 'instagramPosts'],
     '/api/chatbot' => ['HomeController', 'apiChatbot'],
     '/404' => ['HomeController', 'notFound'],
+    '/sobre' => ['HomeController', 'sobre'],
     '/informacoes' => ['HomeController', 'informacoes'],
     '/institucional' => ['InstitucionalController', 'institucional'],
     '/institucional/subservico' => ['InstitucionalController', 'institucionalSubservico'],

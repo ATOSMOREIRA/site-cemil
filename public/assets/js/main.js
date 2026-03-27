@@ -108,6 +108,210 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+  function initAboutStorySections() {
+    var storyShells = document.querySelectorAll('.js-about-story-shell');
+
+    if (!storyShells.length) {
+      return;
+    }
+
+    storyShells.forEach(function (shell) {
+      var sections = Array.prototype.slice.call(shell.querySelectorAll('.js-about-story-section'));
+      var navItems = Array.prototype.slice.call(shell.querySelectorAll('.js-about-story-nav-item'));
+      var sidebar = shell.querySelector('.about-story-sidebar');
+      var sidebarCard = shell.querySelector('.about-story-sidebar-card');
+      var storyContent = shell.querySelector('.about-story-content');
+      var desktopQuery = window.matchMedia ? window.matchMedia('(min-width: 992px)') : null;
+      var sidebarTrackQueued = false;
+      var activeSectionSyncQueued = false;
+      var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      if (!sections.length) {
+        return;
+      }
+
+      function resetSidebarTracking() {
+        if (!sidebarCard) {
+          return;
+        }
+
+        sidebarCard.style.removeProperty('transform');
+      }
+
+      function syncSidebarTracking() {
+        sidebarTrackQueued = false;
+
+        if (!sidebar || !sidebarCard || !storyContent) {
+          return;
+        }
+
+        if (desktopQuery && !desktopQuery.matches) {
+          resetSidebarTracking();
+          return;
+        }
+
+        var scrollTop = window.pageYOffset || window.scrollY || 0;
+        var sidebarRect = sidebar.getBoundingClientRect();
+        var contentRect = storyContent.getBoundingClientRect();
+        var sidebarTop = sidebarRect.top + scrollTop;
+        var contentBottom = contentRect.bottom + scrollTop;
+        var cardHeight = sidebarCard.offsetHeight;
+        var offsetTop = 90;
+        var maxTop = Math.max(sidebarTop, contentBottom - cardHeight);
+        var clampedTop = Math.max(sidebarTop, Math.min(scrollTop + offsetTop, maxTop));
+        var translateY = Math.max(0, clampedTop - sidebarTop);
+
+        if (translateY > 0) {
+          sidebarCard.style.transform = 'translateY(' + translateY + 'px)';
+          return;
+        }
+
+        resetSidebarTracking();
+      }
+
+      function queueSidebarTracking() {
+        if (sidebarTrackQueued) {
+          return;
+        }
+
+        sidebarTrackQueued = true;
+        window.requestAnimationFrame(syncSidebarTracking);
+      }
+
+      function syncActiveSectionFromScroll() {
+        activeSectionSyncQueued = false;
+
+        if (!sections.length) {
+          return;
+        }
+
+        var scrollTop = window.pageYOffset || window.scrollY || 0;
+        var activationLine = scrollTop + (window.innerHeight * 0.42);
+        var activeSection = sections[0];
+
+        sections.forEach(function (section) {
+          var sectionTop = section.getBoundingClientRect().top + scrollTop;
+
+          if (sectionTop <= activationLine) {
+            activeSection = section;
+          }
+        });
+
+        activeSection.classList.add('is-visible');
+        setActiveSection(activeSection);
+      }
+
+      function queueActiveSectionSync() {
+        if (activeSectionSyncQueued) {
+          return;
+        }
+
+        activeSectionSyncQueued = true;
+        window.requestAnimationFrame(syncActiveSectionFromScroll);
+      }
+
+      function setActiveSection(section) {
+        var accent = String(section.getAttribute('data-accent') || '').trim() || '#c85d42';
+        var glow = String(section.getAttribute('data-glow') || '').trim() || 'rgba(200, 93, 66, 0.24)';
+
+        shell.style.setProperty('--about-accent', accent);
+        shell.style.setProperty('--about-glow', glow);
+
+        sections.forEach(function (item) {
+          item.classList.toggle('is-active', item === section);
+        });
+
+        navItems.forEach(function (item) {
+          item.classList.toggle('is-active', item.getAttribute('data-about-target') === section.id);
+        });
+      }
+
+      sections[0].classList.add('is-visible');
+      setActiveSection(sections[0]);
+
+      navItems.forEach(function (item) {
+        item.addEventListener('click', function () {
+          var targetId = String(item.getAttribute('data-about-target') || '').trim();
+          var targetSection = targetId === '' ? null : document.getElementById(targetId);
+
+          if (!targetSection) {
+            return;
+          }
+
+          setActiveSection(targetSection);
+          targetSection.classList.add('is-visible');
+          targetSection.scrollIntoView({
+            behavior: prefersReducedMotion ? 'auto' : 'smooth',
+            block: 'center'
+          });
+        });
+      });
+
+      if (sidebar && sidebarCard && storyContent) {
+        queueSidebarTracking();
+        queueActiveSectionSync();
+        window.addEventListener('scroll', queueSidebarTracking, { passive: true });
+        window.addEventListener('scroll', queueActiveSectionSync, { passive: true });
+        window.addEventListener('resize', queueSidebarTracking);
+        window.addEventListener('resize', queueActiveSectionSync);
+
+        if (desktopQuery) {
+          if (typeof desktopQuery.addEventListener === 'function') {
+            desktopQuery.addEventListener('change', queueSidebarTracking);
+            desktopQuery.addEventListener('change', queueActiveSectionSync);
+          } else if (typeof desktopQuery.addListener === 'function') {
+            desktopQuery.addListener(queueSidebarTracking);
+            desktopQuery.addListener(queueActiveSectionSync);
+          }
+        }
+      }
+
+      if (!('IntersectionObserver' in window)) {
+        sections.forEach(function (section) {
+          section.classList.add('is-visible');
+        });
+        return;
+      }
+
+      var visibleRatios = new Map();
+
+      function syncMostVisibleSection() {
+        var bestSection = sections[0];
+        var bestRatio = -1;
+
+        sections.forEach(function (section, index) {
+          var ratio = visibleRatios.has(section) ? visibleRatios.get(section) : (index === 0 ? 0.01 : 0);
+
+          if (ratio > bestRatio) {
+            bestRatio = ratio;
+            bestSection = section;
+          }
+        });
+
+        setActiveSection(bestSection);
+      }
+
+      var observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          visibleRatios.set(entry.target, entry.isIntersecting ? entry.intersectionRatio : 0);
+
+          if (entry.isIntersecting || entry.boundingClientRect.top < window.innerHeight * 0.88) {
+            entry.target.classList.add('is-visible');
+          }
+        });
+
+        syncMostVisibleSection();
+      }, {
+        threshold: [0.15, 0.35, 0.55, 0.75],
+        rootMargin: '-12% 0px -28% 0px'
+      });
+
+      sections.forEach(function (section) {
+        observer.observe(section);
+      });
+    });
+  }
+
   function resolveBasePathForEndpointBuilder() {
     var pathname = String(window.location.pathname || '');
     var indexPhpPos = pathname.indexOf('/index.php/');
@@ -134,6 +338,7 @@ document.addEventListener('DOMContentLoaded', function () {
   window.appResolveBasePath = resolveBasePathForEndpointBuilder;
   window.appBuildEndpoint = buildEndpointPath;
   hydrateLiveBackgrounds();
+  initAboutStorySections();
 
   function ensureIframeModalGlobalBackdrop() {
     if (iframeModalGlobalBackdrop && iframeModalGlobalBackdrop.isConnected) {

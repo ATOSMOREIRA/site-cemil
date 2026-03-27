@@ -2,6 +2,7 @@
 <html lang="pt-BR">
 
 <head>
+    <meta name="facebook-domain-verification" content="2r2ep3hx5brdjyrj5uj7ytiw5vwkdz" />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>
@@ -18,7 +19,8 @@
     <meta name="apple-mobile-web-app-title" content="CEMIL" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/line-awesome/1.3.0/line-awesome/css/line-awesome.min.css" />
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/line-awesome/1.3.0/line-awesome/css/line-awesome.min.css" />
     <link rel="stylesheet"
         href="<?= BASE_URL; ?>/public/assets/css/style.css?v=<?= filemtime(__DIR__ . '/../../../public/assets/css/style.css'); ?>" />
     <link rel="stylesheet"
@@ -47,7 +49,7 @@
 
     $currentPath = preg_replace('#/+#', '/', $currentPath) ?: '/';
     $baseUrl = rtrim(BASE_URL, '/');
-    $liveBackgroundPaths = ['/', '/informacoes', '/institucional', '/paineladministrativo', '/entrar', '/esqueci-minha-senha', '/redefinir-senha'];
+    $liveBackgroundPaths = ['/', '/sobre', '/informacoes', '/institucional', '/paineladministrativo', '/entrar', '/esqueci-minha-senha', '/redefinir-senha'];
     $enableLiveBackground = in_array($currentPath, $liveBackgroundPaths, true);
     $liveBackgroundUrls = [];
     $liveBackgroundStepSeconds = 8;
@@ -91,6 +93,8 @@
             ['label' => 'Início', 'path' => '/', 'icon' => 'la-home'],
         ];
 
+        
+
         $menuItems[] = ['label' => 'Informações', 'path' => '/informacoes', 'icon' => 'la-info-circle'];
 
         if ($isAuthenticated && $canViewInstitutional) {
@@ -100,6 +104,8 @@
         if ($isAuthenticated && $isAdminUser) {
             $menuItems[] = ['label' => 'Painel Administrativo', 'path' => '/paineladministrativo', 'icon' => 'la-user-shield'];
         }
+
+        $menuItems[] = ['label' => 'Sobre', 'path' => '/sobre', 'icon' => 'la-school'];
 
         $isMenuPathActive = static function (string $currentPath, string $menuPath): bool {
             if ($menuPath === '/') {
@@ -130,17 +136,24 @@
             </button>
             <span class="text-white fw-semibold hero-header-brand">
                 <span class="hero-header-brand-mobile">CEMIL</span>
-                <span class="hero-header-brand-desktop"><?= SCHOOL_NAME; ?></span>
+                <span class="hero-header-brand-desktop">
+                    <?= SCHOOL_NAME; ?>
+                </span>
             </span>
             <?php if ($isAuthenticated): ?>
             <div class="ms-auto d-flex align-items-center gap-2 hero-header-auth">
                 <div class="dropdown">
-                    <button class="btn btn-outline-light btn-sm auth-action-btn btn-micro dropdown-toggle hero-header-user-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="<?= htmlspecialchars($authUserName, ENT_QUOTES, 'UTF-8'); ?>">
-                        <i class="las la-user-circle me-1"></i><?= htmlspecialchars($authUserName, ENT_QUOTES, 'UTF-8'); ?>
+                    <button
+                        class="btn btn-outline-light btn-sm auth-action-btn btn-micro dropdown-toggle hero-header-user-btn"
+                        type="button" data-bs-toggle="dropdown" aria-expanded="false"
+                        title="<?= htmlspecialchars($authUserName, ENT_QUOTES, 'UTF-8'); ?>">
+                        <i class="las la-user-circle me-1"></i>
+                        <?= htmlspecialchars($authUserName, ENT_QUOTES, 'UTF-8'); ?>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li>
-                            <a class="dropdown-item js-open-profile-modal" href="#" data-bs-toggle="modal" data-bs-target="#myProfileModal">
+                            <a class="dropdown-item js-open-profile-modal" href="#" data-bs-toggle="modal"
+                                data-bs-target="#myProfileModal">
                                 <i class="las la-id-card me-1"></i>Meus dados
                             </a>
                         </li>
@@ -153,10 +166,13 @@
                         <?php endif; ?>
                     </ul>
                 </div>
-                <a href="<?= $baseUrl; ?>/sair" class="btn btn-outline-light btn-sm auth-action-btn btn-micro hero-header-logout-btn"><i class="las la-sign-out-alt me-1"></i>Sair</a>
+                <a href="<?= $baseUrl; ?>/sair"
+                    class="btn btn-outline-light btn-sm auth-action-btn btn-micro hero-header-logout-btn"><i
+                        class="las la-sign-out-alt me-1"></i>Sair</a>
             </div>
             <?php else: ?>
-            <a href="<?= $baseUrl; ?>/entrar" class="btn btn-outline-light btn-sm ms-auto auth-action-btn btn-micro"><i class="las la-sign-in-alt me-1"></i>Entrar</a>
+            <a href="<?= $baseUrl; ?>/entrar" class="btn btn-outline-light btn-sm ms-auto auth-action-btn btn-micro"><i
+                    class="las la-sign-in-alt me-1"></i>Entrar</a>
             <?php endif; ?>
         </div>
     </header>
@@ -189,9 +205,13 @@
             </a>
             <?php endforeach; ?>
             <?php if ($isAuthenticated): ?>
-            <a href="<?= $baseUrl; ?>/sair" class="btn btn-outline-dark text-start mt-2 auth-action-btn-mobile btn-micro"><i class="las la-sign-out-alt me-1"></i>Sair</a>
+            <a href="<?= $baseUrl; ?>/sair"
+                class="btn btn-outline-dark text-start mt-2 auth-action-btn-mobile btn-micro"><i
+                    class="las la-sign-out-alt me-1"></i>Sair</a>
             <?php else: ?>
-            <a href="<?= $baseUrl; ?>/entrar" class="btn btn-outline-dark text-start mt-2 auth-action-btn-mobile btn-micro"><i class="las la-sign-in-alt me-1"></i>Entrar</a>
+            <a href="<?= $baseUrl; ?>/entrar"
+                class="btn btn-outline-dark text-start mt-2 auth-action-btn-mobile btn-micro"><i
+                    class="las la-sign-in-alt me-1"></i>Entrar</a>
             <?php endif; ?>
         </div>
     </div>
@@ -204,9 +224,11 @@
                     <h5 class="modal-title" id="myProfileModalLabel">Meus dados</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                 </div>
-                <form id="myProfileForm" action="<?= $baseUrl; ?>/meus-dados/salvar" data-load-endpoint="<?= $baseUrl; ?>/meus-dados">
+                <form id="myProfileForm" action="<?= $baseUrl; ?>/meus-dados/salvar"
+                    data-load-endpoint="<?= $baseUrl; ?>/meus-dados">
                     <div class="modal-body my-profile-modal-body">
-                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                        <input type="hidden" name="csrf_token"
+                            value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
 
                         <div class="mb-3">
                             <label for="myProfileNome" class="form-label">Nome</label>
@@ -230,13 +252,16 @@
 
                         <div class="mb-1">
                             <label for="myProfileSenha" class="form-label">Nova senha</label>
-                            <input type="password" class="form-control" id="myProfileSenha" name="senha" value="" autocomplete="new-password" placeholder="Deixe em branco para não alterar">
+                            <input type="password" class="form-control" id="myProfileSenha" name="senha" value=""
+                                autocomplete="new-password" placeholder="Deixe em branco para não alterar">
                         </div>
                         <small class="text-secondary">Se deixar a senha em branco, a senha atual será mantida.</small>
                     </div>
                     <div class="modal-footer my-profile-modal-footer">
-                        <button type="submit" id="myProfileSubmitButton" class="btn btn-danger btn-micro"><i class="las la-save me-1"></i>Salvar alterações</button>
-                        <button type="button" class="btn btn-outline-secondary btn-micro" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" id="myProfileSubmitButton" class="btn btn-danger btn-micro"><i
+                                class="las la-save me-1"></i>Salvar alterações</button>
+                        <button type="button" class="btn btn-outline-secondary btn-micro"
+                            data-bs-dismiss="modal">Cancelar</button>
                     </div>
                 </form>
             </div>
@@ -255,7 +280,9 @@
             <i class="las la-robot chatbot-header-icon"></i>
             <div class="flex-grow-1">
                 <div id="chatbotTitle" class="chatbot-header-title">Assistente CEMIL</div>
-                <div class="chatbot-header-subtitle">Olá, <?= htmlspecialchars($authUserName, ENT_QUOTES, 'UTF-8'); ?>!</div>
+                <div class="chatbot-header-subtitle">Olá,
+                    <?= htmlspecialchars($authUserName, ENT_QUOTES, 'UTF-8'); ?>!
+                </div>
             </div>
             <button class="chatbot-clear-btn" id="chatbotClear" title="Limpar conversa">
                 <i class="las la-trash-alt"></i> Limpar
@@ -263,7 +290,8 @@
         </div>
         <div id="chatbotMessages" aria-live="polite"></div>
         <div class="chatbot-input-area">
-            <input type="text" id="chatbotInput" placeholder="Digite sua pergunta..." autocomplete="off" maxlength="1000">
+            <input type="text" id="chatbotInput" placeholder="Digite sua pergunta..." autocomplete="off"
+                maxlength="1000">
             <button id="chatbotSend" aria-label="Enviar">
                 <i class="las la-paper-plane"></i>
             </button>
