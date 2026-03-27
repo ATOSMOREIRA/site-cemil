@@ -19,6 +19,7 @@ uploads/
 # ===========================
 # Arquivos temporários e de debug
 # ===========================
+Background Index/
 database/
 temp/
 temp.php
