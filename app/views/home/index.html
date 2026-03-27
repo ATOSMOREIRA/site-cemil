@@ -1,5 +1,6 @@
-<section class="hero-section d-flex align-items-center">    
-    <div class="container app-wide-container text-center">
+<div class="home-live-shell">
+<section class="hero-section home-live-hero-section d-flex align-items-center">
+    <div class="container app-wide-container text-center home-live-panel home-live-hero-panel">
         <h1 class="hero-main-title mt-2 mb-0">CEMIL</h1>
         <p class="hero-main-subtitle mb-0">Jardenir Jorge Frederico</p>
         <div class="hero-logo-stage mx-auto mb-1" aria-hidden="true">
@@ -16,8 +17,8 @@
 <p></p>
 <section class="instagram-section pb-5">
     <?php $instagramLinksCount = max(0, min(3, (int) ($instagramLinksCount ?? 0))); ?>
-    <div class="container app-wide-container">
-        <div class="row justify-content-center mb-3">
+    <div class="container app-wide-container home-live-panel home-live-instagram-panel">
+        <div class="row justify-content-center mb-3 home-live-instagram-intro">
             <div class="col-lg-10 text-center">
                 <h2 class="h4 fw-bold mb-1 d-inline-flex align-items-center gap-2">
                     <i class="lab la-instagram"></i>
@@ -69,6 +70,8 @@
         </div>
     </div>
 </section>
+
+</div>
 
 <div class="modal fade" id="instagramPreviewModal" tabindex="-1" aria-labelledby="instagramPreviewModalLabel"
     aria-hidden="true">

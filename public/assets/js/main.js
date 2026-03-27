@@ -86,6 +86,28 @@ document.addEventListener('DOMContentLoaded', function () {
   var sidebarStateKey = 'sidebarCollapsedDesktop';
   var institutionalExpandedStateKey = 'institutionalExpandedCollapseId:' + String(window.location.pathname || '/');
 
+  function hydrateLiveBackgrounds() {
+    document.querySelectorAll('.js-live-background[data-live-duration]').forEach(function (background) {
+      var duration = String(background.getAttribute('data-live-duration') || '').trim();
+      if (duration !== '') {
+        background.style.setProperty('--home-live-duration', duration);
+      }
+    });
+
+    document.querySelectorAll('.js-live-bg-slide[data-live-image]').forEach(function (slide) {
+      var image = String(slide.getAttribute('data-live-image') || '').trim();
+      var delay = String(slide.getAttribute('data-live-delay') || '').trim();
+
+      if (image !== '') {
+        slide.style.backgroundImage = 'url("' + image + '")';
+      }
+
+      if (delay !== '') {
+        slide.style.setProperty('--home-live-delay', delay);
+      }
+    });
+  }
+
   function resolveBasePathForEndpointBuilder() {
     var pathname = String(window.location.pathname || '');
     var indexPhpPos = pathname.indexOf('/index.php/');
@@ -111,6 +133,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   window.appResolveBasePath = resolveBasePathForEndpointBuilder;
   window.appBuildEndpoint = buildEndpointPath;
+  hydrateLiveBackgrounds();
 
   function ensureIframeModalGlobalBackdrop() {
     if (iframeModalGlobalBackdrop && iframeModalGlobalBackdrop.isConnected) {

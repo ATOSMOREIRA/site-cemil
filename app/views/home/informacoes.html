@@ -43,6 +43,7 @@ $buildInformacoesPageUrl = static function (int $page) use ($baseInformacoesUrl,
 
 <section class="py-1 informacoes-page-section">
     <div class="container app-wide-container">
+        <div class="live-glass-page-card live-glass-page-card--informacoes">
 
         <div class="row justify-content-center mb-4">
             <div class="col-lg-10 col-xl-8 text-center">
@@ -62,21 +63,6 @@ $buildInformacoesPageUrl = static function (int $page) use ($baseInformacoesUrl,
                         data-bs-target="#informacoesAdminModal">
                         <i class="las la-edit me-1"></i>Gerenciar publicações
                     </button>
-                </div>
-            </div>
-        </div>
-
-        <div class="modal fade" id="informacoesAdminModal" tabindex="-1" data-bs-backdrop="static"
-            aria-labelledby="informacoesAdminModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-xl modal-dialog-centered admin-panel-modal-dialog">
-                <div class="modal-content informacoes-admin-modal-content site-modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="informacoesAdminModalLabel">Gerenciar publicações</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                    </div>
-                    <div class="modal-body" id="informacoesAdminModalBody">
-                        <?php require __DIR__ . '/Painel Administrativo/gerenciamento-informacoes.html'; ?>
-                    </div>
                 </div>
             </div>
         </div>
@@ -259,5 +245,24 @@ $buildInformacoesPageUrl = static function (int $page) use ($baseInformacoesUrl,
                 <?php endif; ?>
             </div>
         </div>
+
+        </div>
+
+        <?php if (!empty($isAdmin)): ?>
+        <div class="modal fade" id="informacoesAdminModal" tabindex="-1" data-bs-backdrop="static"
+            aria-labelledby="informacoesAdminModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-xl modal-dialog-centered admin-panel-modal-dialog">
+                <div class="modal-content informacoes-admin-modal-content site-modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="informacoesAdminModalLabel">Gerenciar publicações</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                    </div>
+                    <div class="modal-body" id="informacoesAdminModalBody">
+                        <?php require __DIR__ . '/Painel Administrativo/gerenciamento-informacoes.html'; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
 </section>

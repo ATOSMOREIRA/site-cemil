@@ -421,6 +421,201 @@ body {
   align-items: center;
 }
 
+.home-live-shell {
+  position: relative;
+  isolation: isolate;
+}
+
+.home-live-background {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background: #04070d;
+}
+
+.home-live-background::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background:
+    linear-gradient(180deg, rgba(5, 10, 18, 0.3) 0%, rgba(8, 12, 20, 0.22) 24%, rgba(8, 10, 16, 0.34) 100%),
+    linear-gradient(90deg, rgba(6, 8, 12, 0.1) 0%, rgba(6, 8, 12, 0.02) 30%, rgba(6, 8, 12, 0.03) 100%);
+}
+
+.home-live-background::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background:
+    radial-gradient(circle at center, rgba(0, 0, 0, 0) 34%, rgba(0, 0, 0, 0.08) 58%, rgba(0, 0, 0, 0.24) 100%),
+    radial-gradient(circle at top center, rgba(18, 26, 40, 0.05) 0%, rgba(18, 26, 40, 0) 42%);
+}
+
+.home-live-bg-slide {
+  position: absolute;
+  inset: -3%;
+  z-index: 1;
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  opacity: 0;
+  transform: scale(1.06);
+  filter: saturate(1.04) contrast(1.02) brightness(0.84);
+  animation: homeLiveBackgroundFade var(--home-live-duration, 40s) linear infinite;
+  animation-delay: var(--home-live-delay, 0s);
+  will-change: opacity, transform;
+}
+
+.home-live-panel {
+  position: relative;
+  z-index: 1;
+}
+
+.live-glass-page-card {
+  position: relative;
+  z-index: 1;
+  padding: 1.35rem 1.15rem 1.5rem;
+  margin-bottom: 1.25rem;
+  background:
+    linear-gradient(180deg, rgba(9, 14, 24, 0.3) 0%, rgba(8, 12, 20, 0.18) 100%),
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 52%);
+  border-radius: 1.5rem;
+  box-shadow: 0 1.2rem 2.8rem rgba(2, 6, 12, 0.28);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.live-glass-page-card .inst-hero {
+  padding-top: 0.2rem;
+}
+
+.live-glass-page-card .inst-hero-title {
+  color: #f8fafc;
+  text-shadow: 0 0.4rem 1.1rem rgba(0, 0, 0, 0.28);
+}
+
+.live-glass-page-card .inst-hero-subtitle {
+  color: rgba(241, 245, 249, 0.82);
+}
+
+.live-glass-page-card .inst-hero-icon {
+  background: rgba(254, 226, 226, 0.88);
+  box-shadow: 0 0.7rem 1.6rem rgba(3, 7, 18, 0.18);
+}
+
+.live-glass-page-card .inst-empty-state {
+  color: rgba(226, 232, 240, 0.86);
+}
+
+.live-glass-page-card .inst-empty-state i {
+  opacity: 0.8;
+}
+
+.home-live-hero-panel,
+.home-live-instagram-panel {
+  background:
+    linear-gradient(180deg, rgba(9, 14, 24, 0.34) 0%, rgba(8, 12, 20, 0.2) 100%),
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 48%);
+  border: none;
+  border-radius: 1.5rem;
+  box-shadow: 0 1.3rem 3rem rgba(2, 6, 12, 0.34);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.home-live-hero-section {
+  min-height: calc(38vh - 1rem);
+  align-items: center !important;
+  padding: 2.1rem 0 0.75rem;
+}
+
+.home-live-hero-panel {
+  padding: 1.9rem 1.25rem 0.2rem;
+}
+
+.home-live-hero-panel .hero-logo-stage {
+  width: min(250px, 62vw);
+  margin-top: -3.7rem;
+  margin-bottom: -0.85rem !important;
+}
+
+.home-live-instagram-panel {
+  padding: 1.5rem 1.1rem 1.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.home-live-shell .hero-main-title {
+  color: #f8fafc;
+  text-shadow: 0 0.45rem 1.4rem rgba(0, 0, 0, 0.42);
+}
+
+.home-live-shell .hero-main-subtitle {
+  color: rgba(241, 245, 249, 0.82);
+  text-shadow: 0 0.35rem 1rem rgba(0, 0, 0, 0.36);
+}
+
+.home-live-shell .home-live-instagram-intro h2,
+.home-live-shell .home-live-instagram-intro .h4,
+.home-live-shell .home-live-instagram-intro .text-secondary,
+.home-live-shell .instagram-profile-link {
+  color: #f8fafc !important;
+}
+
+.home-live-shell .instagram-post-card,
+.home-live-shell .instagram-loading-card,
+.home-live-shell #instagramPostsEmpty .alert {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.84) 0%, rgba(248, 250, 252, 0.76) 100%);
+  border: none;
+  box-shadow: 0 1rem 2.4rem rgba(3, 7, 18, 0.24);
+}
+
+.home-live-shell .instagram-profile-link {
+  text-decoration-color: rgba(255, 255, 255, 0.48);
+}
+
+.home-live-shell .instagram-profile-link:hover,
+.home-live-shell .instagram-profile-link:focus {
+  color: #ffffff !important;
+  text-decoration-color: rgba(255, 255, 255, 0.84);
+}
+
+@media (max-width: 767.98px) {
+  .live-glass-page-card {
+    padding: 1rem 0.75rem 1.1rem;
+    border-radius: 1.15rem;
+  }
+
+  .home-live-hero-section {
+    min-height: auto;
+    padding: 1rem 0 0.45rem;
+  }
+
+  .home-live-hero-panel {
+    padding: 1.2rem 0.85rem 0.15rem;
+    border-radius: 1.15rem;
+  }
+
+  .home-live-hero-panel .hero-logo-stage {
+    width: min(210px, 66vw);
+    margin-top: -2.8rem;
+    margin-bottom: -0.65rem !important;
+  }
+
+  .home-live-instagram-panel {
+    padding: 1rem 0.75rem 1.35rem;
+    border-radius: 1.15rem;
+  }
+
+  .home-live-bg-slide {
+    inset: -6%;
+  }
+}
+
 .hero-section {
   min-height: 18vh;
   align-items: flex-start !important;
@@ -557,6 +752,32 @@ body {
 
 .hero-steam-layer {
   display: none;
+}
+
+@keyframes homeLiveBackgroundFade {
+  0% {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+
+  4% {
+    opacity: 1;
+  }
+
+  14% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+
+  20% {
+    opacity: 0;
+    transform: scale(1.12);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.12);
+  }
 }
 
 @keyframes heroFlameFlicker {
@@ -1643,15 +1864,18 @@ body {
   display: grid;
   grid-template-columns: 72px minmax(0, 1fr);
   align-items: start;
+  gap: 0.5rem;
+}
+
 .institutional-avaliacoes-table-wrap table {
   border-collapse: separate;
   border-spacing: 0;
   min-width: 940px;
 }
 
-  gap: 0.5rem;
-}
-
+.institutional-avaliacoes-table-wrap thead th {
+  position: sticky;
+  top: 0;
   z-index: 3;
   background: linear-gradient(180deg, #f8fbff 0%, #ecf2f7 100%);
   color: #526173;
@@ -1830,8 +2054,7 @@ body {
 .institutional-avaliacoes-table-wrap thead th {
   position: sticky;
   top: 0;
-  z-index: 2;
-  background: #fff;
+  z-index: 3;
 }
 
 .admin-avaliacao-turmas-list {
