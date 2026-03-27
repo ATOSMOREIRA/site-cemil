@@ -340,6 +340,18 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
 
+    if (data.type === 'cemil:iframe-cam-active') {
+      var camHost = findIframeModalHost(iframe);
+      if (Boolean(data.isActive)) {
+        iframe.classList.add('iframe-cam-fullscreen');
+        if (camHost) { camHost.classList.add('iframe-cam-fullscreen-host'); }
+      } else {
+        iframe.classList.remove('iframe-cam-fullscreen');
+        if (camHost) { camHost.classList.remove('iframe-cam-fullscreen-host'); }
+      }
+      return;
+    }
+
     if (data.type !== 'cemil:iframe-modal-state') {
       return;
     }

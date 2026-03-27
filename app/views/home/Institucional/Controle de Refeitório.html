@@ -735,214 +735,212 @@
 				font-size: .97rem;
 			}
 
-			/* ——— Câmera em tela cheia ——— */
-			body.mobile-cam-active #scanOverlayWrap {
-				position: fixed;
-				inset: 0;
-				z-index: 1060;
-				background: #000;
-				border-radius: 0;
-				overflow: hidden;
-			}
-
-			body.mobile-cam-active #scannerVideo {
-				position: absolute;
-				inset: 0;
-				width: 100%;
-				height: 100%;
-				max-height: none;
-				border-radius: 0;
-				object-fit: cover;
-				display: block !important;
-			}
-
-			/* Desativa animação de borda padrão no fullscreen */
-			body.mobile-cam-active #scanOverlayWrap::after {
-				display: none !important;
-			}
-
-			/* ——— Mira de leitura QR ——— */
-			body.mobile-cam-active .qr-target-frame {
-				display: block;
-				position: absolute;
-				top: 50%;
-				left: 50%;
-				transform: translate(-50%, -60%);
-				width: min(64vw, 240px);
-				height: min(64vw, 240px);
-				pointer-events: none;
-				z-index: 3;
-				border: 1.5px solid rgba(255, 255, 255, .3);
-				border-radius: .75rem;
-				box-shadow: 0 0 0 200vmax rgba(0, 0, 0, .42);
-				animation: mobileMiraPulse 1.3s ease-in-out infinite;
-			}
-
-			@keyframes mobileMiraPulse {
-
-				0%,
-				100% {
-					box-shadow: 0 0 0 200vmax rgba(0, 0, 0, .42);
-					border-color: rgba(255, 255, 255, .3);
-				}
-
-				50% {
-					box-shadow: 0 0 0 200vmax rgba(0, 0, 0, .22);
-					border-color: rgba(255, 255, 255, .85);
-				}
-			}
-
-			/* Cantos da mira */
-			body.mobile-cam-active .qr-target-frame::before,
-			body.mobile-cam-active .qr-target-frame::after {
-				content: '';
-				position: absolute;
-				width: 22px;
-				height: 22px;
-				border-color: #ff6b6b;
-				border-style: solid;
-			}
-
-			body.mobile-cam-active .qr-target-frame::before {
-				top: -2px;
-				left: -2px;
-				border-width: 3px 0 0 3px;
-				border-radius: .55rem 0 0 0;
-			}
-
-			body.mobile-cam-active .qr-target-frame::after {
-				bottom: -2px;
-				right: -2px;
-				border-width: 0 3px 3px 0;
-				border-radius: 0 0 .55rem 0;
-			}
-
-			body.mobile-cam-active .qr-c-tr {
-				position: absolute;
-				top: -2px;
-				right: -2px;
-				width: 22px;
-				height: 22px;
-				border: solid #ff6b6b;
-				border-width: 3px 3px 0 0;
-				border-radius: 0 .55rem 0 0;
-			}
-
-			body.mobile-cam-active .qr-c-bl {
-				position: absolute;
-				bottom: -2px;
-				left: -2px;
-				width: 22px;
-				height: 22px;
-				border: solid #ff6b6b;
-				border-width: 0 0 3px 3px;
-				border-radius: 0 0 0 .55rem;
-			}
-
-			/* ——— Barra superior da câmera (refeição + botão fechar) ——— */
-			body.mobile-cam-active .mobile-cam-topbar {
-				display: flex;
-				position: absolute;
-				top: 0;
-				left: 0;
-				right: 0;
-				z-index: 5;
-				padding: calc(.8rem + env(safe-area-inset-top, 0px)) .85rem .8rem;
-				align-items: center;
-				gap: .6rem;
-				background: linear-gradient(to bottom, rgba(0, 0, 0, .68), transparent);
-			}
-
-			.mobile-cam-tipo-nome {
-				flex: 1;
-				color: #fff;
-				font-weight: 600;
-				font-size: .95rem;
-				text-shadow: 0 1px 3px rgba(0, 0, 0, .5);
-				overflow: hidden;
-				text-overflow: ellipsis;
-				white-space: nowrap;
-			}
-
-			.btn-cam-fechar {
-				background: rgba(255, 255, 255, .18);
-				border: 1.5px solid rgba(255, 255, 255, .42);
-				color: #fff;
-				border-radius: .5rem;
-				padding: .38rem .72rem;
-				font-size: 1.2rem;
-				line-height: 1;
-				-webkit-backdrop-filter: blur(6px);
-				backdrop-filter: blur(6px);
-				cursor: pointer;
-			}
-
-			/* ——— Painel de resultado sobre a câmera ——— */
-			body.mobile-cam-active .mobile-scan-result-panel {
-				display: flex;
-				position: absolute;
-				bottom: 0;
-				left: 0;
-				right: 0;
-				z-index: 5;
-				flex-direction: column;
-				gap: .55rem;
-				padding: 2rem 1.1rem calc(1.6rem + env(safe-area-inset-bottom, 0px));
-				background: linear-gradient(to top, rgba(0, 0, 0, .9) 65%, transparent);
-			}
-
-			.mobile-scan-result-panel.is-hidden {
-				transform: translateY(110%);
-			}
-
-			.msr-nome {
-				color: #fff;
-				font-size: 1.3rem;
-				font-weight: 800;
-				line-height: 1.2;
-			}
-
-			.msr-turma {
-				color: rgba(255, 255, 255, .7);
-				font-size: .87rem;
-			}
-
-			.msr-status-bar {
-				display: flex;
-				align-items: center;
-				gap: .5rem;
-				border-radius: .6rem;
-				padding: .65rem .9rem;
-				font-size: .97rem;
-				font-weight: 700;
-			}
-
-			.msr-status-bar.is-ok {
-				background: rgba(25, 135, 84, .92);
-				color: #fff;
-			}
-
-			.msr-status-bar.is-blocked {
-				background: rgba(192, 57, 43, .92);
-				color: #fff;
-			}
-
-			.msr-actions {
-				display: flex;
-				gap: .55rem;
-			}
-
-			.msr-actions .btn {
-				flex: 1 1 0;
-				min-height: 54px;
-				font-size: 1rem;
-				font-weight: 600;
-				border-radius: .75rem;
-			}
-
 		}
 
 		/* /mobile */
+
+		/* ================================================================
+		   Câmera em tela cheia — fora do @media para funcionar em qualquer
+		   largura de viewport (iframe wide, tablet, desktop com DevTools)
+		   ================================================================ */
+		body.mobile-cam-active #scanOverlayWrap {
+			position: fixed;
+			inset: 0;
+			z-index: 1060;
+			background: #000;
+			border-radius: 0;
+			overflow: hidden;
+		}
+
+		body.mobile-cam-active #scannerVideo {
+			position: absolute;
+			inset: 0;
+			width: 100%;
+			height: 100%;
+			max-height: none;
+			border-radius: 0;
+			object-fit: cover;
+			display: block !important;
+		}
+
+		body.mobile-cam-active #scanOverlayWrap::after {
+			display: none !important;
+		}
+
+		body.mobile-cam-active .qr-target-frame {
+			display: block;
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -60%);
+			width: min(64vw, 240px);
+			height: min(64vw, 240px);
+			pointer-events: none;
+			z-index: 3;
+			border: 1.5px solid rgba(255, 255, 255, .3);
+			border-radius: .75rem;
+			box-shadow: 0 0 0 200vmax rgba(0, 0, 0, .42);
+			animation: mobileMiraPulse 1.3s ease-in-out infinite;
+		}
+
+		@keyframes mobileMiraPulse {
+
+			0%,
+			100% {
+				box-shadow: 0 0 0 200vmax rgba(0, 0, 0, .42);
+				border-color: rgba(255, 255, 255, .3);
+			}
+
+			50% {
+				box-shadow: 0 0 0 200vmax rgba(0, 0, 0, .22);
+				border-color: rgba(255, 255, 255, .85);
+			}
+		}
+
+		body.mobile-cam-active .qr-target-frame::before,
+		body.mobile-cam-active .qr-target-frame::after {
+			content: '';
+			position: absolute;
+			width: 22px;
+			height: 22px;
+			border-color: #ff6b6b;
+			border-style: solid;
+		}
+
+		body.mobile-cam-active .qr-target-frame::before {
+			top: -2px;
+			left: -2px;
+			border-width: 3px 0 0 3px;
+			border-radius: .55rem 0 0 0;
+		}
+
+		body.mobile-cam-active .qr-target-frame::after {
+			bottom: -2px;
+			right: -2px;
+			border-width: 0 3px 3px 0;
+			border-radius: 0 0 .55rem 0;
+		}
+
+		body.mobile-cam-active .qr-c-tr {
+			position: absolute;
+			top: -2px;
+			right: -2px;
+			width: 22px;
+			height: 22px;
+			border: solid #ff6b6b;
+			border-width: 3px 3px 0 0;
+			border-radius: 0 .55rem 0 0;
+		}
+
+		body.mobile-cam-active .qr-c-bl {
+			position: absolute;
+			bottom: -2px;
+			left: -2px;
+			width: 22px;
+			height: 22px;
+			border: solid #ff6b6b;
+			border-width: 0 0 3px 3px;
+			border-radius: 0 0 0 .55rem;
+		}
+
+		body.mobile-cam-active .mobile-cam-topbar {
+			display: flex;
+			position: absolute;
+			top: 0;
+			left: 0;
+			right: 0;
+			z-index: 5;
+			padding: calc(.8rem + env(safe-area-inset-top, 0px)) .85rem .8rem;
+			align-items: center;
+			gap: .6rem;
+			background: linear-gradient(to bottom, rgba(0, 0, 0, .68), transparent);
+		}
+
+		.mobile-cam-tipo-nome {
+			flex: 1;
+			color: #fff;
+			font-weight: 600;
+			font-size: .95rem;
+			text-shadow: 0 1px 3px rgba(0, 0, 0, .5);
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+
+		.btn-cam-fechar {
+			background: rgba(255, 255, 255, .18);
+			border: 1.5px solid rgba(255, 255, 255, .42);
+			color: #fff;
+			border-radius: .5rem;
+			padding: .38rem .72rem;
+			font-size: 1.2rem;
+			line-height: 1;
+			-webkit-backdrop-filter: blur(6px);
+			backdrop-filter: blur(6px);
+			cursor: pointer;
+		}
+
+		body.mobile-cam-active .mobile-scan-result-panel {
+			display: flex;
+			position: absolute;
+			bottom: 0;
+			left: 0;
+			right: 0;
+			z-index: 5;
+			flex-direction: column;
+			gap: .55rem;
+			padding: 2rem 1.1rem calc(1.6rem + env(safe-area-inset-bottom, 0px));
+			background: linear-gradient(to top, rgba(0, 0, 0, .9) 65%, transparent);
+		}
+
+		.mobile-scan-result-panel.is-hidden {
+			transform: translateY(110%);
+		}
+
+		.msr-nome {
+			color: #fff;
+			font-size: 1.3rem;
+			font-weight: 800;
+			line-height: 1.2;
+		}
+
+		.msr-turma {
+			color: rgba(255, 255, 255, .7);
+			font-size: .87rem;
+		}
+
+		.msr-status-bar {
+			display: flex;
+			align-items: center;
+			gap: .5rem;
+			border-radius: .6rem;
+			padding: .65rem .9rem;
+			font-size: .97rem;
+			font-weight: 700;
+		}
+
+		.msr-status-bar.is-ok {
+			background: rgba(25, 135, 84, .92);
+			color: #fff;
+		}
+
+		.msr-status-bar.is-blocked {
+			background: rgba(192, 57, 43, .92);
+			color: #fff;
+		}
+
+		.msr-actions {
+			display: flex;
+			gap: .55rem;
+		}
+
+		.msr-actions .btn {
+			flex: 1 1 0;
+			min-height: 54px;
+			font-size: 1rem;
+			font-weight: 600;
+			border-radius: .75rem;
+		}
 
 		/* ================================================================
 	   Fullscreen API — overlay toma a tela real (mesmo dentro de iframe)
@@ -2554,20 +2552,19 @@
 						// Preenche nome da refeição na topbar mobile
 						document.getElementById('mobileCamTipoNome').textContent = getTipoDisplayLabel(tipoSelecionado);
 
-						// Tenta Fullscreen API (rompe limites do iframe com allowfullscreen)
+						// Ativa overlay de câmera e notifica o pai (iframe) para expandi-lo a tela cheia
+						document.body.classList.add('mobile-cam-active');
+						if (_isEmbedded) {
+							try { window.parent.postMessage({ type: 'cemil:iframe-cam-active', isActive: true }, '*'); } catch (_e) {}
+						}
+
+						// Tenta também a Fullscreen API (cobre a tela real no Chrome Android)
 						var _overlay = document.getElementById('scanOverlayWrap');
 						var _fsReq = _overlay.requestFullscreen ||
 							_overlay.webkitRequestFullscreen ||
 							_overlay.mozRequestFullScreen ||
 							_overlay.msRequestFullscreen;
-						if (_fsReq) {
-							_fsReq.call(_overlay).catch(function () {
-								// Bloqueado (ex.: iOS <16.4) — fallback: preenche o iframe
-								document.body.classList.add('mobile-cam-active');
-							});
-						} else {
-							document.body.classList.add('mobile-cam-active');
-						}
+						if (_fsReq) { _fsReq.call(_overlay).catch(function () {}); }
 
 						video.addEventListener('loadedmetadata', function () {
 							requestAnimationFrame(tickScanner);
@@ -2597,6 +2594,9 @@
 				// Limpa overlays mobile
 				document.getElementById('mobileScanResult').classList.add('is-hidden');
 				document.body.classList.remove('mobile-cam-active');
+				if (_isEmbedded) {
+					try { window.parent.postMessage({ type: 'cemil:iframe-cam-active', isActive: false }, '*'); } catch (_e) {}
+				}
 
 				// Sai do fullscreen (se ativo)
 				var _exitFs = document.exitFullscreen ||
