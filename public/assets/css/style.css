@@ -393,6 +393,23 @@ body {
   padding-bottom: 0.42rem;
 }
 
+.hero-header-tester-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.18);
+  border: 1px solid rgba(251, 191, 36, 0.34);
+  color: #fde68a;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
 .hero-header .btn.btn-outline-light:hover,
 .hero-header .btn.btn-outline-light:focus {
   background: rgba(255, 255, 255, 0.15);
@@ -6361,6 +6378,12 @@ a.inst-dropdown-item:hover .inst-dropdown-item-icon {
     flex: 0 0 auto;
     min-width: 0;
     gap: 0.35rem !important;
+  }
+
+  .hero-header-tester-badge {
+    padding-left: 0.55rem;
+    padding-right: 0.55rem;
+    font-size: 0.7rem;
   }
 
   .hero-header-user-btn {

@@ -3,6 +3,11 @@ declare(strict_types=1);
 
 class AdminController extends HomeController
 {
+    private function isCurrentUserTester(): bool
+    {
+        return $this->normalizePermissionToken((string) ($_SESSION['auth']['tipo'] ?? '')) === 'tester';
+    }
+
     private function isCurrentUserAdmin(): bool
     {
         return $this->normalizePermissionToken((string) ($_SESSION['auth']['tipo'] ?? '')) === 'admin';
@@ -139,7 +144,7 @@ class AdminController extends HomeController
     {
         $authType = $this->normalizePermissionToken((string) ($_SESSION['auth']['tipo'] ?? ''));
 
-        if ($authType !== 'admin') {
+        if (!in_array($authType, ['admin', 'tester'], true)) {
             $this->redirect('/404');
         }
 
@@ -154,7 +159,7 @@ class AdminController extends HomeController
     {
         $authType = $this->normalizePermissionToken((string) ($_SESSION['auth']['tipo'] ?? ''));
 
-        if ($authType !== 'admin') {
+        if (!in_array($authType, ['admin', 'tester'], true)) {
             $this->redirect('/404');
         }
 
@@ -197,18 +202,20 @@ class AdminController extends HomeController
             $functions = $this->getAdminFunctions();
             $userTypes = $this->getAdminUserTypes();
             $servicesData = $this->getAdminServicesAndSubservices();
+            $isTesterViewer = $this->isCurrentUserTester();
 
             $this->renderAdminModalFile($filePath, [
                 'csrfToken' => $csrfToken,
-                'adminUsersSuccess' => $adminUsersSuccess,
-                'adminUsersError' => $adminUsersError,
-                'adminUsers' => $this->getAdminUsers($departments, $functions, $userTypes),
+                'adminUsersSuccess' => $isTesterViewer ? '' : $adminUsersSuccess,
+                'adminUsersError' => $isTesterViewer ? 'Modo Tester: a listagem real de usuários fica indisponível.' : $adminUsersError,
+                'adminUsers' => $isTesterViewer ? [] : $this->getAdminUsers($departments, $functions, $userTypes),
                 'adminUsersHasCargaHoraria' => $hasUserCargaHorariaColumn,
                 'adminDepartments' => $departments,
                 'adminFunctions' => $functions,
                 'adminUserTypes' => $userTypes,
                 'adminServiceOptions' => $servicesData['services'],
                 'adminSubserviceOptions' => $servicesData['subservices'],
+                'isTesterViewer' => $isTesterViewer,
             ]);
             exit;
         }
@@ -241,13 +248,17 @@ class AdminController extends HomeController
 
         if ($viewKey === 'gerenciamento_informacoes') {
             $csrfToken = $this->ensureCsrfToken();
-            $informacaoModel = new InformacaoModel();
+            $posts = [];
 
-            try {
-                $this->migrateInformacoesMediaNaming($informacaoModel);
-                $posts = $informacaoModel->getAllOrderedByInsertionDate();
-            } catch (Throwable) {
-                $posts = [];
+            if (!$this->isCurrentUserTester()) {
+                $informacaoModel = new InformacaoModel();
+
+                try {
+                    $this->migrateInformacoesMediaNaming($informacaoModel);
+                    $posts = $informacaoModel->getAllOrderedByInsertionDate();
+                } catch (Throwable) {
+                    $posts = [];
+                }
             }
 
             $this->renderAdminModalFile($filePath, [
@@ -259,26 +270,37 @@ class AdminController extends HomeController
 
         if ($viewKey === 'gerenciamento_avaliacoes') {
             $csrfToken = $this->ensureCsrfToken();
-            $avaliacaoModel = new AvaliacaoModel();
-            $turmaModel = new TurmaModel();
+            $avaliacoes = [];
+            $turmas = [];
+            $usuariosAplicadores = [];
 
-            try {
-                $avaliacoes = $avaliacaoModel->getAllOrdered();
-            } catch (Throwable) {
-                $avaliacoes = [];
-            }
+            if (!$this->isCurrentUserTester()) {
+                $avaliacaoModel = new AvaliacaoModel();
+                $turmaModel = new TurmaModel();
 
-            try {
-                $turmas = $turmaModel->getSimpleOptions();
-            } catch (Throwable) {
-                $turmas = [];
+                try {
+                    $avaliacoes = $avaliacaoModel->getAllOrdered();
+                } catch (Throwable) {
+                    $avaliacoes = [];
+                }
+
+                try {
+                    $turmas = $turmaModel->getSimpleOptions();
+                } catch (Throwable) {
+                    $turmas = [];
+                }
+
+                $usuariosAplicadores = $this->getAvaliacaoAplicadoresOptions();
             }
 
             $this->renderAdminModalFile($filePath, [
                 'csrfToken' => $csrfToken,
                 'avaliacoes' => $avaliacoes,
                 'turmas' => $turmas,
-                'usuariosAplicadores' => $this->getAvaliacaoAplicadoresOptions(),
+                'usuariosAplicadores' => $usuariosAplicadores,
+                'usuariosAutores' => $usuariosAplicadores,
+                'currentUserId' => $this->isCurrentUserTester() ? 0 : $this->getCurrentAuthUserId(),
+                'isAdmin' => $this->isCurrentUserAdmin(),
             ]);
             exit;
         }

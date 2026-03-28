@@ -31,6 +31,10 @@ trait InstitutionalAccessTrait
     {
         $authType = $this->normalizePermissionToken($authType);
 
+        if ($authType === 'tester') {
+            return true;
+        }
+
         if (in_array($authType, ['admin', 'servidor'], true)) {
             return true;
         }
@@ -60,6 +64,10 @@ trait InstitutionalAccessTrait
 
         if ($authType === 'admin') {
             return $catalog;
+        }
+
+        if ($authType === 'tester') {
+            return $catalog !== [] ? $catalog : $this->buildTesterInstitutionalCatalog();
         }
 
         $filtered = [];
@@ -277,6 +285,8 @@ trait InstitutionalAccessTrait
             'agendamento' => '/institucional/agendamento',
             'meus_agendamentos' => '/institucional/meus-agendamentos',
             'corretor_de_gabaritos' => '/institucional/corretor-gabaritos',
+            'controle_refeitorio', 'refeitorio' => '/institucional/refeitorio',
+            'entrada_saida', 'controle_de_entrada_e_saida', 'controle_entrada_saida' => '/institucional/entrada-saida',
             default => null,
         };
 
@@ -540,6 +550,10 @@ trait InstitutionalAccessTrait
     {
         $authType = $this->normalizePermissionToken($authType);
 
+        if ($authType === 'tester') {
+            return true;
+        }
+
         if ($authType === 'admin') {
             return true;
         }
@@ -615,6 +629,54 @@ trait InstitutionalAccessTrait
         }
 
         return $services;
+    }
+
+    private function buildTesterInstitutionalCatalog(): array
+    {
+        return [
+            [
+                'id' => 1,
+                'name' => 'Gestão Acadêmica',
+                'key' => 'gestao_academica',
+                'subservices' => [
+                    $this->buildTesterCatalogSubservice('cadastro_de_estudantes', 'Cadastro de Estudantes'),
+                    $this->buildTesterCatalogSubservice('cadastro_de_turmas', 'Cadastro de Turmas'),
+                    $this->buildTesterCatalogSubservice('cadastro_de_habilidades', 'Cadastro de Habilidades'),
+                    $this->buildTesterCatalogSubservice('avaliacoes', 'Avaliações'),
+                    $this->buildTesterCatalogSubservice('notas_desempenho', 'Notas e Desempenho'),
+                ],
+            ],
+            [
+                'id' => 2,
+                'name' => 'Operações',
+                'key' => 'operacoes',
+                'subservices' => [
+                    $this->buildTesterCatalogSubservice('agendamento', 'Agendamento'),
+                    $this->buildTesterCatalogSubservice('meus_agendamentos', 'Meus Agendamentos'),
+                    $this->buildTesterCatalogSubservice('controle_refeitorio', 'Controle de Refeitório'),
+                    $this->buildTesterCatalogSubservice('entrada_saida', 'Controle de Entrada e Saída'),
+                ],
+            ],
+            [
+                'id' => 3,
+                'name' => 'Ferramentas',
+                'key' => 'ferramentas',
+                'subservices' => [
+                    $this->buildTesterCatalogSubservice('modulacao', 'Modulação e Horários'),
+                    $this->buildTesterCatalogSubservice('corretor_de_gabaritos', 'Corretor de Gabaritos'),
+                ],
+            ],
+        ];
+    }
+
+    private function buildTesterCatalogSubservice(string $key, string $name): array
+    {
+        return [
+            'id' => 0,
+            'name' => $name,
+            'key' => $this->normalizePermissionToken($key),
+            'route' => $this->buildGenericSubserviceRoute($key),
+        ];
     }
 
     private function parseUserServicesFromArray(array $decoded): array

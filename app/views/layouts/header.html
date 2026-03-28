@@ -87,8 +87,9 @@
     $authUserName = (string) ($_SESSION['auth']['nome'] ?? 'Usuário');
     $authType = mb_strtolower((string) ($_SESSION['auth']['tipo'] ?? ''), 'UTF-8');
     $isAdminUser = $authType === 'admin';
+    $isTesterUser = $authType === 'tester';
     $isServidorUser = $authType === 'servidor';
-    $canViewInstitutional = !empty($_SESSION['auth']['can_view_institucional']) || $isAdminUser || $isServidorUser;
+    $canViewInstitutional = !empty($_SESSION['auth']['can_view_institucional']) || $isAdminUser || $isServidorUser || $isTesterUser;
         $menuItems = [
             ['label' => 'Início', 'path' => '/', 'icon' => 'la-home'],
         ];
@@ -101,7 +102,7 @@
             $menuItems[] = ['label' => 'Institucional', 'path' => '/institucional', 'icon' => 'la-building'];
         }
 
-        if ($isAuthenticated && $isAdminUser) {
+        if ($isAuthenticated && ($isAdminUser || $isTesterUser)) {
             $menuItems[] = ['label' => 'Painel Administrativo', 'path' => '/paineladministrativo', 'icon' => 'la-user-shield'];
         }
 
@@ -140,6 +141,11 @@
                     <?= SCHOOL_NAME; ?>
                 </span>
             </span>
+            <?php if ($isAuthenticated && $isTesterUser): ?>
+            <span class="hero-header-tester-badge" title="Modo Tester ativo: leituras e gravações no banco são simuladas.">
+                Tester
+            </span>
+            <?php endif; ?>
             <?php if ($isAuthenticated): ?>
             <div class="ms-auto d-flex align-items-center gap-2 hero-header-auth">
                 <div class="dropdown">
@@ -157,7 +163,7 @@
                                 <i class="las la-id-card me-1"></i>Meus dados
                             </a>
                         </li>
-                        <?php if ($isAdminUser): ?>
+                        <?php if ($isAdminUser || $isTesterUser): ?>
                         <li>
                             <a class="dropdown-item" href="<?= $baseUrl; ?>/paineladministrativo">
                                 <i class="las la-user-shield me-1"></i>Painel Administrativo

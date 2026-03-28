@@ -57,7 +57,7 @@ if (isset($routes[$path])) {
 
     if (class_exists($controllerClass) && method_exists($controllerClass, $method)) {
         $controller = new $controllerClass();
-        $controller->$method();
+        $controller->dispatch($method, $path);
         exit;
     }
 }

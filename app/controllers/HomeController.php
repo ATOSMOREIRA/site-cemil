@@ -430,6 +430,7 @@ class HomeController extends Controller
             'can_view_institucional' => $this->canAccessInstitutionalAreaByRules($authType, $rawServices),
             'can_access_cadastro_de_estudantes' => $this->canAccessSubserviceByRules($authType, $rawServices, 'cadastro_de_estudantes'),
             'can_access_corretor_de_gabaritos' => $this->canAccessSubserviceByRules($authType, $rawServices, 'corretor_de_gabaritos'),
+            'can_access_admin_panel' => in_array($authType, ['admin', 'tester'], true),
         ];
 
         if ($authType === 'admin') {

@@ -35,7 +35,7 @@ class AdminCatalogModel
                 'id' => $id,
                 'chave' => $chave,
                 'nome' => $nome,
-                'protegido' => in_array($chave, ['admin', 'servidor', 'aluno'], true),
+                'protegido' => in_array($chave, ['admin', 'servidor', 'aluno', 'tester'], true),
             ];
         }
 
@@ -201,7 +201,7 @@ class AdminCatalogModel
         }
 
         $key = (string) ($existing['chave'] ?? '');
-        if (in_array($key, ['admin', 'servidor', 'aluno'], true)) {
+        if (in_array($key, ['admin', 'servidor', 'aluno', 'tester'], true)) {
             throw new RuntimeException('Tipos padrão do sistema não podem ser excluídos.');
         }
 
@@ -263,7 +263,7 @@ class AdminCatalogModel
             return null;
         }
 
-        $row['protegido'] = in_array((string) ($row['chave'] ?? ''), ['admin', 'servidor', 'aluno'], true);
+        $row['protegido'] = in_array((string) ($row['chave'] ?? ''), ['admin', 'servidor', 'aluno', 'tester'], true);
         return $row;
     }
 
@@ -326,6 +326,7 @@ class AdminCatalogModel
             'admin' => 'Administrador',
             'servidor' => 'Servidor',
             'aluno' => 'Aluno',
+            'tester' => 'Tester',
         ];
 
         $statement = $this->pdo->prepare(

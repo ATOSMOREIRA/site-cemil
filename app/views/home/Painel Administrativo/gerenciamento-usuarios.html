@@ -9,6 +9,7 @@ $adminUsersHasCargaHoraria = (bool) ($adminUsersHasCargaHoraria ?? false);
 $adminUserTypes = is_array($adminUserTypes ?? null) ? $adminUserTypes : [];
 $adminServiceOptions = is_array($adminServiceOptions ?? null) ? $adminServiceOptions : [];
 $adminSubserviceOptions = is_array($adminSubserviceOptions ?? null) ? $adminSubserviceOptions : [];
+$isTesterViewer = (bool) ($isTesterViewer ?? false);
 $baseUrl = rtrim(BASE_URL, '/');
 
 $subservicesByService = [];
@@ -32,6 +33,11 @@ foreach ($adminSubserviceOptions as $subserviceOption) {
 
 <section>
     <p class="text-secondary mb-3">Área para criação, edição e controle de permissões dos usuários do sistema.</p>
+    <?php if ($isTesterViewer): ?>
+    <div class="alert alert-warning py-2" role="alert">
+        Modo Tester: a grade de usuários reais foi ocultada. Você pode abrir os modais e testar a interface sem tocar nos dados do sistema.
+    </div>
+    <?php endif; ?>
 
     <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
         <button type="button" class="btn btn-danger btn-sm js-admin-user-new">
