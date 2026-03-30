@@ -2218,6 +2218,61 @@ class AdminController extends HomeController
         $this->redirect($this->getAvaliacoesRedirectPath());
     }
 
+    public function painelAdministrativoAvaliacoesDetalhar(): void
+    {
+        if (!$this->canAccessAvaliacoesManagement()) {
+            $this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+        }
+
+        $avaliacaoId = (int) ($_GET['id'] ?? 0);
+        if ($avaliacaoId <= 0) {
+            $this->respondJson(['ok' => false, 'message' => 'Avaliação inválida.'], 422);
+        }
+
+        $avaliacaoModel = new AvaliacaoModel();
+
+        try {
+            $avaliacao = $avaliacaoModel->findById($avaliacaoId);
+        } catch (Throwable) {
+            $avaliacao = null;
+        }
+
+        if ($avaliacao === null) {
+            $this->respondJson(['ok' => false, 'message' => 'Avaliação não encontrada.'], 404);
+        }
+
+        if (!$this->canAccessAvaliacaoCorrecao($avaliacao)) {
+            $this->respondJson(['ok' => false, 'message' => 'Você não pode acessar esta avaliação.'], 403);
+        }
+
+        $this->respondJson([
+            'ok' => true,
+            'avaliacao' => [
+                'id' => (int) ($avaliacao['id'] ?? 0),
+                'nome' => trim((string) ($avaliacao['nome'] ?? '')),
+                'is_recuperacao' => (int) (($avaliacao['is_recuperacao'] ?? 0) ? 1 : 0),
+                'ciclo' => (int) ($avaliacao['ciclo'] ?? 0),
+                'is_simulado' => (int) (($avaliacao['is_simulado'] ?? 0) ? 1 : 0),
+                'bimestre' => (int) ($avaliacao['bimestre'] ?? 0),
+                'aplicacao' => trim((string) ($avaliacao['aplicacao'] ?? '')),
+                'autor_id' => (int) ($avaliacao['autor_id'] ?? 0),
+                'descricao' => trim((string) ($avaliacao['descricao'] ?? '')),
+                'gabarito' => trim((string) ($avaliacao['gabarito'] ?? '')),
+                'turmas_relacionadas_ids' => is_array($avaliacao['turmas_relacionadas_ids'] ?? null)
+                    ? array_values(array_unique(array_map('intval', $avaliacao['turmas_relacionadas_ids'])))
+                    : [],
+                'alunos_relacionados_ids' => is_array($avaliacao['alunos_relacionados_ids'] ?? null)
+                    ? array_values(array_unique(array_map('intval', $avaliacao['alunos_relacionados_ids'])))
+                    : [],
+                'aplicadores_relacionados_ids' => is_array($avaliacao['aplicadores_relacionados_ids'] ?? null)
+                    ? array_values(array_unique(array_map('intval', $avaliacao['aplicadores_relacionados_ids'])))
+                    : [],
+                'alunos_relacionados_explicit' => trim((string) ($avaliacao['alunos_relacionados'] ?? '')) !== '' ? 1 : 0,
+                'updated_at' => trim((string) ($avaliacao['updated_at'] ?? '')),
+            ],
+        ]);
+    }
+
     public function painelAdministrativoAvaliacoesCorrecoesListar(): void
     {
         if (!$this->canAccessAvaliacoesManagement()) {

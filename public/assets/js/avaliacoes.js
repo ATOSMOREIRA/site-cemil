@@ -361,6 +361,7 @@
     var habilidadeSelectorFilterButtons = habilidadeSelectorModalElement ? habilidadeSelectorModalElement.querySelectorAll('[data-hb-filter]') : [];
     var habilidadeSelectorBsModal = null;
     var habilidadeSelectorCache = null;
+    var habilidadeSelectorCacheFetchedAt = 0;
     var habilidadeSelectorCacheLoading = false;
     var habilidadeSelectorCacheCallbacks = [];
     var habilidadeSelectorQuestionIndex = -1;
@@ -687,6 +688,7 @@
     var activeDashboardAvaliacaoId = 0;
     var activeDashboardAvaliacaoNome = '';
     var activeDashboardAvaliacaoAplicacao = '';
+    var activeDashboardAvaliacaoCiclo = '';
     var activeDashboardAutorId = 0;
     var activeDashboardTurmasIds = [];
     var activeDashboardAlunosIds = [];
@@ -746,6 +748,11 @@
     };
     var gabaritoArucoDictionary = null;
     var gabaritoArucoDetector = null;
+    var dashboardAutoRefreshTimer = 0;
+    var dashboardSnapshotLoadToken = 0;
+    var dashboardLastSnapshotSignature = '';
+    var pendingDashboardSnapshot = null;
+    var pendingDashboardSnapshotSignature = '';
     var correcoesPollingTimer = 0;
     var correcoesRows = [];
     var correcaoCameraStream = null;
@@ -1205,7 +1212,21 @@
       dashboardModalInstance = bootstrap.Modal.getOrCreateInstance(dashboardModalElement, {
         backdrop: 'static',
       });
+      dashboardModalElement.addEventListener('shown.bs.modal', function () {
+        startDashboardAutoRefresh();
+        loadActiveDashboardSnapshot({
+          silent: true,
+          deferIfBusy: true,
+          renderIfUnchanged: false,
+        });
+      });
       dashboardModalElement.addEventListener('hidden.bs.modal', function () {
+        stopDashboardAutoRefresh();
+        pendingDashboardSnapshot = null;
+        pendingDashboardSnapshotSignature = '';
+        dashboardLastSnapshotSignature = '';
+        activeDashboardAvaliacaoCiclo = '';
+        activeDashboardAutorId = 0;
         activeDashboardTurmasIds = [];
         activeDashboardAlunosIds = [];
         activeDashboardAvaliacaoAplicacao = '';
@@ -1917,12 +1938,15 @@
           habilidadeSelectorModalElement.style.zIndex = '1065';
           if (habilidadeSelectorSearch) { habilidadeSelectorSearch.focus(); }
         });
+        habilidadeSelectorModalElement.addEventListener('hidden.bs.modal', function () {
+          applyPendingDashboardSnapshot();
+        });
       }
       if (habilidadeSelectorBsModal) { habilidadeSelectorBsModal.show(); }
 
       habilidadeFetchCache(function (cache) {
         renderHabilidadeSelectorList(cache, disciplinaFiltroInfo);
-      });
+      }, { forceRefresh: true });
     }
 
     function updateHabilidadeSelectorCount() {
@@ -1942,8 +1966,12 @@
       return typeof window.appBuildEndpoint === 'function' ? window.appBuildEndpoint(path) : path;
     }
 
-    function habilidadeFetchCache(cb) {
-      if (habilidadeSelectorCache) { cb(habilidadeSelectorCache); return; }
+    function habilidadeFetchCache(cb, options) {
+      var opts = options || {};
+      var hasFreshCache = habilidadeSelectorCache
+        && opts.forceRefresh !== true
+        && (Date.now() - habilidadeSelectorCacheFetchedAt) < 5000;
+      if (hasFreshCache) { cb(habilidadeSelectorCache); return; }
       if (typeof cb === 'function') {
         habilidadeSelectorCacheCallbacks.push(cb);
       }
@@ -1962,6 +1990,7 @@
             data.disciplinas.forEach(function (d) { disciplinasMap[String(d.id)] = d.nome; });
           }
           habilidadeSelectorCache = { habilidades: data.habilidades, disciplinasMap: disciplinasMap };
+          habilidadeSelectorCacheFetchedAt = Date.now();
           habilidadeSelectorCacheLoading = false;
           var pendingCallbacks = habilidadeSelectorCacheCallbacks.slice();
           habilidadeSelectorCacheCallbacks = [];
@@ -6969,6 +6998,242 @@
       return form.action.replace('/avaliacoes/salvar', '/avaliacoes/salvar-gabarito');
     }
 
+    function getAvaliacaoDetalheUrl() {
+      var fallbackUrl = '/index.php/paineladministrativo/avaliacoes/detalhar';
+      if (!form || !form.action) {
+        return fallbackUrl;
+      }
+
+      if (form.action.indexOf('/avaliacoes/salvar') === -1) {
+        return fallbackUrl;
+      }
+
+      return form.action.replace('/avaliacoes/salvar', '/avaliacoes/detalhar');
+    }
+
+    function isModalShown(element) {
+      return !!(element && element.classList && element.classList.contains('show'));
+    }
+
+    function isDashboardSyncBlocked() {
+      return gabaritoHasPendingChanges
+        || isModalShown(habilidadeSelectorModalElement)
+        || isModalShown(correcaoModalElement)
+        || isModalShown(correcaoDiscursivaModalElement)
+        || isModalShown(correcaoRevisaoModalElement)
+        || isModalShown(correcaoEdicaoModalElement)
+        || isModalShown(correcaoImportModalElement)
+        || isModalShown(statsFiltersModalElement)
+        || isModalShown(statsSkillsModalElement);
+    }
+
+    function buildDashboardSnapshotSignature(snapshot) {
+      try {
+        return JSON.stringify({
+          id: Number(snapshot && snapshot.id || 0),
+          nome: String(snapshot && snapshot.nome || '').trim(),
+          ciclo: String(snapshot && snapshot.ciclo || '').trim(),
+          aplicacao: String(snapshot && snapshot.aplicacao || '').trim(),
+          gabarito: String(snapshot && snapshot.gabarito || '').trim(),
+          descricao: String(snapshot && snapshot.descricao || '').trim(),
+          updated_at: String(snapshot && snapshot.updated_at || '').trim(),
+          turmas: Array.isArray(snapshot && snapshot.turmas_relacionadas_ids) ? snapshot.turmas_relacionadas_ids : [],
+          alunos: Array.isArray(snapshot && snapshot.alunos_relacionados_ids) ? snapshot.alunos_relacionados_ids : [],
+          aplicadores: Array.isArray(snapshot && snapshot.aplicadores_relacionados_ids) ? snapshot.aplicadores_relacionados_ids : [],
+        });
+      } catch (_error) {
+        return String(Date.now());
+      }
+    }
+
+    function syncDashboardPresentation() {
+      var safeId = Number(activeDashboardAvaliacaoId || 0);
+      var safeNome = String(activeDashboardAvaliacaoNome || '').trim();
+      var safeCiclo = String(activeDashboardAvaliacaoCiclo || '').trim();
+
+      if (dashboardModalTitle) {
+        dashboardModalTitle.textContent = safeNome !== ''
+          ? ('Painel da Avaliação: ' + safeNome + (safeCiclo !== '' ? ' - CICLO ' + safeCiclo : ''))
+          : (safeId > 0 ? ('Painel da Avaliação #' + safeId) : 'Painel da Avaliação');
+      }
+
+      var canAccessConfiguracoes = isAdminViewer || (currentUserId > 0 && currentUserId === activeDashboardAutorId);
+      if (dashboardGabaritoTab) {
+        var gabaritoTabItem = dashboardGabaritoTab.closest('.nav-item');
+        if (gabaritoTabItem) {
+          gabaritoTabItem.classList.toggle('d-none', !canAccessConfiguracoes);
+        }
+      }
+    }
+
+    function updateAvaliacaoActionButtonsFromSnapshot(snapshot) {
+      var avaliacaoId = Number(snapshot && snapshot.id || 0);
+      if (avaliacaoId <= 0) {
+        return;
+      }
+
+      var gabaritoRaw = String(snapshot && snapshot.gabarito || '').trim();
+      var turmasIds = Array.isArray(snapshot && snapshot.turmas_relacionadas_ids)
+        ? snapshot.turmas_relacionadas_ids.map(function (value) { return Number(value || 0); }).filter(Boolean)
+        : [];
+      var alunosIds = Array.isArray(snapshot && snapshot.alunos_relacionados_ids)
+        ? snapshot.alunos_relacionados_ids.map(function (value) { return Number(value || 0); }).filter(Boolean)
+        : [];
+      var aplicadoresIds = Array.isArray(snapshot && snapshot.aplicadores_relacionados_ids)
+        ? snapshot.aplicadores_relacionados_ids.map(function (value) { return Number(value || 0); }).filter(Boolean)
+        : [];
+      var selector = '.js-admin-avaliacao-dashboard[data-id="' + avaliacaoId + '"]'
+        + ', .js-admin-avaliacao-edit[data-id="' + avaliacaoId + '"]'
+        + ', .js-admin-avaliacao-copy[data-id="' + avaliacaoId + '"]';
+
+      document.querySelectorAll(selector).forEach(function (button) {
+        if (!(button instanceof HTMLElement)) {
+          return;
+        }
+
+        button.setAttribute('data-nome', String(snapshot && snapshot.nome || '').trim());
+        button.setAttribute('data-is-recuperacao', Number(snapshot && snapshot.is_recuperacao || 0) === 1 ? '1' : '0');
+        button.setAttribute('data-ciclo', String(snapshot && snapshot.ciclo || ''));
+        button.setAttribute('data-is-simulado', Number(snapshot && snapshot.is_simulado || 0) === 1 ? '1' : '0');
+        button.setAttribute('data-bimestre', String(snapshot && snapshot.bimestre || ''));
+        button.setAttribute('data-aplicacao', String(snapshot && snapshot.aplicacao || '').trim());
+        button.setAttribute('data-autor-id', String(Number(snapshot && snapshot.autor_id || 0)));
+        button.setAttribute('data-aplicadores-ids', aplicadoresIds.join(','));
+        button.setAttribute('data-turmas-ids', turmasIds.join(','));
+        button.setAttribute('data-alunos-ids', alunosIds.join(','));
+        button.setAttribute('data-alunos-explicit', Number(snapshot && snapshot.alunos_relacionados_explicit || 0) === 1 ? '1' : '0');
+        button.setAttribute('data-gabarito', gabaritoRaw);
+        if (button.classList.contains('js-admin-avaliacao-edit') || button.classList.contains('js-admin-avaliacao-copy')) {
+          button.setAttribute('data-descricao', String(snapshot && snapshot.descricao || '').trim());
+        }
+      });
+    }
+
+    function applyDashboardSnapshot(snapshot, signature) {
+      if (!snapshot || Number(snapshot.id || 0) <= 0) {
+        return false;
+      }
+
+      updateAvaliacaoActionButtonsFromSnapshot(snapshot);
+
+      activeDashboardAvaliacaoId = Number(snapshot.id || 0);
+      activeDashboardAvaliacaoNome = String(snapshot.nome || '').trim();
+      activeDashboardAvaliacaoAplicacao = String(snapshot.aplicacao || '').trim();
+      activeDashboardAvaliacaoCiclo = String(snapshot.ciclo || '').trim();
+      activeDashboardAutorId = Number(snapshot.autor_id || 0);
+      activeDashboardTurmasIds = Array.isArray(snapshot.turmas_relacionadas_ids)
+        ? snapshot.turmas_relacionadas_ids.map(function (value) { return Number(value || 0); }).filter(Boolean)
+        : [];
+      activeDashboardAlunosIds = Array.isArray(snapshot.alunos_relacionados_ids)
+        ? snapshot.alunos_relacionados_ids.map(function (value) { return Number(value || 0); }).filter(Boolean)
+        : [];
+
+      syncDashboardPresentation();
+      applyGabaritoConfig(parseGabaritoConfig(snapshot.gabarito));
+      setGabaritoPendingChanges(false);
+      renderImpressaoTurmasSelector();
+      renderImpressaoPreviewIfVisible();
+
+      dashboardLastSnapshotSignature = String(signature || '');
+      return true;
+    }
+
+    function applyPendingDashboardSnapshot() {
+      if (!pendingDashboardSnapshot || !pendingDashboardSnapshotSignature) {
+        return;
+      }
+
+      if (!isModalShown(dashboardModalElement) || isDashboardSyncBlocked()) {
+        return;
+      }
+
+      var snapshot = pendingDashboardSnapshot;
+      var signature = pendingDashboardSnapshotSignature;
+      pendingDashboardSnapshot = null;
+      pendingDashboardSnapshotSignature = '';
+      applyDashboardSnapshot(snapshot, signature);
+    }
+
+    function loadActiveDashboardSnapshot(options) {
+      var opts = options || {};
+      var avaliacaoId = Number(activeDashboardAvaliacaoId || 0);
+      if (avaliacaoId <= 0) {
+        return Promise.resolve(null);
+      }
+
+      var token = ++dashboardSnapshotLoadToken;
+      var url = getAvaliacaoDetalheUrl() + '?id=' + encodeURIComponent(String(avaliacaoId));
+
+      return fetch(url, {
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      }).then(function (response) {
+        return response.json().catch(function () {
+          return { ok: false, message: 'Resposta inválida do servidor.' };
+        }).then(function (payload) {
+          if (token !== dashboardSnapshotLoadToken) {
+            return null;
+          }
+          if (!response.ok || !payload || payload.ok !== true || !payload.avaliacao) {
+            throw new Error(payload && payload.message ? payload.message : 'Não foi possível atualizar a avaliação aberta.');
+          }
+
+          var snapshot = payload.avaliacao;
+          var signature = buildDashboardSnapshotSignature(snapshot);
+          var changed = signature !== dashboardLastSnapshotSignature;
+
+          if (!changed && opts.renderIfUnchanged === false) {
+            return snapshot;
+          }
+
+          if (opts.deferIfBusy && changed && isDashboardSyncBlocked()) {
+            pendingDashboardSnapshot = snapshot;
+            pendingDashboardSnapshotSignature = signature;
+            return snapshot;
+          }
+
+          pendingDashboardSnapshot = null;
+          pendingDashboardSnapshotSignature = '';
+          applyDashboardSnapshot(snapshot, signature);
+          return snapshot;
+        });
+      }).catch(function (error) {
+        if (token !== dashboardSnapshotLoadToken || opts.silent) {
+          return null;
+        }
+        showGlobalStatus(error && error.message ? error.message : 'Não foi possível atualizar a avaliação aberta.', true);
+        return null;
+      });
+    }
+
+    function startDashboardAutoRefresh() {
+      if (dashboardAutoRefreshTimer) {
+        window.clearInterval(dashboardAutoRefreshTimer);
+      }
+
+      dashboardAutoRefreshTimer = window.setInterval(function () {
+        if (!isModalShown(dashboardModalElement)) {
+          return;
+        }
+
+        loadActiveDashboardSnapshot({
+          silent: true,
+          deferIfBusy: true,
+          renderIfUnchanged: false,
+        });
+      }, 5000);
+    }
+
+    function stopDashboardAutoRefresh() {
+      if (!dashboardAutoRefreshTimer) {
+        return;
+      }
+
+      window.clearInterval(dashboardAutoRefreshTimer);
+      dashboardAutoRefreshTimer = 0;
+    }
+
     function getGabaritoBackgroundUploadUrl() {
       var fallbackUrl = '/index.php/paineladministrativo/avaliacoes/upload-fundo-gabarito';
       if (!form || !form.action) {
@@ -7202,6 +7467,9 @@
         })
         .then(function (_payload) {
           var serializedConfig = JSON.stringify(getCurrentGabaritoConfig());
+
+          pendingDashboardSnapshot = null;
+          pendingDashboardSnapshotSignature = '';
 
           document.querySelectorAll('.js-admin-avaliacao-dashboard, .js-admin-avaliacao-edit, .js-admin-avaliacao-copy').forEach(function (button) {
             if (!(button instanceof HTMLElement)) {
@@ -7724,6 +7992,8 @@
           activeDashboardAvaliacaoId = Number(button.getAttribute('data-id') || 0);
           activeDashboardAvaliacaoNome = String(button.getAttribute('data-nome') || '').trim();
           activeDashboardAvaliacaoAplicacao = String(button.getAttribute('data-aplicacao') || '').trim();
+          activeDashboardAvaliacaoCiclo = String(button.getAttribute('data-ciclo') || '').trim();
+          activeDashboardAutorId = Number(button.getAttribute('data-autor-id') || 0);
           activeDashboardTurmasIds = String(button.getAttribute('data-turmas-ids') || '').split(',').map(Number).filter(Boolean);
           activeDashboardAlunosIds = String(button.getAttribute('data-alunos-ids') || '').split(',').map(Number).filter(Boolean);
           impressaoTurmasSelectionInitialized = false;
@@ -9395,6 +9665,11 @@
       var safeId = Number(avaliacaoId || 0);
       var safeNome = String(avaliacaoNome || '').trim();
       var safeCiclo = String(avaliacaoCiclo || '').trim();
+
+      activeDashboardAvaliacaoId = safeId;
+      activeDashboardAvaliacaoNome = safeNome;
+      activeDashboardAvaliacaoCiclo = safeCiclo;
+      syncDashboardPresentation();
 
       if (dashboardModalTitle) {
         dashboardModalTitle.textContent = safeNome !== ''
