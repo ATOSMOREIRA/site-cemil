@@ -6995,9 +6995,7 @@ class InstitucionalController extends HomeController
 			$this->redirect('/404');
 		}
 
-		$this->render('home/Institucional/Controle de Entrada e Saída', [
-			'schoolName' => SCHOOL_NAME,
-		]);
+		$this->redirect('/institucional/subservico?key=entrada_saida');
 	}
 
 	public function entradaSaidaDados(): void

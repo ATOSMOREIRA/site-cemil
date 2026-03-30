@@ -286,7 +286,8 @@ trait InstitutionalAccessTrait
             'meus_agendamentos' => '/institucional/meus-agendamentos',
             'corretor_de_gabaritos' => '/institucional/corretor-gabaritos',
             'controle_refeitorio', 'refeitorio' => '/institucional/refeitorio',
-            'entrada_saida', 'controle_de_entrada_e_saida', 'controle_entrada_saida' => '/institucional/entrada-saida',
+            'entrada_saida', 'controle_entrada_e_saida', 'controle_de_entrada_e_saida', 'controle_entrada_saida'
+                => '/institucional/subservico?key=' . urlencode($normalizedKey),
             default => null,
         };
 

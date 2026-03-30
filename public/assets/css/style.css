@@ -2706,6 +2706,13 @@ iframe.iframe-cam-fullscreen {
   z-index: 2000 !important;
 }
 
+body.inst-service-modal-open .modal-backdrop {
+  --bs-backdrop-bg: rgba(9, 14, 24, 0.46);
+  --bs-backdrop-opacity: 0.88;
+  backdrop-filter: blur(14px) saturate(1.05);
+  -webkit-backdrop-filter: blur(14px) saturate(1.05);
+}
+
 .modal {
   z-index: 2010 !important;
 }
@@ -6133,7 +6140,7 @@ iframe.iframe-cam-fullscreen {
   background: #fff;
   border-radius: 0.875rem;
   box-shadow: 0 1px 3px rgba(0,0,0,0.07), 0 4px 14px rgba(0,0,0,0.05);
-  overflow: visible;
+  overflow: hidden;
   position: relative;
   z-index: 1;
   transition: box-shadow 0.2s ease, transform 0.2s ease, z-index 0s;
@@ -6158,6 +6165,7 @@ iframe.iframe-cam-fullscreen {
   background: none;
   border: none;
   border-left: 3.5px solid transparent;
+  border-radius: inherit;
   padding: 0.9rem 1.1rem;
   cursor: pointer;
   text-align: left;
@@ -6219,6 +6227,65 @@ iframe.iframe-cam-fullscreen {
   transition: transform 0.25s ease, color 0.18s ease;
 }
 
+.inst-service-modal-dialog {
+  max-width: min(560px, calc(100vw - 1rem));
+}
+
+.inst-service-modal-content {
+  border-radius: 1.2rem;
+  overflow: hidden;
+}
+
+.inst-service-modal-header {
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.inst-service-modal-title-wrap {
+  min-width: 0;
+}
+
+.inst-service-modal-kicker {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #c0392b;
+  margin-bottom: 0.25rem;
+}
+
+.inst-service-modal-meta {
+  font-size: 0.88rem;
+  color: #6b7280;
+}
+
+.inst-service-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 1rem;
+  background: linear-gradient(180deg, #ffffff 0%, #fff7f6 100%);
+}
+
+.inst-service-modal-body .inst-dropdown-item,
+.inst-service-modal-body .inst-dropdown-item-disabled {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.9rem;
+  background: #ffffff;
+  padding: 0.85rem 1rem;
+}
+
+.inst-service-modal-body .inst-dropdown-item:hover {
+  border-color: rgba(192, 57, 43, 0.22);
+}
+
+.inst-service-modal-body .inst-empty-subservices {
+  border: 1px dashed #e5e7eb;
+  border-radius: 0.9rem;
+  background: #ffffff;
+  padding: 0.85rem 1rem;
+}
+
 /* inst-service-trigger variant: direct action (modal, link) — sem dropdown */
 .inst-service-trigger--direct {
   border-radius: 0.875rem;
@@ -6243,11 +6310,8 @@ iframe.iframe-cam-fullscreen {
 /* Dropdown menu */
 .inst-dropdown-menu {
   display: none;
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  right: 0;
-  z-index: 1300;
+  position: static;
+  margin-top: 0.4rem;
   background: #fff;
   border-radius: 0.875rem;
   box-shadow: 0 8px 24px rgba(0,0,0,0.13), 0 2px 8px rgba(0,0,0,0.08);
