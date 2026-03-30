@@ -108,6 +108,42 @@ class AvaliacaoCorrecaoModel
         return array_map([$this, 'hydrateRow'], $statement->fetchAll(PDO::FETCH_ASSOC) ?: []);
     }
 
+    public function countByAvaliacaoIds(array $avaliacaoIds): array
+    {
+        $this->ensureTableStructure();
+
+        $ids = array_values(array_unique(array_filter(array_map(static function ($value): int {
+            return (int) $value;
+        }, $avaliacaoIds), static function (int $value): bool {
+            return $value > 0;
+        })));
+
+        if ($ids === []) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $pdo = Database::connection();
+        $statement = $pdo->prepare(
+            'SELECT avaliacao_id, COUNT(*) AS total_corrigidos
+             FROM avaliacao_correcoes
+             WHERE avaliacao_id IN (' . $placeholders . ')
+             GROUP BY avaliacao_id'
+        );
+        $statement->execute($ids);
+
+        $result = [];
+        foreach ($statement->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+
+            $result[(int) ($row['avaliacao_id'] ?? 0)] = (int) ($row['total_corrigidos'] ?? 0);
+        }
+
+        return $result;
+    }
+
     public function findByComposite(int $avaliacaoId, int $alunoId, int $turmaId): ?array
     {
         $this->ensureTableStructure();

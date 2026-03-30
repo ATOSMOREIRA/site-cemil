@@ -3119,6 +3119,95 @@ class InstitucionalController extends HomeController
 			$defaultGabaritoPreset = null;
 		}
 
+		try {
+			$avaliacaoIds = array_values(array_unique(array_filter(array_map(static function ($item): int {
+				return is_array($item) ? (int) ($item['id'] ?? 0) : 0;
+			}, $avaliacoes), static function (int $value): bool {
+				return $value > 0;
+			})));
+			$activeAlunoIds = [];
+			$activeAlunosByTurma = [];
+
+			foreach ($alunos as $alunoOption) {
+				if (!is_array($alunoOption)) {
+					continue;
+				}
+
+				$alunoId = (int) ($alunoOption['id'] ?? 0);
+				$turmaId = (int) ($alunoOption['turma_id'] ?? 0);
+				if ($alunoId <= 0) {
+					continue;
+				}
+
+				$activeAlunoIds[$alunoId] = true;
+				if ($turmaId > 0) {
+					$activeAlunosByTurma[$turmaId][$alunoId] = true;
+				}
+			}
+
+			$correcaoCountMap = [];
+			if ($avaliacaoIds !== []) {
+				$avaliacaoCorrecaoModel = new AvaliacaoCorrecaoModel();
+				$correcaoCountMap = $avaliacaoCorrecaoModel->countByAvaliacaoIds($avaliacaoIds);
+			}
+
+			foreach ($avaliacoes as &$avaliacao) {
+				if (!is_array($avaliacao)) {
+					continue;
+				}
+
+				$avaliacaoId = (int) ($avaliacao['id'] ?? 0);
+				$alunosEsperados = [];
+
+				foreach ((array) ($avaliacao['alunos_relacionados_ids'] ?? []) as $alunoRelacionadaId) {
+					$alunoRelacionadaId = (int) $alunoRelacionadaId;
+					if ($alunoRelacionadaId > 0 && isset($activeAlunoIds[$alunoRelacionadaId])) {
+						$alunosEsperados[$alunoRelacionadaId] = true;
+					}
+				}
+
+				if ($alunosEsperados === []) {
+					foreach ((array) ($avaliacao['turmas_relacionadas_ids'] ?? []) as $turmaRelacionadaId) {
+						$turmaRelacionadaId = (int) $turmaRelacionadaId;
+						if ($turmaRelacionadaId <= 0 || !isset($activeAlunosByTurma[$turmaRelacionadaId])) {
+							continue;
+						}
+
+						foreach ($activeAlunosByTurma[$turmaRelacionadaId] as $alunoId => $_unused) {
+							$alunosEsperados[(int) $alunoId] = true;
+						}
+					}
+				}
+
+				$totalEsperado = count($alunosEsperados);
+				$totalCorrigido = (int) ($correcaoCountMap[$avaliacaoId] ?? 0);
+				$percentualCorrecao = 0;
+				$statusAuxiliar = 'Sem estudantes vinculados';
+
+				if ($totalEsperado > 0) {
+					$percentualCorrecao = (int) round(min(100, ($totalCorrigido / $totalEsperado) * 100));
+					$statusAuxiliar = $totalCorrigido . ' de ' . $totalEsperado . ' corrigidas';
+				} elseif ($totalCorrigido > 0) {
+					$percentualCorrecao = 100;
+					$statusAuxiliar = $totalCorrigido . ' correções salvas';
+				}
+
+				$avaliacao['correcao_status_percentual'] = $percentualCorrecao;
+				$avaliacao['correcao_status_label'] = $statusAuxiliar;
+			}
+			unset($avaliacao);
+		} catch (Throwable) {
+			foreach ($avaliacoes as &$avaliacao) {
+				if (!is_array($avaliacao)) {
+					continue;
+				}
+
+				$avaliacao['correcao_status_percentual'] = 0;
+				$avaliacao['correcao_status_label'] = 'Status indisponível';
+			}
+			unset($avaliacao);
+		}
+
 		$viewName = $isAdmin
 			? 'home/Institucional/Cadastro de Avaliações'
 			: 'home/Institucional/Gerenciar Avaliações';
