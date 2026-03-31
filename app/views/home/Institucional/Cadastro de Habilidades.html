@@ -190,7 +190,7 @@
 
 			<div class="hb-filter-row mb-3">
 				<div class="hb-search-wrap">
-					<input type="search" class="form-control form-control-sm" id="hbSearch" placeholder="Buscar por código, descrição, disciplina..." autocomplete="off">
+					<input type="search" class="form-control form-control-sm" id="hbSearch" placeholder="Buscar por código, descrição, componente curricular..." autocomplete="off">
 				</div>
 				<button type="button" class="btn btn-outline-secondary btn-sm" id="hbFilterBtn">
 					<i class="las la-filter me-1"></i>Filtros
@@ -205,7 +205,7 @@
 							<th class="institutional-select-col" style="width:36px"><input type="checkbox" id="hbSelectAll" aria-label="Selecionar todas"></th>
 							<th style="min-width:110px">Código</th>
 							<th style="min-width:100px">Documento</th>
-							<th style="min-width:120px">Disciplina</th>
+							<th style="min-width:120px">Componente Curricular</th>
 							<th style="min-width:80px">Ano</th>
 							<th style="min-width:220px">Descrição</th>
 							<th style="min-width:70px">Status</th>
@@ -253,7 +253,7 @@
 								</select>
 							</div>
 							<div class="col-md-6">
-								<label class="form-label">Disciplinas <span class="text-danger">*</span></label>
+								<label class="form-label">Componentes Curriculares <span class="text-danger">*</span></label>
 								<div class="dropdown hb-inline-dropdown" id="hbFormDisciplinaDropdown">
 									<button class="btn btn-outline-secondary btn-sm w-100 text-start d-flex justify-content-between align-items-center" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" id="hbFormDisciplinaToggle">
 										<span id="hbFormDisciplinaLabel">Selecione</span>
@@ -415,7 +415,7 @@
 						</div>
 					</div>
 					<div class="mb-3">
-						<label class="form-label fw-semibold">Disciplina</label>
+						<label class="form-label fw-semibold">Componente Curricular</label>
 						<div id="hbFilterDiscList" class="hb-filter-checklist">
 							<div class="small text-secondary">Carregando...</div>
 						</div>
@@ -600,7 +600,7 @@
 					} else if (labels.length <= 2) {
 						formDisciplinaLabel.textContent = labels.join(', ');
 					} else {
-						formDisciplinaLabel.textContent = labels.length + ' disciplinas selecionadas';
+						formDisciplinaLabel.textContent = labels.length + ' componentes curriculares selecionados';
 					}
 				}
 			}
@@ -736,7 +736,7 @@
 				}
 
 				var csvRows = [
-					['Codigo', 'Documento', 'Nome das Disciplinas', 'Ano escolar', 'Descricao']
+					['Codigo', 'Documento', 'Nome dos Componentes Curriculares', 'Ano escolar', 'Descricao']
 				];
 
 				rows.forEach(function (h) {
@@ -818,8 +818,8 @@
 					filterHtml += '<div class="form-check"><input class="form-check-input" type="checkbox" value="' + id + '" id="hbFDisc_' + id + '"><label class="form-check-label" for="hbFDisc_' + id + '">' + nome + '</label></div>';
 				});
 
-				if (filterDiscList) filterDiscList.innerHTML = filterHtml || '<div class="small text-secondary">Nenhuma disciplina.</div>';
-				if (formDisciplinaList) formDisciplinaList.innerHTML = formHtml || '<div class="small text-secondary">Nenhuma disciplina.</div>';
+				if (filterDiscList) filterDiscList.innerHTML = filterHtml || '<div class="small text-secondary">Nenhum componente curricular.</div>';
+				if (formDisciplinaList) formDisciplinaList.innerHTML = formHtml || '<div class="small text-secondary">Nenhum componente curricular.</div>';
 				updateDisciplinaHidden();
 			}
 
@@ -995,7 +995,7 @@
 					+ viewField('Código', h.codigo)
 					+ viewField('Documento', h.documento)
 					+ viewField('Tipo', h.tipo)
-					+ viewField('Disciplinas', discNome)
+					+ viewField('Componentes Curriculares', discNome)
 					+ viewField('Ano escolar', (h.ano_escolar || '').split(',').map(function(v){ return v.trim() + 'º'; }).join(', '))
 					+ viewField('Etapa de ensino', h.etapa_ensino)
 					+ '</div>'

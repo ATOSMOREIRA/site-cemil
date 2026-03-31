@@ -519,9 +519,9 @@ $availableYears = [$currentYear, $currentYear - 1, $currentYear - 2, $currentYea
                         </select>
                     </div>
                     <div class="col-12 col-md-3 col-xl-3">
-                        <label class="form-label form-label-sm mb-1">Disciplinas</label>
+                        <label class="form-label form-label-sm mb-1">Componentes Curriculares</label>
                         <div class="notas-filter-summary-card">
-                            <div id="notasFilterDisciplinasSummary" class="summary-body">Todas as disciplinas</div>
+                            <div id="notasFilterDisciplinasSummary" class="summary-body">Todos os componentes curriculares</div>
                             <div class="mt-2">
                                 <button type="button" class="btn btn-outline-primary btn-sm"
                                     id="notasFilterDisciplinasOpenBtn"><i
@@ -693,7 +693,7 @@ $availableYears = [$currentYear, $currentYear - 1, $currentYear - 2, $currentYea
                                         <th>Turma</th>
                                         <th>Ano escolar</th>
                                         <th class="text-center">Média</th>
-                                        <th class="text-center">Disciplinas</th>
+                                        <th class="text-center">Componentes Curriculares</th>
                                         <th class="text-center">Proficiência</th>
                                     </tr>
                                 </thead>
@@ -733,14 +733,14 @@ $availableYears = [$currentYear, $currentYear - 1, $currentYear - 2, $currentYea
     </div>
 </div>
 
-<!-- ======= MODAL CORREÇÃO POR DISCIPLINA ======= -->
+<!-- ======= MODAL CORREÇÃO POR COMPONENTE CURRICULAR ======= -->
 <div class="modal fade" id="notasDesempenhoCorrecaoDisciplinaModal" tabindex="-1"
     aria-labelledby="notasDesempenhoCorrecaoDisciplinaModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content site-modal-content">
             <div class="modal-header">
                 <div>
-                    <div class="small text-secondary">Correção por disciplina</div>
+                    <div class="small text-secondary">Correção por componente curricular</div>
                     <h2 class="h5 mb-0" id="notasDesempenhoCorrecaoDisciplinaModalLabel">Editar respostas</h2>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
@@ -849,7 +849,7 @@ $availableYears = [$currentYear, $currentYear - 1, $currentYear - 2, $currentYea
                                 required>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label" for="notasDesempenhoFormDisciplina">Disciplina</label>
+                            <label class="form-label" for="notasDesempenhoFormDisciplina">Componente Curricular</label>
                             <input type="text" class="form-control" id="notasDesempenhoFormDisciplina" name="disciplina"
                                 list="notasDesempenhoDisciplinasList" autocomplete="off" required>
                             <datalist id="notasDesempenhoDisciplinasList">
@@ -1010,7 +1010,7 @@ $availableYears = [$currentYear, $currentYear - 1, $currentYear - 2, $currentYea
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content site-modal-content">
             <div class="modal-header">
-                <h2 class="h6 mb-0" id="notasFilterDisciplinasModalLabel">Selecionar disciplinas</h2>
+                <h2 class="h6 mb-0" id="notasFilterDisciplinasModalLabel">Selecionar componentes curriculares</h2>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <div class="modal-body">

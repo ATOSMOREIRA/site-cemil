@@ -1811,7 +1811,7 @@
 
       var thead = document.createElement('thead');
       thead.innerHTML = '<tr><th class="text-secondary fw-normal" style="width:2.2rem;font-size:.72rem">Nº</th>'
-        + '<th class="text-secondary fw-normal" style="font-size:.72rem">Disciplina</th>'
+        + '<th class="text-secondary fw-normal" style="font-size:.72rem">Componente Curricular</th>'
         + '<th class="text-secondary fw-normal" style="font-size:.72rem">Habilidade</th></tr>';
       table.appendChild(thead);
 
@@ -1827,7 +1827,7 @@
         tdNum.textContent = String(qi + 1).padStart(2, '0') + '.';
         tr.appendChild(tdNum);
 
-        // Disciplina — select
+        // Componente curricular — select
         var tdDisc = document.createElement('td');
         tdDisc.style.cssText = 'vertical-align:middle;padding-right:4px;';
         var sel = document.createElement('select');
@@ -1837,7 +1837,7 @@
 
         var optBlank = document.createElement('option');
         optBlank.value = '';
-        optBlank.textContent = '— disciplina —';
+        optBlank.textContent = '— componente curricular —';
         sel.appendChild(optBlank);
 
         disciplinasOptions.forEach(function (d) {
@@ -1912,8 +1912,8 @@
       var disciplinaFiltroInfo = getQuestaoDisciplinaFiltroInfo(item);
       if (habilidadeSelectorDisciplinaInfo) {
         habilidadeSelectorDisciplinaInfo.textContent = disciplinaFiltroInfo.nome
-          ? 'Filtrando pela disciplina: ' + disciplinaFiltroInfo.nome
-          : 'Nenhuma disciplina selecionada — mostrando todas as habilidades';
+          ? 'Filtrando pelo componente curricular: ' + disciplinaFiltroInfo.nome
+          : 'Nenhum componente curricular selecionado — mostrando todas as habilidades';
       }
 
       // reset filtros visuais
@@ -2430,7 +2430,7 @@
         _discNomesSeen[n] = true;
         return true;
       });
-      var _disciplinasLabel = _discNomes.length > 0 ? _discNomes.join(' · ') : 'Disciplinas';
+      var _disciplinasLabel = _discNomes.length > 0 ? _discNomes.join(' · ') : 'Componentes Curriculares';
 
       // --- Font sizes derived from box height so resize of boxes scales the text ---
       var _pad = 16;
@@ -9409,7 +9409,7 @@
       }
 
       return 'Notas adaptadas: ' + adaptedGroups.map(function (group) {
-        return String(group.disciplinaNome || 'Disciplina') + ' ' + formatCorrecaoAdaptedGradeLabel(group.adaptedGrade);
+        return String(group.disciplinaNome || 'Componente Curricular') + ' ' + formatCorrecaoAdaptedGradeLabel(group.adaptedGrade);
       }).join(' | ');
     }
 
@@ -9487,7 +9487,7 @@
         result[key] = {
           key: key,
           disciplinaId: String(input.getAttribute('data-discipline-id') || '').trim(),
-          disciplinaNome: String(input.getAttribute('data-discipline-name') || '').trim() || 'Disciplina',
+          disciplinaNome: String(input.getAttribute('data-discipline-name') || '').trim() || 'Componente Curricular',
           adaptedGrade: parseCorrecaoAdaptedGradeValue(rawValue),
         };
       });
@@ -10256,7 +10256,7 @@
       var pageHeight = pageRect && pageRect.height ? pageRect.height : Math.max(0, a4CanvasHeight - 48);
       var titleBoxSize = getGabaritoTitleBoxSize(ctx, pageWidth, titleText);
       var numeracaoBoxSize = getGabaritoNumeracaoBoxSize(ctx, pageWidth, numeracaoText);
-      var safeDisciplinasLines = Array.isArray(disciplinasLines) && disciplinasLines.length ? disciplinasLines : ['Nenhuma disciplina informada'];
+      var safeDisciplinasLines = Array.isArray(disciplinasLines) && disciplinasLines.length ? disciplinasLines : ['Nenhum componente curricular informado'];
       var disciplinasDefaultHeight = 32 + (safeDisciplinasLines.length * 24);
 
       return {
@@ -10308,7 +10308,7 @@
       var titleText = String(safePageData.avaliacaoNome || getCurrentGabaritoAvaliacaoTitle()).trim();
       var numeracaoText = String(safePageData.numeracaoLabel || getCurrentGabaritoNumeracaoLabel()).trim();
       var disciplinasList = getConfiguredDisciplinasList();
-      var disciplinasLines = disciplinasList.length ? disciplinasList : ['Nenhuma disciplina informada'];
+      var disciplinasLines = disciplinasList.length ? disciplinasList : ['Nenhum componente curricular informado'];
       var specs = getGabaritoInfoBoxSpecs(ctx, pageRect, titleText, numeracaoText, disciplinasLines);
 
       function buildBox(boxKey) {
@@ -11678,7 +11678,7 @@
     function getQuestaoDisciplinaNome(questionItem) {
       var disciplinaId = String(questionItem && questionItem.disciplina || '').trim();
       if (disciplinaId === '') {
-        return 'Sem disciplina';
+        return 'Sem componente curricular';
       }
 
       var match = (disciplinasOptions || []).filter(function (disciplina) {
@@ -11686,7 +11686,7 @@
       });
 
       if (match.length > 0) {
-        return String(match[0].nome || disciplinaId).trim() || 'Sem disciplina';
+        return String(match[0].nome || disciplinaId).trim() || 'Sem componente curricular';
       }
 
       return disciplinaId;
@@ -11829,7 +11829,7 @@
                   + '<div class="admin-avaliacao-correcao-processing-discipline-meta">' + escapeHtml(String(item.percentual)) + '% • ' + escapeHtml(formatCorrecaoScoreValue(item.pontuacao)) + '/' + escapeHtml(formatCorrecaoScoreValue(item.pontuacaoTotal)) + ' pts</div>'
                   + '</div>';
               }).join('')
-              : '<div class="admin-avaliacao-correcao-processing-empty">Resumo por disciplina indisponível.</div>';
+              : '<div class="admin-avaliacao-correcao-processing-empty">Resumo por componente curricular indisponível.</div>';
 
             correcaoProcessingSummary.innerHTML = ''
               + (headerParts.length ? '<div class="admin-avaliacao-correcao-processing-student">' + headerParts.join(' • ') + '</div>' : '')
@@ -11837,7 +11837,7 @@
               + '<div class="admin-avaliacao-correcao-processing-total-meta">' + escapeHtml(String(summary.percentual)) + '% de aproveitamento • ' + escapeHtml(formatCorrecaoScoreValue(summary.pontuacao)) + '/' + escapeHtml(formatCorrecaoScoreValue(summary.pontuacaoTotal)) + ' pontos</div>'
               + successActionsHtml
               + '<div class="admin-avaliacao-correcao-processing-discipline-panel">'
-              + '<div class="admin-avaliacao-correcao-processing-discipline-panel-title">Resumo por disciplina</div>'
+              + '<div class="admin-avaliacao-correcao-processing-discipline-panel-title">Resumo por componente curricular</div>'
               + '<div class="admin-avaliacao-correcao-processing-discipline-scroll">'
               + '<div class="admin-avaliacao-correcao-processing-discipline-grid">' + disciplinasHtml + '</div>'
               + '</div>'
@@ -12534,7 +12534,7 @@
           tipo: normalizeQuestaoTipo(safeItem.tipo),
           tipoLabel: getQuestaoTipoLabel(safeItem.tipo),
           peso: sanitizeQuestaoPeso(safeItem.peso, 1),
-          disciplina: getStatsMetaLabel(getQuestaoDisciplinaNome(safeItem), 'Disciplina não informada'),
+          disciplina: getStatsMetaLabel(getQuestaoDisciplinaNome(safeItem), 'Componente curricular não informado'),
           habilidadeCodigo: habilidadeCodigo,
           habilidade: getStatsSkillDisplayLabel(safeItem.habilidade, 'Habilidade não informada'),
           correta: String(safeItem.correta || '').trim().toUpperCase(),
@@ -12935,7 +12935,7 @@
             tipo: normalizeQuestaoTipo(correcao && correcao.questionType),
             tipoLabel: getQuestaoTipoLabel(correcao && correcao.questionType),
             peso: sanitizeQuestaoPeso(correcao && correcao.pontuacao_maxima, 1),
-            disciplina: 'Disciplina não informada',
+            disciplina: 'Componente curricular não informado',
             habilidadeCodigo: 'Habilidade não informada',
             habilidade: 'Habilidade não informada',
             correta: String(correcao && correcao.correctAnswer || '').trim().toUpperCase(),
@@ -13528,7 +13528,7 @@
       }).slice(0, 3);
       if (lowDisciplines.length) {
         insights.push({
-          title: 'Disciplinas que pedem reforço',
+          title: 'Componentes curriculares que pedem reforço',
           text: lowDisciplines.map(function (item) {
             return item.nome + ' (' + formatStatsPercent(item.masteryPercent) + ')';
           }).join(' • '),
@@ -13758,9 +13758,9 @@
         },
         {
           key: 'disciplinas',
-          title: 'Desempenho por disciplina',
+          title: 'Desempenho por componente curricular',
           value: strongestDisciplina ? strongestDisciplina.nome : '-',
-          meta: strongestDisciplina ? ('Maior domínio: ' + formatStatsPercent(strongestDisciplina.masteryPercent)) : 'Sem disciplinas avaliadas',
+          meta: strongestDisciplina ? ('Maior domínio: ' + formatStatsPercent(strongestDisciplina.masteryPercent)) : 'Sem componentes curriculares avaliados',
         },
         {
           key: 'habilidades',
@@ -13798,7 +13798,7 @@
         + '  <div' + buildStatsFilterableAttrs('questao critica q' + (weakestQuestion ? weakestQuestion.questionNumber : ''), ['indicadores']) + '><div class="admin-avaliacao-stats-kpi"><div class="admin-avaliacao-stats-kpi-label">Questão crítica</div><div class="admin-avaliacao-stats-kpi-value">' + escapeHtml(weakestQuestion ? ('Q' + weakestQuestion.questionNumber) : '-') + '</div><div class="admin-avaliacao-stats-kpi-meta">' + escapeHtml(weakestQuestion ? formatStatsPercent(weakestQuestion.masteryPercent) : 'Sem dados') + '</div></div></div>'
         + '</div>'
         + '<div class="admin-avaliacao-stats-grid-two admin-avaliacao-stats-detail-grid">'
-        + '  <div' + buildStatsFilterableAttrs('melhor disciplina ' + (strongestDisciplina ? strongestDisciplina.nome : ''), ['indicadores']) + '><div class="admin-avaliacao-stats-kpi"><div class="admin-avaliacao-stats-kpi-label">Melhor disciplina</div><div class="admin-avaliacao-stats-kpi-value">' + escapeHtml(strongestDisciplina ? strongestDisciplina.nome : '-') + '</div><div class="admin-avaliacao-stats-kpi-meta">' + escapeHtml(strongestDisciplina ? formatStatsPercent(strongestDisciplina.masteryPercent) : 'Sem dados') + '</div></div></div>'
+        + '  <div' + buildStatsFilterableAttrs('melhor componente curricular ' + (strongestDisciplina ? strongestDisciplina.nome : ''), ['indicadores']) + '><div class="admin-avaliacao-stats-kpi"><div class="admin-avaliacao-stats-kpi-label">Melhor componente curricular</div><div class="admin-avaliacao-stats-kpi-value">' + escapeHtml(strongestDisciplina ? strongestDisciplina.nome : '-') + '</div><div class="admin-avaliacao-stats-kpi-meta">' + escapeHtml(strongestDisciplina ? formatStatsPercent(strongestDisciplina.masteryPercent) : 'Sem dados') + '</div></div></div>'
         + '  <div' + buildStatsFilterableAttrs('habilidades monitoradas cobertura pedagogica', ['indicadores']) + '><div class="admin-avaliacao-stats-kpi"><div class="admin-avaliacao-stats-kpi-label">Habilidades monitoradas</div><div class="admin-avaliacao-stats-kpi-value">' + escapeHtml(String(dataset.habilidadeStats.length)) + '</div><div class="admin-avaliacao-stats-kpi-meta">Cobertura pedagógica desta avaliação</div></div></div>'
         + '</div>'
         + '<div class="admin-avaliacao-stats-list admin-avaliacao-stats-detail-grid">' + insights.map(function (item) {
@@ -13836,8 +13836,8 @@
 
         + renderStatsFilterEmpty();
 
-      var disciplinasContent = renderStatsToolbar('Buscar disciplina...', [
-        { value: 'all', label: 'Todas as disciplinas' },
+      var disciplinasContent = renderStatsToolbar('Buscar componente curricular...', [
+        { value: 'all', label: 'Todos os componentes curriculares' },
         { value: 'forte', label: 'Domínio acima de 70%' },
         { value: 'atencao', label: 'Domínio entre 50% e 70%' },
         { value: 'critico', label: 'Domínio abaixo de 50%' },
@@ -13852,7 +13852,7 @@
             return [item.masteryPercent >= 70 ? 'forte' : (item.masteryPercent >= 50 ? 'atencao' : 'critico')];
           }
         })
-        + '<div class="admin-avaliacao-stats-table-wrap mt-3"><table class="admin-avaliacao-stats-table"><thead><tr><th>Disciplina</th><th>Domínio</th></tr></thead><tbody>'
+        + '<div class="admin-avaliacao-stats-table-wrap mt-3"><table class="admin-avaliacao-stats-table"><thead><tr><th>Componente Curricular</th><th>Domínio</th></tr></thead><tbody>'
         + dataset.disciplinaStats.map(function (item) {
           return '<tr' + buildStatsFilterableAttrs(item.nome + ' ' + formatStatsPercent(item.masteryPercent), [item.masteryPercent >= 70 ? 'forte' : (item.masteryPercent >= 50 ? 'atencao' : 'critico')]) + '>'
             + '<td><strong>' + escapeHtml(item.nome) + '</strong></td>'
@@ -13892,7 +13892,7 @@
         + '</tbody></table></div>'
         + renderStatsFilterEmpty();
 
-      var questoesContent = renderStatsToolbar('Buscar questão, disciplina ou habilidade...', [
+      var questoesContent = renderStatsToolbar('Buscar questão, componente curricular ou habilidade...', [
         { value: 'all', label: 'Todas as questões' },
         { value: 'objetiva', label: 'Objetivas' },
         { value: 'discursiva', label: 'Discursivas' },
@@ -13933,9 +13933,9 @@
       statsRoot.innerHTML = '<div class="admin-avaliacao-stats-shell">'
         + renderStatsSideNav(navItems, activeTab)
         + '<div class="admin-avaliacao-stats-detail">'
-        + renderStatsDetailPanel('resumo', 'Resumo pedagógico', 'Leitura consolidada por turma, disciplina, habilidade, questão e estudante.', String(dataset.totalCorrecoes) + ' correções', resumoContent, activeTab === 'resumo')
+        + renderStatsDetailPanel('resumo', 'Resumo pedagógico', 'Leitura consolidada por turma, componente curricular, habilidade, questão e estudante.', String(dataset.totalCorrecoes) + ' correções', resumoContent, activeTab === 'resumo')
         + renderStatsDetailPanel('turmas', turmaTitle, turmaSubtitle, bestTurma ? ('Destaque: ' + bestTurma.nome) : '', turmasContent, activeTab === 'turmas')
-        + renderStatsDetailPanel('disciplinas', 'Desempenho por disciplina', 'Domínio percentual e volume de respostas em branco por disciplina.', strongestDisciplina ? ('Top: ' + strongestDisciplina.nome) : '', disciplinasContent, activeTab === 'disciplinas')
+        + renderStatsDetailPanel('disciplinas', 'Desempenho por componente curricular', 'Domínio percentual e volume de respostas em branco por componente curricular.', strongestDisciplina ? ('Top: ' + strongestDisciplina.nome) : '', disciplinasContent, activeTab === 'disciplinas')
         + renderStatsDetailPanel('habilidades', 'Habilidades e alcance pedagógico', 'Domínio da habilidade e percentual de estudantes que a atingiram.', String(dataset.habilidadeStats.length) + ' habilidades', habilidadesContent, activeTab === 'habilidades')
         + renderStatsDetailPanel('questoes', 'Questão por questão', 'Acertos, brancos, dificuldade e distribuição das alternativas marcadas.', weakestQuestion ? ('Crítica: Q' + weakestQuestion.questionNumber) : '', questoesContent, activeTab === 'questoes')
         + renderStatsDetailPanel('alunos', 'Mapa por estudante', 'Percentual geral e habilidades alcançadas ou pendentes por estudante.', String(dataset.alunoStats.length) + ' estudantes', alunosContent, activeTab === 'alunos')
@@ -13979,7 +13979,7 @@
 
       itens.forEach(function (item, index) {
         var safeItem = sanitizeQuestaoItem(item);
-        var disciplinaNome = getStatsMetaLabel(getQuestaoDisciplinaNome(safeItem), 'Disciplina não informada');
+        var disciplinaNome = getStatsMetaLabel(getQuestaoDisciplinaNome(safeItem), 'Componente curricular não informado');
         var habilidadeCodigo = getStatsMetaLabel(safeItem.habilidade, 'Habilidade não informada');
         var habilidadeNome = getStatsSkillDisplayLabel(safeItem.habilidade, 'Habilidade não informada');
         var questionNumber = index + 1;
@@ -14268,7 +14268,7 @@
         chips.push(renderStatsFilterChip(label, 'Turma'));
       });
       getAvaliacaoReportOptionLabels('reportDisciplinaOptions', reportFiltersState.disciplinaValues).forEach(function (label) {
-        chips.push(renderStatsFilterChip(label, 'Disciplina'));
+        chips.push(renderStatsFilterChip(label, 'Componente Curricular'));
       });
       getAvaliacaoReportOptionLabels('reportHabilidadeOptions', reportFiltersState.habilidadeValues).forEach(function (label) {
         chips.push(renderStatsFilterChip(label, 'Habilidade'));
@@ -14433,7 +14433,7 @@
           stateKey: 'disciplinaValues',
           datasetKey: 'reportDisciplinaOptions',
           title: 'Componentes curriculares',
-          description: 'Restrinja a leitura pedagógica a disciplinas específicas.',
+          description: 'Restrinja a leitura pedagógica a componentes curriculares específicos.',
           defaultLabel: 'Todos os componentes',
           searchPlaceholder: 'Buscar componente...',
           options: reportDynamicOptions.disciplinas,
@@ -15936,7 +15936,7 @@
       }
 
       if (criticalDisciplines.length) {
-        recommendations.push('Priorizar retomadas dirigidas em ' + criticalDisciplines.map(function (item) { return item.nome; }).join(', ') + ', com reensino das habilidades que sustentam essas disciplinas.');
+        recommendations.push('Priorizar retomadas dirigidas em ' + criticalDisciplines.map(function (item) { return item.nome; }).join(', ') + ', com reensino das habilidades que sustentam esses componentes curriculares.');
       }
       if (criticalSkills.length) {
         recommendations.push('Criar uma trilha de recomposição para ' + criticalSkills.map(function (item) { return item.nome; }).join(', ') + ', incluindo atividades curtas de verificação e retomada.');
@@ -15945,7 +15945,7 @@
         recommendations.push('Fechar o ciclo avaliativo das avaliações com pendência operacional: ' + pendingEvaluations.map(function (item) { return item.nome; }).join(', ') + '.');
       }
       if (criticalStudents.length) {
-        recommendations.push('Acompanhar individualmente os estudantes mais críticos com intervenções orientadas por disciplina e revisão das faltas/pendências.');
+        recommendations.push('Acompanhar individualmente os estudantes mais críticos com intervenções orientadas por componente curricular e revisão das faltas/pendências.');
       }
       if (!recommendations.length) {
         recommendations.push('O recorte atual não mostrou criticidades graves; mantenha monitoramento contínuo e aprofunde a análise por turma e habilidade.');
@@ -16039,7 +16039,7 @@
         { key: 'resumo', title: 'Resumo', value: formatStatsPercent(dataset.mediaPercentual) },
         { key: 'avaliacoes', title: 'Avaliações', value: String(dataset.totalAvaliacoes) },
         { key: 'turmas', title: 'Turmas', value: String(dataset.turmaStats.length) },
-        { key: 'disciplinas', title: 'Disciplinas', value: String(dataset.disciplinaStats.length) },
+        { key: 'disciplinas', title: 'Componentes Curriculares', value: String(dataset.disciplinaStats.length) },
         { key: 'habilidades', title: 'Habilidades', value: String(dataset.habilidadeStats.length) },
         { key: 'questoes', title: 'Questões', value: String(dataset.questionStats.length) },
         { key: 'alunos', title: 'Estudantes', value: String(dataset.totalEstudantes) },
@@ -16594,7 +16594,7 @@
     if (reportOpenButton) {
       reportOpenButton.addEventListener('click', function () {
         resetAvaliacaoReportFilters();
-        clearAvaliacaoReportOutput('Relatório pedagógico consolidado', 'Gere o relatório para abrir comparativos de avaliações, turmas, disciplinas, habilidades, questões, estudantes e pontos críticos.');
+        clearAvaliacaoReportOutput('Relatório pedagógico consolidado', 'Gere o relatório para abrir comparativos de avaliações, turmas, componentes curriculares, habilidades, questões, estudantes e pontos críticos.');
         setAvaliacaoReportStage('filters');
         setAvaliacaoReportStatus('Selecione os filtros e gere o relatório.', '');
         if (reportModalInstance) {
@@ -20034,7 +20034,7 @@
     function buildCorrecaoAdaptedCorrections(adaptedGrade) {
       var adaptedGradesMap = adaptedGrade && typeof adaptedGrade === 'object' ? adaptedGrade : null;
       if (!adaptedGradesMap) {
-        throw new Error('Notas adaptadas por disciplina não informadas.');
+        throw new Error('Notas adaptadas por componente curricular não informadas.');
       }
 
       var corrections = [];
@@ -20052,7 +20052,7 @@
         var disciplineKey = disciplinaId !== '' ? disciplinaId : ('disciplina:' + disciplinaNome);
         var adaptedEntry = adaptedGradesMap[disciplineKey] || null;
         if (!adaptedEntry) {
-          throw new Error('Informe a nota adaptada da disciplina ' + disciplinaNome + '.');
+          throw new Error('Informe a nota adaptada do componente curricular ' + disciplinaNome + '.');
         }
 
         var safeGrade = clampFloat(adaptedEntry.adaptedGrade, 0, 10, 0);

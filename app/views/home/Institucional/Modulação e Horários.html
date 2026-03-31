@@ -798,7 +798,7 @@
 		<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
 			<div>
 				<h1 class="h4 fw-bold mb-1">Modulação e Horários</h1>
-				<div class="text-secondary small">Vincule professores e disciplinas, e configure a grade semanal comum
+				<div class="text-secondary small">Vincule professores e componentes curriculares, e configure a grade semanal comum
 					de aulas.</div>
 			</div>
 			<div class="d-flex gap-2 align-items-center">
@@ -823,7 +823,7 @@
 				<li class="nav-item" role="presentation">
 					<button class="nav-link" id="tabDisciplinasBtn" data-bs-toggle="tab"
 						data-bs-target="#tabDisciplinas" type="button" role="tab" aria-controls="tabDisciplinas"
-						aria-selected="false">Disciplinas</button>
+						aria-selected="false">Componentes Curriculares</button>
 				</li>
 				<li class="nav-item" role="presentation">
 					<button class="nav-link" id="tabVinculosBtn" data-bs-toggle="tab" data-bs-target="#tabVinculos"
@@ -852,7 +852,7 @@
 						<div class="modulacao-card-header">
 							<div>
 								<h2>Áreas</h2>
-								<p>Cadastre as áreas curriculares usadas nas disciplinas, como Humanas, Linguagens,
+								<p>Cadastre as áreas curriculares usadas nos componentes curriculares, como Humanas, Linguagens,
 									Libras e Projeto de Vida.</p>
 							</div>
 							<button id="btnNovaArea" class="btn btn-danger btn-sm" type="button"><i
@@ -886,15 +886,15 @@
 					<section class="modulacao-card h-100">
 						<div class="modulacao-card-header">
 							<div>
-								<h2>Disciplinas</h2>
-								<p>Catálogo das disciplinas disponíveis para vínculo.</p>
+								<h2>Componentes Curriculares</h2>
+								<p>Catálogo dos componentes curriculares disponíveis para vínculo.</p>
 							</div>
 							<button id="btnNovaDisciplina" class="btn btn-danger btn-sm" type="button"><i
-									class="las la-plus me-1"></i>Nova disciplina</button>
+									class="las la-plus me-1"></i>Novo componente curricular</button>
 						</div>
 						<div class="modulacao-toolbar">
 							<input type="search" id="buscaDisciplinas" class="form-control modulacao-search"
-								placeholder="Buscar disciplina por nome ou status" autocomplete="off">
+								placeholder="Buscar componente curricular por nome ou status" autocomplete="off">
 							<div class="modulacao-bulk-actions">
 								<button id="btnExcluirDisciplinasSelecionadas" type="button"
 									class="btn btn-outline-danger btn-sm" disabled>Excluir selecionadas</button>
@@ -906,8 +906,8 @@
 									<tr>
 										<th class="modulacao-select-col"><input type="checkbox"
 												id="selecionarTodasDisciplinas"
-												aria-label="Selecionar todas as disciplinas visíveis"></th>
-										<th>Disciplina</th>
+												aria-label="Selecionar todos os componentes curriculares visíveis"></th>
+										<th>Componente Curricular</th>
 										<th>Área</th>
 										<th>Status</th>
 										<th class="text-end">Ações</th>
@@ -915,7 +915,7 @@
 								</thead>
 								<tbody id="disciplinasBody">
 									<tr>
-										<td colspan="5" class="muted-empty">Carregando disciplinas...</td>
+										<td colspan="5" class="muted-empty">Carregando componentes curriculares...</td>
 									</tr>
 								</tbody>
 							</table>
@@ -929,15 +929,15 @@
 						<div class="modulacao-card-header">
 							<div>
 								<h2>Vínculos</h2>
-								<p>Cada vínculo liga um professor a uma turma e a uma disciplina. Um mesmo professor
-									pode ter vários vínculos conforme as turmas e disciplinas atendidas.</p>
+								<p>Cada vínculo liga um professor a uma turma e a um componente curricular. Um mesmo professor
+									pode ter vários vínculos conforme as turmas e os componentes curriculares atendidos.</p>
 							</div>
 							<button id="btnNovoVinculo" class="btn btn-danger btn-sm" type="button"><i
 									class="las la-plus me-1"></i>Novo vínculo</button>
 						</div>
 						<div class="modulacao-toolbar">
 							<input type="search" id="buscaVinculos" class="form-control modulacao-search"
-								placeholder="Buscar vínculo por professor, turma ou disciplina" autocomplete="off">
+								placeholder="Buscar vínculo por professor, turma ou componente curricular" autocomplete="off">
 							<div class="modulacao-bulk-actions">
 								<button id="btnExcluirVinculosSelecionados" type="button"
 									class="btn btn-outline-danger btn-sm" disabled>Excluir selecionados</button>
@@ -952,7 +952,7 @@
 												aria-label="Selecionar todos os vínculos visíveis"></th>
 										<th>Professor</th>
 										<th>Turma</th>
-										<th>Disciplina</th>
+										<th>Componente Curricular</th>
 										<th class="text-end">Ações</th>
 									</tr>
 								</thead>
@@ -1091,7 +1091,7 @@
 								<div class="modulacao-horario-prompt-title">
 									<div class="modulacao-horario-prompt-kicker">Instruções para a IA</div>
 									<strong>Descreva exatamente como o horário deve ser montado</strong>
-									<span>Use este campo para priorizar turmas, distribuir disciplinas, evitar janelas e
+									<span>Use este campo para priorizar turmas, distribuir componentes curriculares, evitar janelas e
 										orientar a montagem semanal.</span>
 								</div>
 								<span class="modulacao-badge-muted">Campo principal</span>
@@ -1235,7 +1235,7 @@
 	<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
 		<div class="modal-content site-modal-content">
 			<div class="modal-header">
-				<h2 class="modal-title fs-5">Disciplina</h2>
+				<h2 class="modal-title fs-5">Componente Curricular</h2>
 				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
 			</div>
 			<form id="formDisciplina" novalidate>
@@ -1313,8 +1313,8 @@
 			<form id="formVinculo" novalidate>
 				<div class="modal-body">
 					<input type="hidden" id="vinculoId" value="0">
-					<div class="modulacao-note">Na criação, você pode selecionar várias turmas e disciplinas para o
-						mesmo professor. Na edição, mantenha apenas uma turma e uma disciplina selecionadas.</div>
+					<div class="modulacao-note">Na criação, você pode selecionar várias turmas e componentes curriculares para o
+						mesmo professor. Na edição, mantenha apenas uma turma e um componente curricular selecionado.</div>
 					<div class="row g-3">
 						<div class="col-md-6">
 							<label class="form-label" for="vinculoProfessor">Professor</label>
@@ -1341,21 +1341,21 @@
 							</div>
 						</div>
 						<div class="col-md-12">
-							<label class="form-label">Disciplinas</label>
+							<label class="form-label">Componentes Curriculares</label>
 							<div class="modulacao-selector-card">
 								<div id="vinculoDisciplinasSummary" class="modulacao-selector-summary">
-									<div class="small text-secondary">Nenhuma disciplina selecionada.</div>
+									<div class="small text-secondary">Nenhum componente curricular selecionado.</div>
 								</div>
 								<div id="vinculoDisciplinasModeNote" class="modulacao-selector-mode-note">Na criação,
-									você pode selecionar várias disciplinas.</div>
+									você pode selecionar vários componentes curriculares.</div>
 								<div class="d-flex flex-wrap gap-2 mt-3">
 									<button type="button" class="btn btn-outline-primary btn-sm"
 										id="btnAbrirDisciplinasVinculoModal">
-										<i class="las la-book me-1"></i>Selecionar disciplinas
+										<i class="las la-book me-1"></i>Selecionar componentes curriculares
 									</button>
 									<button type="button" class="btn btn-outline-secondary btn-sm"
 										id="btnLimparDisciplinasVinculo">
-										<i class="las la-eraser me-1"></i>Limpar disciplinas
+										<i class="las la-eraser me-1"></i>Limpar componentes curriculares
 									</button>
 								</div>
 							</div>
@@ -1377,17 +1377,17 @@
 		<div class="modal-content site-modal-content">
 			<div class="modal-header">
 				<div>
-					<div class="small text-secondary">Seleção de disciplinas</div>
-					<h2 class="modal-title fs-6 mb-0">Escolha as disciplinas do professor</h2>
+					<div class="small text-secondary">Seleção de componentes curriculares</div>
+					<h2 class="modal-title fs-6 mb-0">Escolha os componentes curriculares do professor</h2>
 				</div>
 				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
 			</div>
 			<div class="modal-body">
-				<p class="small text-secondary mb-3">Na criação, marque várias disciplinas se necessário. Na edição,
+				<p class="small text-secondary mb-3">Na criação, marque vários componentes curriculares se necessário. Na edição,
 					mantenha apenas uma marcada.</p>
 				<div class="mb-3">
 					<input type="search" class="form-control form-control-sm" id="vinculoDisciplinasBusca"
-						placeholder="Buscar disciplina por nome" autocomplete="off">
+						placeholder="Buscar componente curricular por nome" autocomplete="off">
 				</div>
 				<div class="border rounded p-2 modulacao-selector-list" id="vinculoDisciplinasLista"></div>
 			</div>
@@ -1933,7 +1933,7 @@
 				}
 				var disciplinasFiltradas = getFilteredDisciplinas();
 				if (!disciplinasFiltradas.length) {
-					disciplinasBody.innerHTML = '<tr><td colspan="5" class="muted-empty">Nenhuma disciplina cadastrada.</td></tr>';
+					disciplinasBody.innerHTML = '<tr><td colspan="5" class="muted-empty">Nenhum componente curricular cadastrado.</td></tr>';
 					syncBulkControls();
 					return;
 				}
@@ -1941,7 +1941,7 @@
 					var itemId = String(item.id || '');
 					var checked = disciplinasSelecionadas.indexOf(itemId) >= 0 ? ' checked' : '';
 					return '<tr>'
-						+ '<td class="modulacao-select-col"><input type="checkbox" class="form-check-input js-select-disciplina" data-id="' + escapeHtml(itemId) + '" aria-label="Selecionar disciplina"' + checked + '></td>'
+						+ '<td class="modulacao-select-col"><input type="checkbox" class="form-check-input js-select-disciplina" data-id="' + escapeHtml(itemId) + '" aria-label="Selecionar componente curricular"' + checked + '></td>'
 						+ '<td><strong>' + escapeHtml(item.nome || '') + '</strong></td>'
 						+ '<td>' + escapeHtml(item.area_nome || '-') + '</td>'
 						+ '<td><span class="modulacao-badge-muted">' + escapeHtml(item.status || 'ativa') + '</span></td>'
@@ -3246,7 +3246,7 @@
 										var professor = getHorarioProfessorById(entry.professor_id);
 										var disciplina = getHorarioDisciplinaById(entry.disciplina_id);
 										return '<div class="modulacao-horario-slot-card">'
-											+ '<strong>' + escapeHtml(String(disciplina && disciplina.nome ? disciplina.nome : 'Disciplina #' + entry.disciplina_id)) + '</strong>'
+											+ '<strong>' + escapeHtml(String(disciplina && disciplina.nome ? disciplina.nome : 'Componente Curricular #' + entry.disciplina_id)) + '</strong>'
 											+ '<span>' + escapeHtml(String(professor && professor.nome ? professor.nome : 'Professor #' + entry.professor_id)) + '</span>'
 											+ (entry.observacoes ? '<span>' + escapeHtml(String(entry.observacoes || '')) + '</span>' : '')
 											+ '</div>';
@@ -3507,21 +3507,21 @@
 
 				if (vinculoDisciplinasModeNote) {
 					if (isEdicaoVinculo()) {
-						vinculoDisciplinasModeNote.textContent = 'Modo de edição: mantenha apenas uma disciplina selecionada.';
+						vinculoDisciplinasModeNote.textContent = 'Modo de edição: mantenha apenas um componente curricular selecionado.';
 						vinculoDisciplinasModeNote.classList.add('is-editing');
 					} else {
-						vinculoDisciplinasModeNote.textContent = 'Na criação, você pode selecionar várias disciplinas.';
+						vinculoDisciplinasModeNote.textContent = 'Na criação, você pode selecionar vários componentes curriculares.';
 						vinculoDisciplinasModeNote.classList.remove('is-editing');
 					}
 				}
 
 				if (!vinculoDisciplinaIdsSelecionadas.length) {
-					vinculoDisciplinasSummary.innerHTML = '<div class="small text-secondary">Nenhuma disciplina selecionada.</div>';
+					vinculoDisciplinasSummary.innerHTML = '<div class="small text-secondary">Nenhum componente curricular selecionado.</div>';
 					return;
 				}
 
 				vinculoDisciplinasSummary.innerHTML = vinculoDisciplinaIdsSelecionadas.map(function (id) {
-					return '<span class="modulacao-selector-pill">' + escapeHtml(getDisciplinaNomeById(id) || ('Disciplina ' + id)) + '</span>';
+					return '<span class="modulacao-selector-pill">' + escapeHtml(getDisciplinaNomeById(id) || ('Componente Curricular ' + id)) + '</span>';
 				}).join('');
 			}
 
@@ -3532,7 +3532,7 @@
 				}
 
 				if (!disciplinas.length) {
-					vinculoDisciplinasLista.innerHTML = '<div class="small text-secondary">Nenhuma disciplina cadastrada.</div>';
+					vinculoDisciplinasLista.innerHTML = '<div class="small text-secondary">Nenhum componente curricular cadastrado.</div>';
 					return;
 				}
 
@@ -3546,7 +3546,7 @@
 				});
 
 				if (!disciplinasFiltradas.length) {
-					vinculoDisciplinasLista.innerHTML = '<div class="small text-secondary">Nenhuma disciplina encontrada para a busca informada.</div>';
+					vinculoDisciplinasLista.innerHTML = '<div class="small text-secondary">Nenhum componente curricular encontrado para a busca informada.</div>';
 					return;
 				}
 
@@ -4196,10 +4196,10 @@
 						if (deleteId <= 0) {
 							return;
 						}
-						askConfirmation('Excluir disciplina', 'Deseja excluir esta disciplina?', function () {
+						askConfirmation('Excluir componente curricular', 'Deseja excluir este componente curricular?', function () {
 							var body = new FormData();
 							body.append('id', String(deleteId));
-							submitForm('/institucional/modulacao/disciplinas/excluir', body, 'Disciplina excluída com sucesso.');
+							submitForm('/institucional/modulacao/disciplinas/excluir', body, 'Componente curricular excluído com sucesso.');
 						});
 					}
 				});
@@ -4276,12 +4276,12 @@
 					if (!disciplinasSelecionadas.length) {
 						return;
 					}
-					askConfirmation('Excluir disciplinas selecionadas', 'Deseja excluir as disciplinas selecionadas?', function () {
+					askConfirmation('Excluir componentes curriculares selecionados', 'Deseja excluir os componentes curriculares selecionados?', function () {
 						var body = new FormData();
 						disciplinasSelecionadas.forEach(function (id) {
 							body.append('ids[]', id);
 						});
-						submitForm('/institucional/modulacao/disciplinas/excluir-lote', body, 'Disciplinas excluídas com sucesso.', function () {
+						submitForm('/institucional/modulacao/disciplinas/excluir-lote', body, 'Componentes curriculares excluídos com sucesso.', function () {
 							disciplinasSelecionadas = [];
 							syncBulkControls();
 						});
@@ -4330,7 +4330,7 @@
 					body.append('area_id', disciplinaAreaInput ? String(disciplinaAreaInput.value || '') : '');
 					body.append('nome', disciplinaNomeInput.value || '');
 					body.append('status', disciplinaStatusInput.value || 'ativa');
-					submitForm('/institucional/modulacao/disciplinas/salvar', body, 'Disciplina salva com sucesso.', function () {
+					submitForm('/institucional/modulacao/disciplinas/salvar', body, 'Componente curricular salvo com sucesso.', function () {
 						if (modalDisciplina) {
 							modalDisciplina.hide();
 						}
@@ -4348,11 +4348,11 @@
 						return;
 					}
 					if (!disciplinaIds.length) {
-						showStatus('Selecione pelo menos uma disciplina para o vínculo.', true);
+						showStatus('Selecione pelo menos um componente curricular para o vínculo.', true);
 						return;
 					}
 					if (isEdicaoVinculo() && (turmaIds.length > 1 || disciplinaIds.length > 1)) {
-						showStatus('Na edição, selecione apenas uma turma e uma disciplina.', true);
+						showStatus('Na edição, selecione apenas uma turma e um componente curricular.', true);
 						return;
 					}
 					var body = new FormData();

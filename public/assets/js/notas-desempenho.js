@@ -706,7 +706,7 @@
       });
       disciplinaSelect.innerHTML = html;
 
-      updateSummary(disciplinaSelect, disciplinasSummaryEl, 'Todas as disciplinas', 2);
+      updateSummary(disciplinaSelect, disciplinasSummaryEl, 'Todos os componentes curriculares', 2);
     }
 
     function renderBoletimOverview(data, selectedDisciplinas) {
@@ -1104,7 +1104,7 @@
               + '</tr>';
           }).join('')
           + '</tbody></table></div>'
-        : '<div class="small text-secondary">Nenhuma avaliação corrigida encontrada para este bimestre nesta disciplina.</div>';
+        : '<div class="small text-secondary">Nenhuma avaliação corrigida encontrada para este bimestre neste componente curricular.</div>';
 
       var lancamentos = (state.data && Array.isArray(state.data.entries) ? state.data.entries : []).filter(function (entry) {
         var sameAluno = Number(entry && entry.aluno_id ? entry.aluno_id : 0) === Number(aluno.aluno_id || 0);
@@ -1157,13 +1157,13 @@
               + '</tr>';
           }).join('')
           + '</tbody></table></div>'
-        : '<div class="small text-secondary">Sem lançamentos manuais para este estudante/disciplina no recorte atual.</div>';
+        : '<div class="small text-secondary">Sem lançamentos manuais para este estudante/componente curricular no recorte atual.</div>';
 
       boletimOrigemModalBody.innerHTML = ''
         + '<div class="mb-3">'
         + '  <div><strong>Estudante:</strong> ' + esc(aluno.aluno_nome || '-') + '</div>'
         + '  <div><strong>Turma:</strong> ' + esc(aluno.turma_nome || '-') + '</div>'
-        + '  <div><strong>Disciplina:</strong> ' + esc(disciplina || '-') + '</div>'
+        + '  <div><strong>Componente Curricular:</strong> ' + esc(disciplina || '-') + '</div>'
         + '  <div class="small text-secondary mt-1">Fórmula aplicada: ' + esc(formula) + '</div>'
         + seletorBimestreHtml
         + '<div class="small text-secondary mt-1">As notas manuais são atualizadas pelo botão Novo lançamento.</div>'
@@ -1371,8 +1371,8 @@
       var hint = correcaoDisciplinaBody.querySelector('.js-notas-correcao-adapted-hint');
       if (hint) {
         hint.textContent = hasAdaptedGrade
-          ? 'As respostas desta disciplina ficam preservadas, mas a pontuação será recalculada pela nota adaptada.'
-          : 'Se preencher a nota adaptada, as questões desta disciplina ficam bloqueadas e a pontuação passa a ser calculada por ela.';
+          ? 'As respostas deste componente curricular ficam preservadas, mas a pontuação será recalculada pela nota adaptada.'
+          : 'Se preencher a nota adaptada, as questões deste componente curricular ficam bloqueadas e a pontuação passa a ser calculada por ela.';
       }
 
       correcaoDisciplinaBody.querySelectorAll('.js-notas-correcao-input').forEach(function (input) {
@@ -1401,16 +1401,16 @@
       var data = payload && typeof payload === 'object' ? payload : {};
       var questoes = Array.isArray(data.questoes) ? data.questoes : [];
       if (!questoes.length) {
-        correcaoDisciplinaBody.innerHTML = '<div class="text-center text-secondary py-3">Nenhuma questão da disciplina encontrada.</div>';
+        correcaoDisciplinaBody.innerHTML = '<div class="text-center text-secondary py-3">Nenhuma questão do componente curricular encontrada.</div>';
         return;
       }
 
       var adaptedValue = data && data.adapted_grade != null ? normalizeCorrecaoDisciplinaAdaptedGradeInputValue(data.adapted_grade) : '';
       var html = ''
         + '<div class="border rounded bg-light p-3 mb-3">'
-        + '<label class="form-label mb-1" for="notasDesempenhoCorrecaoDisciplinaAdaptedGrade">Nota adaptada da disciplina</label>'
+        + '<label class="form-label mb-1" for="notasDesempenhoCorrecaoDisciplinaAdaptedGrade">Nota adaptada do componente curricular</label>'
         + '<input type="number" step="0.01" min="0" max="10" class="form-control form-control-sm js-notas-correcao-adapted-grade" id="notasDesempenhoCorrecaoDisciplinaAdaptedGrade" value="' + esc(adaptedValue) + '">'
-        + '<div class="small text-secondary mt-2 js-notas-correcao-adapted-hint">Se preencher a nota adaptada, as questões desta disciplina ficam bloqueadas e a pontuação passa a ser calculada por ela.</div>'
+        + '<div class="small text-secondary mt-2 js-notas-correcao-adapted-hint">Se preencher a nota adaptada, as questões deste componente curricular ficam bloqueadas e a pontuação passa a ser calculada por ela.</div>'
         + '</div>'
         + '<div class="d-grid gap-2">';
       questoes.forEach(function (q) {
@@ -1441,7 +1441,7 @@
         html += '<div class="admin-avaliacao-correcao-edicao-item-main">';
         html += '<div class="admin-avaliacao-correcao-edicao-item-top">';
         html += '<span class="admin-avaliacao-correcao-edicao-item-type">' + esc(tipoLabel) + '</span>';
-        html += '<span class="admin-avaliacao-correcao-edicao-item-meta">Disciplina: ' + esc(String(data.disciplina || 'Não informada')) + ' | Habilidade: ' + esc(habilidade || 'Não informada') + ' | Peso: ' + esc(peso.toFixed(2).replace('.', ',')) + '</span>';
+        html += '<span class="admin-avaliacao-correcao-edicao-item-meta">Componente Curricular: ' + esc(String(data.disciplina || 'Não informada')) + ' | Habilidade: ' + esc(habilidade || 'Não informada') + ' | Peso: ' + esc(peso.toFixed(2).replace('.', ',')) + '</span>';
         html += '</div>';
 
         if (enunciado) {
@@ -1522,7 +1522,7 @@
         correcaoDisciplinaModalLabel.textContent = 'Correção • ' + disciplina;
       }
       if (correcaoDisciplinaResumo) {
-        correcaoDisciplinaResumo.textContent = 'Carregando questões da disciplina para edição...';
+        correcaoDisciplinaResumo.textContent = 'Carregando questões do componente curricular para edição...';
       }
       correcaoDisciplinaBody.innerHTML = '<div class="text-center text-secondary py-3">Carregando...</div>';
       correcaoDisciplinaModal.show();
@@ -1648,7 +1648,7 @@
         // Group questions by discipline
         var byDisc = {};
         avaliacaoQuestoes.forEach(function (q) {
-          var d = q.disciplina || 'Sem disciplina';
+          var d = q.disciplina || 'Sem componente curricular';
           if (!byDisc[d]) byDisc[d] = [];
           byDisc[d].push(q);
         });
@@ -1675,7 +1675,7 @@
       });
 
       if (html === '') {
-        diagContent.innerHTML = '<div class="text-center text-secondary py-4">Nenhuma questão encontrada para as disciplinas selecionadas.</div>';
+        diagContent.innerHTML = '<div class="text-center text-secondary py-4">Nenhuma questão encontrada para os componentes curriculares selecionados.</div>';
         return;
       }
 
@@ -1811,7 +1811,7 @@
         return;
       }
 
-      var header = ['Estudante', 'Turma', 'Disciplina', 'Ciclo_1', 'Ciclo_2'];
+      var header = ['Estudante', 'Turma', 'Componente Curricular', 'Ciclo_1', 'Ciclo_2'];
       var lines = [header.join(';')];
       rows.forEach(function (row) {
         lines.push([
@@ -1864,7 +1864,7 @@
       updateSummary(turmaSelect, turmasSummaryEl, 'Todas as turmas', 2);
       updateSummary(bimestreSelect, bimestresSummaryEl, 'Todos os bimestres', 2);
       updateSummary(anoSelect, anosSummaryEl, 'Ano atual', 2);
-      updateSummary(disciplinaSelect, disciplinasSummaryEl, 'Todas as disciplinas', 2);
+      updateSummary(disciplinaSelect, disciplinasSummaryEl, 'Todos os componentes curriculares', 2);
 
       // Populate turma filter from response if available
       if (data && Array.isArray(data.turmas) && data.turmas.length && turmaSelect) {
@@ -1947,7 +1947,7 @@
         renderBoletim(state.data);
         renderDiagnostico(state.data);
         renderSgePreview(state.data);
-        updateSummary(disciplinaSelect, disciplinasSummaryEl, 'Todas as disciplinas', 2);
+        updateSummary(disciplinaSelect, disciplinasSummaryEl, 'Todos os componentes curriculares', 2);
       });
     }
 
@@ -3021,8 +3021,8 @@
       var disciplinaAtual = formDisciplinaInput ? String(formDisciplinaInput.value || '').trim() : '';
       if (notasHbSelectorDisciplinaInfo) {
         notasHbSelectorDisciplinaInfo.textContent = disciplinaAtual
-          ? 'Filtrando pela disciplina: ' + disciplinaAtual
-          : 'Nenhuma disciplina selecionada — mostrando todas as habilidades';
+          ? 'Filtrando pelo componente curricular: ' + disciplinaAtual
+          : 'Nenhum componente curricular selecionado — mostrando todas as habilidades';
       }
 
       if (notasHbSelectorSearch) notasHbSelectorSearch.value = '';
@@ -3286,11 +3286,11 @@
 
           var disciplina = String(formData.get('disciplina') || '').trim();
           if (!disciplina) {
-            throw new Error('Selecione a disciplina do lançamento.');
+            throw new Error('Selecione o componente curricular do lançamento.');
           }
 
           if (!isDisciplinaAllowedForTurma(String(turmaId), disciplina)) {
-            throw new Error('Você não possui vínculo direto desta disciplina com a turma selecionada.');
+            throw new Error('Você não possui vínculo direto deste componente curricular com a turma selecionada.');
           }
 
           var categoria = String(formData.get('categoria') || '').trim();

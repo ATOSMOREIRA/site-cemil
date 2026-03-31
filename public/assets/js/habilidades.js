@@ -136,7 +136,7 @@
   }
 
   function populateDisciplinaSelects(disciplinas) {
-    var opts = '<option value="">Disciplina</option>';
+    var opts = '<option value="">Componente Curricular</option>';
     var formOpts = '<option value="">Selecione</option>';
 
     disciplinas.forEach(function (d) {
@@ -310,7 +310,7 @@
       + field('Código', h.codigo)
       + field('Documento', h.documento)
       + field('Tipo', h.tipo)
-      + field('Disciplina', discNome)
+      + field('Componente Curricular', discNome)
       + field('Ano escolar', h.ano_escolar)
       + field('Etapa de ensino', h.etapa_ensino)
       + '</div>'

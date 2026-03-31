@@ -311,8 +311,8 @@ class RefeitorioModel
         $where = implode(' AND ', $wheres);
 
         $stmt = $pdo->prepare(
-            "SELECT r.id, r.data, r.horario,
-                    a.nome AS aluno_nome, a.matricula, a.turma,
+            "SELECT r.id, r.data, r.horario, r.tipo_refeicao_id,
+                a.nome AS aluno_nome, a.matricula, a.turma, a.turma_id,
                     t.nome AS refeicao_nome, t.cor AS refeicao_cor,
                     r.obs
                FROM refeitorio_registros r

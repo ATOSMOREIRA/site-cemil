@@ -439,9 +439,9 @@
       return 'media geral';
     }
     if (selectedDisciplinas.length === 1) {
-      return 'disciplina ' + selectedDisciplinas[0];
+      return 'componente curricular ' + selectedDisciplinas[0];
     }
-    return 'media das disciplinas selecionadas';
+    return 'media dos componentes curriculares selecionados';
   }
 
   function countAvailableDisciplinas(disciplinasMap) {
@@ -823,7 +823,7 @@
     updateSummary(turmaSelect, turmasSummaryEl, 'Todas as turmas', 2);
     updateSummary(bimestreSelect, bimestresSummaryEl, 'Todos os bimestres', 2);
     updateSummary(anoSelect, anosSummaryEl, 'Ano atual', 2);
-    updateSummary(disciplinaSelect, disciplinasSummaryEl, 'Todas as disciplinas', 2);
+    updateSummary(disciplinaSelect, disciplinasSummaryEl, 'Todos os componentes curriculares', 2);
 
     var filteredStudents = filterStudentRows(buildStudentRows(state.rawData || {}));
     var turmaRows = buildTurmaRanking(filteredStudents);
@@ -972,7 +972,7 @@
     clearBtn: document.getElementById('notasFilterDisciplinasClearBtn'),
     applyBtn: document.getElementById('notasFilterDisciplinasApplyBtn'),
     summaryEl: disciplinasSummaryEl,
-    defaultLabel: 'Todas as disciplinas',
+    defaultLabel: 'Todos os componentes curriculares',
     prefix: 'ranking_disciplinas',
     reloadMode: 'local'
   });
@@ -1003,7 +1003,7 @@
   updateSummary(turmaSelect, turmasSummaryEl, 'Todas as turmas', 2);
   updateSummary(bimestreSelect, bimestresSummaryEl, 'Todos os bimestres', 2);
   updateSummary(anoSelect, anosSummaryEl, 'Ano atual', 2);
-  updateSummary(disciplinaSelect, disciplinasSummaryEl, 'Todas as disciplinas', 2);
+  updateSummary(disciplinaSelect, disciplinasSummaryEl, 'Todos os componentes curriculares', 2);
 
   loadDashboard();
 }());
