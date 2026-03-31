@@ -93,6 +93,108 @@ class AdminController extends HomeController
         return $currentUserId > 0 && in_array($currentUserId, $aplicadoresIds, true);
     }
 
+    private function buildAvaliacoesCorrecaoStatusMap(array $avaliacoes): array
+    {
+        $avaliacoesById = [];
+        foreach ($avaliacoes as $avaliacao) {
+            if (!is_array($avaliacao)) {
+                continue;
+            }
+
+            $avaliacaoId = (int) ($avaliacao['id'] ?? 0);
+            if ($avaliacaoId <= 0 || !$this->canAccessAvaliacaoCorrecao($avaliacao)) {
+                continue;
+            }
+
+            $avaliacoesById[$avaliacaoId] = $avaliacao;
+        }
+
+        if ($avaliacoesById === []) {
+            return [];
+        }
+
+        $alunoModel = new AlunoModel();
+        try {
+            $alunos = $alunoModel->getSimpleOptions();
+        } catch (Throwable) {
+            $alunos = [];
+        }
+
+        $activeAlunoIds = [];
+        $activeAlunosByTurma = [];
+        foreach ($alunos as $alunoOption) {
+            if (!is_array($alunoOption)) {
+                continue;
+            }
+
+            $alunoId = (int) ($alunoOption['id'] ?? 0);
+            $turmaId = (int) ($alunoOption['turma_id'] ?? 0);
+            if ($alunoId <= 0) {
+                continue;
+            }
+
+            $activeAlunoIds[$alunoId] = true;
+            if ($turmaId > 0) {
+                if (!isset($activeAlunosByTurma[$turmaId])) {
+                    $activeAlunosByTurma[$turmaId] = [];
+                }
+
+                $activeAlunosByTurma[$turmaId][$alunoId] = true;
+            }
+        }
+
+        $correcaoModel = new AvaliacaoCorrecaoModel();
+        $correcaoCountMap = $correcaoModel->countByAvaliacaoIds(array_keys($avaliacoesById));
+        $statusMap = [];
+
+        foreach ($avaliacoesById as $avaliacaoId => $avaliacao) {
+            $alunosEsperados = [];
+
+            foreach ((array) ($avaliacao['alunos_relacionados_ids'] ?? []) as $alunoRelacionadaId) {
+                $alunoRelacionadaId = (int) $alunoRelacionadaId;
+                if ($alunoRelacionadaId > 0 && isset($activeAlunoIds[$alunoRelacionadaId])) {
+                    $alunosEsperados[$alunoRelacionadaId] = true;
+                }
+            }
+
+            if ($alunosEsperados === []) {
+                foreach ((array) ($avaliacao['turmas_relacionadas_ids'] ?? []) as $turmaRelacionadaId) {
+                    $turmaRelacionadaId = (int) $turmaRelacionadaId;
+                    if ($turmaRelacionadaId <= 0 || !isset($activeAlunosByTurma[$turmaRelacionadaId])) {
+                        continue;
+                    }
+
+                    foreach ($activeAlunosByTurma[$turmaRelacionadaId] as $alunoId => $_unused) {
+                        $alunosEsperados[(int) $alunoId] = true;
+                    }
+                }
+            }
+
+            $totalEsperado = count($alunosEsperados);
+            $totalCorrigido = (int) ($correcaoCountMap[$avaliacaoId] ?? 0);
+            $percentualCorrecao = 0;
+            $statusAuxiliar = 'Sem estudantes vinculados';
+
+            if ($totalEsperado > 0) {
+                $percentualCorrecao = (int) round(min(100, ($totalCorrigido / $totalEsperado) * 100));
+                $statusAuxiliar = $totalCorrigido . ' de ' . $totalEsperado . ' corrigidas';
+            } elseif ($totalCorrigido > 0) {
+                $percentualCorrecao = 100;
+                $statusAuxiliar = $totalCorrigido . ' correções salvas';
+            }
+
+            $statusMap[$avaliacaoId] = [
+                'id' => $avaliacaoId,
+                'percentual' => $percentualCorrecao,
+                'label' => $statusAuxiliar,
+                'total_corrigido' => $totalCorrigido,
+                'total_esperado' => $totalEsperado,
+            ];
+        }
+
+        return $statusMap;
+    }
+
     private function getAvaliacaoAplicadoresOptions(): array
     {
         try {
@@ -2270,6 +2372,47 @@ class AdminController extends HomeController
                 'alunos_relacionados_explicit' => trim((string) ($avaliacao['alunos_relacionados'] ?? '')) !== '' ? 1 : 0,
                 'updated_at' => trim((string) ($avaliacao['updated_at'] ?? '')),
             ],
+        ]);
+    }
+
+    public function painelAdministrativoAvaliacoesCorrecoesStatus(): void
+    {
+        if (!$this->canAccessAvaliacoesManagement()) {
+            $this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+        }
+
+        $idsParam = trim((string) ($_GET['ids'] ?? ''));
+        if ($idsParam === '') {
+            $this->respondJson(['ok' => false, 'message' => 'Nenhuma avaliação informada.'], 422);
+        }
+
+        $avaliacaoIds = array_values(array_unique(array_filter(array_map(static function (string $value): int {
+            return (int) trim($value);
+        }, explode(',', $idsParam)), static function (int $value): bool {
+            return $value > 0;
+        })));
+
+        if ($avaliacaoIds === []) {
+            $this->respondJson(['ok' => false, 'message' => 'Nenhuma avaliação válida foi informada.'], 422);
+        }
+
+        $avaliacaoModel = new AvaliacaoModel();
+        $avaliacoes = [];
+        foreach ($avaliacaoIds as $avaliacaoId) {
+            try {
+                $avaliacao = $avaliacaoModel->findById($avaliacaoId);
+            } catch (Throwable) {
+                $avaliacao = null;
+            }
+
+            if (is_array($avaliacao)) {
+                $avaliacoes[] = $avaliacao;
+            }
+        }
+
+        $this->respondJson([
+            'ok' => true,
+            'statuses' => $this->buildAvaliacoesCorrecaoStatusMap($avaliacoes),
         ]);
     }
 

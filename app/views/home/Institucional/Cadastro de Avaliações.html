@@ -85,8 +85,7 @@ foreach ($avaliacoes as $avaliacaoOption) {
                             </button>
                             <?php endif; ?>
                             <?php if ($canManageAvaliacoes): ?>
-                            <button type="button" class="btn btn-outline-info btn-sm"
-                                id="adminAvaliacoesOpenReportBtn">
+                            <button type="button" class="btn btn-outline-info btn-sm" id="adminAvaliacoesOpenReportBtn">
                                 <i class="las la-chart-bar me-1"></i>Relatório de Avaliações
                             </button>
                             <?php endif; ?>
@@ -115,7 +114,8 @@ foreach ($avaliacoes as $avaliacaoOption) {
                                     <i class="las la-filter me-1"></i>Filtros
                                 </button>
                                 <?php if ($canEditAvaliacoes && $avaliacoes !== []): ?>
-                                <label class="institutional-avaliacoes-select-all-toggle" for="adminAvaliacoesSelectAll">
+                                <label class="institutional-avaliacoes-select-all-toggle"
+                                    for="adminAvaliacoesSelectAll">
                                     <input type="checkbox" id="adminAvaliacoesSelectAll"
                                         aria-label="Selecionar todas as avaliações visíveis">
                                     <span>Selecionar visíveis</span>
@@ -227,7 +227,8 @@ foreach ($avaliacoes as $avaliacaoOption) {
                                     $correcaoStatusPercentual = (int) ($avaliacao['correcao_status_percentual'] ?? 0);
                                     $correcaoStatusLabel = trim((string) ($avaliacao['correcao_status_label'] ?? 'Status indisponível'));
                                 ?>
-                                <article class="js-admin-avaliacoes-row institutional-avaliacoes-row institutional-avaliacoes-card<?= $isRecuperacao ? ' is-recuperacao' : ''; ?><?= $isSimulado ? ' is-simulado' : ''; ?><?= !$hasDescricao ? ' is-sem-descricao' : ''; ?>"
+                                <article
+                                    class="js-admin-avaliacoes-row institutional-avaliacoes-row institutional-avaliacoes-card<?= $isRecuperacao ? ' is-recuperacao' : ''; ?><?= $isSimulado ? ' is-simulado' : ''; ?><?= !$hasDescricao ? ' is-sem-descricao' : ''; ?>"
                                     data-avaliacao-id="<?= $id; ?>"
                                     data-search-text="<?= htmlspecialchars($searchText, ENT_QUOTES, 'UTF-8'); ?>"
                                     data-filter-cycle="<?= htmlspecialchars($ciclo > 0 ? (string) $ciclo : '', ENT_QUOTES, 'UTF-8'); ?>"
@@ -245,13 +246,18 @@ foreach ($avaliacoes as $avaliacaoOption) {
                                         <?php endif; ?>
                                         <div class="institutional-avaliacoes-card-badges">
                                             <?php if ($cicloDisplay !== '-'): ?>
-                                            <span class="institutional-avaliacoes-card-chip"><?= htmlspecialchars($cicloDisplay, ENT_QUOTES, 'UTF-8'); ?></span>
+                                            <span class="institutional-avaliacoes-card-chip">
+                                                <?= htmlspecialchars($cicloDisplay, ENT_QUOTES, 'UTF-8'); ?>
+                                            </span>
                                             <?php endif; ?>
                                             <?php if ($bimestreDisplay !== ''): ?>
-                                            <span class="institutional-avaliacoes-card-chip is-muted"><?= htmlspecialchars($bimestreDisplay, ENT_QUOTES, 'UTF-8'); ?></span>
+                                            <span class="institutional-avaliacoes-card-chip is-muted">
+                                                <?= htmlspecialchars($bimestreDisplay, ENT_QUOTES, 'UTF-8'); ?>
+                                            </span>
                                             <?php endif; ?>
                                             <?php if ($isRecuperacao): ?>
-                                            <span class="institutional-avaliacoes-card-chip is-primary">Recuperação</span>
+                                            <span
+                                                class="institutional-avaliacoes-card-chip is-primary">Recuperação</span>
                                             <?php endif; ?>
                                             <?php if ($isSimulado): ?>
                                             <span class="institutional-avaliacoes-card-chip is-warning">Simulado</span>
@@ -259,8 +265,10 @@ foreach ($avaliacoes as $avaliacaoOption) {
                                         </div>
                                         <?php if ($canManageAvaliacoes): ?>
                                         <div class="dropdown institutional-avaliacoes-card-menu">
-                                            <button class="btn btn-outline-secondary btn-sm institutional-avaliacoes-card-menu-btn"
-                                                type="button" id="<?= htmlspecialchars($cardDropdownId, ENT_QUOTES, 'UTF-8'); ?>"
+                                            <button
+                                                class="btn btn-outline-secondary btn-sm institutional-avaliacoes-card-menu-btn"
+                                                type="button"
+                                                id="<?= htmlspecialchars($cardDropdownId, ENT_QUOTES, 'UTF-8'); ?>"
                                                 data-bs-toggle="dropdown" aria-expanded="false"
                                                 aria-label="Abrir ações da avaliação <?= htmlspecialchars($nome !== '' ? $nome : 'sem nome', ENT_QUOTES, 'UTF-8'); ?>">
                                                 <i class="las la-ellipsis-v"></i>
@@ -339,19 +347,31 @@ foreach ($avaliacoes as $avaliacaoOption) {
                                         <?php endif; ?>
                                     </div>
                                     <div class="institutional-avaliacoes-card-body-inner">
-                                        <h2 class="institutional-avaliacoes-card-title institutional-avaliacoes-col-name">
+                                        <h2
+                                            class="institutional-avaliacoes-card-title institutional-avaliacoes-col-name">
                                             <?= htmlspecialchars($nome !== '' ? $nome : 'Sem nome', ENT_QUOTES, 'UTF-8'); ?>
                                         </h2>
                                         <div class="institutional-avaliacoes-card-status-row">
                                             <span class="institutional-avaliacoes-card-status-label">Correção</span>
-                                            <span class="institutional-avaliacoes-card-status-pill"><?= htmlspecialchars((string) $correcaoStatusPercentual, ENT_QUOTES, 'UTF-8'); ?>%</span>
-                                            <span class="institutional-avaliacoes-card-status-meta"><?= htmlspecialchars($correcaoStatusLabel, ENT_QUOTES, 'UTF-8'); ?></span>
+                                            <span class="institutional-avaliacoes-card-status-pill">
+                                                <?= htmlspecialchars((string) $correcaoStatusPercentual, ENT_QUOTES, 'UTF-8'); ?>%
+                                            </span>
+                                            <span class="institutional-avaliacoes-card-status-meta">
+                                                <?= htmlspecialchars($correcaoStatusLabel, ENT_QUOTES, 'UTF-8'); ?>
+                                            </span>
                                         </div>
                                         <div class="institutional-avaliacoes-card-meta">
-                                            <span class="institutional-avaliacoes-col-apply"><i class="las la-calendar me-1"></i><?= htmlspecialchars($aplicacaoDisplay, ENT_QUOTES, 'UTF-8'); ?></span>
-                                            <span class="institutional-avaliacoes-col-author"><i class="las la-user me-1"></i><?= htmlspecialchars($autorNome !== '' ? $autorNome : '-', ENT_QUOTES, 'UTF-8'); ?></span>
+                                            <span class="institutional-avaliacoes-col-apply"><i
+                                                    class="las la-calendar me-1"></i>
+                                                <?= htmlspecialchars($aplicacaoDisplay, ENT_QUOTES, 'UTF-8'); ?>
+                                            </span>
+                                            <span class="institutional-avaliacoes-col-author"><i
+                                                    class="las la-user me-1"></i>
+                                                <?= htmlspecialchars($autorNome !== '' ? $autorNome : '-', ENT_QUOTES, 'UTF-8'); ?>
+                                            </span>
                                         </div>
-                                        <div class="institutional-avaliacoes-card-description institutional-avaliacoes-col-description">
+                                        <div
+                                            class="institutional-avaliacoes-card-description institutional-avaliacoes-col-description">
                                             <?php if ($hasDescricao): ?>
                                             <span title="<?= htmlspecialchars($descricao, ENT_QUOTES, 'UTF-8'); ?>">
                                                 <?= htmlspecialchars($descricaoResumo, ENT_QUOTES, 'UTF-8'); ?>
@@ -363,7 +383,9 @@ foreach ($avaliacoes as $avaliacaoOption) {
                                         <?php if ($rowTurmaFilterLabels !== []): ?>
                                         <div class="institutional-avaliacoes-card-footer">
                                             <span class="institutional-avaliacoes-card-footer-label">Turmas</span>
-                                            <span class="institutional-avaliacoes-card-footer-value"><?= htmlspecialchars(implode(', ', $rowTurmaFilterLabels), ENT_QUOTES, 'UTF-8'); ?></span>
+                                            <span class="institutional-avaliacoes-card-footer-value">
+                                                <?= htmlspecialchars(implode(', ', $rowTurmaFilterLabels), ENT_QUOTES, 'UTF-8'); ?>
+                                            </span>
                                         </div>
                                         <?php endif; ?>
                                     </div>
@@ -391,8 +413,7 @@ foreach ($avaliacoes as $avaliacaoOption) {
 
                     <?php if ($canManageAvaliacoes): ?>
                     <div class="modal fade admin-info-form-modal" id="adminAvaliacoesReportModal" tabindex="-1"
-                        data-bs-backdrop="static" aria-labelledby="adminAvaliacoesReportModalLabel"
-                        aria-hidden="true">
+                        data-bs-backdrop="static" aria-labelledby="adminAvaliacoesReportModalLabel" aria-hidden="true">
                         <div class="modal-dialog modal-fullscreen">
                             <div class="modal-content site-modal-content admin-avaliacoes-report-modal-content">
                                 <div class="modal-header">
@@ -400,7 +421,8 @@ foreach ($avaliacoes as $avaliacaoOption) {
                                         <div class="small text-secondary">Leitura pedagógica multiavaliação</div>
                                         <h2 class="h5 mb-0" id="adminAvaliacoesReportModalLabel">Relatório de
                                             Avaliações</h2>
-                                        <div class="small text-secondary mt-1" id="adminAvaliacoesReportStatus">Selecione os filtros e gere o relatório.</div>
+                                        <div class="small text-secondary mt-1" id="adminAvaliacoesReportStatus">
+                                            Selecione os filtros e gere o relatório.</div>
                                     </div>
                                     <div class="d-flex align-items-center gap-2">
                                         <button type="button" class="btn btn-outline-secondary btn-sm d-none"
@@ -420,31 +442,38 @@ foreach ($avaliacoes as $avaliacaoOption) {
                                         <section class="admin-avaliacoes-report-stage is-active"
                                             id="adminAvaliacoesReportFiltersStage">
                                             <div class="admin-avaliacoes-report-config-grid">
-                                                <div class="admin-avaliacao-selector-summary-card admin-avaliacoes-report-config-card is-controls">
-                                                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                                <div
+                                                    class="admin-avaliacao-selector-summary-card admin-avaliacoes-report-config-card is-controls">
+                                                    <div
+                                                        class="d-flex align-items-center justify-content-between gap-2 mb-2">
                                                         <div>
                                                             <div class="fw-semibold">Configuração da leitura</div>
-                                                            <div class="small text-secondary">Defina o foco do relatório e a faixa de criticidade antes de emitir.</div>
+                                                            <div class="small text-secondary">Defina o foco do relatório
+                                                                e a faixa de criticidade antes de emitir.</div>
                                                         </div>
                                                     </div>
                                                     <div class="row g-2">
                                                         <div class="col-12">
                                                             <label class="form-label form-label-sm mb-1"
-                                                                for="adminAvaliacoesReportType">Tipo de relatório</label>
+                                                                for="adminAvaliacoesReportType">Tipo de
+                                                                relatório</label>
                                                             <select class="form-select form-select-sm"
                                                                 id="adminAvaliacoesReportType">
                                                                 <option value="completo">Completo</option>
                                                                 <option value="resumo">Resumo executivo</option>
                                                                 <option value="turmas">Comparativo por turmas</option>
-                                                                <option value="disciplinas">Foco em componentes curriculares</option>
+                                                                <option value="disciplinas">Foco em componentes
+                                                                    curriculares</option>
                                                                 <option value="habilidades">Foco em habilidades</option>
                                                                 <option value="estudantes">Foco em estudantes</option>
-                                                                <option value="criticos">Pontos críticos e intervenção</option>
+                                                                <option value="criticos">Pontos críticos e intervenção
+                                                                </option>
                                                             </select>
                                                         </div>
                                                         <div class="col-12">
                                                             <label class="form-label form-label-sm mb-1"
-                                                                for="adminAvaliacoesReportCriticalThreshold">Faixa crítica</label>
+                                                                for="adminAvaliacoesReportCriticalThreshold">Faixa
+                                                                crítica</label>
                                                             <select class="form-select form-select-sm"
                                                                 id="adminAvaliacoesReportCriticalThreshold">
                                                                 <option value="40">Abaixo de 40%</option>
@@ -466,18 +495,22 @@ foreach ($avaliacoes as $avaliacaoOption) {
                                                     </div>
                                                 </div>
 
-                                                <div class="admin-avaliacao-selector-summary-card admin-avaliacoes-report-config-card is-evaluations">
-                                                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                                <div
+                                                    class="admin-avaliacao-selector-summary-card admin-avaliacoes-report-config-card is-evaluations">
+                                                    <div
+                                                        class="d-flex align-items-center justify-content-between gap-2 mb-2">
                                                         <div>
                                                             <div class="fw-semibold">Avaliações selecionadas</div>
-                                                            <div class="small text-secondary">Agrupadas por ciclo e bimestre para revisão rápida.</div>
+                                                            <div class="small text-secondary">Agrupadas por ciclo e
+                                                                bimestre para revisão rápida.</div>
                                                         </div>
                                                         <span class="badge text-bg-light"
                                                             id="adminAvaliacoesReportEvaluationCount">0</span>
                                                     </div>
                                                     <div id="adminAvaliacoesReportEvaluationSummary"
                                                         class="admin-avaliacao-selector-summary-body admin-avaliacoes-report-compact-summary">
-                                                        <div class="small text-secondary">Nenhuma avaliação selecionada.</div>
+                                                        <div class="small text-secondary">Nenhuma avaliação selecionada.
+                                                        </div>
                                                     </div>
                                                     <div class="d-flex flex-wrap gap-2 mt-3">
                                                         <button type="button" class="btn btn-outline-primary btn-sm"
@@ -491,18 +524,22 @@ foreach ($avaliacoes as $avaliacaoOption) {
                                                     </div>
                                                 </div>
 
-                                                <div class="admin-avaliacao-selector-summary-card admin-avaliacoes-report-config-card is-filters">
-                                                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                                <div
+                                                    class="admin-avaliacao-selector-summary-card admin-avaliacoes-report-config-card is-filters">
+                                                    <div
+                                                        class="d-flex align-items-center justify-content-between gap-2 mb-2">
                                                         <div>
                                                             <div class="fw-semibold">Recortes pedagógicos</div>
-                                                            <div class="small text-secondary">Turmas, estudantes, habilidades, presença e outros filtros auxiliares.</div>
+                                                            <div class="small text-secondary">Turmas, estudantes,
+                                                                habilidades, presença e outros filtros auxiliares.</div>
                                                         </div>
                                                         <span class="badge text-bg-light"
                                                             id="adminAvaliacoesReportFiltersCount">0</span>
                                                     </div>
                                                     <div id="adminAvaliacoesReportFiltersSummary"
                                                         class="admin-avaliacao-selector-summary-body admin-avaliacoes-report-compact-summary">
-                                                        <div class="small text-secondary">Nenhum recorte adicional ativo.</div>
+                                                        <div class="small text-secondary">Nenhum recorte adicional
+                                                            ativo.</div>
                                                     </div>
                                                     <div class="d-flex flex-wrap gap-2 mt-3">
                                                         <button type="button" class="btn btn-outline-primary btn-sm"
@@ -514,22 +551,31 @@ foreach ($avaliacoes as $avaliacaoOption) {
                                             </div>
                                         </section>
 
-                                        <section class="admin-avaliacoes-report-stage admin-avaliacoes-report-stage-results"
+                                        <section
+                                            class="admin-avaliacoes-report-stage admin-avaliacoes-report-stage-results"
                                             id="adminAvaliacoesReportResultsStage" hidden>
                                             <div class="admin-avaliacoes-report-result-bar">
                                                 <div class="admin-avaliacoes-report-result-meta"
-                                                    id="adminAvaliacoesReportGeneratedMeta">Gere o relatório para visualizar a leitura consolidada.</div>
-                                                <div class="admin-avaliacao-selector-summary-body admin-avaliacoes-report-summary-wrap">
-                                                    <div id="adminAvaliacoesReportSummary" class="admin-avaliacao-selector-chip-list">
-                                                        <span class="admin-avaliacao-selector-chip is-muted">Nenhum recorte ativo</span>
+                                                    id="adminAvaliacoesReportGeneratedMeta">Gere o relatório para
+                                                    visualizar a leitura consolidada.</div>
+                                                <div
+                                                    class="admin-avaliacao-selector-summary-body admin-avaliacoes-report-summary-wrap">
+                                                    <div id="adminAvaliacoesReportSummary"
+                                                        class="admin-avaliacao-selector-chip-list">
+                                                        <span class="admin-avaliacao-selector-chip is-muted">Nenhum
+                                                            recorte ativo</span>
                                                     </div>
                                                 </div>
                                             </div>
 
                                             <div id="adminAvaliacoesReportRoot" class="admin-avaliacao-stats-root">
                                                 <div class="admin-avaliacao-stats-empty">
-                                                    <div class="admin-avaliacao-stats-empty-title">Relatório pedagógico consolidado</div>
-                                                    <div class="admin-avaliacao-stats-empty-text">Gere o relatório para abrir os comparativos por avaliação, turma, disciplina, habilidade, questão e estudante, com foco em criticidade, intervenção e impressão.</div>
+                                                    <div class="admin-avaliacao-stats-empty-title">Relatório pedagógico
+                                                        consolidado</div>
+                                                    <div class="admin-avaliacao-stats-empty-text">Gere o relatório para
+                                                        abrir os comparativos por avaliação, turma, disciplina,
+                                                        habilidade, questão e estudante, com foco em criticidade,
+                                                        intervenção e impressão.</div>
                                                 </div>
                                             </div>
                                         </section>
@@ -617,7 +663,8 @@ foreach ($avaliacoes as $avaliacaoOption) {
                             <div class="modal-content site-modal-content admin-avaliacoes-report-picker-modal-content">
                                 <div class="modal-header">
                                     <div>
-                                        <div class="small text-secondary" id="adminAvaliacoesReportFilterOptionsModalSummary">
+                                        <div class="small text-secondary"
+                                            id="adminAvaliacoesReportFilterOptionsModalSummary">
                                             Selecione as opções desejadas para este recorte.</div>
                                         <h2 class="h6 mb-0" id="adminAvaliacoesReportFilterOptionsModalLabel">Selecionar
                                             opções</h2>
@@ -629,8 +676,8 @@ foreach ($avaliacoes as $avaliacaoOption) {
                                     <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-3">
                                         <input type="search"
                                             class="form-control form-control-sm admin-avaliacao-stats-filter-search admin-avaliacoes-report-option-modal-search"
-                                            id="adminAvaliacoesReportFilterOptionsSearch"
-                                            placeholder="Buscar opção..." autocomplete="off">
+                                            id="adminAvaliacoesReportFilterOptionsSearch" placeholder="Buscar opção..."
+                                            autocomplete="off">
                                         <button type="button" class="btn btn-outline-secondary btn-sm"
                                             id="adminAvaliacoesReportFilterOptionsClearBtn">Limpar este grupo</button>
                                     </div>
@@ -1900,6 +1947,43 @@ foreach ($avaliacoes as $avaliacaoOption) {
                                                         <?= $defaultGabaritoPreset === [] ? 'Nenhum plano de fundo padrão definido.' : 'Plano de fundo padrão ativo para novas avaliações.'; ?>
                                                     </div>
                                                     <?php endif; ?>
+                                                    <div class="border-top pt-3 mt-3">
+                                                        <div class="small fw-semibold text-dark mb-2">Objetos padrão
+                                                        </div>
+                                                        <div class="d-grid gap-2"
+                                                            id="adminAvaliacaoGabaritoObjetosPadraoActions">
+                                                            <button type="button"
+                                                                class="btn btn-outline-danger btn-sm js-admin-avaliacao-gabarito-toggle-default-object"
+                                                                data-box-key="aluno">
+                                                                <i class="las la-trash-alt me-1"></i>Excluir dados do
+                                                                estudante
+                                                            </button>
+                                                            <button type="button"
+                                                                class="btn btn-outline-danger btn-sm js-admin-avaliacao-gabarito-toggle-default-object"
+                                                                data-box-key="qr">
+                                                                <i class="las la-trash-alt me-1"></i>Excluir QR Code
+                                                            </button>
+                                                            <button type="button"
+                                                                class="btn btn-outline-danger btn-sm js-admin-avaliacao-gabarito-toggle-default-object"
+                                                                data-box-key="title">
+                                                                <i class="las la-trash-alt me-1"></i>Excluir título da
+                                                                avaliação
+                                                            </button>
+                                                            <button type="button"
+                                                                class="btn btn-outline-danger btn-sm js-admin-avaliacao-gabarito-toggle-default-object"
+                                                                data-box-key="numeracao">
+                                                                <i class="las la-trash-alt me-1"></i>Excluir numeração
+                                                            </button>
+                                                            <button type="button"
+                                                                class="btn btn-outline-danger btn-sm js-admin-avaliacao-gabarito-toggle-default-object"
+                                                                data-box-key="disciplinas">
+                                                                <i class="las la-trash-alt me-1"></i>Excluir componente
+                                                                curricular
+                                                            </button>
+                                                        </div>
+                                                        <div class="small text-secondary mt-2">Exclua ou restaure
+                                                            individualmente os objetos padrão do gabarito.</div>
+                                                    </div>
                                                     <div
                                                         class="d-flex flex-wrap align-items-center gap-2 admin-avaliacao-layout-zoombar admin-avaliacao-canvas-zoombar admin-avaliacao-gabarito-zoombar-side mt-3">
                                                         <button type="button" class="btn btn-outline-dark btn-sm"

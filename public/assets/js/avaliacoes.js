@@ -182,6 +182,7 @@
     var gabaritoImagemCropResetBtn = document.getElementById('adminAvaliacaoGabaritoImagemCropResetBtn');
     var gabaritoImagemDeleteBtn = document.getElementById('adminAvaliacaoGabaritoImagemDeleteBtn');
     var gabaritoObjetoInsertBtn = document.getElementById('adminAvaliacaoGabaritoObjetoInsertBtn');
+    var gabaritoDefaultObjectButtons = document.querySelectorAll('.js-admin-avaliacao-gabarito-toggle-default-object');
     var gabaritoFundoAtualLabel = document.getElementById('adminAvaliacaoGabaritoFundoAtual');
     var gabaritoFundoPadraoAtualLabel = document.getElementById('adminAvaliacaoGabaritoFundoPadraoAtual');
     var gabaritoPreviewCanvas = document.getElementById('adminAvaliacaoGabaritoPreviewCanvas');
@@ -753,6 +754,7 @@
     var dashboardLastSnapshotSignature = '';
     var pendingDashboardSnapshot = null;
     var pendingDashboardSnapshotSignature = '';
+    var tableCorrecaoStatusRefreshTimer = 0;
     var correcoesPollingTimer = 0;
     var correcoesRows = [];
     var correcaoCameraStream = null;
@@ -807,6 +809,7 @@
       title_box: { x: 26, y: 142, width: 340, height: 64 },
       numeracao_box: { x: 528, y: 142, width: 170, height: 34 },
       disciplinas_box: { x: 26, y: 204, width: 360, height: 80 },
+      hidden_objects: { aluno: false, qr: false, title: false, numeracao: false, disciplinas: false },
     };
     var gabaritoBackgroundLayout = {
       x: 0,
@@ -2280,7 +2283,10 @@
         background: sanitizeGabaritoBackground({
           path: gabaritoBackgroundPath,
           url: gabaritoBackgroundUrl,
+          cache_bust: gabaritoBackgroundCacheBust,
         }),
+        background_layout: sanitizeGabaritoBackgroundLayout(gabaritoBackgroundLayout),
+        images: sanitizeGabaritoImages(gabaritoImages),
         avaliacao_layout: sanitizeAvaliacaoLayoutConfig(avaliacaoLayoutConfig),
       };
     }
@@ -2442,6 +2448,10 @@
       ];
 
       infoBoxDefs.forEach(function (def) {
+        if (isGabaritoInfoBoxHidden(def.key)) {
+          return;
+        }
+
         var b = def.box;
         if (!b) { return; }
         var selected = (gabaritoSelectionType === def.key);
@@ -2540,6 +2550,7 @@
         }
       }
 
+      updateGabaritoDefaultObjectButtons();
       syncGabaritoInput();
     }
 
@@ -2917,6 +2928,81 @@
       if (gabaritoImagemCropBtn) { gabaritoImagemCropBtn.disabled = !hasSelected; }
       if (gabaritoImagemCropResetBtn) { gabaritoImagemCropResetBtn.disabled = !hasSelected; }
       if (gabaritoImagemDeleteBtn) { gabaritoImagemDeleteBtn.disabled = !hasSelected; }
+    }
+
+    function getGabaritoDefaultObjectLabel(boxKey) {
+      switch (String(boxKey || '').trim()) {
+        case 'aluno':
+          return 'dados do estudante';
+        case 'qr':
+          return 'QR Code';
+        case 'title':
+          return 'título da avaliação';
+        case 'numeracao':
+          return 'numeração';
+        case 'disciplinas':
+          return 'componente curricular';
+        default:
+          return 'objeto';
+      }
+    }
+
+    function isGabaritoInfoBoxHidden(boxKey) {
+      var hiddenObjects = gabaritoLayout && gabaritoLayout.hidden_objects && typeof gabaritoLayout.hidden_objects === 'object'
+        ? gabaritoLayout.hidden_objects
+        : {};
+
+      return hiddenObjects[String(boxKey || '').trim()] === true;
+    }
+
+    function setGabaritoInfoBoxHidden(boxKey, shouldHide) {
+      var safeKey = String(boxKey || '').trim();
+      if (['aluno', 'qr', 'title', 'numeracao', 'disciplinas'].indexOf(safeKey) === -1) {
+        return false;
+      }
+
+      if (!gabaritoLayout || typeof gabaritoLayout !== 'object') {
+        gabaritoLayout = sanitizeGabaritoLayout(null);
+      }
+
+      if (!gabaritoLayout.hidden_objects || typeof gabaritoLayout.hidden_objects !== 'object') {
+        gabaritoLayout.hidden_objects = {};
+      }
+
+      var nextState = shouldHide === true;
+      if (gabaritoLayout.hidden_objects[safeKey] === nextState) {
+        return false;
+      }
+
+      gabaritoLayout.hidden_objects[safeKey] = nextState;
+      if (nextState && gabaritoSelectionType === safeKey) {
+        gabaritoSelectionType = '';
+      }
+
+      return true;
+    }
+
+    function updateGabaritoDefaultObjectButtons() {
+      Array.prototype.forEach.call(gabaritoDefaultObjectButtons || [], function (button) {
+        if (!(button instanceof HTMLElement)) {
+          return;
+        }
+
+        var boxKey = String(button.getAttribute('data-box-key') || '').trim();
+        if (boxKey === '') {
+          return;
+        }
+
+        var isHidden = isGabaritoInfoBoxHidden(boxKey);
+        var label = getGabaritoDefaultObjectLabel(boxKey);
+
+        button.classList.toggle('btn-outline-danger', !isHidden);
+        button.classList.toggle('btn-outline-success', isHidden);
+        button.setAttribute('aria-pressed', isHidden ? 'true' : 'false');
+        button.innerHTML = isHidden
+          ? '<i class="las la-undo-alt me-1"></i>Restaurar ' + escapeHtml(label)
+          : '<i class="las la-trash-alt me-1"></i>Excluir ' + escapeHtml(label);
+      });
     }
 
     function estimateTextLines(text, maxChars) {
@@ -6307,10 +6393,13 @@
         return {
           questoes: safeItens.length,
           alternativas: maxAlternativas,
+          questoes_por_coluna: clampInt(parsed.questoes_por_coluna, 1, 50, 10),
           respostas: sanitizeGabaritoRespostas(respostasFromItens, safeItens.length, maxAlternativas),
           itens: safeItens,
           layout: sanitizeGabaritoLayout(parsed.layout),
           background: sanitizeGabaritoBackground(parsed.background),
+          background_layout: sanitizeGabaritoBackgroundLayout(parsed.background_layout),
+          images: sanitizeGabaritoImages(parsed.images),
           avaliacao_layout: sanitizeAvaliacaoLayoutConfig(parsed.avaliacao_layout),
         };
       } catch (error) {
@@ -6337,7 +6426,12 @@
       gabaritoLayout = sanitizeGabaritoLayout(safeConfig.layout);
       setGabaritoBackground(safeConfig.background);
       gabaritoBackgroundLayout = sanitizeGabaritoBackgroundLayout(safeConfig.background_layout || null);
+      gabaritoImages = sanitizeGabaritoImages(safeConfig.images);
+      gabaritoSelectedImageId = '';
+      gabaritoCropModeImageId = '';
+      gabaritoSelectionType = '';
       avaliacaoLayoutConfig = sanitizeAvaliacaoLayoutConfig(safeConfig.avaliacao_layout);
+      updateGabaritoDefaultObjectButtons();
       updateScaleUi();
       updateLayoutSpacingUi();
 
@@ -6701,7 +6795,7 @@
         }
       }
 
-      syncGabaritoInput();
+      markGabaritoPendingChanges();
     }
 
     function renderGabaritoPreview() {
@@ -7011,6 +7105,19 @@
       return form.action.replace('/avaliacoes/salvar', '/avaliacoes/detalhar');
     }
 
+    function getAvaliacaoCorrecoesStatusUrl() {
+      var fallbackUrl = '/index.php/paineladministrativo/avaliacoes/correcoes/status';
+      if (!form || !form.action) {
+        return fallbackUrl;
+      }
+
+      if (form.action.indexOf('/avaliacoes/salvar') === -1) {
+        return fallbackUrl;
+      }
+
+      return form.action.replace('/avaliacoes/salvar', '/avaliacoes/correcoes/status');
+    }
+
     function isModalShown(element) {
       return !!(element && element.classList && element.classList.contains('show'));
     }
@@ -7232,6 +7339,116 @@
 
       window.clearInterval(dashboardAutoRefreshTimer);
       dashboardAutoRefreshTimer = 0;
+    }
+
+    function buildTableCorrecaoStatusSignature(statusItem) {
+      var safeStatusItem = statusItem && typeof statusItem === 'object' ? statusItem : {};
+      return String(Number(safeStatusItem.percentual || 0)) + '|' + String(safeStatusItem.label || '').trim();
+    }
+
+    function applyAvaliacaoCardCorrecaoStatus(statusItem) {
+      var safeStatusItem = statusItem && typeof statusItem === 'object' ? statusItem : null;
+      var avaliacaoId = Number(safeStatusItem && safeStatusItem.id || 0);
+      if (avaliacaoId <= 0) {
+        return;
+      }
+
+      var row = document.querySelector('.js-admin-avaliacoes-row[data-avaliacao-id="' + String(avaliacaoId) + '"]');
+      if (!(row instanceof HTMLElement)) {
+        return;
+      }
+
+      var signature = buildTableCorrecaoStatusSignature(safeStatusItem);
+      if (row.getAttribute('data-correcao-status-signature') === signature) {
+        return;
+      }
+
+      var percentElement = row.querySelector('.institutional-avaliacoes-card-status-pill');
+      var labelElement = row.querySelector('.institutional-avaliacoes-card-status-meta');
+
+      if (percentElement) {
+        percentElement.textContent = String(Number(safeStatusItem.percentual || 0)) + '%';
+      }
+
+      if (labelElement) {
+        labelElement.textContent = String(safeStatusItem.label || '').trim() || 'Status indisponível';
+      }
+
+      row.setAttribute('data-correcao-status-signature', signature);
+    }
+
+    function loadTableCorrecaoStatuses(options) {
+      var opts = options && typeof options === 'object' ? options : {};
+      if (!listContainer || !document.body.contains(listContainer) || !tableRows.length) {
+        return Promise.resolve(null);
+      }
+
+      var ids = Array.isArray(opts.ids) && opts.ids.length
+        ? opts.ids.map(function (value) { return Number(value || 0); }).filter(Boolean)
+        : getVisibleAvaliacaoIds();
+
+      if (!ids.length) {
+        return Promise.resolve(null);
+      }
+
+      var url = getAvaliacaoCorrecoesStatusUrl() + '?ids=' + encodeURIComponent(ids.join(','));
+      return fetch(url, {
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      }).then(function (response) {
+        return response.json().catch(function () {
+          return { ok: false, message: 'Resposta inválida do servidor.' };
+        }).then(function (payload) {
+          if (!response.ok || !payload || payload.ok !== true || !payload.statuses || typeof payload.statuses !== 'object') {
+            throw new Error(payload && payload.message ? payload.message : 'Não foi possível atualizar o status das correções.');
+          }
+
+          Object.keys(payload.statuses).forEach(function (key) {
+            applyAvaliacaoCardCorrecaoStatus(payload.statuses[key]);
+          });
+
+          return payload.statuses;
+        });
+      }).catch(function (error) {
+        if (!opts.silent) {
+          showGlobalStatus(error && error.message ? error.message : 'Não foi possível atualizar o status das correções.', true);
+        }
+
+        return null;
+      });
+    }
+
+    function startTableCorrecaoStatusAutoRefresh() {
+      if (tableCorrecaoStatusRefreshTimer) {
+        window.clearInterval(tableCorrecaoStatusRefreshTimer);
+      }
+
+      if (!listContainer || !tableRows.length) {
+        return;
+      }
+
+      tableCorrecaoStatusRefreshTimer = window.setInterval(function () {
+        if (document.hidden) {
+          return;
+        }
+
+        if (!listContainer || !document.body.contains(listContainer) || !tableRows.length) {
+          stopTableCorrecaoStatusAutoRefresh();
+          return;
+        }
+
+        loadTableCorrecaoStatuses({ silent: true });
+      }, 5000);
+    }
+
+    function stopTableCorrecaoStatusAutoRefresh() {
+      if (!tableCorrecaoStatusRefreshTimer) {
+        return;
+      }
+
+      window.clearInterval(tableCorrecaoStatusRefreshTimer);
+      tableCorrecaoStatusRefreshTimer = 0;
     }
 
     function getGabaritoBackgroundUploadUrl() {
@@ -9914,6 +10131,20 @@
       return sanitizeLayoutTextRanges(ranges, flags.length);
     }
 
+    function sanitizeGabaritoHiddenObjects(rawHiddenObjects) {
+      var safeHiddenObjects = rawHiddenObjects && typeof rawHiddenObjects === 'object'
+        ? rawHiddenObjects
+        : {};
+
+      return {
+        aluno: safeHiddenObjects.aluno === true,
+        qr: safeHiddenObjects.qr === true,
+        title: safeHiddenObjects.title === true,
+        numeracao: safeHiddenObjects.numeracao === true,
+        disciplinas: safeHiddenObjects.disciplinas === true,
+      };
+    }
+
     function sanitizeGabaritoLayout(rawLayout) {
       if (!rawLayout || typeof rawLayout !== 'object') {
         return {
@@ -9952,6 +10183,7 @@
             width: 360,
             height: 80,
           },
+          hidden_objects: sanitizeGabaritoHiddenObjects(null),
         };
       }
 
@@ -9991,6 +10223,7 @@
           width: clampFloat(rawLayout.disciplinas_box && rawLayout.disciplinas_box.width, 180, 2000, 360),
           height: clampFloat(rawLayout.disciplinas_box && rawLayout.disciplinas_box.height, 28, 2000, 80),
         },
+        hidden_objects: sanitizeGabaritoHiddenObjects(rawLayout.hidden_objects),
       };
     }
 
@@ -10209,11 +10442,14 @@
       if (!gabaritoBackgroundImage || gabaritoBackgroundImage.width <= 0 || gabaritoBackgroundImage.height <= 0) {
         return null;
       }
+
+      var backgroundLayout = sanitizeGabaritoBackgroundLayout(gabaritoBackgroundLayout);
+
       return {
-        x: pageRect.x,
-        y: pageRect.y,
-        width: pageRect.width,
-        height: pageRect.height,
+        x: pageRect.x + Math.round(backgroundLayout.x),
+        y: pageRect.y + Math.round(backgroundLayout.y),
+        width: Math.round(pageRect.width * backgroundLayout.scale_x),
+        height: Math.round(pageRect.height * backgroundLayout.scale_y),
       };
     }
 
@@ -10718,6 +10954,11 @@
       var numeracaoText = infoBoxes.numeracaoText;
       var disciplinasLines = infoBoxes.disciplinasLines;
       var infoSpecs = infoBoxes.specs || {};
+      var showAlunoBox = !isGabaritoInfoBoxHidden('aluno');
+      var showQrBox = !isGabaritoInfoBoxHidden('qr');
+      var showTitleBox = !isGabaritoInfoBoxHidden('title');
+      var showNumeracaoBox = !isGabaritoInfoBoxHidden('numeracao');
+      var showDisciplinasBox = !isGabaritoInfoBoxHidden('disciplinas');
 
       (Array.isArray(gabaritoImages) ? gabaritoImages : []).forEach(function (imageItem) {
         var imageAsset = getOrLoadGabaritoImageAsset(imageItem);
@@ -10762,54 +11003,64 @@
         ctx.restore();
       });
 
-      var alunoLabelFontSize = getGabaritoScaledFontSize(alunoBox, infoSpecs.aluno_box, 14, 10, 28);
-      var alunoValueFontSize = getGabaritoScaledFontSize(alunoBox, infoSpecs.aluno_box, 14, 10, 28);
-      var alunoPaddingX = Math.max(10, Math.round(alunoLabelFontSize * 0.85));
-      var alunoLineOneY = alunoBox.y + Math.max(alunoLabelFontSize + 6, Math.round(alunoBox.height * 0.27));
-      var alunoLineGap = Math.max(alunoLabelFontSize + 8, Math.round(alunoBox.height * 0.28));
-      var alunoLineTwoY = Math.min(alunoBox.y + alunoBox.height - Math.max(8, Math.round(alunoValueFontSize * 0.35)), alunoLineOneY + alunoLineGap);
+      if (showAlunoBox) {
+        var alunoLabelFontSize = getGabaritoScaledFontSize(alunoBox, infoSpecs.aluno_box, 14, 10, 28);
+        var alunoValueFontSize = getGabaritoScaledFontSize(alunoBox, infoSpecs.aluno_box, 14, 10, 28);
+        var alunoPaddingX = Math.max(10, Math.round(alunoLabelFontSize * 0.85));
+        var alunoLineOneY = alunoBox.y + Math.max(alunoLabelFontSize + 6, Math.round(alunoBox.height * 0.27));
+        var alunoLineGap = Math.max(alunoLabelFontSize + 8, Math.round(alunoBox.height * 0.28));
+        var alunoLineTwoY = Math.min(alunoBox.y + alunoBox.height - Math.max(8, Math.round(alunoValueFontSize * 0.35)), alunoLineOneY + alunoLineGap);
 
-      ctx.fillStyle = '#000000';
-      ctx.font = 'bold ' + alunoLabelFontSize + 'px Arial, sans-serif';
-      var alunoLabelWidth = Math.max(ctx.measureText('Estudante:').width, ctx.measureText('Turma:').width);
-      var alunoValueGap = Math.max(16, Math.round(alunoLabelFontSize * 1.1));
-      var alunoValueOffsetX = alunoPaddingX + Math.ceil(alunoLabelWidth) + alunoValueGap;
-      ctx.fillText('Estudante:', alunoBox.x + alunoPaddingX, alunoLineOneY);
-      ctx.font = alunoValueFontSize + 'px Arial, sans-serif';
-      ctx.fillText(fitCanvasText(ctx, pageData.alunoNome, alunoBox.width - alunoValueOffsetX - (alunoPaddingX * 2)), alunoBox.x + alunoValueOffsetX, alunoLineOneY);
-      ctx.font = 'bold ' + alunoLabelFontSize + 'px Arial, sans-serif';
-      ctx.fillText('Turma:', alunoBox.x + alunoPaddingX, alunoLineTwoY);
-      ctx.font = alunoValueFontSize + 'px Arial, sans-serif';
-      ctx.fillText(fitCanvasText(ctx, pageData.turmaNome, alunoBox.width - alunoValueOffsetX - (alunoPaddingX * 2)), alunoBox.x + alunoValueOffsetX, alunoLineTwoY);
+        ctx.fillStyle = '#000000';
+        ctx.font = 'bold ' + alunoLabelFontSize + 'px Arial, sans-serif';
+        var alunoLabelWidth = Math.max(ctx.measureText('Estudante:').width, ctx.measureText('Turma:').width);
+        var alunoValueGap = Math.max(16, Math.round(alunoLabelFontSize * 1.1));
+        var alunoValueOffsetX = alunoPaddingX + Math.ceil(alunoLabelWidth) + alunoValueGap;
+        ctx.fillText('Estudante:', alunoBox.x + alunoPaddingX, alunoLineOneY);
+        ctx.font = alunoValueFontSize + 'px Arial, sans-serif';
+        ctx.fillText(fitCanvasText(ctx, pageData.alunoNome, alunoBox.width - alunoValueOffsetX - (alunoPaddingX * 2)), alunoBox.x + alunoValueOffsetX, alunoLineOneY);
+        ctx.font = 'bold ' + alunoLabelFontSize + 'px Arial, sans-serif';
+        ctx.fillText('Turma:', alunoBox.x + alunoPaddingX, alunoLineTwoY);
+        ctx.font = alunoValueFontSize + 'px Arial, sans-serif';
+        ctx.fillText(fitCanvasText(ctx, pageData.turmaNome, alunoBox.width - alunoValueOffsetX - (alunoPaddingX * 2)), alunoBox.x + alunoValueOffsetX, alunoLineTwoY);
+      }
 
-      var titleFontSize = Math.max(12, Math.min(72, Math.round((titleBox.height - 16) * 0.85)));
-      var titlePaddingX = 16;
-      var titleBaselineY = titleBox.y + Math.round(titleBox.height / 2) + Math.round(titleFontSize / 2) - 2;
-      ctx.fillStyle = '#000000';
-      ctx.font = 'bold ' + titleFontSize + 'px Arial, sans-serif';
-      ctx.fillText(fitCanvasText(ctx, titleText, titleBox.width - (titlePaddingX * 2)), titleBox.x + titlePaddingX, titleBaselineY);
+      if (showTitleBox) {
+        var titleFontSize = Math.max(12, Math.min(72, Math.round((titleBox.height - 16) * 0.85)));
+        var titlePaddingX = 16;
+        var titleBaselineY = titleBox.y + Math.round(titleBox.height / 2) + Math.round(titleFontSize / 2) - 2;
+        ctx.fillStyle = '#000000';
+        ctx.font = 'bold ' + titleFontSize + 'px Arial, sans-serif';
+        ctx.fillText(fitCanvasText(ctx, titleText, titleBox.width - (titlePaddingX * 2)), titleBox.x + titlePaddingX, titleBaselineY);
+      }
 
-      var numeracaoFontSize = getGabaritoScaledFontSize(numeracaoBox, infoSpecs.numeracao_box, 16, 10, 36);
-      var numeracaoPaddingX = Math.max(10, Math.round(numeracaoFontSize * 0.75));
-      var numeracaoBaselineY = numeracaoBox.y + numeracaoBox.height - Math.max(6, Math.round(numeracaoFontSize * 0.28));
-      ctx.fillStyle = '#000000';
-      ctx.font = 'bold ' + numeracaoFontSize + 'px Arial, sans-serif';
-      ctx.fillText(fitCanvasText(ctx, numeracaoText, numeracaoBox.width - (numeracaoPaddingX * 2)), numeracaoBox.x + numeracaoPaddingX, numeracaoBaselineY);
+      if (showNumeracaoBox) {
+        var numeracaoFontSize = getGabaritoScaledFontSize(numeracaoBox, infoSpecs.numeracao_box, 16, 10, 36);
+        var numeracaoPaddingX = Math.max(10, Math.round(numeracaoFontSize * 0.75));
+        var numeracaoBaselineY = numeracaoBox.y + numeracaoBox.height - Math.max(6, Math.round(numeracaoFontSize * 0.28));
+        ctx.fillStyle = '#000000';
+        ctx.font = 'bold ' + numeracaoFontSize + 'px Arial, sans-serif';
+        ctx.fillText(fitCanvasText(ctx, numeracaoText, numeracaoBox.width - (numeracaoPaddingX * 2)), numeracaoBox.x + numeracaoPaddingX, numeracaoBaselineY);
+      }
 
-      var disciplinasLineCount = Math.max(1, disciplinasLines.length);
-      var disciplinasLineH = Math.max(16, Math.floor((disciplinasBox.height - 16) / disciplinasLineCount));
-      var disciplinasFontSize = Math.max(9, Math.min(30, Math.round(disciplinasLineH * 0.75)));
-      var disciplinasPaddingX = 16;
-      var disciplinasStartY = disciplinasBox.y + disciplinasFontSize + 8;
-      ctx.fillStyle = '#000000';
-      ctx.font = 'bold ' + disciplinasFontSize + 'px Arial, sans-serif';
-      disciplinasLines.forEach(function (disciplina, index) {
-        var lineY = disciplinasStartY + (index * disciplinasLineH);
-        var disciplinaLabel = '● ' + String(disciplina || '').toUpperCase();
-        ctx.fillText(fitCanvasText(ctx, disciplinaLabel, disciplinasBox.width - (disciplinasPaddingX * 2)), disciplinasBox.x + disciplinasPaddingX, lineY);
-      });
+      if (showDisciplinasBox) {
+        var disciplinasLineCount = Math.max(1, disciplinasLines.length);
+        var disciplinasLineH = Math.max(16, Math.floor((disciplinasBox.height - 16) / disciplinasLineCount));
+        var disciplinasFontSize = Math.max(9, Math.min(30, Math.round(disciplinasLineH * 0.75)));
+        var disciplinasPaddingX = 16;
+        var disciplinasStartY = disciplinasBox.y + disciplinasFontSize + 8;
+        ctx.fillStyle = '#000000';
+        ctx.font = 'bold ' + disciplinasFontSize + 'px Arial, sans-serif';
+        disciplinasLines.forEach(function (disciplina, index) {
+          var lineY = disciplinasStartY + (index * disciplinasLineH);
+          var disciplinaLabel = '● ' + String(disciplina || '').toUpperCase();
+          ctx.fillText(fitCanvasText(ctx, disciplinaLabel, disciplinasBox.width - (disciplinasPaddingX * 2)), disciplinasBox.x + disciplinasPaddingX, lineY);
+        });
+      }
 
-      drawQrCodeInBox(ctx, qrGenerator, buildGabaritoQrPayload(pageData), qrBox);
+      if (showQrBox) {
+        drawQrCodeInBox(ctx, qrGenerator, buildGabaritoQrPayload(pageData), qrBox);
+      }
 
       if (gabaritoTemplateImage && gabaritoTemplateImage.width > 0 && gabaritoTemplateImage.height > 0) {
         ensureGabaritoLayoutInBounds();
@@ -10916,35 +11167,78 @@
       var sourceHeight = Math.round(pageRect.height * scaleY);
 
       if (sourceWidth <= 0 || sourceHeight <= 0) {
-        return canvas.toDataURL('image/png');
+        try {
+          return canvas.toDataURL('image/png');
+        } catch (e) {
+          return '';
+        }
+      }
+
+      // Export target: A4 at a reasonable print DPR (use 2 for quality)
+      var printDpr = 2;
+      var targetWidth = Math.round(a4CanvasWidth * printDpr);
+      var targetHeight = Math.round(a4CanvasHeight * printDpr);
+
+      // Clamp to avoid creating extremely large canvases that blow memory
+      var MAX_CANVAS_DIM = 8192;
+      if (targetWidth > MAX_CANVAS_DIM) {
+        targetWidth = MAX_CANVAS_DIM;
+      }
+      if (targetHeight > MAX_CANVAS_DIM) {
+        targetHeight = MAX_CANVAS_DIM;
       }
 
       var exportCanvas = document.createElement('canvas');
-      exportCanvas.width = canvas.width;
-      exportCanvas.height = canvas.height;
+      exportCanvas.width = targetWidth;
+      exportCanvas.height = targetHeight;
 
       var exportContext = exportCanvas.getContext('2d');
       if (!exportContext) {
-        return canvas.toDataURL('image/png');
+        try {
+          return canvas.toDataURL('image/png');
+        } catch (e) {
+          return '';
+        }
       }
 
       exportContext.fillStyle = '#ffffff';
       exportContext.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
       exportContext.imageSmoothingEnabled = true;
       exportContext.imageSmoothingQuality = 'high';
-      exportContext.drawImage(
-        canvas,
-        sourceX,
-        sourceY,
-        sourceWidth,
-        sourceHeight,
-        0,
-        0,
-        exportCanvas.width,
-        exportCanvas.height
-      );
 
-      return exportCanvas.toDataURL('image/png');
+      try {
+        exportContext.drawImage(
+          canvas,
+          sourceX,
+          sourceY,
+          sourceWidth,
+          sourceHeight,
+          0,
+          0,
+          exportCanvas.width,
+          exportCanvas.height
+        );
+
+        var dataUrl = exportCanvas.toDataURL('image/png');
+
+        // Heuristic: if PNG is too large, try JPEG fallback with compression
+        var MAX_DATAURL_LENGTH = 6 * 1024 * 1024; // ~6MB
+        if (dataUrl && dataUrl.length > MAX_DATAURL_LENGTH) {
+          try {
+            dataUrl = exportCanvas.toDataURL('image/jpeg', 0.85);
+          } catch (e) {
+            // keep original if JPEG not available
+          }
+        }
+
+        return dataUrl;
+      } catch (e) {
+        try {
+          return canvas.toDataURL('image/png');
+        } catch (err) {
+          return '';
+        }
+      }
     }
 
     function openImpressaoWindow() {
@@ -10966,17 +11260,33 @@
         return false;
       }
 
-      var pagesHtml = [];
-      canvases.forEach(function (canvas) {
+      // Escreve o documento de impressão por partes para evitar criar uma única
+      // string gigante (que causa RangeError quando há muitas folhas/dataURLs).
+      var printHead = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Impressão de Gabaritos</title><style>@page { size: A4 portrait; margin: 0; } html, body { width: 210mm; min-height: 297mm; margin: 0; padding: 0; background: #ffffff !important; } body { display: block; } .print-page { width: 210mm; min-height: 297mm; margin: 0; padding: 0; page-break-after: always; break-after: page; background: #ffffff !important; border: none !important; box-shadow: none !important; outline: none !important; } .print-page:last-child { page-break-after: auto; break-after: auto; } .print-page img { width: 210mm; height: 297mm; margin: 0; padding: 0; border: 0; box-shadow: none; outline: none; display: block; } @media print { html, body { width: 210mm; min-height: 297mm; background: #ffffff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; } .print-page { margin: 0; border: 0 !important; box-shadow: none !important; outline: none !important; } .print-page img { border: 0; box-shadow: none; outline: none; } }</style></head><body>';
+
+      printWindow.document.open();
+      printWindow.document.write(printHead);
+
+      canvases.forEach(function (canvas, idx) {
         if (!(canvas instanceof HTMLCanvasElement)) {
           return;
         }
 
-        pagesHtml.push('<div class="print-page"><img src="' + exportPrintCanvasDataUrl(canvas) + '" alt="Folha A4 do gabarito"></div>');
+        try {
+          var dataUrl = exportPrintCanvasDataUrl(canvas);
+          if (!dataUrl || typeof dataUrl !== 'string') {
+            printWindow.document.write('<div class="print-page"><div style="font-family:sans-serif;color:#c00;padding:8px;">Erro ao gerar imagem da folha #' + (idx + 1) + '.</div></div>');
+            return;
+          }
+
+          // Se desejar, poderia gerar um fallback baseado em Blob/objectURL aqui.
+          printWindow.document.write('<div class="print-page"><img src="' + dataUrl + '" alt="Folha A4 do gabarito"></div>');
+        } catch (e) {
+          printWindow.document.write('<div class="print-page"><div style="font-family:sans-serif;color:#c00;padding:8px;">Erro ao gerar imagem da folha #' + (idx + 1) + '.</div></div>');
+        }
       });
 
-      printWindow.document.open();
-      printWindow.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Impressão de Gabaritos</title><style>@page { size: A4 portrait; margin: 0; } html, body { width: 210mm; min-height: 297mm; margin: 0; padding: 0; background: #ffffff !important; } body { display: block; } .print-page { width: 210mm; min-height: 297mm; margin: 0; padding: 0; page-break-after: always; break-after: page; background: #ffffff !important; border: none !important; box-shadow: none !important; outline: none !important; } .print-page:last-child { page-break-after: auto; break-after: auto; } .print-page img { width: 210mm; height: 297mm; margin: 0; padding: 0; border: 0; box-shadow: none; outline: none; display: block; } @media print { html, body { width: 210mm; min-height: 297mm; background: #ffffff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; } .print-page { margin: 0; border: 0 !important; box-shadow: none !important; outline: none !important; } .print-page img { border: 0; box-shadow: none; outline: none; } }</style></head><body>' + pagesHtml.join('') + '<script>window.onload = function () { setTimeout(function () { window.print(); }, 250); }<' + '/script></body></html>');
+      printWindow.document.write('<script>window.onload = function () { setTimeout(function () { window.print(); }, 250); }<' + '/script></body></html>');
       printWindow.document.close();
       return true;
     }
@@ -14131,11 +14441,11 @@
           + '<div class="admin-avaliacoes-report-filter-hub-body">'
           + (visibleLabels.length
             ? '<div class="admin-avaliacao-selector-chip-list">'
-              + visibleLabels.map(function (label) {
-                return '<span class="admin-avaliacao-selector-chip">' + escapeHtml(label) + '</span>';
-              }).join('')
-              + (moreCount > 0 ? '<span class="admin-avaliacao-selector-chip is-muted">+' + escapeHtml(String(moreCount)) + '</span>' : '')
-              + '</div>'
+            + visibleLabels.map(function (label) {
+              return '<span class="admin-avaliacao-selector-chip">' + escapeHtml(label) + '</span>';
+            }).join('')
+            + (moreCount > 0 ? '<span class="admin-avaliacao-selector-chip is-muted">+' + escapeHtml(String(moreCount)) + '</span>' : '')
+            + '</div>'
             : '<div class="small text-secondary">' + escapeHtml(definition.defaultLabel) + '</div>')
           + '</div>'
           + '<div class="mt-3">'
@@ -14310,8 +14620,8 @@
       });
 
       var turmaOptions = Object.keys(turmasMap).map(function (key) { return turmasMap[key]; }).sort(function (left, right) {
-          return String(left.label || '').localeCompare(String(right.label || ''), 'pt-BR', { sensitivity: 'base' });
-        });
+        return String(left.label || '').localeCompare(String(right.label || ''), 'pt-BR', { sensitivity: 'base' });
+      });
       var activeTurmaValues = normalizeStatsFilterValues(reportFiltersState.turmaValues, turmaOptions.map(function (item) {
         return item.value;
       }));
@@ -14572,35 +14882,35 @@
 
       targetList.innerHTML = '<div class="admin-avaliacoes-report-compact-list">'
         + buildAvaliacaoReportFilterOptionMarkup({
-        value: 'all',
-        label: 'Todos os estudantes',
-        subtitle: 'Mantém o relatório aberto para qualquer turma e estudante',
-        searchText: 'todos os estudantes todas as turmas',
-      }, {
-        mode: 'filter',
-        groupName: 'ReportAluno',
-        selectedValues: selectedValues,
-        optionId: 'adminAvaliacoesReportAluno_all',
-      })
+          value: 'all',
+          label: 'Todos os estudantes',
+          subtitle: 'Mantém o relatório aberto para qualquer turma e estudante',
+          searchText: 'todos os estudantes todas as turmas',
+        }, {
+          mode: 'filter',
+          groupName: 'ReportAluno',
+          selectedValues: selectedValues,
+          optionId: 'adminAvaliacoesReportAluno_all',
+        })
         + '</div>'
         + groups.map(function (group, groupIndex) {
-        return '<section class="admin-avaliacoes-report-group">'
-          + '<div class="admin-avaliacoes-report-group-header">'
-          + '<div class="admin-avaliacoes-report-group-title">' + escapeHtml(group.turmaLabel) + '</div>'
-          + '<div class="admin-avaliacoes-report-group-meta">' + escapeHtml(String(group.items.length) + ' estudante(s)') + '</div>'
-          + '</div>'
-          + '<div class="admin-avaliacoes-report-compact-list">'
-          + group.items.map(function (option, optionIndex) {
-            return buildAvaliacaoReportFilterOptionMarkup(option, {
-              mode: 'filter',
-              groupName: 'ReportAluno',
-              selectedValues: selectedValues,
-              optionId: 'adminAvaliacoesReportAluno_' + String(groupIndex + 1) + '_' + String(optionIndex + 1),
-            });
-          }).join('')
-          + '</div>'
-          + '</section>';
-      }).join('')
+          return '<section class="admin-avaliacoes-report-group">'
+            + '<div class="admin-avaliacoes-report-group-header">'
+            + '<div class="admin-avaliacoes-report-group-title">' + escapeHtml(group.turmaLabel) + '</div>'
+            + '<div class="admin-avaliacoes-report-group-meta">' + escapeHtml(String(group.items.length) + ' estudante(s)') + '</div>'
+            + '</div>'
+            + '<div class="admin-avaliacoes-report-compact-list">'
+            + group.items.map(function (option, optionIndex) {
+              return buildAvaliacaoReportFilterOptionMarkup(option, {
+                mode: 'filter',
+                groupName: 'ReportAluno',
+                selectedValues: selectedValues,
+                optionId: 'adminAvaliacoesReportAluno_' + String(groupIndex + 1) + '_' + String(optionIndex + 1),
+              });
+            }).join('')
+            + '</div>'
+            + '</section>';
+        }).join('')
         + (!groups.length
           ? '<div class="admin-avaliacao-stats-filter-empty">Nenhum estudante disponível para as turmas filtradas.</div>'
           : '');
@@ -15657,15 +15967,15 @@
         + '<div class="rpt-section-head">Alertas pedagógicos</div>'
         + (insightsBundle.insights && insightsBundle.insights.length
           ? '<div class="rpt-alert-list">' + insightsBundle.insights.map(function (item) {
-              return '<div class="rpt-alert"><div class="rpt-alert-title">' + escapeHtml(item.title) + '</div><div class="rpt-alert-text">' + escapeHtml(item.text) + '</div></div>';
-            }).join('') + '</div>'
+            return '<div class="rpt-alert"><div class="rpt-alert-title">' + escapeHtml(item.title) + '</div><div class="rpt-alert-text">' + escapeHtml(item.text) + '</div></div>';
+          }).join('') + '</div>'
           : '<div class="rpt-ok-notice">Nenhuma criticidade identificada no recorte atual.</div>')
         + '</div>'
         + '<div>'
         + (insightsBundle.recommendations && insightsBundle.recommendations.length
           ? '<div class="rpt-section-head">Encaminhamentos</div><div class="rpt-recommend-list">' + insightsBundle.recommendations.map(function (item) {
-              return '<div class="rpt-recommend"><div class="rpt-recommend-text">' + escapeHtml(item) + '</div></div>';
-            }).join('') + '</div>'
+            return '<div class="rpt-recommend"><div class="rpt-recommend-text">' + escapeHtml(item) + '</div></div>';
+          }).join('') + '</div>'
           : '')
         + '</div>'
         + '</div>';
@@ -15800,8 +16110,8 @@
         + '<div class="rpt-section-head">Alertas identificados</div>'
         + ((insightsBundle.insights || []).length
           ? '<div class="rpt-alert-list">' + insightsBundle.insights.map(function (item) {
-              return '<div class="rpt-alert"><div class="rpt-alert-title">' + escapeHtml(item.title) + '</div><div class="rpt-alert-text">' + escapeHtml(item.text) + '</div></div>';
-            }).join('') + '</div>'
+            return '<div class="rpt-alert"><div class="rpt-alert-title">' + escapeHtml(item.title) + '</div><div class="rpt-alert-text">' + escapeHtml(item.text) + '</div></div>';
+          }).join('') + '</div>'
           : '<div class="rpt-ok-notice">Nenhuma criticidade identificada no recorte atual.</div>')
         + '</div>'
         + '<div>'
@@ -20780,6 +21090,7 @@
     function markGabaritoPendingChanges(optionalMessage) {
       setGabaritoPendingChanges(true);
       syncGabaritoInput();
+      renderImpressaoPreviewIfVisible();
     }
 
     function hasLayoutBackgroundConfigured() {
@@ -21941,6 +22252,8 @@
     filterTable();
 
     bindRowActionButtons();
+    loadTableCorrecaoStatuses({ silent: true });
+    startTableCorrecaoStatusAutoRefresh();
 
     if (gabaritoPreviewImage) {
       gabaritoPreviewImage.addEventListener('click', handleGabaritoPreviewClick);
@@ -22513,6 +22826,27 @@
         renderGabaritoPreview(); renderA4LayoutEditor(); markGabaritoPendingChanges();
       });
     }
+
+    Array.prototype.forEach.call(gabaritoDefaultObjectButtons || [], function (button) {
+      if (!(button instanceof HTMLElement)) {
+        return;
+      }
+
+      button.addEventListener('click', function () {
+        var boxKey = String(button.getAttribute('data-box-key') || '').trim();
+        if (boxKey === '') {
+          return;
+        }
+
+        if (!setGabaritoInfoBoxHidden(boxKey, !isGabaritoInfoBoxHidden(boxKey))) {
+          return;
+        }
+
+        updateGabaritoDefaultObjectButtons();
+        renderA4LayoutEditor();
+        markGabaritoPendingChanges();
+      });
+    });
 
     // ---- Layout tab: zoom do canvas A4 ----
     if (gabaritoZoomOutBtn) {
