@@ -205,6 +205,15 @@
 			if (typeof helpers.setCorrecaoScannerStep === 'function') {
 				helpers.setCorrecaoScannerStep('idle', 'Nenhuma correção em andamento.');
 			}
+
+			try {
+				if (helpers && typeof helpers.applyCorrecaoUiRotation === 'function') {
+					helpers.applyCorrecaoUiRotation(false);
+				}
+				setState({ correcaoRotateUI: false });
+			} catch (e) {
+				// ignore
+			}
 		}
 
 		function startCorrecaoCamera() {
@@ -257,6 +266,18 @@
 				}
 
 				return elements.correcaoVideo.play().then(function () {
+					try {
+						var shouldRotate = false;
+						if (helpers && typeof helpers.shouldRotateForCurrentTemplate === 'function') {
+							shouldRotate = !!helpers.shouldRotateForCurrentTemplate(elements.correcaoVideo);
+						}
+						if (helpers && typeof helpers.applyCorrecaoUiRotation === 'function') {
+							helpers.applyCorrecaoUiRotation(shouldRotate);
+						}
+						setState({ correcaoRotateUI: shouldRotate });
+					} catch (e) {
+						// ignore
+					}
 					return elements.correcaoVideo;
 				});
 			});
@@ -409,6 +430,7 @@
 				return null;
 			}
 
+			captureCanvas._correcaoOverlayMapping = null;
 			var cropCanvas = captureCanvas;
 			var guideBoxEl = document.querySelector('.admin-avaliacao-correcao-align-guide-box');
 			if (!(guideBoxEl instanceof HTMLElement) || !(elements.correcaoVideo instanceof HTMLVideoElement)) {
@@ -421,43 +443,94 @@
 				return cropCanvas;
 			}
 
+			// Se a UI estiver rotacionada, precisamos transformar a caixa da GUI de volta
+			// para as coordenadas 'não rotacionadas' antes de projetar para o canvas.
+			var state = typeof getState === 'function' ? getState() : {};
+			var rotated = !!(state && state.correcaoRotateUI);
+			var vx = videoRect.left, vy = videoRect.top, vw = videoRect.width, vh = videoRect.height;
+			var gx = guideRect.left, gy = guideRect.top, gw = guideRect.width, gh = guideRect.height;
+			if (rotated) {
+				// centro do vídeo (em coords de página)
+				var vcenterX = vx + vw / 2;
+				var vcenterY = vy + vh / 2;
+				// pontos da guia (TL, TR, BR, BL)
+				var points = [
+					{ x: gx, y: gy },
+					{ x: gx + gw, y: gy },
+					{ x: gx + gw, y: gy + gh },
+					{ x: gx, y: gy + gh },
+				];
+
+				// aplica rotação inversa (-90deg) em torno do centro para obter coords não-rotacionadas
+				var invPts = points.map(function (p) {
+					var dx = p.x - vcenterX;
+					var dy = p.y - vcenterY;
+					// rotação -90deg: x' = dy, y' = -dx
+					var nx = vcenterX + dy;
+					var ny = vcenterY - dx;
+					return { x: nx, y: ny };
+				});
+
+				var minX = Math.min.apply(null, invPts.map(function (p) { return p.x; }));
+				var minY = Math.min.apply(null, invPts.map(function (p) { return p.y; }));
+				var maxX = Math.max.apply(null, invPts.map(function (p) { return p.x; }));
+				var maxY = Math.max.apply(null, invPts.map(function (p) { return p.y; }));
+
+				// reatribui guia para caixa não-rotacionada
+				gx = minX;
+				gy = minY;
+				gw = Math.max(1, maxX - minX);
+				gh = Math.max(1, maxY - minY);
+
+				// reconstruir rect do vídeo na orientação não-rotacionada (swap w/h)
+				var origVw = vw;
+				var origVh = vh;
+				vx = vcenterX - origVh / 2;
+				vy = vcenterY - origVw / 2;
+				vw = origVh;
+				vh = origVw;
+			}
+
 			var vidAspect = captureCanvas.width / captureCanvas.height;
-			var elAspect = videoRect.width / videoRect.height;
+			var elAspect = vw / vh;
 			var scaleToVideo;
 			var offX;
 			var offY;
 
 			if (elAspect > vidAspect) {
-				scaleToVideo = captureCanvas.width / videoRect.width;
+				scaleToVideo = vw ? (captureCanvas.width / vw) : 0;
 				offX = 0;
-				offY = (captureCanvas.height - videoRect.height * scaleToVideo) / 2;
+				offY = (captureCanvas.height - vh * scaleToVideo) / 2;
 			} else {
-				scaleToVideo = captureCanvas.height / videoRect.height;
-				offX = (captureCanvas.width - videoRect.width * scaleToVideo) / 2;
+				scaleToVideo = vh ? (captureCanvas.height / vh) : 0;
+				offX = (captureCanvas.width - vw * scaleToVideo) / 2;
 				offY = 0;
 			}
 
-			var gx = (guideRect.left - videoRect.left) * scaleToVideo + offX;
-			var gy = (guideRect.top - videoRect.top) * scaleToVideo + offY;
-			var gw = guideRect.width * scaleToVideo;
-			var gh = guideRect.height * scaleToVideo;
-			var cx = Math.max(0, Math.round(gx));
-			var cy = Math.max(0, Math.round(gy));
-			var cw = Math.min(captureCanvas.width - cx, Math.round(gw));
-			var ch = Math.min(captureCanvas.height - cy, Math.round(gh));
+			var px = (gx - vx) * scaleToVideo + offX;
+			var py = (gy - vy) * scaleToVideo + offY;
+			var pw = gw * scaleToVideo;
+			var ph = gh * scaleToVideo;
+			var cxCrop = Math.max(0, Math.round(px));
+			var cyCrop = Math.max(0, Math.round(py));
+			var cwCrop = Math.min(captureCanvas.width - cxCrop, Math.round(pw));
+			var chCrop = Math.min(captureCanvas.height - cyCrop, Math.round(ph));
 
-			if (cw <= 50 || ch <= 50) {
+			if (cwCrop <= 50 || chCrop <= 50) {
 				return cropCanvas;
 			}
 
 			cropCanvas = document.createElement('canvas');
-			cropCanvas.width = cw;
-			cropCanvas.height = ch;
+			cropCanvas.width = cwCrop;
+			cropCanvas.height = chCrop;
 			var cropCtx = cropCanvas.getContext('2d');
 			if (!cropCtx) {
 				return captureCanvas;
 			}
-			cropCtx.drawImage(captureCanvas, cx, cy, cw, ch, 0, 0, cw, ch);
+			cropCtx.drawImage(captureCanvas, cxCrop, cyCrop, cwCrop, chCrop, 0, 0, cwCrop, chCrop);
+			cropCanvas._correcaoOverlayMapping = {
+				mode: 'guide-box',
+			};
 			return cropCanvas;
 		}
 

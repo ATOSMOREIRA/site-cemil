@@ -8908,14 +8908,23 @@
       var containerHeight = guideContainer ? guideContainer.clientHeight : window.innerHeight;
       var horizontalPadding = containerWidth <= 767 ? 24 : 56;
       var verticalPadding = containerHeight <= 767 ? 96 : 140;
-      var maxWidthByContainer = Math.max(220, containerWidth - horizontalPadding);
-      var maxHeightByContainer = Math.max(280, containerHeight - verticalPadding);
-      var maxWidthByHeight = maxHeightByContainer * (safeTemplateWidth / safeTemplateHeight);
-      var resolvedWidth = Math.min(maxWidthByContainer, maxWidthByHeight);
-      var resolvedHeight = resolvedWidth * (safeTemplateHeight / safeTemplateWidth);
+      var aspectRatio = safeTemplateWidth / safeTemplateHeight;
+      var maxWidthByContainer = Math.max(1, containerWidth - horizontalPadding);
+      var maxHeightByContainer = Math.max(1, containerHeight - verticalPadding);
+      var resolvedWidth = maxWidthByContainer;
+      var resolvedHeight = resolvedWidth / aspectRatio;
 
-      guideBox.style.width = Math.max(220, Math.round(resolvedWidth)) + 'px';
-      guideBox.style.height = Math.max(280, Math.round(resolvedHeight)) + 'px';
+      if (resolvedHeight > maxHeightByContainer) {
+        resolvedHeight = maxHeightByContainer;
+        resolvedWidth = resolvedHeight * aspectRatio;
+      }
+
+      guideBox.style.width = Math.max(1, Math.round(resolvedWidth)) + 'px';
+      guideBox.style.height = Math.max(1, Math.round(resolvedHeight)) + 'px';
+      guideBox.style.minWidth = '0';
+      guideBox.style.minHeight = '0';
+      guideBox.style.maxWidth = Math.max(1, Math.round(maxWidthByContainer)) + 'px';
+      guideBox.style.maxHeight = Math.max(1, Math.round(maxHeightByContainer)) + 'px';
       guideBox.style.aspectRatio = safeTemplateWidth + ' / ' + safeTemplateHeight;
     }
 
@@ -11763,6 +11772,7 @@
         correcaoProcessingOverlay.classList.remove('is-success', 'is-blocking');
         if (correcaoProcessingContent) {
           correcaoProcessingContent.classList.remove('is-success');
+          correcaoProcessingContent.scrollTop = 0;
         }
         if (correcaoProcessingSpinner) {
           correcaoProcessingSpinner.classList.remove('d-none');
@@ -11773,6 +11783,7 @@
         if (correcaoProcessingSummary) {
           correcaoProcessingSummary.innerHTML = '';
           correcaoProcessingSummary.classList.add('d-none');
+          correcaoProcessingSummary.scrollTop = 0;
         }
         return;
       }
@@ -11781,10 +11792,16 @@
 
       if (safeMode === 'success') {
         var summary = safeOptions.summary && typeof safeOptions.summary === 'object' ? safeOptions.summary : null;
+        var successActionsHtml = ''
+          + '<div class="admin-avaliacao-correcao-processing-actions">'
+          + '<button type="button" class="btn btn-primary" data-correcao-success-action="next">Próximo QR Code</button>'
+          + '<button type="button" class="btn admin-avaliacao-correcao-processing-retry-btn" data-correcao-success-action="retry">Corrigir novamente</button>'
+          + '</div>';
         correcaoProcessingOverlay.classList.remove('is-blocking');
         correcaoProcessingOverlay.classList.add('is-success');
         if (correcaoProcessingContent) {
           correcaoProcessingContent.classList.add('is-success');
+          correcaoProcessingContent.scrollTop = 0;
         }
         if (correcaoProcessingSpinner) {
           correcaoProcessingSpinner.classList.add('d-none');
@@ -11793,6 +11810,7 @@
           correcaoProcessingTitle.textContent = 'Correção concluída';
         }
         if (correcaoProcessingSummary) {
+          correcaoProcessingSummary.scrollTop = 0;
           if (summary) {
             var headerParts = [];
             if (summary.alunoNome) {
@@ -11817,11 +11835,33 @@
               + (headerParts.length ? '<div class="admin-avaliacao-correcao-processing-student">' + headerParts.join(' • ') + '</div>' : '')
               + '<div class="admin-avaliacao-correcao-processing-total">' + escapeHtml(String(summary.acertos)) + '/' + escapeHtml(String(summary.total)) + ' acertos</div>'
               + '<div class="admin-avaliacao-correcao-processing-total-meta">' + escapeHtml(String(summary.percentual)) + '% de aproveitamento • ' + escapeHtml(formatCorrecaoScoreValue(summary.pontuacao)) + '/' + escapeHtml(formatCorrecaoScoreValue(summary.pontuacaoTotal)) + ' pontos</div>'
-              + '<div class="admin-avaliacao-correcao-processing-discipline-grid">' + disciplinasHtml + '</div>';
+              + successActionsHtml
+              + '<div class="admin-avaliacao-correcao-processing-discipline-panel">'
+              + '<div class="admin-avaliacao-correcao-processing-discipline-panel-title">Resumo por disciplina</div>'
+              + '<div class="admin-avaliacao-correcao-processing-discipline-scroll">'
+              + '<div class="admin-avaliacao-correcao-processing-discipline-grid">' + disciplinasHtml + '</div>'
+              + '</div>'
+              + '</div>';
           } else {
-            correcaoProcessingSummary.innerHTML = '<div class="admin-avaliacao-correcao-processing-empty">Correção salva com sucesso.</div>';
+            correcaoProcessingSummary.innerHTML = '<div class="admin-avaliacao-correcao-processing-empty">Correção salva com sucesso.</div>' + successActionsHtml;
           }
           correcaoProcessingSummary.classList.remove('d-none');
+
+          Array.prototype.forEach.call(correcaoProcessingSummary.querySelectorAll('[data-correcao-success-action]'), function (button) {
+            button.addEventListener('click', function (event) {
+              event.preventDefault();
+              var action = String(button.getAttribute('data-correcao-success-action') || '').trim().toLowerCase();
+              if (action === 'next') {
+                if (correcaoNextBtn) {
+                  correcaoNextBtn.click();
+                }
+                return;
+              }
+              if (action === 'retry' && correcaoRetryBtn) {
+                correcaoRetryBtn.click();
+              }
+            });
+          });
         }
         return;
       }
@@ -11878,6 +11918,8 @@
 
       syncCorrecaoGuideTemplate();
 
+      var hasSuccessOverlay = Boolean(correcaoProcessingOverlay && correcaoProcessingOverlay.dataset.state === 'success');
+
       if (correcaoCaptureBtn) {
         correcaoCaptureBtn.classList.toggle('d-none', correcaoScannerStep !== 'scan-gabarito');
       }
@@ -11887,7 +11929,7 @@
       }
 
       if (correcaoNextWrap) {
-        correcaoNextWrap.classList.toggle('d-none', correcaoScannerStep !== 'success');
+        correcaoNextWrap.classList.toggle('d-none', correcaoScannerStep !== 'success' || hasSuccessOverlay);
       }
 
       if (correcaoProcessWrap) {
@@ -11896,7 +11938,6 @@
       }
 
       if (correcaoProcessingOverlay) {
-        var hasSuccessOverlay = correcaoProcessingOverlay.dataset.state === 'success';
         if (correcaoScannerStep === 'processing' || correcaoScannerStep === 'saving') {
           renderCorrecaoProcessingOverlay('processing', { message: safeMessage });
         } else if (correcaoScannerStep === 'success' && hasSuccessOverlay) {
@@ -11982,7 +12023,32 @@
       }
     }
 
-    function mapCorrecaoSourcePointToOverlay(sourceX, sourceY, sourceWidth, sourceHeight) {
+    function getCorrecaoGuideBoxOverlayRect(overlayRect) {
+      if (!(overlayRect && overlayRect.width > 0 && overlayRect.height > 0)) {
+        return null;
+      }
+
+      var guideBoxEl = correcaoAlignGuide instanceof HTMLElement
+        ? correcaoAlignGuide.querySelector('.admin-avaliacao-correcao-align-guide-box')
+        : document.querySelector('.admin-avaliacao-correcao-align-guide-box');
+      if (!(guideBoxEl instanceof HTMLElement)) {
+        return null;
+      }
+
+      var guideRect = guideBoxEl.getBoundingClientRect();
+      if (!guideRect || guideRect.width <= 0 || guideRect.height <= 0) {
+        return null;
+      }
+
+      return {
+        x: guideRect.left - overlayRect.left,
+        y: guideRect.top - overlayRect.top,
+        width: guideRect.width,
+        height: guideRect.height,
+      };
+    }
+
+    function resolveCorrecaoSourceProjection(sourceWidth, sourceHeight, diagnostics) {
       if (!(correcaoOverlay instanceof HTMLElement)) {
         return null;
       }
@@ -11992,31 +12058,59 @@
         return null;
       }
 
+      var overlayMapping = diagnostics && diagnostics.overlayMapping && typeof diagnostics.overlayMapping === 'object'
+        ? diagnostics.overlayMapping
+        : null;
       var useContain = false;
       if (correcaoVideo instanceof HTMLVideoElement && correcaoVideo.paused) {
         useContain = Boolean(String(correcaoVideo.style.backgroundImage || '').trim());
       }
-      var baseFrozenWidth = 430;
-      var baseFrozenHeight = 932;
-      var scale = useContain
-        ? Math.min(overlayRect.width / baseFrozenWidth, overlayRect.height / baseFrozenHeight)
-        : Math.max(overlayRect.width / sourceWidth, overlayRect.height / sourceHeight);
-      if (useContain) {
-        scale *= 0.695;
+
+      if (!useContain && overlayMapping && overlayMapping.mode === 'guide-box') {
+        var guideBoxRect = getCorrecaoGuideBoxOverlayRect(overlayRect);
+        if (guideBoxRect) {
+          return {
+            x: guideBoxRect.x,
+            y: guideBoxRect.y,
+            scaleX: guideBoxRect.width / sourceWidth,
+            scaleY: guideBoxRect.height / sourceHeight,
+          };
+        }
       }
-      var renderedWidth = (useContain ? baseFrozenWidth : sourceWidth) * scale;
-      var renderedHeight = (useContain ? baseFrozenHeight : sourceHeight) * scale;
-      var offsetX = (overlayRect.width - renderedWidth) / 2;
-      var offsetY = (overlayRect.height - renderedHeight) / 2;
-      if (useContain) {
-        offsetX -= overlayRect.width * 0.077;
-        offsetY += overlayRect.height * 0.138;
+
+      var mediaRect = correcaoVideo instanceof HTMLVideoElement
+        ? correcaoVideo.getBoundingClientRect()
+        : overlayRect;
+      if (!mediaRect || mediaRect.width <= 0 || mediaRect.height <= 0) {
+        mediaRect = overlayRect;
+      }
+
+      var scale = useContain
+        ? Math.min(mediaRect.width / sourceWidth, mediaRect.height / sourceHeight)
+        : Math.max(mediaRect.width / sourceWidth, mediaRect.height / sourceHeight);
+      var renderedWidth = sourceWidth * scale;
+      var renderedHeight = sourceHeight * scale;
+      var offsetX = (mediaRect.left - overlayRect.left) + ((mediaRect.width - renderedWidth) / 2);
+      var offsetY = (mediaRect.top - overlayRect.top) + ((mediaRect.height - renderedHeight) / 2);
+
+      return {
+        x: offsetX,
+        y: offsetY,
+        scaleX: scale,
+        scaleY: scale,
+      };
+    }
+
+    function mapCorrecaoSourcePointToOverlay(sourceX, sourceY, sourceWidth, sourceHeight, diagnostics) {
+      var projection = resolveCorrecaoSourceProjection(sourceWidth, sourceHeight, diagnostics);
+      if (!projection) {
+        return null;
       }
 
       return {
-        x: offsetX + (sourceX * scale),
-        y: offsetY + (sourceY * scale),
-        scale: scale,
+        x: projection.x + (sourceX * projection.scaleX),
+        y: projection.y + (sourceY * projection.scaleY),
+        scale: (projection.scaleX + projection.scaleY) / 2,
       };
     }
 
@@ -12054,12 +12148,13 @@
       }
 
       if (diagnostics.paperBounds) {
-        var paperTopLeft = mapCorrecaoSourcePointToOverlay(diagnostics.paperBounds.x, diagnostics.paperBounds.y, resolvedSourceWidth, resolvedSourceHeight);
+        var paperTopLeft = mapCorrecaoSourcePointToOverlay(diagnostics.paperBounds.x, diagnostics.paperBounds.y, resolvedSourceWidth, resolvedSourceHeight, diagnostics);
         var paperBottomRight = mapCorrecaoSourcePointToOverlay(
           diagnostics.paperBounds.x + diagnostics.paperBounds.width,
           diagnostics.paperBounds.y + diagnostics.paperBounds.height,
           resolvedSourceWidth,
-          resolvedSourceHeight
+          resolvedSourceHeight,
+          diagnostics
         );
         if (paperTopLeft && paperBottomRight) {
           createSvgNode('rect', {
@@ -12082,7 +12177,7 @@
             return;
           }
 
-          var center = mapCorrecaoSourcePointToOverlay(marker.x, marker.y, resolvedSourceWidth, resolvedSourceHeight);
+          var center = mapCorrecaoSourcePointToOverlay(marker.x, marker.y, resolvedSourceWidth, resolvedSourceHeight, diagnostics);
           if (!center) {
             return;
           }
@@ -12116,7 +12211,7 @@
             diagnostics.markers.bottomRight,
             diagnostics.markers.bottomLeft,
           ].map(function (marker) {
-            return mapCorrecaoSourcePointToOverlay(marker.x, marker.y, resolvedSourceWidth, resolvedSourceHeight);
+            return mapCorrecaoSourcePointToOverlay(marker.x, marker.y, resolvedSourceWidth, resolvedSourceHeight, diagnostics);
           }).filter(function (point) {
             return !!point;
           });
@@ -12139,7 +12234,7 @@
           if (!marker) {
             return;
           }
-          var center = mapCorrecaoSourcePointToOverlay(marker.x, marker.y, resolvedSourceWidth, resolvedSourceHeight);
+          var center = mapCorrecaoSourcePointToOverlay(marker.x, marker.y, resolvedSourceWidth, resolvedSourceHeight, diagnostics);
           if (!center) {
             return;
           }
@@ -12188,7 +12283,7 @@
               y: diagnostics.transform.offsetY + (bubble.y * diagnostics.transform.scaleY),
             };
           }
-          var overlayPoint = mapCorrecaoSourcePointToOverlay(projected.x, projected.y, resolvedSourceWidth, resolvedSourceHeight);
+          var overlayPoint = mapCorrecaoSourcePointToOverlay(projected.x, projected.y, resolvedSourceWidth, resolvedSourceHeight, diagnostics);
           if (!overlayPoint) {
             return;
           }
@@ -18833,6 +18928,11 @@
         paperBounds: null,
         markers: null,
         source: 'none',
+        sourceWidth: captureCanvas.width,
+        sourceHeight: captureCanvas.height,
+        overlayMapping: captureCanvas && captureCanvas._correcaoOverlayMapping && typeof captureCanvas._correcaoOverlayMapping === 'object'
+          ? captureCanvas._correcaoOverlayMapping
+          : null,
       };
 
       // Tenta detectar marcadores em toda a câmera
@@ -19196,6 +19296,9 @@
 
       var originalSourceWidth = captureCanvas.width;
       var originalSourceHeight = captureCanvas.height;
+      var overlayMapping = captureCanvas && captureCanvas._correcaoOverlayMapping && typeof captureCanvas._correcaoOverlayMapping === 'object'
+        ? captureCanvas._correcaoOverlayMapping
+        : null;
 
       // Aplica o filtro de escala de cinza ANTES da detecção para melhorar a leitura
       convertCorrecaoCanvasToGrayscale(captureCanvas);
@@ -19737,11 +19840,16 @@
             transform: transform || null,
             sourceWidth: originalSourceWidth,
             sourceHeight: originalSourceHeight,
+            overlayMapping: overlayMapping,
           };
         } else if (!correcaoLastDiagnostics.transform) {
           correcaoLastDiagnostics.transform = transform || null;
           correcaoLastDiagnostics.sourceWidth = originalSourceWidth;
           correcaoLastDiagnostics.sourceHeight = originalSourceHeight;
+        }
+
+        if (!correcaoLastDiagnostics.overlayMapping && overlayMapping) {
+          correcaoLastDiagnostics.overlayMapping = overlayMapping;
         }
 
         var answerMarkers = [];

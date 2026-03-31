@@ -5295,8 +5295,8 @@ body.inst-service-modal-open .modal-backdrop {
   height: min(82vh, calc(min(72vw, 52vh) * 1.414));
   max-width: calc(100vw - 2rem);
   max-height: calc(100vh - 8rem);
-  min-width: 220px;
-  min-height: 280px;
+  min-width: 0;
+  min-height: 0;
   aspect-ratio: 794 / 1123;
   /* aspect-ratio é definido dinamicamente via JS com base no gabaritoTemplateMarkers */
   box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.40);
@@ -5472,15 +5472,83 @@ body.inst-service-modal-open .modal-backdrop {
 .admin-avaliacao-correcao-processing-overlay.is-success {
   background: transparent;
   align-items: flex-start;
-  padding-top: clamp(1rem, 8vh, 4rem);
+  padding: clamp(1rem, 8vh, 4rem) 1rem calc(env(safe-area-inset-bottom, 0px) + 1rem);
 }
 
 .admin-avaliacao-correcao-processing-content.is-success {
-  width: min(100%, 44rem);
+  width: min(100%, 34rem);
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+  overflow: hidden;
 }
 
 .admin-avaliacao-correcao-processing-summary {
   margin-top: 0.9rem;
+}
+
+.admin-avaliacao-correcao-processing-content.is-success .admin-avaliacao-correcao-processing-summary {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.admin-avaliacao-correcao-processing-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.admin-avaliacao-correcao-processing-actions .btn {
+  min-height: 3.25rem;
+  font-weight: 700;
+  border-radius: 0.95rem;
+  box-shadow: 0 0.45rem 1rem rgba(0, 0, 0, 0.24);
+}
+
+.admin-avaliacao-correcao-processing-retry-btn {
+  background: rgba(248, 250, 252, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.92);
+  color: #0f1720;
+}
+
+.admin-avaliacao-correcao-processing-retry-btn:hover,
+.admin-avaliacao-correcao-processing-retry-btn:focus,
+.admin-avaliacao-correcao-processing-retry-btn:active {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: #020617;
+}
+
+.admin-avaliacao-correcao-processing-discipline-panel {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  margin-top: 1rem;
+  text-align: left;
+}
+
+.admin-avaliacao-correcao-processing-discipline-panel-title {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.7rem;
+  text-transform: uppercase;
+}
+
+.admin-avaliacao-correcao-processing-discipline-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  padding-right: 0.2rem;
 }
 
 .admin-avaliacao-correcao-processing-student {
@@ -5608,8 +5676,24 @@ body.inst-service-modal-open .modal-backdrop {
     padding: 1.15rem 1rem;
   }
 
+  .admin-avaliacao-correcao-processing-content.is-success {
+    max-height: 100%;
+  }
+
   .admin-avaliacao-correcao-processing-overlay.is-success {
-    padding-top: 0.75rem;
+    padding: 0.75rem 0.75rem calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+  }
+
+  .admin-avaliacao-correcao-processing-content.is-success .admin-avaliacao-correcao-processing-summary {
+    padding-right: 0;
+  }
+
+  .admin-avaliacao-correcao-processing-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-avaliacao-correcao-processing-discipline-scroll {
+    padding-right: 0;
   }
 
   .admin-avaliacao-correcao-processing-discipline-grid {

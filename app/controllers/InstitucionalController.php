@@ -3303,6 +3303,75 @@ class InstitucionalController extends HomeController
 		]);
 	}
 
+	public function institucionalRankingPedagogico(): void
+	{
+		if (!$this->canAccessNotasDesempenhoCatalog()) {
+			$this->redirect('/404');
+		}
+
+		$turmaModel = new TurmaModel();
+		$alunoModel = new AlunoModel();
+		$disciplinaModel = new DisciplinaModel();
+		$desempenhoService = new AlunoDesempenhoService();
+
+		try {
+			$turmas = $turmaModel->getAllOrdered();
+		} catch (Throwable) {
+			$turmas = [];
+		}
+
+		try {
+			$alunos = $alunoModel->getAllOrdered(true);
+		} catch (Throwable) {
+			$alunos = [];
+		}
+
+		try {
+			$disciplinas = $disciplinaModel->getSimpleOptions();
+		} catch (Throwable) {
+			$disciplinas = [];
+		}
+
+		if (!$this->isNotasDesempenhoScopeExemptUser()) {
+			$scope = $this->getNotasDesempenhoUserScope();
+			$allowedTurmaIds = array_flip($scope['turma_ids']);
+			$allowedDisciplinaIds = array_flip($scope['disciplina_ids']);
+
+			$turmas = array_values(array_filter($turmas, static function ($item) use ($allowedTurmaIds): bool {
+				if (!is_array($item)) {
+					return false;
+				}
+				$id = (int) ($item['id'] ?? 0);
+				return $id > 0 && isset($allowedTurmaIds[$id]);
+			}));
+
+			$alunos = array_values(array_filter($alunos, static function ($item) use ($allowedTurmaIds): bool {
+				if (!is_array($item)) {
+					return false;
+				}
+				$turmaId = (int) ($item['turma_id'] ?? 0);
+				return $turmaId > 0 && isset($allowedTurmaIds[$turmaId]);
+			}));
+
+			$disciplinas = array_values(array_filter($disciplinas, static function ($item) use ($allowedDisciplinaIds): bool {
+				if (!is_array($item)) {
+					return false;
+				}
+				$id = (int) ($item['id'] ?? 0);
+				return $id > 0 && isset($allowedDisciplinaIds[$id]);
+			}));
+		}
+
+		$this->render('home/Institucional/Ranking Pedagógico', [
+			'schoolName' => SCHOOL_NAME,
+			'turmas' => $turmas,
+			'alunos' => $alunos,
+			'disciplinas' => $disciplinas,
+			'notasDesempenhoCategorias' => $desempenhoService->getManualCategoryOptions(),
+			'currentYear' => (int) date('Y'),
+		]);
+	}
+
 	public function institucionalNotasDesempenhoDados(): void
 	{
 		if (!$this->canAccessNotasDesempenhoCatalog()) {
@@ -5782,6 +5851,10 @@ class InstitucionalController extends HomeController
 
 		if ($subserviceKey === 'notas_e_desempenho' || $subserviceKey === 'notas_desempenho') {
 			$this->redirect('/institucional/notas-desempenho');
+		}
+
+		if ($subserviceKey === 'ranking_pedagogico') {
+			$this->redirect('/institucional/ranking-pedagogico');
 		}
 
 		if ($subserviceKey === 'meus_agendamentos') {

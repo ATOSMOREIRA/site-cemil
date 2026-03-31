@@ -1,0 +1,1114 @@
+<?php
+$turmas = is_array($turmas ?? null) ? $turmas : [];
+$alunos = is_array($alunos ?? null) ? $alunos : [];
+$disciplinas = is_array($disciplinas ?? null) ? $disciplinas : [];
+$notasDesempenhoCategorias = is_array($notasDesempenhoCategorias ?? null) ? $notasDesempenhoCategorias : [];
+$csrfToken = (string) ($csrfToken ?? '');
+$currentYear = (int) ($currentYear ?? (int) date('Y'));
+$availableYears = [$currentYear, $currentYear - 1, $currentYear - 2, $currentYear - 3];
+?>
+
+<style>
+    .institutional-notas-shell {
+        --nd-bg: #f3f6fb;
+        --nd-surface: #ffffff;
+        --nd-surface-2: #f8fbff;
+        --nd-border: #dbe5f1;
+        --nd-text: #1f2937;
+        --nd-muted: #6b7280;
+        --nd-primary: #2563eb;
+        --nd-primary-soft: #e8f0ff;
+        --nd-danger: #e53935;
+        --nd-radius: 14px;
+        --nd-shadow: 0 8px 24px rgba(15, 23, 42, .08);
+        background: linear-gradient(180deg, #f4f8ff 0%, #eef4fb 100%);
+    }
+
+    .institutional-notas-shell h1,
+    .institutional-notas-shell .fw-semibold,
+    .institutional-notas-shell .fw-bold {
+        color: var(--nd-text) !important;
+    }
+
+    .institutional-notas-shell .text-secondary,
+    .institutional-notas-shell .small.text-secondary {
+        color: var(--nd-muted) !important;
+    }
+
+    .institutional-notas-shell .border,
+    .institutional-notas-shell .rounded,
+    .institutional-notas-shell .table-responsive {
+        border-color: var(--nd-border) !important;
+        border-radius: var(--nd-radius) !important;
+    }
+
+    .institutional-notas-shell .bg-light,
+    .institutional-notas-shell .bg-white {
+        background: var(--nd-surface) !important;
+        box-shadow: var(--nd-shadow);
+    }
+
+    .institutional-notas-shell .btn {
+        border-radius: 999px !important;
+        font-weight: 600;
+        letter-spacing: .01em;
+    }
+
+    .institutional-notas-shell .btn-danger {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+        border-color: transparent !important;
+    }
+
+    .institutional-notas-shell .btn-outline-primary,
+    .institutional-notas-shell .btn-outline-secondary {
+        background: #fff !important;
+        border-color: var(--nd-border) !important;
+        color: #1f3f7a !important;
+    }
+
+    .institutional-notas-shell .btn-outline-primary:hover,
+    .institutional-notas-shell .btn-outline-secondary:hover {
+        background: var(--nd-primary-soft) !important;
+        border-color: #bfd3ff !important;
+    }
+
+    .institutional-notas-shell .form-control,
+    .institutional-notas-shell .form-select {
+        border-radius: 10px !important;
+        border: 1px solid var(--nd-border) !important;
+        background: #fff !important;
+        box-shadow: none !important;
+    }
+
+    .institutional-notas-shell .form-control:focus,
+    .institutional-notas-shell .form-select:focus {
+        border-color: #9bbcff !important;
+        box-shadow: 0 0 0 .2rem rgba(37, 99, 235, .12) !important;
+    }
+
+    .institutional-notas-shell .nav-tabs {
+        border-bottom: 1px solid var(--nd-border);
+        gap: .35rem;
+    }
+
+    .institutional-notas-shell .nav-tabs .nav-link {
+        border: 1px solid transparent;
+        border-radius: 10px 10px 0 0;
+        color: #334155;
+        font-weight: 600;
+        padding: .55rem .85rem;
+    }
+
+    .institutional-notas-shell .nav-tabs .nav-link:hover {
+        background: #f3f7ff;
+        border-color: #e1ebff;
+    }
+
+    .institutional-notas-shell .nav-tabs .nav-link.active {
+        background: var(--nd-primary-soft);
+        border-color: #c8daff #c8daff transparent;
+        color: #1e40af;
+    }
+
+    .institutional-notas-shell .table {
+        --bs-table-bg: transparent;
+        --bs-table-border-color: #e5edf8;
+    }
+
+    .institutional-notas-shell .table thead th {
+        background: #eef4ff !important;
+        color: #334155;
+        font-weight: 700;
+        border-bottom-color: #d7e4fb !important;
+    }
+
+    .institutional-notas-shell .table> :not(caption)>*>* {
+        padding: .5rem .65rem;
+    }
+
+    .institutional-notas-shell .badge.bg-success {
+        background: #16a34a !important;
+    }
+
+    .institutional-notas-shell .badge.bg-primary {
+        background: #2563eb !important;
+    }
+
+    .institutional-notas-shell .badge.bg-danger {
+        background: #dc2626 !important;
+    }
+
+    .institutional-notas-shell .badge.bg-warning {
+        background: #f59e0b !important;
+        color: #111827 !important;
+    }
+
+    .institutional-notas-shell .notas-workflow-card,
+    .institutional-notas-shell .notas-filter-summary-card {
+        background: var(--nd-surface-2);
+        border-color: #dce7f8;
+        box-shadow: 0 4px 14px rgba(2, 6, 23, .06);
+    }
+
+    .institutional-notas-shell .site-modal-content {
+        border-radius: 16px !important;
+        border: 1px solid #d9e5fb !important;
+        box-shadow: 0 16px 48px rgba(15, 23, 42, .18) !important;
+        background: #f9fbff !important;
+    }
+
+    .institutional-notas-shell .modal-header,
+    .institutional-notas-shell .modal-footer {
+        background: #f3f7ff;
+        border-color: #dbe8ff;
+    }
+
+    .institutional-notas-shell .institutional-wide-container {
+        width: min(100%, calc(100vw - 16px)) !important;
+        max-width: min(100%, calc(100vw - 16px)) !important;
+        padding-left: 6px;
+        padding-right: 6px;
+        box-sizing: border-box;
+        overflow-x: hidden;
+    }
+
+    .institutional-notas-shell,
+    #notasDesempenhoRoot,
+    #notasDesempenhoTabContent,
+    #pane-boletim,
+    #pane-boletim>.border {
+        max-width: 100%;
+        overflow-x: hidden;
+        box-sizing: border-box;
+    }
+
+    #notasDesempenhoTurma,
+    #notasDesempenhoBimestre,
+    #notasDesempenhoAno,
+    #notasDesempenhoDisciplinaSelect {
+        min-height: 96px;
+    }
+
+    .notas-hidden-select {
+        display: none !important;
+    }
+
+    .notas-filter-summary-card {
+        border: 1px solid #dee2e6;
+        border-radius: .5rem;
+        background: #fff;
+        padding: .5rem .65rem;
+        min-height: 76px;
+    }
+
+    .notas-filter-summary-card .summary-body {
+        font-size: .85rem;
+        color: #6c757d;
+        min-height: 34px;
+        max-height: 56px;
+        overflow: auto;
+    }
+
+    .notas-workflow-card {
+        border: 1px solid #e9ecef;
+        border-radius: .75rem;
+        background: #fff;
+        padding: .75rem;
+        height: 100%;
+    }
+
+    .notas-workflow-title {
+        font-weight: 700;
+        font-size: .95rem;
+    }
+
+    .notas-workflow-text {
+        font-size: .8rem;
+        color: #6c757d;
+    }
+
+    #notasDesempenhoBoletimContainer {
+        max-height: 72vh;
+        overflow-x: auto !important;
+        overflow-y: auto !important;
+        width: 100%;
+        max-width: 100%;
+        scrollbar-gutter: stable both-edges;
+    }
+
+    #notasDesempenhoBoletimXScroll {
+        overflow-x: auto;
+        overflow-y: hidden;
+        height: 16px;
+        margin-bottom: 6px;
+        border: 1px solid #dee2e6;
+        border-radius: .35rem;
+        background: #f8f9fa;
+    }
+
+    #notasDesempenhoBoletimXScrollTrack {
+        height: 1px;
+    }
+
+    #notasDesempenhoBoletimTable {
+        white-space: nowrap;
+        font-size: 0.85rem;
+        width: max-content;
+        min-width: 100%;
+        border-right: 18px solid transparent;
+        background-clip: padding-box;
+    }
+
+    #notasDesempenhoBoletimTable th:last-child,
+    #notasDesempenhoBoletimTable td:last-child {
+        padding-right: 18px !important;
+    }
+
+    #notasDesempenhoBoletimTable thead th {
+        position: sticky;
+        top: 0;
+        z-index: 3;
+    }
+
+    #notasDesempenhoBoletimTable th:nth-child(1),
+    #notasDesempenhoBoletimTable td:nth-child(1) {
+        position: sticky;
+        left: 0;
+        z-index: 2;
+        background: var(--bs-body-bg);
+    }
+
+    #notasDesempenhoBoletimTable th:nth-child(2),
+    #notasDesempenhoBoletimTable td:nth-child(2) {
+        position: sticky;
+        left: 52px;
+        z-index: 2;
+        background: var(--bs-body-bg);
+    }
+
+    #notasDesempenhoBoletimTable thead th:nth-child(1),
+    #notasDesempenhoBoletimTable thead th:nth-child(2) {
+        z-index: 4;
+    }
+
+    #notasFilterTurmasList,
+    #notasFilterBimestresList,
+    #notasFilterAnosList,
+    #notasFilterDisciplinasList {
+        max-height: 45vh;
+        overflow-y: auto;
+    }
+
+    #notasDesempenhoSgeContainer .table th,
+    #notasDesempenhoSgeContainer .table td {
+        font-size: .8rem;
+    }
+
+    #notasDesempenhoBoletimTable .js-notas-boletim-origem {
+        cursor: pointer;
+    }
+
+    #notasDesempenhoBoletimTable .js-notas-boletim-origem:hover {
+        outline: 2px solid #c8daff;
+        outline-offset: -2px;
+    }
+
+    #notasDesempenhoBoletimOrigemModalBody .notas-lancamento-highlight {
+        animation: notasLancamentoHighlightFade 4.5s ease-out;
+    }
+
+    @keyframes notasLancamentoHighlightFade {
+        0% {
+            background-color: #fff3cd;
+        }
+
+        45% {
+            background-color: #fff8dd;
+        }
+
+        100% {
+            background-color: transparent;
+        }
+    }
+
+    .ranking-stat-card {
+        border: 1px solid #dce7f8;
+        border-radius: 18px;
+        background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+        box-shadow: 0 10px 24px rgba(15, 23, 42, .08);
+        padding: 1rem;
+        min-height: 148px;
+    }
+
+    .ranking-stat-label {
+        font-size: .8rem;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        color: #64748b;
+        margin-bottom: .45rem;
+    }
+
+    .ranking-stat-value {
+        font-size: 1.5rem;
+        font-weight: 800;
+        line-height: 1.15;
+        color: #0f172a;
+    }
+
+    .ranking-stat-meta {
+        margin-top: .45rem;
+        color: #475569;
+        font-size: .86rem;
+    }
+
+    .ranking-podium-card {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid #d8e5fb;
+        border-radius: 18px;
+        background: linear-gradient(155deg, #ffffff 0%, #edf4ff 100%);
+        padding: 1rem;
+        min-height: 180px;
+        box-shadow: 0 14px 28px rgba(15, 23, 42, .08);
+    }
+
+    .ranking-podium-card::after {
+        content: '';
+        position: absolute;
+        inset: auto -24px -48px auto;
+        width: 120px;
+        height: 120px;
+        border-radius: 999px;
+        background: rgba(37, 99, 235, .08);
+    }
+
+    .ranking-podium-place {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 38px;
+        height: 38px;
+        border-radius: 999px;
+        font-weight: 800;
+        color: #fff;
+        background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+        box-shadow: 0 10px 18px rgba(37, 99, 235, .22);
+    }
+
+    .ranking-podium-card.is-first .ranking-podium-place {
+        background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
+        box-shadow: 0 10px 18px rgba(245, 158, 11, .26);
+    }
+
+    .ranking-podium-title {
+        margin-top: .75rem;
+        font-weight: 800;
+        font-size: 1rem;
+        color: #0f172a;
+    }
+
+    .ranking-podium-score {
+        margin-top: .45rem;
+        font-size: 1.8rem;
+        font-weight: 800;
+        line-height: 1;
+        color: #1d4ed8;
+    }
+
+    .ranking-podium-card.is-first .ranking-podium-score {
+        color: #b45309;
+    }
+
+    .ranking-podium-meta {
+        margin-top: .6rem;
+        color: #475569;
+        font-size: .86rem;
+    }
+
+    .ranking-empty-state {
+        border: 1px dashed #cbd5e1;
+        border-radius: 16px;
+        padding: 1.4rem 1rem;
+        text-align: center;
+        color: #64748b;
+        background: #f8fbff;
+    }
+
+    .ranking-table-score {
+        font-weight: 800;
+        color: #0f172a;
+    }
+
+    .ranking-table-note {
+        display: block;
+        color: #64748b;
+        font-size: .78rem;
+        margin-top: .15rem;
+    }
+</style>
+
+<section class="py-4 institutional-notas-shell">
+    <div class="container institutional-wide-container">
+        <div class="d-flex align-items-center justify-content-between flex-nowrap gap-2 mb-3">
+            <div class="flex-grow-1">
+                <h1 class="h4 fw-bold mb-1">Ranking Pedagógico</h1>
+                <div class="text-secondary small">Ranqueamento por turma, ano escolar e estudantes com base nas notas do recorte filtrado.</div>
+            </div>
+            <div class="d-flex gap-2 ms-auto flex-shrink-0">
+                <button type="button" class="btn btn-danger btn-sm" id="rankingPedagogicoRefreshBtn">
+                    <i class="las la-sync-alt me-1"></i>Atualizar ranking
+                </button>
+                <a href="<?= rtrim(BASE_URL, '/'); ?>/institucional" class="btn btn-outline-secondary btn-sm">
+                    <i class="las la-arrow-left me-1"></i>Voltar
+                </a>
+            </div>
+        </div>
+
+        <div id="notasDesempenhoRoot" class="d-grid gap-3" data-base-url="<?= htmlspecialchars(rtrim(BASE_URL, '/'), ENT_QUOTES, 'UTF-8'); ?>">
+            <!-- ======= FILTROS ======= -->
+            <div class="border rounded bg-light p-3">
+                <div class="row g-2 align-items-end">
+                    <div class="col-12 col-md-3 col-xl-3">
+                        <label class="form-label form-label-sm mb-1">Turmas</label>
+                        <div class="notas-filter-summary-card">
+                            <div id="notasFilterTurmasSummary" class="summary-body">Todas as turmas</div>
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-outline-primary btn-sm"
+                                    id="notasFilterTurmasOpenBtn"><i
+                                        class="las la-layer-group me-1"></i>Selecionar</button>
+                            </div>
+                        </div>
+                        <select class="form-select form-select-sm notas-hidden-select" id="notasDesempenhoTurma"
+                            multiple size="4"></select>
+                    </div>
+                    <div class="col-6 col-md-2 col-xl-2">
+                        <label class="form-label form-label-sm mb-1">Bimestres</label>
+                        <div class="notas-filter-summary-card">
+                            <div id="notasFilterBimestresSummary" class="summary-body">Todos os bimestres</div>
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-outline-primary btn-sm"
+                                    id="notasFilterBimestresOpenBtn"><i
+                                        class="las la-calendar me-1"></i>Selecionar</button>
+                            </div>
+                        </div>
+                        <select class="form-select form-select-sm notas-hidden-select" id="notasDesempenhoBimestre"
+                            multiple size="4">
+                            <option value="1">1º Bimestre</option>
+                            <option value="2">2º Bimestre</option>
+                            <option value="3">3º Bimestre</option>
+                            <option value="4">4º Bimestre</option>
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-2 col-xl-2">
+                        <label class="form-label form-label-sm mb-1">Anos letivos</label>
+                        <div class="notas-filter-summary-card">
+                            <div id="notasFilterAnosSummary" class="summary-body">Ano atual</div>
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-outline-primary btn-sm"
+                                    id="notasFilterAnosOpenBtn"><i
+                                        class="las la-calendar-alt me-1"></i>Selecionar</button>
+                            </div>
+                        </div>
+                        <select class="form-select form-select-sm notas-hidden-select" id="notasDesempenhoAno" multiple
+                            size="4">
+                            <?php foreach ($availableYears as $year): ?>
+                            <option value="<?= (int) $year; ?>" <?=$year===$currentYear ? ' selected' : '' ; ?>>
+                                <?= (int) $year; ?>
+                            </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-3 col-xl-3">
+                        <label class="form-label form-label-sm mb-1">Disciplinas</label>
+                        <div class="notas-filter-summary-card">
+                            <div id="notasFilterDisciplinasSummary" class="summary-body">Todas as disciplinas</div>
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-outline-primary btn-sm"
+                                    id="notasFilterDisciplinasOpenBtn"><i
+                                        class="las la-book me-1"></i>Selecionar</button>
+                            </div>
+                        </div>
+                        <select class="form-select form-select-sm notas-hidden-select"
+                            id="notasDesempenhoDisciplinaSelect" multiple size="4"></select>
+                    </div>
+                    <div class="col-12"></div>
+                    <div class="col-12">
+                        <label class="form-label form-label-sm mb-1" for="notasDesempenhoBusca">Busca</label>
+                        <input type="search" class="form-control form-control-sm" id="notasDesempenhoBusca"
+                            placeholder="Nome do estudante, turma ou ano escolar..." autocomplete="off">
+                    </div>
+                    <div class="col-12 d-flex align-items-end">
+                        <div class="small text-secondary" id="notasDesempenhoStatus"></div>
+                    </div>
+                    <div class="col-12">
+                        <div class="small text-secondary">Seleção múltipla: clique nas opções para marcar/desmarcar.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3" id="rankingPedagogicoCards">
+                <div class="col-12 col-md-6 col-xl-3">
+                    <div class="ranking-stat-card">
+                        <div class="ranking-stat-label">Melhor turma</div>
+                        <div class="ranking-stat-value" id="rankingPedagogicoBestTurma">--</div>
+                        <div class="ranking-stat-meta" id="rankingPedagogicoBestTurmaMeta">Carregando...</div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <div class="ranking-stat-card">
+                        <div class="ranking-stat-label">Melhor ano escolar</div>
+                        <div class="ranking-stat-value" id="rankingPedagogicoBestAnoEscolar">--</div>
+                        <div class="ranking-stat-meta" id="rankingPedagogicoBestAnoEscolarMeta">Carregando...</div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <div class="ranking-stat-card">
+                        <div class="ranking-stat-label">Melhor estudante</div>
+                        <div class="ranking-stat-value" id="rankingPedagogicoBestEstudante">--</div>
+                        <div class="ranking-stat-meta" id="rankingPedagogicoBestEstudanteMeta">Carregando...</div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <div class="ranking-stat-card">
+                        <div class="ranking-stat-label">Estudantes avaliados</div>
+                        <div class="ranking-stat-value" id="rankingPedagogicoAvaliados">0</div>
+                        <div class="ranking-stat-meta" id="rankingPedagogicoAvaliadosMeta">Aguardando dados...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ======= ABAS ======= -->
+            <ul class="nav nav-tabs" id="notasDesempenhoTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="tab-boletim" data-bs-toggle="tab" data-bs-target="#pane-boletim"
+                        type="button" role="tab">
+                        <i class="las la-trophy me-1"></i>Turmas
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="tab-diagnostico" data-bs-toggle="tab"
+                        data-bs-target="#pane-diagnostico" type="button" role="tab">
+                        <i class="las la-school me-1"></i>Anos escolares
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="tab-lancamentos" data-bs-toggle="tab"
+                        data-bs-target="#pane-lancamentos" type="button" role="tab">
+                        <i class="las la-user-graduate me-1"></i>Estudantes
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content" id="notasDesempenhoTabContent">
+                <div class="tab-pane fade show active" id="pane-boletim" role="tabpanel">
+                    <div class="border rounded bg-white p-3">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                            <div>
+                                <div class="fw-semibold">Ranking por turma</div>
+                                <div class="small text-secondary">Ordenação pela média das notas finais dos estudantes no recorte filtrado.</div>
+                            </div>
+                            <div class="small text-secondary" id="rankingPedagogicoTurmasStatus">Carregando...</div>
+                        </div>
+                        <div class="row g-3 mb-3" id="rankingPedagogicoTurmasPodium">
+                            <div class="col-12">
+                                <div class="ranking-empty-state">Carregando ranking das turmas...</div>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="text-center" style="min-width:56px;">#</th>
+                                        <th style="min-width:220px;">Turma</th>
+                                        <th style="min-width:140px;">Ano escolar</th>
+                                        <th class="text-center" style="min-width:90px;">Média</th>
+                                        <th class="text-center" style="min-width:120px;">Avaliados</th>
+                                        <th class="text-center" style="min-width:110px;">Participação</th>
+                                        <th style="min-width:220px;">Destaque</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rankingPedagogicoTurmasBody">
+                                    <tr>
+                                        <td colspan="7" class="text-center text-secondary py-4">Carregando ranking das turmas...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="pane-diagnostico" role="tabpanel">
+                    <div class="border rounded bg-white p-3">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                            <div>
+                                <div class="fw-semibold">Ranking por ano escolar</div>
+                                <div class="small text-secondary">Agrupamento pelo campo de ano escolar cadastrado nas turmas.</div>
+                            </div>
+                            <div class="small text-secondary" id="rankingPedagogicoAnosStatus">Carregando...</div>
+                        </div>
+                        <div class="row g-3 mb-3" id="rankingPedagogicoAnosPodium">
+                            <div class="col-12">
+                                <div class="ranking-empty-state">Carregando ranking dos anos escolares...</div>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="text-center" style="min-width:56px;">#</th>
+                                        <th style="min-width:200px;">Ano escolar</th>
+                                        <th class="text-center" style="min-width:90px;">Turmas</th>
+                                        <th class="text-center" style="min-width:90px;">Média</th>
+                                        <th class="text-center" style="min-width:120px;">Avaliados</th>
+                                        <th class="text-center" style="min-width:110px;">Participação</th>
+                                        <th style="min-width:220px;">Melhor turma</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rankingPedagogicoAnosBody">
+                                    <tr>
+                                        <td colspan="7" class="text-center text-secondary py-4">Carregando ranking dos anos escolares...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="pane-lancamentos" role="tabpanel">
+                    <div class="border rounded bg-white p-3">
+                        <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                            <div>
+                                <div class="fw-semibold">Ranking dos estudantes</div>
+                                <div class="small text-secondary">Lista individual com a mesma base de notas usada nos rankings agregados.</div>
+                            </div>
+                            <div class="small text-secondary" id="rankingPedagogicoEstudantesStatus">Carregando...</div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th class="text-center" style="min-width:56px;">#</th>
+                                        <th>Estudante</th>
+                                        <th>Turma</th>
+                                        <th>Ano escolar</th>
+                                        <th class="text-center">Média</th>
+                                        <th class="text-center">Disciplinas</th>
+                                        <th class="text-center">Proficiência</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rankingPedagogicoEstudantesBody">
+                                    <tr>
+                                        <td colspan="7" class="text-center text-secondary py-4">Carregando ranking dos estudantes...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ======= MODAL ORIGEM DA NOTA (BOLETIM) ======= -->
+<div class="modal fade" id="notasDesempenhoBoletimOrigemModal" tabindex="-1"
+    aria-labelledby="notasDesempenhoBoletimOrigemModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content site-modal-content">
+            <div class="modal-header">
+                <div>
+                    <div class="small text-secondary">Origem da nota</div>
+                    <h2 class="h5 mb-0" id="notasDesempenhoBoletimOrigemModalLabel">Detalhamento</h2>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body" id="notasDesempenhoBoletimOrigemModalBody">
+                <div class="text-center text-secondary py-3">Carregando...</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ======= MODAL CORREÇÃO POR DISCIPLINA ======= -->
+<div class="modal fade" id="notasDesempenhoCorrecaoDisciplinaModal" tabindex="-1"
+    aria-labelledby="notasDesempenhoCorrecaoDisciplinaModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content site-modal-content">
+            <div class="modal-header">
+                <div>
+                    <div class="small text-secondary">Correção por disciplina</div>
+                    <h2 class="h5 mb-0" id="notasDesempenhoCorrecaoDisciplinaModalLabel">Editar respostas</h2>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="small text-secondary mb-2" id="notasDesempenhoCorrecaoDisciplinaResumo"></div>
+                <div id="notasDesempenhoCorrecaoDisciplinaBody">
+                    <div class="text-center text-secondary py-3">Carregando...</div>
+                </div>
+                <div class="alert alert-danger mt-3 d-none" id="notasDesempenhoCorrecaoDisciplinaError"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="notasDesempenhoCorrecaoDisciplinaSalvarBtn"><i class="las la-save me-1"></i>Salvar correção</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ======= MODAL LANÇAMENTO MANUAL ======= -->
+<div class="modal fade" id="notasDesempenhoFormModal" tabindex="-1" aria-labelledby="notasDesempenhoFormModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content site-modal-content">
+            <div class="modal-header">
+                <div>
+                    <div class="small text-secondary">Lançamento manual</div>
+                    <h2 class="h5 mb-0" id="notasDesempenhoFormModalLabel">Novo lançamento</h2>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <form id="notasDesempenhoForm" class="mb-0">
+                    <input type="hidden" name="csrf_token"
+                        value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="id" id="notasDesempenhoRecordId" value="">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label" for="notasDesempenhoFormTurma">Turma</label>
+                            <select class="form-select" id="notasDesempenhoFormTurma" name="turma_id">
+                                <option value="">Selecione</option>
+                                <?php foreach ($turmas as $t): ?>
+                                <option value="<?= (int)($t['id'] ?? 0); ?>">
+                                    <?= htmlspecialchars(trim($t['nome'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
+                                </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="notasDesempenhoFormAluno">Estudante</label>
+                            <div class="notas-filter-summary-card">
+                                <div id="notasFormAlunosSummary" class="summary-body">Selecione uma turma</div>
+                                <div class="mt-2">
+                                    <button type="button" class="btn btn-outline-primary btn-sm" id="notasFormAlunosOpenBtn"><i class="las la-users me-1"></i>Selecionar</button>
+                                </div>
+                            </div>
+                            <select class="form-select form-select-sm notas-hidden-select" id="notasDesempenhoFormAluno" name="aluno_id" multiple size="6" required>
+                                <option value="">Selecione</option>
+                                <?php foreach ($alunos as $a): ?>
+                                <option value="<?= (int)($a['id'] ?? 0); ?>">
+                                    <?= htmlspecialchars(trim(($a['nome'] ?? '') . ' • ' . ($a['turma'] ?? '')), ENT_QUOTES, 'UTF-8'); ?>
+                                </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <div class="small text-secondary mt-1">Selecione um ou mais estudantes.</div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label" for="notasDesempenhoFormAno">Ano letivo</label>
+                            <input type="number" class="form-control" id="notasDesempenhoFormAno" name="ano_letivo"
+                                value="<?= $currentYear; ?>" min="2000" max="2100" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label" for="notasDesempenhoFormBimestre">Bimestre</label>
+                            <select class="form-select" id="notasDesempenhoFormBimestre" name="bimestre" required>
+                                <option value="">Selecione</option>
+                                <option value="1">1º</option>
+                                <option value="2">2º</option>
+                                <option value="3">3º</option>
+                                <option value="4">4º</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label" for="notasDesempenhoFormCategoria">Categoria</label>
+                            <select class="form-select" id="notasDesempenhoFormCategoria" name="categoria">
+                                <option value="">Selecione</option>
+                                <?php foreach ($notasDesempenhoCategorias as $cat): ?>
+                                <option
+                                    value="<?= htmlspecialchars((string)($cat['value'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                                    <?= htmlspecialchars((string)($cat['label'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
+                                </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-3 d-none" id="notasDesempenhoFormCicloWrap">
+                            <label class="form-label" for="notasDesempenhoFormCiclo">Ciclo da subjetiva</label>
+                            <select class="form-select" id="notasDesempenhoFormCiclo" name="ciclo">
+                                <option value="">Selecione</option>
+                                <option value="1">1º ciclo</option>
+                                <option value="2">2º ciclo</option>
+                            </select>
+                            <div class="small text-secondary mt-1">Obrigatório para Avaliação Subjetiva.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="notasDesempenhoFormTitulo">Título</label>
+                            <input type="text" class="form-control" id="notasDesempenhoFormTitulo" name="titulo"
+                                required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="notasDesempenhoFormDisciplina">Disciplina</label>
+                            <input type="text" class="form-control" id="notasDesempenhoFormDisciplina" name="disciplina"
+                                list="notasDesempenhoDisciplinasList" autocomplete="off" required>
+                            <datalist id="notasDesempenhoDisciplinasList">
+                                <?php foreach ($disciplinas as $d): ?>
+                                <option value="<?= htmlspecialchars(trim($d['nome'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                                    <?php endforeach; ?>
+                            </datalist>
+                        </div>
+                        <div class="col-md-6" id="notasDesempenhoFormNotaWrap">
+                            <label class="form-label" for="notasDesempenhoFormNota">Nota</label>
+                            <div class="notas-nota-warn d-none text-warning small mb-1" id="notasDesempenhoFormNotaWarn"><i class="las la-exclamation-triangle me-1"></i><span></span></div>
+                            <input type="number" class="form-control" id="notasDesempenhoFormNota" name="nota"
+                            step="0.1" min="0">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="notasDesempenhoFormData">Data referência</label>
+                            <input type="date" class="form-control" id="notasDesempenhoFormData" name="data_referencia">
+                        </div>
+                        <div class="col-12 d-none" id="notasDesempenhoBulkNotasWrap">
+                            <label class="form-label mb-1">Notas por estudante (1 casa decimal)</label>
+                            <div class="table-responsive border rounded">
+                                <table class="table table-sm align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Estudante</th>
+                                            <th>Turma</th>
+                                            <th style="width: 180px;">Nota obtida</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="notasDesempenhoBulkNotasBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="notasDesempenhoFormHabilidadesAvaliadas">Habilidades avaliadas</label>
+                            <div class="admin-gabarito-habilidade-tags-wrap" id="notasFormHabilidadesAvaliadasWrap"></div>
+                            <input type="hidden" name="habilidades_avaliadas" id="notasDesempenhoFormHabilidadesAvaliadas" value="">
+                            <button type="button" class="btn btn-outline-primary btn-sm mt-1 js-notas-hb-select-btn" data-hb-field="avaliadas">
+                                <i class="las la-tag me-1"></i>Selecionar habilidades
+                            </button>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="notasDesempenhoFormObservacoes">Observações</label>
+                            <textarea class="form-control" id="notasDesempenhoFormObservacoes" name="observacoes"
+                                rows="2"></textarea>
+                        </div>
+                    </div>
+                    <div class="alert alert-danger mt-3 d-none" id="notasDesempenhoFormError"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="notasDesempenhoFormSubmitBtn"><i
+                        class="las la-save me-1"></i>Salvar lançamento</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ======= MODAL DE CONFIRMAÇÃO ======= -->
+<div class="modal fade" id="notasDesempenhoConfirmModal" tabindex="-1"
+    aria-labelledby="notasDesempenhoConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content site-modal-content">
+            <div class="modal-header">
+                <h2 class="h5 mb-0" id="notasDesempenhoConfirmModalLabel">Confirmar ação</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body" id="notasDesempenhoConfirmModalBody">
+                Tem certeza que deseja continuar?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" id="notasDesempenhoConfirmModalConfirmBtn">Confirmar</button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ======= MODAIS DE FILTRO ======= -->
+<div class="modal fade" id="notasFilterTurmasModal" tabindex="-1" aria-labelledby="notasFilterTurmasModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content site-modal-content">
+            <div class="modal-header">
+                <h2 class="h6 mb-0" id="notasFilterTurmasModalLabel">Selecionar turmas</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex gap-2 mb-2">
+                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                        id="notasFilterTurmasSelectAllBtn">Selecionar todas</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                        id="notasFilterTurmasClearBtn">Limpar</button>
+                </div>
+                <div class="border rounded p-2" id="notasFilterTurmasList"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary btn-sm" id="notasFilterTurmasApplyBtn"
+                    data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="notasFilterBimestresModal" tabindex="-1" aria-labelledby="notasFilterBimestresModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content site-modal-content">
+            <div class="modal-header">
+                <h2 class="h6 mb-0" id="notasFilterBimestresModalLabel">Selecionar bimestres</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex gap-2 mb-2">
+                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                        id="notasFilterBimestresSelectAllBtn">Selecionar todos</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                        id="notasFilterBimestresClearBtn">Limpar</button>
+                </div>
+                <div class="border rounded p-2" id="notasFilterBimestresList"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary btn-sm" id="notasFilterBimestresApplyBtn"
+                    data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="notasFilterAnosModal" tabindex="-1" aria-labelledby="notasFilterAnosModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content site-modal-content">
+            <div class="modal-header">
+                <h2 class="h6 mb-0" id="notasFilterAnosModalLabel">Selecionar anos letivos</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex gap-2 mb-2">
+                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                        id="notasFilterAnosSelectAllBtn">Selecionar todos</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                        id="notasFilterAnosClearBtn">Limpar</button>
+                </div>
+                <div class="border rounded p-2" id="notasFilterAnosList"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary btn-sm" id="notasFilterAnosApplyBtn"
+                    data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="notasFilterDisciplinasModal" tabindex="-1"
+    aria-labelledby="notasFilterDisciplinasModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content site-modal-content">
+            <div class="modal-header">
+                <h2 class="h6 mb-0" id="notasFilterDisciplinasModalLabel">Selecionar disciplinas</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex gap-2 mb-2">
+                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                        id="notasFilterDisciplinasSelectAllBtn">Selecionar todas</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                        id="notasFilterDisciplinasClearBtn">Limpar</button>
+                </div>
+                <div class="border rounded p-2" id="notasFilterDisciplinasList"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary btn-sm" id="notasFilterDisciplinasApplyBtn"
+                    data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="notasFormAlunosModal" tabindex="-1" aria-labelledby="notasFormAlunosModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content site-modal-content">
+            <div class="modal-header">
+                <h2 class="h6 mb-0" id="notasFormAlunosModalLabel">Selecionar estudantes</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-2">
+                    <input type="search" class="form-control form-control-sm" id="notasFormAlunosBusca"
+                        placeholder="Buscar estudante..." autocomplete="off">
+                </div>
+                <div class="d-flex gap-2 mb-2">
+                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                        id="notasFormAlunosSelectAllBtn">Selecionar todos</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                        id="notasFormAlunosClearBtn">Limpar</button>
+                </div>
+                <div class="border rounded p-2" id="notasFormAlunosList"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary btn-sm" id="notasFormAlunosApplyBtn"
+                    data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Seletor de Habilidades -->
+<div class="modal fade" id="notasHabilidadeSelectorModal" tabindex="-1" aria-labelledby="notasHabilidadeSelectorModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title" id="notasHabilidadeSelectorModalLabel">Selecionar Habilidades — <span id="notasHabilidadeSelectorFieldLabel"></span></h6>
+                <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body p-2">
+                <div class="d-flex flex-wrap gap-2 mb-2 align-items-center">
+                    <input type="search" class="form-control form-control-sm flex-grow-1" id="notasHabilidadeSelectorSearch" placeholder="Buscar código ou descrição..." autocomplete="off" style="min-width:180px;">
+                    <div class="btn-group btn-group-sm" role="group" aria-label="Filtro documento">
+                        <button type="button" class="btn btn-outline-secondary active" data-notas-hb-filter="todos">Todos</button>
+                        <button type="button" class="btn btn-outline-secondary" data-notas-hb-filter="BNCC">BNCC</button>
+                        <button type="button" class="btn btn-outline-secondary" data-notas-hb-filter="DCT">DCT</button>
+                        <button type="button" class="btn btn-outline-secondary" data-notas-hb-filter="Matriz">Matriz</button>
+                    </div>
+                </div>
+                <div class="small text-secondary mb-2" id="notasHabilidadeSelectorDisciplinaInfo"></div>
+                <div class="border rounded bg-white" style="max-height:340px;overflow-y:auto;" id="notasHabilidadeSelectorList">
+                    <div class="text-center text-secondary py-4">Carregando habilidades...</div>
+                </div>
+                <div class="mt-2">
+                    <label class="form-label form-label-sm mb-1">Adicionar habilidade personalizada</label>
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control" id="notasHabilidadeSelectorCustomInput" placeholder="Digite e pressione Enter ou clique em Adicionar" maxlength="160">
+                        <button type="button" class="btn btn-outline-primary" id="notasHabilidadeSelectorCustomAddBtn">Adicionar</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer py-2 justify-content-between">
+                <span class="small text-secondary" id="notasHabilidadeSelectorCount">0 selecionada(s)</span>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary btn-sm" id="notasHabilidadeSelectorConfirmBtn">Confirmar seleção</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Data injection -->
+<script type="application/json"
+    id="notasDesempenhoTurmasData"><?= json_encode(array_map(function ($t) { return ['id' => (int)($t['id']??0), 'nome' => trim($t['nome']??''), 'ano_letivo' => (int)($t['ano_letivo']??0), 'ano_escolar' => trim((string)($t['ano_escolar']??''))]; }, $turmas), JSON_UNESCAPED_UNICODE); ?></script>
+<script type="application/json"
+    id="notasDesempenhoAlunosData"><?= json_encode(array_map(function ($a) { return ['id' => (int)($a['id']??0), 'nome' => trim($a['nome']??''), 'turma' => trim($a['turma']??''), 'turma_id' => (int)($a['turma_id']??0)]; }, $alunos), JSON_UNESCAPED_UNICODE); ?></script>
+<script type="application/json"
+    id="notasDesempenhoDisciplinasData"><?= json_encode(array_map(function ($d) { return ['nome' => trim($d['nome']??'')]; }, $disciplinas), JSON_UNESCAPED_UNICODE); ?></script>
+<script type="application/json"
+    id="notasDesempenhoCategoriasData"><?= json_encode($notasDesempenhoCategorias, JSON_UNESCAPED_UNICODE); ?></script>
+
+<script
+    src="<?= BASE_URL; ?>/public/assets/js/ranking-pedagogico.js?v=<?= filemtime(__DIR__ . '/../../../../public/assets/js/ranking-pedagogico.js'); ?>"></script>

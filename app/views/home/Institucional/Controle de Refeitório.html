@@ -1786,9 +1786,13 @@
 				tipoAtualId: 0,
 				animFrameId: null,
 				dashboardReportLoaded: false,
+				dashboardFiltrosAplicados: null,
 				gerencRegistros: [],
+				gerencFiltrosAplicados: null,
+				gerencSelecionados: [],
 				gerencPaginaAtual: 1,
 				gerencPorPagina: 10,
+				pollingAssinatura: '',
 			};
 
 			/* --------------------------------------------------------
@@ -1868,6 +1872,116 @@
 				var dt = new Date(String(dataIso) + 'T12:00:00');
 				if (isNaN(dt.getTime())) return '';
 				return ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'][dt.getDay()] || '';
+			}
+
+			function cloneObject(obj) {
+				var copy = {};
+				Object.keys(obj || {}).forEach(function (key) {
+					copy[key] = obj[key];
+				});
+				return copy;
+			}
+
+			function obterAbaAtivaId() {
+				var activeTab = document.querySelector('#refTabs .nav-link.active');
+				return activeTab ? String(activeTab.id || '') : '';
+			}
+
+			function existeModalAberto() {
+				return document.querySelector('.modal.show') !== null;
+			}
+
+			function construirUrlRelatorio(filtros) {
+				return '/institucional/refeitorio/relatorio?data_inicio=' + encodeURIComponent(filtros.ini) +
+					'&data_fim=' + encodeURIComponent(filtros.fim) +
+					(filtros.tipo ? '&tipo_id=' + encodeURIComponent(filtros.tipo) : '') +
+					(filtros.turma ? '&turma_id=' + encodeURIComponent(filtros.turma) : '');
+			}
+
+			function obterFiltrosRelatorioDom() {
+				var filtros = {
+					ini: document.getElementById('relDataInicio').value,
+					fim: document.getElementById('relDataFim').value,
+					tipo: document.getElementById('relTipo').value,
+					turma: document.getElementById('relTurma').value,
+					tipoLabel: obterRotuloSelect('relTipo', 'Todas'),
+					turmaLabel: obterRotuloSelect('relTurma', 'Todas'),
+				};
+				filtros.url = construirUrlRelatorio(filtros);
+				return filtros;
+			}
+
+			function obterFiltrosGerencDom() {
+				var filtros = {
+					ini: document.getElementById('gerencDataInicio').value,
+					fim: document.getElementById('gerencDataFim').value,
+					tipo: document.getElementById('gerencTipo').value,
+					turma: document.getElementById('gerencTurma').value,
+				};
+				filtros.url = construirUrlRelatorio(filtros);
+				return filtros;
+			}
+
+			function construirAssinaturaPolling(res) {
+				var resumo = Array.isArray(res && res.resumo_hoje) ? res.resumo_hoje : [];
+				var ultimas = Array.isArray(res && res.ultimas_entradas) ? res.ultimas_entradas : [];
+				return resumo.map(function (item) {
+					return [item.id || item.nome || '', item.total || 0].join(':');
+				}).join('|') + '#' + ultimas.map(function (item) {
+					return [item.id || 0, item.horario || '', item.aluno_nome || ''].join(':');
+				}).join('|');
+			}
+
+			function sincronizarGerencSelecionadosVisiveis() {
+				var checks = Array.from(document.querySelectorAll('#gerencBody .gerenc-check'));
+				var selecionados = {};
+				(state.gerencSelecionados || []).forEach(function (id) {
+					selecionados[String(id)] = true;
+				});
+
+				checks.forEach(function (check) {
+					delete selecionados[String(check.value)];
+					if (check.checked) {
+						selecionados[String(check.value)] = true;
+					}
+				});
+
+				state.gerencSelecionados = Object.keys(selecionados);
+				return checks;
+			}
+
+			function limparGerencSelecionadosInexistentes() {
+				var existentes = {};
+				(state.gerencRegistros || []).forEach(function (registro) {
+					existentes[String(registro.id)] = true;
+				});
+				state.gerencSelecionados = (state.gerencSelecionados || []).filter(function (id) {
+					return !!existentes[String(id)];
+				});
+			}
+
+			function sincronizarSecoesTempoReal() {
+				if (existeModalAberto()) {
+					return;
+				}
+
+				var abaAtiva = obterAbaAtivaId();
+				if (abaAtiva === 'tab-dash-btn' && state.dashboardFiltrosAplicados) {
+					filtrarRelatorio({
+						silent: true,
+						filtros: state.dashboardFiltrosAplicados,
+						persistir: false,
+					});
+				}
+
+				if (abaAtiva === 'tab-gerenc-btn' && state.gerencFiltrosAplicados) {
+					filtrarGerenc({
+						silent: true,
+						preservePage: true,
+						filtros: state.gerencFiltrosAplicados,
+						persistir: false,
+					});
+				}
 			}
 
 			function renderListaProgresso(elementId, items, emptyMessage, formatter) {
@@ -2256,14 +2370,15 @@
 					'.print-head p{margin:0;font-size:13px;color:#6b7280;}' +
 					'.card{border:none;border-radius:1rem;overflow:hidden;background:#fff;box-shadow:0 10px 24px rgba(15,23,42,.08);page-break-inside:avoid;}' +
 					'.card-body{padding:20px;}' +
-					'.dashboard-hero-card{border:0;border-radius:1.25rem;background:linear-gradient(135deg,#7f1d1d 0%,#b91c1c 48%,#f97316 100%);box-shadow:0 18px 40px rgba(127,29,29,.22);color:#fff;}' +
-					'.dashboard-kicker{font-size:.78rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;opacity:.82;margin-bottom:.65rem;}' +
-					'.dashboard-hero-total{font-size:56px;font-weight:800;line-height:1;margin-bottom:.45rem;}' +
-					'.dashboard-hero-label{font-size:1rem;font-weight:600;margin-bottom:.35rem;}' +
-					'.dashboard-hero-subtitle{font-size:.92rem;opacity:.88;max-width:760px;margin:0 auto;}' +
-					'.dashboard-hero-metric{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.16);border-radius:1rem;padding:.9rem 1rem;text-align:center;backdrop-filter:blur(4px);}' +
-					'.dashboard-hero-metric-value{font-size:1.45rem;font-weight:800;line-height:1.1;}' +
-					'.dashboard-hero-metric-label{font-size:.78rem;opacity:.82;margin-top:.25rem;}' +
+					'.dashboard-hero-card{border:1px solid #fed7aa;border-top:6px solid #c2410c;border-radius:1.1rem;background:linear-gradient(180deg,#fff7ed 0%,#ffffff 100%);box-shadow:none;color:#7c2d12;}' +
+					'.dashboard-hero-card .card-body{padding:18px 20px;}' +
+					'.dashboard-kicker{font-size:.72rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;opacity:1;color:#9a3412;margin-bottom:.45rem;}' +
+					'.dashboard-hero-total{font-size:42px;font-weight:800;line-height:1;margin-bottom:.3rem;color:#7c2d12;}' +
+					'.dashboard-hero-label{font-size:.95rem;font-weight:700;margin-bottom:.3rem;color:#7c2d12;}' +
+					'.dashboard-hero-subtitle{font-size:.84rem;opacity:1;max-width:760px;margin:0 auto;color:#78350f;}' +
+					'.dashboard-hero-metric{background:#fff;border:1px solid #fed7aa;border-radius:.9rem;padding:.7rem .85rem;text-align:center;backdrop-filter:none;}' +
+					'.dashboard-hero-metric-value{font-size:1.2rem;font-weight:800;line-height:1.1;color:#7c2d12;}' +
+					'.dashboard-hero-metric-label{font-size:.74rem;opacity:1;margin-top:.2rem;color:#9a3412;}' +
 					'.dashboard-mini-card{border:1px solid rgba(15,23,42,.07);border-radius:1rem;background:linear-gradient(180deg,#fff 0%,#fbfbfc 100%);box-shadow:0 10px 28px rgba(15,23,42,.06);height:100%;}' +
 					'.dashboard-mini-card .mini-kicker{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9a3412;margin-bottom:.4rem;}' +
 					'.dashboard-mini-card .mini-value{font-size:1.25rem;font-weight:800;color:#1f2937;line-height:1.2;}' +
@@ -2332,20 +2447,40 @@
 				el._t = setTimeout(function () { el.className = 'top-status d-none'; }, 3500);
 			}
 
-			function post(url, data, cb) {
+			function post(url, data, cb, options) {
+				options = options || {};
 				var fd = new FormData();
 				Object.keys(data).forEach(function (k) { fd.append(k, data[k] ?? ''); });
 				fetch(url, { method: 'POST', body: fd })
 					.then(function (r) { return r.json(); })
 					.then(cb)
-					.catch(function (e) { showStatus('Erro de comunicação: ' + e.message, 'error'); });
+					.catch(function (e) {
+						if (!options.silent) {
+							showStatus('Erro de comunicação: ' + e.message, 'error');
+						}
+					})
+					.finally(function () {
+						if (typeof options.onFinally === 'function') {
+							options.onFinally();
+						}
+					});
 			}
 
-			function get(url, cb) {
+			function get(url, cb, options) {
+				options = options || {};
 				fetch(url)
 					.then(function (r) { return r.json(); })
 					.then(cb)
-					.catch(function (e) { showStatus('Erro de comunicação: ' + e.message, 'error'); });
+					.catch(function (e) {
+						if (!options.silent) {
+							showStatus('Erro de comunicação: ' + e.message, 'error');
+						}
+					})
+					.finally(function () {
+						if (typeof options.onFinally === 'function') {
+							options.onFinally();
+						}
+					});
 			}
 
 			/* --------------------------------------------------------
@@ -2365,8 +2500,14 @@
 			function pollServidor() {
 				get('/institucional/refeitorio/poll', function (res) {
 					if (!res.ok) return;
+					var proximaAssinatura = construirAssinaturaPolling(res);
+					var houveMudanca = state.pollingAssinatura !== '' && state.pollingAssinatura !== proximaAssinatura;
+					state.pollingAssinatura = proximaAssinatura;
 					applyPollData(res);
-				});
+					if (houveMudanca || obterAbaAtivaId() === 'tab-dash-btn' || obterAbaAtivaId() === 'tab-gerenc-btn') {
+						sincronizarSecoesTempoReal();
+					}
+				}, { silent: true });
 			}
 
 			function applyPollData(res) {
@@ -2769,6 +2910,7 @@
 
 					showStatus('Entrada de ' + state.alunoAtual.nome + ' registrada com sucesso!', 'success');
 					adicionarUltimaEntrada(state.alunoAtual, res.horario);
+					pollServidor();
 					// Preserva a matrícula escaneada por 2,5s para evitar rescan imediato
 					// do mesmo QR code enquanto a câmera ainda aponta para ele
 					var _scanGuard = _ultimaMatriculaScaneada;
@@ -2968,56 +3110,55 @@
 			/* --------------------------------------------------------
 			   Relatório
 			   -------------------------------------------------------- */
-			function filtrarRelatorio() {
-				var ini = document.getElementById('relDataInicio').value;
-				var fim = document.getElementById('relDataFim').value;
-				var tipo = document.getElementById('relTipo').value;
-				var turma = document.getElementById('relTurma').value;
-				var filtros = {
-					ini: ini,
-					fim: fim,
-					tipoLabel: obterRotuloSelect('relTipo', 'Todas'),
-					turmaLabel: obterRotuloSelect('relTurma', 'Todas'),
-				};
+			function filtrarRelatorio(options) {
+				options = options || {};
+				var silent = options.silent === true;
+				var filtros = cloneObject(options.filtros || obterFiltrosRelatorioDom());
+				var url = filtros.url || construirUrlRelatorio(filtros);
 
-				var url = '/institucional/refeitorio/relatorio?data_inicio=' + encodeURIComponent(ini) +
-					'&data_fim=' + encodeURIComponent(fim) +
-					(tipo ? '&tipo_id=' + encodeURIComponent(tipo) : '') +
-					(turma ? '&turma_id=' + encodeURIComponent(turma) : '');
+				filtros.url = url;
+				if (options.persistir !== false) {
+					state.dashboardFiltrosAplicados = cloneObject(filtros);
+				}
 
-				state.dashboardReportLoaded = false;
-				document.getElementById('btnRelatorioImprimir').disabled = true;
-				document.getElementById('relResumoHero').innerHTML = '<div class="card border-0 shadow-sm"><div class="card-body"><div class="muted-empty"><span class="spinner-border spinner-border-sm me-1"></span>Montando painel analítico…</div></div></div>';
-				document.getElementById('relDestaquesWrap').innerHTML = '';
-				document.getElementById('relTotaisWrap').innerHTML = '<div class="col-12"><div class="muted-empty">Preparando distribuição por refeição…</div></div>';
-				document.getElementById('relInsightsWrap').innerHTML = '<div class="muted-empty">Calculando insights…</div>';
-				document.getElementById('relTurmasWrap').innerHTML = '<div class="muted-empty">Calculando ranking de turmas…</div>';
-				document.getElementById('relFluxoWrap').innerHTML = '<div class="muted-empty">Organizando fluxo diário…</div>';
+				if (!silent) {
+					state.dashboardReportLoaded = false;
+					document.getElementById('btnRelatorioImprimir').disabled = true;
+					document.getElementById('relResumoHero').innerHTML = '<div class="card border-0 shadow-sm"><div class="card-body"><div class="muted-empty"><span class="spinner-border spinner-border-sm me-1"></span>Montando painel analítico…</div></div></div>';
+					document.getElementById('relDestaquesWrap').innerHTML = '';
+					document.getElementById('relTotaisWrap').innerHTML = '<div class="col-12"><div class="muted-empty">Preparando distribuição por refeição…</div></div>';
+					document.getElementById('relInsightsWrap').innerHTML = '<div class="muted-empty">Calculando insights…</div>';
+					document.getElementById('relTurmasWrap').innerHTML = '<div class="muted-empty">Calculando ranking de turmas…</div>';
+					document.getElementById('relFluxoWrap').innerHTML = '<div class="muted-empty">Organizando fluxo diário…</div>';
+				}
 
 				get(url, function (res) {
 					if (!res.ok) {
-						showStatus(res.message || 'Erro ao carregar relatório.', 'error');
-						renderRelatorioVazio('Não foi possível carregar o painel analítico agora.');
+						if (!silent) {
+							showStatus(res.message || 'Erro ao carregar relatório.', 'error');
+							renderRelatorioVazio('Não foi possível carregar o painel analítico agora.');
+						}
 						return;
 					}
 
 					renderRelatorioAnalitico(res, filtros);
-				});
+				}, { silent: silent });
 			}
 
 			/* --------------------------------------------------------
 			   Gerenciamento manual de registros
 			   -------------------------------------------------------- */
 			function _atualizarBotaoExcluirSelecionados() {
-				var checks = document.querySelectorAll('#gerencBody .gerenc-check:checked');
-				var total = document.querySelectorAll('#gerencBody .gerenc-check').length;
+				var checksVisiveis = sincronizarGerencSelecionadosVisiveis();
+				var checksMarcados = checksVisiveis.filter(function (check) { return check.checked; });
+				var total = checksVisiveis.length;
 				var btn = document.getElementById('btnExcluirSelecionados');
 				var chkAll = document.getElementById('gerencCheckAll');
-				document.getElementById('gerencSelecionadosCount').textContent = checks.length;
-				btn.classList.toggle('d-none', checks.length === 0);
+				document.getElementById('gerencSelecionadosCount').textContent = formatNumero(state.gerencSelecionados.length);
+				btn.classList.toggle('d-none', state.gerencSelecionados.length === 0);
 				if (chkAll) {
-					chkAll.checked = total > 0 && checks.length === total;
-					chkAll.indeterminate = checks.length > 0 && checks.length < total;
+					chkAll.checked = total > 0 && checksMarcados.length === total;
+					chkAll.indeterminate = checksMarcados.length > 0 && checksMarcados.length < total;
 				}
 			}
 			window._atualizarBotaoExcluirSelecionados = _atualizarBotaoExcluirSelecionados;
@@ -3063,6 +3204,12 @@
 				var chkAll = document.getElementById('gerencCheckAll');
 				var btnExcluir = document.getElementById('btnExcluirSelecionados');
 				var countEl = document.getElementById('gerencSelecionadosCount');
+				var selecionadosMap = {};
+
+				limparGerencSelecionadosInexistentes();
+				(state.gerencSelecionados || []).forEach(function (id) {
+					selecionadosMap[String(id)] = true;
+				});
 
 				if (totalEl) {
 					totalEl.textContent = formatNumero(registros.length);
@@ -3086,6 +3233,7 @@
 				}
 
 				if (!registros.length) {
+					state.gerencSelecionados = [];
 					tbody.innerHTML = '<tr><td colspan="7" class="muted-empty">Nenhum registro encontrado.</td></tr>';
 					renderGerencPaginacao(0);
 					return;
@@ -3101,7 +3249,7 @@
 				var html = '';
 				paginaRegistros.forEach(function (r) {
 					html += '<tr data-id="' + r.id + '">' +
-						'<td><input type="checkbox" class="form-check-input mt-0 gerenc-check" value="' + r.id + '" onchange="_atualizarBotaoExcluirSelecionados()"></td>' +
+						'<td><input type="checkbox" class="form-check-input mt-0 gerenc-check" value="' + r.id + '" ' + (selecionadosMap[String(r.id)] ? 'checked ' : '') + 'onchange="_atualizarBotaoExcluirSelecionados()"></td>' +
 						'<td>' + esc(formatData(r.data)) + '</td>' +
 						'<td>' + esc(formatHora(r.horario)) + '</td>' +
 						'<td class="fw-semibold">' + esc(r.aluno_nome) + '</td>' +
@@ -3116,34 +3264,45 @@
 
 				tbody.innerHTML = html;
 				renderGerencPaginacao(registros.length);
+				_atualizarBotaoExcluirSelecionados();
 			}
 
-			function filtrarGerenc() {
-				var ini = document.getElementById('gerencDataInicio').value;
-				var fim = document.getElementById('gerencDataFim').value;
-				var tipo = document.getElementById('gerencTipo').value;
-				var turma = document.getElementById('gerencTurma').value;
+			function filtrarGerenc(options) {
+				options = options || {};
+				var silent = options.silent === true;
+				var filtros = cloneObject(options.filtros || obterFiltrosGerencDom());
+				var url = filtros.url || construirUrlRelatorio(filtros);
 
-				var url = '/institucional/refeitorio/relatorio?data_inicio=' + encodeURIComponent(ini) +
-					'&data_fim=' + encodeURIComponent(fim) +
-					(tipo ? '&tipo_id=' + encodeURIComponent(tipo) : '') +
-					(turma ? '&turma_id=' + encodeURIComponent(turma) : '');
+				filtros.url = url;
+				if (options.persistir !== false) {
+					state.gerencFiltrosAplicados = cloneObject(filtros);
+				}
 
-				state.gerencPaginaAtual = 1;
+				if (!options.preservePage) {
+					state.gerencPaginaAtual = 1;
+				}
 
-				var _chkAll = document.getElementById('gerencCheckAll'); if (_chkAll) { _chkAll.checked = false; _chkAll.indeterminate = false; }
-				document.getElementById('btnExcluirSelecionados').classList.add('d-none');
-				document.getElementById('gerencBody').innerHTML = '<tr><td colspan="7" class="muted-empty"><span class="spinner-border spinner-border-sm me-1"></span>Carregando…</td></tr>';
-				document.getElementById('gerencResumoPaginacao').textContent = 'Carregando registros...';
-				document.getElementById('gerencPaginaInfo').textContent = 'Página 0 de 0';
-				document.getElementById('gerencPaginaAnterior').disabled = true;
-				document.getElementById('gerencPaginaProxima').disabled = true;
+				if (!silent) {
+					state.gerencSelecionados = [];
+					var _chkAll = document.getElementById('gerencCheckAll'); if (_chkAll) { _chkAll.checked = false; _chkAll.indeterminate = false; }
+					document.getElementById('btnExcluirSelecionados').classList.add('d-none');
+					document.getElementById('gerencBody').innerHTML = '<tr><td colspan="7" class="muted-empty"><span class="spinner-border spinner-border-sm me-1"></span>Carregando…</td></tr>';
+					document.getElementById('gerencResumoPaginacao').textContent = 'Carregando registros...';
+					document.getElementById('gerencPaginaInfo').textContent = 'Página 0 de 0';
+					document.getElementById('gerencPaginaAnterior').disabled = true;
+					document.getElementById('gerencPaginaProxima').disabled = true;
+				}
 
 				get(url, function (res) {
-					if (!res.ok) { showStatus(res.message || 'Erro ao carregar.', 'error'); return; }
+					if (!res.ok) {
+						if (!silent) {
+							showStatus(res.message || 'Erro ao carregar.', 'error');
+						}
+						return;
+					}
 					state.gerencRegistros = Array.isArray(res.registros) ? res.registros : [];
 					renderGerencTabela();
-				});
+				}, { silent: silent });
 			}
 
 			window.gerencEditar = function (id) {
@@ -3161,9 +3320,9 @@
 			};
 
 			window.gerencExcluirSelecionados = function () {
-				var checks = document.querySelectorAll('#gerencBody .gerenc-check:checked');
-				if (!checks.length) { return; }
-				var ids = Array.from(checks).map(function (c) { return c.value; });
+				sincronizarGerencSelecionadosVisiveis();
+				var ids = (state.gerencSelecionados || []).slice();
+				if (!ids.length) { return; }
 				var msg = document.getElementById('msgConfirmarExcluirRegistro');
 				msg.textContent = 'Excluir ' + ids.length + ' registro' + (ids.length > 1 ? 's' : '') + ' selecionado' + (ids.length > 1 ? 's' : '') + '? Esta ação não pode ser desfeita.';
 				var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalConfirmarExcluirRegistro'));
@@ -3181,6 +3340,7 @@
 							if (!res.ok) { erros += 1; }
 							if (done === total) {
 								btn.disabled = false;
+								state.gerencSelecionados = [];
 								if (erros > 0) {
 									showStatus(erros + ' erro(s) ao excluir registros.', 'error');
 								} else {

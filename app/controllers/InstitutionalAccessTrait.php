@@ -278,6 +278,7 @@ trait InstitutionalAccessTrait
         $knownRoute = match ($normalizedKey) {
             'avaliacoes', 'cadastro_de_avaliacoes', 'gerenciar_avaliacoes' => '/institucional/avaliacoes',
             'notas_e_desempenho', 'notas_desempenho' => '/institucional/notas-desempenho',
+            'ranking_pedagogico' => '/institucional/ranking-pedagogico',
             'cadastro_de_turmas' => '/institucional/turmas',
             'cadastro_de_estudantes' => '/institucional/estudantes',
             'modulacao' => '/institucional/modulacao',
@@ -442,8 +443,8 @@ trait InstitutionalAccessTrait
 
     protected function findSubserviceNameByKey(string $subserviceKey): ?string
     {
-        $target = $this->normalizePermissionToken($subserviceKey);
-        if ($target === '') {
+        $targets = $this->getEquivalentSubserviceKeys($subserviceKey);
+        if ($targets === []) {
             return null;
         }
 
@@ -472,7 +473,7 @@ trait InstitutionalAccessTrait
                 $this->normalizePermissionToken((string) ($row['nome'] ?? '')),
             ];
 
-            if (in_array($target, $candidates, true)) {
+            if (array_intersect($targets, $candidates) !== []) {
                 $name = trim((string) ($row['nome'] ?? ''));
                 if ($name !== '') {
                     return $name;
@@ -480,9 +481,16 @@ trait InstitutionalAccessTrait
             }
         }
 
-        $tableName = preg_replace('/[^a-zA-Z0-9_]/', '', $target) ?: '';
-        if ($tableName !== '') {
-            return $this->resolveSubserviceNameFromTable($tableName);
+        foreach ($targets as $target) {
+            $tableName = preg_replace('/[^a-zA-Z0-9_]/', '', $target) ?: '';
+            if ($tableName === '') {
+                continue;
+            }
+
+            $resolvedName = $this->resolveSubserviceNameFromTable($tableName);
+            if ($resolvedName !== '') {
+                return $resolvedName;
+            }
         }
 
         return null;
@@ -519,11 +527,14 @@ trait InstitutionalAccessTrait
             }
         }
 
-        $normalizedTargets = array_values(array_unique(array_filter([
-            $this->normalizePermissionToken($subserviceKey),
-            $this->normalizePermissionToken($subserviceName),
-            $this->normalizePermissionToken($humanizedKey),
-        ], static fn(string $value): bool => $value !== '')));
+        $normalizedTargets = $this->getEquivalentSubserviceKeys($subserviceKey);
+
+        foreach ([$subserviceName, $humanizedKey] as $targetLabel) {
+            $normalizedTarget = $this->normalizePermissionToken((string) $targetLabel);
+            if ($normalizedTarget !== '' && !in_array($normalizedTarget, $normalizedTargets, true)) {
+                $normalizedTargets[] = $normalizedTarget;
+            }
+        }
 
         if ($normalizedTargets === []) {
             return null;
@@ -564,10 +575,13 @@ trait InstitutionalAccessTrait
             return false;
         }
 
-        $normalizedSubservice = $this->normalizePermissionToken($subservice);
+        $normalizedSubservices = $this->getEquivalentSubserviceKeys($subservice);
+        if ($normalizedSubservices === []) {
+            return false;
+        }
 
         foreach ($parsedServices as $subservices) {
-            if ($subservices !== [] && in_array($normalizedSubservice, $subservices, true)) {
+            if ($subservices !== [] && array_intersect($normalizedSubservices, $subservices) !== []) {
                 return true;
             }
         }
@@ -711,7 +725,8 @@ trait InstitutionalAccessTrait
 
     private function getServiceIdBySubserviceTable(string $subserviceTable): ?int
     {
-        $subserviceKey = $this->normalizePermissionToken($subserviceTable);
+        $subserviceKeys = $this->getEquivalentSubserviceKeys($subserviceTable);
+        $subserviceKey = $subserviceKeys[0] ?? '';
 
         if ($subserviceKey !== '') {
             try {
@@ -745,7 +760,7 @@ trait InstitutionalAccessTrait
                     $this->normalizePermissionToken((string) ($row['nome'] ?? '')),
                 ];
 
-                if (in_array($subserviceKey, $candidates, true)) {
+                if (array_intersect($subserviceKeys, $candidates) !== []) {
                     if ($parentId > 0) {
                         return $parentId;
                     }
@@ -817,5 +832,38 @@ trait InstitutionalAccessTrait
         }
 
         return array_values(array_unique(array_filter($aliases, static fn(string $value): bool => $value !== '')));
+    }
+
+    private function getEquivalentSubserviceKeys(string $subservice): array
+    {
+        $normalized = $this->normalizePermissionToken($subservice);
+        if ($normalized === '') {
+            return [];
+        }
+
+        $groups = [
+            ['avaliacoes', 'cadastro_de_avaliacoes', 'gerenciar_avaliacoes'],
+            ['notas_desempenho', 'notas_e_desempenho'],
+            ['controle_refeitorio', 'controle_de_refeitorio', 'refeitorio'],
+            ['entrada_saida', 'entrada_e_saida', 'controle_entrada_e_saida', 'controle_de_entrada_e_saida', 'controle_entrada_saida'],
+            ['modulacao', 'modulacao_e_horarios'],
+        ];
+
+        foreach ($groups as $group) {
+            $normalizedGroup = [];
+
+            foreach ($group as $alias) {
+                $token = $this->normalizePermissionToken((string) $alias);
+                if ($token !== '' && !in_array($token, $normalizedGroup, true)) {
+                    $normalizedGroup[] = $token;
+                }
+            }
+
+            if (in_array($normalized, $normalizedGroup, true)) {
+                return $normalizedGroup;
+            }
+        }
+
+        return [$normalized];
     }
 }

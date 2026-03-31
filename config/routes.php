@@ -48,6 +48,7 @@ return [
     '/institucional/corretor-gabaritos/conteudo' => ['InstitucionalController', 'corretorGabaritosConteudo'],
     '/institucional/avaliacoes' => ['InstitucionalController', 'avaliacoes'],
     '/institucional/notas-desempenho' => ['InstitucionalController', 'institucionalNotasDesempenho'],
+    '/institucional/ranking-pedagogico' => ['InstitucionalController', 'institucionalRankingPedagogico'],
     '/institucional/notas-desempenho/dados' => ['InstitucionalController', 'institucionalNotasDesempenhoDados'],
     '/institucional/notas-desempenho/salvar' => ['InstitucionalController', 'institucionalNotasDesempenhoSalvar'],
     '/institucional/notas-desempenho/excluir' => ['InstitucionalController', 'institucionalNotasDesempenhoExcluir'],
