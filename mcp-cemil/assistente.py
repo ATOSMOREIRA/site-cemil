@@ -8,9 +8,11 @@ Uso:
 
 import json
 import os
+import re
+import time
 from datetime import date, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from urllib import error, request
 
 import pymysql
@@ -52,6 +54,7 @@ GROQ_KEY    = (
 )
 
 MODEL = os.getenv("GROQ_MODEL") or _env.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+FALLBACK_MODEL = os.getenv("GROQ_FALLBACK_MODEL") or _env.get("GROQ_FALLBACK_MODEL", "llama-3.1-8b-instant")
 GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
 SYSTEM = (
     "Você é o assistente pedagógico e administrativo da escola CEMIL - Jardenir Jorge Frederico. "
@@ -61,6 +64,11 @@ SYSTEM = (
     "Responda sempre em português brasileiro, de forma clara, objetiva e curta, priorizando o essencial. "
     "Prefira respostas com no máximo 5 itens ou 1 parágrafo curto, salvo se o usuário pedir detalhes. "
     "Ao apresentar listas de dados, use listas curtas e fáceis de ler. "
+    "Se a pergunta depender de consulta ao sistema, use as ferramentas antes de responder. "
+    "Não exponha JSON bruto, nomes de funções ou detalhes técnicos internos, salvo se o usuário pedir. "
+    "Quando houver muitos registros, resuma os principais dados, quantidades e exceções relevantes. "
+    "Quando não encontrar dados, diga isso de forma direta e sugira o próximo filtro útil. "
+    "Se o pedido estiver ambíguo, faça no máximo 1 pergunta curta para destravar a resposta. "
     "Quando houver alguma limitação, explique em uma frase e diga o que falta para concluir. "
     "Se o usuário pedir análise pedagógica, destaque primeiro os pontos principais e depois as ações sugeridas. "
     f"Data de hoje: {date.today().isoformat()}."
@@ -85,6 +93,19 @@ def _serial(obj: Any) -> str:
 def _j(data: Any) -> Any:
     """Converte para JSON serializável."""
     return json.loads(json.dumps(data, default=_serial))
+
+
+def _as_row(data: Any) -> dict[str, Any]:
+    if isinstance(data, dict):
+        return cast(dict[str, Any], data)
+    return {}
+
+
+def _first_row_value(data: Any, default: Any = 0) -> Any:
+    row = _as_row(data)
+    if not row:
+        return default
+    return next(iter(row.values()), default)
 
 # ---------------------------------------------------------------------------
 # Funções de banco (chamadas pelas tools)
@@ -130,7 +151,7 @@ def atualizar_aluno(id: int, nome: str = "", turma_id: int = -1, turma: str = ""
                     telefone: str = "", email: str = "") -> Any:
     with _conn() as conn, conn.cursor() as cur:
         cur.execute("SELECT * FROM alunos WHERE id = %s LIMIT 1", (id,))
-        row = cur.fetchone()
+        row = _as_row(cur.fetchone())
         if not row:
             return {"erro": "Aluno não encontrado."}
         cur.execute(
@@ -320,15 +341,14 @@ def estatisticas_gerais() -> Any:
         for k, sql in queries.items():
             try:
                 cur.execute(sql)
-                val = cur.fetchone()
-                stats[k] = list(val.values())[0] if val else 0
+                stats[k] = _first_row_value(cur.fetchone(), 0)
             except Exception:
                 stats[k] = None
 
         today = date.today().isoformat()
         cur.execute("SELECT COUNT(*) AS c FROM refeitorio_registros WHERE data = %s", (today,))
-        r = cur.fetchone()
-        stats["refeicoes_hoje"] = r["c"] if r else 0
+        r = _as_row(cur.fetchone())
+        stats["refeicoes_hoje"] = r.get("c", 0)
         return _j(stats)
 
 # ---------------------------------------------------------------------------
@@ -611,11 +631,31 @@ def executar_tool(nome: str, entrada: dict) -> str:
         return json.dumps({"erro": str(e)})
 
 
-def chamar_groq(messages: list[dict[str, Any]]) -> dict[str, Any]:
+def _groq_model_candidates() -> list[str]:
+    candidates = [MODEL, FALLBACK_MODEL, "llama-3.1-8b-instant"]
+    models: list[str] = []
+    for candidate in candidates:
+        model = str(candidate or "").strip()
+        if model and model not in models:
+            models.append(model)
+    return models
+
+
+def _extract_rate_limit_wait_seconds(message: str) -> float:
+    match = re.search(r"try again in\s+([0-9.]+)s", message, re.IGNORECASE)
+    if not match:
+        return 0.0
+    try:
+        return float(match.group(1))
+    except ValueError:
+        return 0.0
+
+
+def _request_groq(messages: list[dict[str, Any]], model: str) -> dict[str, Any]:
     payload = {
-        "model": MODEL,
-        "temperature": 0.2,
-        "max_tokens": 8000,
+        "model": model,
+        "temperature": 0.1,
+        "max_tokens": 700,
         "messages": messages,
         "tools": GROQ_TOOLS,
         "tool_choice": "auto",
@@ -632,20 +672,43 @@ def chamar_groq(messages: list[dict[str, Any]]) -> dict[str, Any]:
         method="POST",
     )
 
-    try:
-        with request.urlopen(req, timeout=90) as response:
-            raw = response.read().decode("utf-8")
-    except error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="ignore")
-        raise RuntimeError(f"Groq respondeu com erro HTTP {exc.code}: {detail}") from exc
-    except error.URLError as exc:
-        raise RuntimeError(f"Falha de conexão com a Groq: {exc.reason}") from exc
+    with request.urlopen(req, timeout=90) as response:
+        raw = response.read().decode("utf-8")
 
     decoded = json.loads(raw)
     if not isinstance(decoded, dict):
         raise RuntimeError("A resposta da Groq não pôde ser interpretada.")
 
     return decoded
+
+
+def chamar_groq(messages: list[dict[str, Any]]) -> dict[str, Any]:
+    last_error = "Falha ao consultar a Groq."
+    models = _groq_model_candidates()
+
+    for index, model in enumerate(models):
+        try:
+            return _request_groq(messages, model)
+        except error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="ignore")
+            if exc.code == 429:
+                wait_seconds = _extract_rate_limit_wait_seconds(detail)
+                if index < len(models) - 1:
+                    continue
+                if 0 < wait_seconds <= 10:
+                    time.sleep(wait_seconds)
+                    try:
+                        return _request_groq(messages, model)
+                    except Exception:
+                        pass
+                if wait_seconds > 0:
+                    raise RuntimeError(f"A Groq atingiu o limite momentâneo de uso. Tente novamente em cerca de {int(wait_seconds + 0.999)} segundos.") from exc
+                raise RuntimeError("A Groq atingiu o limite momentâneo de uso. Tente novamente em instantes.") from exc
+            last_error = f"Groq respondeu com erro HTTP {exc.code}: {detail}"
+        except error.URLError as exc:
+            raise RuntimeError(f"Falha de conexão com a Groq: {exc.reason}") from exc
+
+    raise RuntimeError(last_error)
 
 # ---------------------------------------------------------------------------
 # Loop de conversa
@@ -677,10 +740,14 @@ def conversar() -> None:
 
         # Loop de tool use
         while True:
-            response = chamar_groq([
-                {"role": "system", "content": SYSTEM},
-                *messages,
-            ])
+            try:
+                response = chamar_groq([
+                    {"role": "system", "content": SYSTEM},
+                    *messages,
+                ])
+            except Exception as exc:
+                print(f"\nAssistente: Falha ao consultar a Groq: {exc}")
+                break
 
             choice = response.get("choices", [{}])[0]
             message = choice.get("message", {}) if isinstance(choice, dict) else {}
@@ -688,11 +755,6 @@ def conversar() -> None:
             tool_calls = message.get("tool_calls", []) if isinstance(message, dict) else []
             if not isinstance(tool_calls, list):
                 tool_calls = []
-
-            print("\nAssistente: ", end="", flush=True)
-            if content:
-                print(content, end="")
-            print()
 
             assistant_message: dict[str, Any] = {"role": "assistant"}
             if content:
@@ -702,6 +764,12 @@ def conversar() -> None:
             messages.append(assistant_message)
 
             if not tool_calls:
+                print("\nAssistente: ", end="", flush=True)
+                if content:
+                    print(content, end="")
+                else:
+                    print("Não consegui formular uma resposta útil com os dados atuais.", end="")
+                print()
                 break
 
             for tool_call in tool_calls:

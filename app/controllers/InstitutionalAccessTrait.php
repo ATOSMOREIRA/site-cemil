@@ -846,6 +846,7 @@ trait InstitutionalAccessTrait
             ['notas_desempenho', 'notas_e_desempenho'],
             ['controle_refeitorio', 'controle_de_refeitorio', 'refeitorio'],
             ['entrada_saida', 'entrada_e_saida', 'controle_entrada_e_saida', 'controle_de_entrada_e_saida', 'controle_entrada_saida'],
+            ['acompanhamento_disciplinar', 'disciplinar'],
             ['modulacao', 'modulacao_e_horarios'],
         ];
 

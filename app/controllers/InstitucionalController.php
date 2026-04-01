@@ -59,6 +59,341 @@ class InstitucionalController extends HomeController
 		]);
 	}
 
+	public function institucionalDisciplinarDados(): void
+	{
+		if (!$this->canAccessDisciplinarModule()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		$model = new DisciplinarModel();
+
+		try {
+			$data = $model->getDashboardData();
+		} catch (Throwable) {
+			$this->respondJson(['ok' => false, 'message' => 'Não foi possível carregar os dados do acompanhamento disciplinar agora.'], 500);
+		}
+
+		$this->respondJson([
+			'ok' => true,
+			'data' => $data,
+		]);
+	}
+
+	public function institucionalDisciplinarCursosSalvar(): void
+	{
+		if (!$this->canAccessDisciplinarModule()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+			$this->respondJson(['ok' => false, 'message' => 'Método não permitido.'], 405);
+		}
+
+		$payload = $this->getJsonOrPostPayload();
+		$payload['created_by'] = (int) ($_SESSION['auth']['id'] ?? 0);
+		$model = new DisciplinarModel();
+
+		try {
+			$id = $model->saveCurso($payload);
+		} catch (InvalidArgumentException $exception) {
+			$this->respondJson(['ok' => false, 'message' => $exception->getMessage()], 422);
+		} catch (Throwable) {
+			$this->respondJson(['ok' => false, 'message' => 'Não foi possível salvar o curso agora.'], 500);
+		}
+
+		$this->respondJson([
+			'ok' => true,
+			'message' => ((int) ($payload['id'] ?? 0) > 0) ? 'Curso atualizado com sucesso.' : 'Curso cadastrado com sucesso.',
+			'curso_id' => $id,
+		]);
+	}
+
+	public function institucionalDisciplinarCursosExcluir(): void
+	{
+		if (!$this->canAccessDisciplinarModule()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+			$this->respondJson(['ok' => false, 'message' => 'Método não permitido.'], 405);
+		}
+
+		$payload = $this->getJsonOrPostPayload();
+		$id = (int) ($payload['id'] ?? 0);
+		if ($id <= 0) {
+			$this->respondJson(['ok' => false, 'message' => 'Curso inválido para exclusão.'], 422);
+		}
+
+		$model = new DisciplinarModel();
+		try {
+			$model->deleteCurso($id);
+		} catch (InvalidArgumentException $exception) {
+			$this->respondJson(['ok' => false, 'message' => $exception->getMessage()], 422);
+		} catch (Throwable) {
+			$this->respondJson(['ok' => false, 'message' => 'Não foi possível excluir o curso agora.'], 500);
+		}
+
+		$this->respondJson(['ok' => true, 'message' => 'Curso excluído com sucesso.']);
+	}
+
+	public function institucionalDisciplinarCriteriosSalvar(): void
+	{
+		if (!$this->canAccessDisciplinarModule()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+			$this->respondJson(['ok' => false, 'message' => 'Método não permitido.'], 405);
+		}
+
+		$payload = $this->getJsonOrPostPayload();
+		$model = new DisciplinarModel();
+
+		try {
+			$id = $model->saveCriterio($payload);
+		} catch (InvalidArgumentException $exception) {
+			$this->respondJson(['ok' => false, 'message' => $exception->getMessage()], 422);
+		} catch (Throwable) {
+			$this->respondJson(['ok' => false, 'message' => 'Não foi possível salvar o critério agora.'], 500);
+		}
+
+		$this->respondJson([
+			'ok' => true,
+			'message' => ((int) ($payload['id'] ?? 0) > 0) ? 'Critério atualizado com sucesso.' : 'Critério cadastrado com sucesso.',
+			'criterio_id' => $id,
+		]);
+	}
+
+	public function institucionalDisciplinarCriteriosExcluir(): void
+	{
+		if (!$this->canAccessDisciplinarModule()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+			$this->respondJson(['ok' => false, 'message' => 'Método não permitido.'], 405);
+		}
+
+		$payload = $this->getJsonOrPostPayload();
+		$id = (int) ($payload['id'] ?? 0);
+		if ($id <= 0) {
+			$this->respondJson(['ok' => false, 'message' => 'Critério inválido para exclusão.'], 422);
+		}
+
+		$model = new DisciplinarModel();
+		try {
+			$model->deleteCriterio($id);
+		} catch (InvalidArgumentException $exception) {
+			$this->respondJson(['ok' => false, 'message' => $exception->getMessage()], 422);
+		} catch (Throwable) {
+			$this->respondJson(['ok' => false, 'message' => 'Não foi possível excluir o critério agora.'], 500);
+		}
+
+		$this->respondJson(['ok' => true, 'message' => 'Critério excluído com sucesso.']);
+	}
+
+	public function institucionalDisciplinarMatriculasSalvar(): void
+	{
+		if (!$this->canAccessDisciplinarModule()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+			$this->respondJson(['ok' => false, 'message' => 'Método não permitido.'], 405);
+		}
+
+		$payload = $this->getJsonOrPostPayload();
+		$model = new DisciplinarModel();
+
+		try {
+			$id = $model->saveMatricula($payload);
+		} catch (InvalidArgumentException $exception) {
+			$this->respondJson(['ok' => false, 'message' => $exception->getMessage()], 422);
+		} catch (Throwable) {
+			$this->respondJson(['ok' => false, 'message' => 'Não foi possível salvar a matrícula agora.'], 500);
+		}
+
+		$this->respondJson([
+			'ok' => true,
+			'message' => ((int) ($payload['id'] ?? 0) > 0) ? 'Matrícula atualizada com sucesso.' : 'Matrícula cadastrada com sucesso.',
+			'matricula_id' => $id,
+		]);
+	}
+
+	public function institucionalDisciplinarMatriculasExcluir(): void
+	{
+		if (!$this->canAccessDisciplinarModule()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+			$this->respondJson(['ok' => false, 'message' => 'Método não permitido.'], 405);
+		}
+
+		$payload = $this->getJsonOrPostPayload();
+		$id = (int) ($payload['id'] ?? 0);
+		if ($id <= 0) {
+			$this->respondJson(['ok' => false, 'message' => 'Matrícula inválida para exclusão.'], 422);
+		}
+
+		$model = new DisciplinarModel();
+		try {
+			$model->deleteMatricula($id);
+		} catch (InvalidArgumentException $exception) {
+			$this->respondJson(['ok' => false, 'message' => $exception->getMessage()], 422);
+		} catch (Throwable) {
+			$this->respondJson(['ok' => false, 'message' => 'Não foi possível excluir a matrícula agora.'], 500);
+		}
+
+		$this->respondJson(['ok' => true, 'message' => 'Matrícula excluída com sucesso.']);
+	}
+
+	public function institucionalDisciplinarNotasSalvar(): void
+	{
+		if (!$this->canAccessDisciplinarModule()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+			$this->respondJson(['ok' => false, 'message' => 'Método não permitido.'], 405);
+		}
+
+		$payload = $this->getJsonOrPostPayload();
+		$model = new DisciplinarModel();
+
+		try {
+			$id = $model->saveNota($payload);
+		} catch (InvalidArgumentException $exception) {
+			$this->respondJson(['ok' => false, 'message' => $exception->getMessage()], 422);
+		} catch (Throwable) {
+			$this->respondJson(['ok' => false, 'message' => 'Não foi possível salvar a nota agora.'], 500);
+		}
+
+		$this->respondJson([
+			'ok' => true,
+			'message' => ((int) ($payload['id'] ?? 0) > 0) ? 'Nota atualizada com sucesso.' : 'Nota lançada com sucesso.',
+			'nota_id' => $id,
+		]);
+	}
+
+	public function institucionalDisciplinarNotasExcluir(): void
+	{
+		if (!$this->canAccessDisciplinarModule()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+			$this->respondJson(['ok' => false, 'message' => 'Método não permitido.'], 405);
+		}
+
+		$payload = $this->getJsonOrPostPayload();
+		$id = (int) ($payload['id'] ?? 0);
+		if ($id <= 0) {
+			$this->respondJson(['ok' => false, 'message' => 'Nota inválida para exclusão.'], 422);
+		}
+
+		$model = new DisciplinarModel();
+		try {
+			$model->deleteNota($id);
+		} catch (InvalidArgumentException $exception) {
+			$this->respondJson(['ok' => false, 'message' => $exception->getMessage()], 422);
+		} catch (Throwable) {
+			$this->respondJson(['ok' => false, 'message' => 'Não foi possível excluir a nota agora.'], 500);
+		}
+
+		$this->respondJson(['ok' => true, 'message' => 'Nota excluída com sucesso.']);
+	}
+
+	public function institucionalDisciplinarRegistrosSalvar(): void
+	{
+		if (!$this->canAccessDisciplinarModule()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+			$this->respondJson(['ok' => false, 'message' => 'Método não permitido.'], 405);
+		}
+
+		$model = new DisciplinarModel();
+		$payload = $_POST !== [] ? $_POST : $this->getJsonOrPostPayload();
+		$payload['id'] = (int) ($payload['id'] ?? 0);
+		$payload['aluno_ids'] = $this->normalizeDisciplinarIdList($payload['aluno_ids'] ?? []);
+		$payload['turma_ids'] = $this->normalizeDisciplinarIdList($payload['turma_ids'] ?? []);
+		$payload['created_by'] = (int) ($_SESSION['auth']['id'] ?? 0);
+		$payload['updated_by'] = (int) ($_SESSION['auth']['id'] ?? 0);
+
+		$existing = $payload['id'] > 0 ? $model->findRegistroById($payload['id']) : null;
+		if ($payload['id'] > 0 && !is_array($existing)) {
+			$this->respondJson(['ok' => false, 'message' => 'Registro disciplinar não encontrado.'], 404);
+		}
+
+		$removeDocumento = !empty($payload['remover_documento']);
+		$oldDocumentoPath = is_array($existing) ? ($existing['documento_path'] ?? null) : null;
+		$uploadedDocumentoPath = null;
+		$payload['documento_path'] = $removeDocumento ? null : $oldDocumentoPath;
+
+		try {
+			$uploadedDocumentoPath = $this->handleDisciplinarDocumentoUpload($_FILES['documento'] ?? null, $payload['id']);
+			if ($uploadedDocumentoPath !== null) {
+				$payload['documento_path'] = $uploadedDocumentoPath;
+			}
+
+			$id = $model->saveRegistro($payload);
+		} catch (InvalidArgumentException|RuntimeException $exception) {
+			if ($uploadedDocumentoPath !== null) {
+				$this->deleteDisciplinarDocumentoByPath($uploadedDocumentoPath);
+			}
+			$this->respondJson(['ok' => false, 'message' => $exception->getMessage()], 422);
+		} catch (Throwable) {
+			if ($uploadedDocumentoPath !== null) {
+				$this->deleteDisciplinarDocumentoByPath($uploadedDocumentoPath);
+			}
+			$this->respondJson(['ok' => false, 'message' => 'Não foi possível salvar o lançamento disciplinar agora.'], 500);
+		}
+
+		if ($uploadedDocumentoPath !== null && is_string($oldDocumentoPath) && $oldDocumentoPath !== '' && $oldDocumentoPath !== $uploadedDocumentoPath) {
+			$this->deleteDisciplinarDocumentoByPath($oldDocumentoPath);
+		} elseif ($removeDocumento && is_string($oldDocumentoPath) && $oldDocumentoPath !== '' && $uploadedDocumentoPath === null) {
+			$this->deleteDisciplinarDocumentoByPath($oldDocumentoPath);
+		}
+
+		$this->respondJson([
+			'ok' => true,
+			'message' => $payload['id'] > 0 ? 'Lançamento disciplinar atualizado com sucesso.' : 'Lançamento disciplinar cadastrado com sucesso.',
+			'registro_id' => $id,
+		]);
+	}
+
+	public function institucionalDisciplinarRegistrosExcluir(): void
+	{
+		if (!$this->canAccessDisciplinarModule()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+			$this->respondJson(['ok' => false, 'message' => 'Método não permitido.'], 405);
+		}
+
+		$payload = $this->getJsonOrPostPayload();
+		$id = (int) ($payload['id'] ?? 0);
+		if ($id <= 0) {
+			$this->respondJson(['ok' => false, 'message' => 'Registro disciplinar inválido para exclusão.'], 422);
+		}
+
+		$model = new DisciplinarModel();
+		try {
+			$result = $model->deleteRegistro($id);
+		} catch (InvalidArgumentException $exception) {
+			$this->respondJson(['ok' => false, 'message' => $exception->getMessage()], 422);
+		} catch (Throwable) {
+			$this->respondJson(['ok' => false, 'message' => 'Não foi possível excluir o lançamento disciplinar agora.'], 500);
+		}
+
+		$this->deleteDisciplinarDocumentoByPath($result['documento_path'] ?? null);
+
+		$this->respondJson(['ok' => true, 'message' => 'Lançamento disciplinar excluído com sucesso.']);
+	}
+
 	public function institucionalEstudantesListar(): void
 	{
 		if (!$this->canAccessSubservice('cadastro_de_estudantes')) {
@@ -6728,6 +7063,139 @@ class InstitucionalController extends HomeController
 	{
 		$normalized = str_replace('\\', '/', trim((string) $relativePath));
 		if ($normalized === '' || !str_starts_with($normalized, 'uploads/imagens/')) {
+			return;
+		}
+
+		$absolutePath = dirname(__DIR__, 2) . '/' . $normalized;
+		if (is_file($absolutePath)) {
+			@unlink($absolutePath);
+		}
+	}
+
+	private function canAccessDisciplinarModule(): bool
+	{
+		foreach (['acompanhamento_disciplinar', 'disciplinar'] as $subserviceKey) {
+			if ($this->canAccessSubservice($subserviceKey)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private function normalizeDisciplinarIdList($value): array
+	{
+		$items = [];
+
+		if (is_array($value)) {
+			$items = $value;
+		} elseif (is_string($value)) {
+			$trimmed = trim($value);
+			if ($trimmed === '') {
+				$items = [];
+			} else {
+				$decoded = json_decode($trimmed, true);
+				if (is_array($decoded)) {
+					$items = $decoded;
+				} else {
+					$items = preg_split('/[\s,;|]+/', $trimmed) ?: [];
+				}
+			}
+		} elseif ($value !== null && $value !== '') {
+			$items = [$value];
+		}
+
+		$result = [];
+		foreach ($items as $item) {
+			if (is_array($item)) {
+				foreach ($this->normalizeDisciplinarIdList($item) as $nestedId) {
+					$result[$nestedId] = $nestedId;
+				}
+				continue;
+			}
+
+			$id = (int) $item;
+			if ($id > 0) {
+				$result[$id] = $id;
+			}
+		}
+
+		ksort($result);
+
+		return array_values($result);
+	}
+
+	private function handleDisciplinarDocumentoUpload(?array $file, int $registroId): ?string
+	{
+		if (!is_array($file)) {
+			return null;
+		}
+
+		$errorCode = (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE);
+		if ($errorCode === UPLOAD_ERR_NO_FILE) {
+			return null;
+		}
+
+		if ($errorCode !== UPLOAD_ERR_OK) {
+			throw new RuntimeException('Falha no upload do anexo disciplinar.');
+		}
+
+		$tmpName = trim((string) ($file['tmp_name'] ?? ''));
+		if ($tmpName === '' || !is_uploaded_file($tmpName)) {
+			throw new RuntimeException('Arquivo de anexo inválido.');
+		}
+
+		$fileSize = (int) ($file['size'] ?? 0);
+		if ($fileSize <= 0 || $fileSize > (10 * 1024 * 1024)) {
+			throw new RuntimeException('O anexo deve ter até 10MB.');
+		}
+
+		$mimeType = strtolower((string) (mime_content_type($tmpName) ?: ''));
+		$originalName = trim((string) ($file['name'] ?? 'anexo'));
+		$originalExtension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+		$allowedByMime = [
+			'application/pdf' => 'pdf',
+			'image/jpeg' => 'jpg',
+			'image/png' => 'png',
+			'image/webp' => 'webp',
+			'application/msword' => 'doc',
+			'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
+			'application/vnd.ms-excel' => 'xls',
+			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'xlsx',
+		];
+		$allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'doc', 'docx', 'xls', 'xlsx'];
+
+		$extension = $allowedByMime[$mimeType] ?? null;
+		if ($extension === null && in_array($originalExtension, $allowedExtensions, true)) {
+			$extension = $originalExtension === 'jpeg' ? 'jpg' : $originalExtension;
+		}
+
+		if ($extension === null) {
+			throw new RuntimeException('Formato de anexo não suportado. Use PDF, imagem, DOC, DOCX, XLS ou XLSX.');
+		}
+
+		$relativeDir = 'uploads/disciplinar';
+		$absoluteDir = dirname(__DIR__, 2) . '/' . $relativeDir;
+		if (!is_dir($absoluteDir) && !mkdir($absoluteDir, 0775, true) && !is_dir($absoluteDir)) {
+			throw new RuntimeException('Não foi possível preparar o diretório de anexos disciplinares.');
+		}
+
+		$registroToken = $registroId > 0 ? (string) $registroId : 'novo';
+		$filename = 'registro-' . $registroToken . '-' . bin2hex(random_bytes(6)) . '.' . $extension;
+		$relativePath = $relativeDir . '/' . $filename;
+		$absolutePath = dirname(__DIR__, 2) . '/' . $relativePath;
+
+		if (!move_uploaded_file($tmpName, $absolutePath)) {
+			throw new RuntimeException('Não foi possível salvar o anexo enviado.');
+		}
+
+		return str_replace('\\', '/', $relativePath);
+	}
+
+	private function deleteDisciplinarDocumentoByPath(?string $relativePath): void
+	{
+		$normalized = str_replace('\\', '/', trim((string) $relativePath));
+		if ($normalized === '' || !str_starts_with($normalized, 'uploads/disciplinar/')) {
 			return;
 		}
 

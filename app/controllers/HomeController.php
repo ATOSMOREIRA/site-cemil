@@ -1359,6 +1359,12 @@ class HomeController extends Controller
         $tools            = $this->getChatbotTools($user, $turmasVinculadas);
         $system           = $this->buildChatbotSystemPrompt($user, $turmasVinculadas);
 
+        $directReply = $this->tryHandleChatbotDirectQuery($message, is_array($user) ? $user : [], $turmasVinculadas);
+        if (is_string($directReply) && trim($directReply) !== '') {
+            $this->respondJson(['ok' => true, 'reply' => trim($directReply)]);
+            return;
+        }
+
         $messages = [];
         foreach (array_slice($rawHistory, -10) as $entry) {
             $role    = (string) ($entry['role']    ?? '');
@@ -1392,6 +1398,406 @@ class HomeController extends Controller
         }
     }
 
+    private function tryHandleChatbotDirectQuery(string $message, array $user, array $turmasVinculadas): ?string
+    {
+        $normalized = mb_strtolower(trim(preg_replace('/\s+/u', ' ', $message) ?? ''), 'UTF-8');
+        if ($normalized === '') {
+            return null;
+        }
+
+        $reply = $this->tryHandleChatbotShortAck($normalized);
+        if ($reply !== null) {
+            return $reply;
+        }
+
+        $reply = $this->tryHandleChatbotGroqStatusQuery($normalized);
+        if ($reply !== null) {
+            return $reply;
+        }
+
+        $isAdmin = ($user['tipo'] ?? '') === 'admin';
+        $canAccessStudents = $isAdmin || !empty($user['can_access_cadastro_de_estudantes']);
+
+        if ($canAccessStudents) {
+            $reply = $this->tryHandleChatbotStudentCountQuery($normalized, $turmasVinculadas);
+            if ($reply !== null) {
+                return $reply;
+            }
+
+            $reply = $this->tryHandleChatbotStudentsByTurmaQuery($message, $normalized, $turmasVinculadas);
+            if ($reply !== null) {
+                return $reply;
+            }
+        }
+
+        $canAccessAvaliacoes = $isAdmin
+            || $this->canAccessSubservice('avaliacoes')
+            || $this->canAccessSubservice('cadastro_de_avaliacoes')
+            || $this->canAccessSubservice('gerenciar_avaliacoes');
+        if ($canAccessAvaliacoes) {
+            $reply = $this->tryHandleChatbotParticipationByBlocoQuery($message, $normalized);
+            if ($reply !== null) {
+                return $reply;
+            }
+
+            $reply = $this->tryHandleChatbotAvaliacaoHowToQuery($normalized, $isAdmin);
+            if ($reply !== null) {
+                return $reply;
+            }
+
+            $reply = $this->tryHandleChatbotAvaliacoesByDateQuery($message, $normalized);
+            if ($reply !== null) {
+                return $reply;
+            }
+        }
+
+        return null;
+    }
+
+    private function tryHandleChatbotShortAck(string $normalizedMessage): ?string
+    {
+        $shortAcks = ['ok', 'blz', 'beleza', 'certo', 'ta bem', 'tá bem', 'entendi', 'obrigado', 'obrigada', 'valeu'];
+        if (!in_array($normalizedMessage, $shortAcks, true)) {
+            return null;
+        }
+
+        return 'Certo.';
+    }
+
+    private function tryHandleChatbotGroqStatusQuery(string $normalizedMessage): ?string
+    {
+        $asksAboutFallback = str_contains($normalizedMessage, 'fallback')
+            || str_contains($normalizedMessage, 'modelo')
+            || str_contains($normalizedMessage, 'groq')
+            || str_contains($normalizedMessage, 'grock')
+            || str_contains($normalizedMessage, 'usage')
+            || str_contains($normalizedMessage, 'limite');
+        if (!$asksAboutFallback) {
+            return null;
+        }
+
+        $state = $this->getChatbotGroqRuntimeState();
+        $primaryModel = trim((string) ($state['primary_model'] ?? ''));
+        $fallbackModel = trim((string) ($state['fallback_model'] ?? ''));
+        $usedModel = trim((string) ($state['used_model'] ?? ''));
+        $usedFallback = !empty($state['used_fallback']);
+        $lastError = trim((string) ($state['last_error'] ?? ''));
+        $waitSeconds = (int) ($state['wait_seconds'] ?? 0);
+
+        if (str_contains($normalizedMessage, 'vamos usar o fallback') || str_contains($normalizedMessage, 'usar o fallback')) {
+            if ($fallbackModel === '') {
+                return 'O sistema já tenta fallback automático quando o modelo principal falha, mas não há um fallback separado configurado além do padrão.';
+            }
+
+            return 'O sistema já tenta automaticamente o fallback ' . $fallbackModel . ' quando o modelo principal ' . ($primaryModel !== '' ? $primaryModel : 'da Groq') . ' está limitado.';
+        }
+
+        if (str_contains($normalizedMessage, 'usage') || str_contains($normalizedMessage, 'limite')) {
+            if ($lastError !== '' && $this->isChatbotGroqRateLimitError($lastError)) {
+                if ($waitSeconds > 0) {
+                    return 'No momento a Groq está em rate limit. A última resposta pediu para aguardar cerca de ' . $waitSeconds . ' segundo(s).';
+                }
+
+                return 'No momento a Groq está em rate limit. O sistema tenta o fallback automaticamente quando possível.';
+            }
+
+            if ($usedModel !== '') {
+                return 'No último uso da IA, o chatbot respondeu com o modelo ' . $usedModel . ($usedFallback ? ' em modo fallback.' : '.');
+            }
+
+            return 'Não há um uso recente de IA registrado nesta sessão. O modelo principal configurado é ' . ($primaryModel !== '' ? $primaryModel : 'o padrão da Groq') . '.';
+        }
+
+        if (str_contains($normalizedMessage, 'fallback') || str_contains($normalizedMessage, 'grock') || str_contains($normalizedMessage, 'groq') || str_contains($normalizedMessage, 'modelo')) {
+            if ($usedModel !== '') {
+                return 'Na última resposta por IA, o chatbot usou ' . $usedModel . ($usedFallback ? ' como fallback.' : ' como modelo principal.');
+            }
+
+            return 'O modelo principal configurado é ' . ($primaryModel !== '' ? $primaryModel : 'o padrão da Groq') . ($fallbackModel !== '' ? ', com fallback em ' . $fallbackModel . '.' : '.');
+        }
+
+        return null;
+    }
+
+    private function getChatbotGroqRuntimeState(): array
+    {
+        $state = is_array($_SESSION['chatbot_groq_state'] ?? null) ? $_SESSION['chatbot_groq_state'] : [];
+        $candidates = $this->getChatbotGroqModelCandidates();
+
+        if (!isset($state['primary_model']) && isset($candidates[0])) {
+            $state['primary_model'] = $candidates[0];
+        }
+        if (!isset($state['fallback_model']) && isset($candidates[1])) {
+            $state['fallback_model'] = $candidates[1];
+        }
+
+        return $state;
+    }
+
+    private function setChatbotGroqRuntimeState(array $state): void
+    {
+        $current = $this->getChatbotGroqRuntimeState();
+        $_SESSION['chatbot_groq_state'] = array_merge($current, $state, [
+            'updated_at' => date('c'),
+        ]);
+    }
+
+    private function tryHandleChatbotStudentCountQuery(string $normalizedMessage, array $turmasVinculadas): ?string
+    {
+        $wantsTurmas = str_contains($normalizedMessage, 'quantas turma') || str_contains($normalizedMessage, 'qtd de turma');
+        $wantsAlunos = str_contains($normalizedMessage, 'quantos alunos') || str_contains($normalizedMessage, 'qtd de alunos');
+        if (!$wantsTurmas && !$wantsAlunos) {
+            return null;
+        }
+
+        $year = 0;
+        if (preg_match('/\b(20\d{2})\b/u', $normalizedMessage, $matches) === 1) {
+            $year = (int) ($matches[1] ?? 0);
+        }
+        if ($year <= 0 && (str_contains($normalizedMessage, 'neste ano') || str_contains($normalizedMessage, 'esse ano') || str_contains($normalizedMessage, 'ano letivo atual'))) {
+            $year = (int) date('Y');
+        }
+        if ($year <= 0) {
+            return null;
+        }
+
+        try {
+            $pdo = Database::connection();
+            $parts = [];
+
+            if ($wantsTurmas) {
+                $stmt = $pdo->prepare('SELECT COUNT(*) FROM turmas WHERE ano_letivo = ?');
+                $stmt->execute([$year]);
+                $totalTurmas = (int) ($stmt->fetchColumn() ?: 0);
+                $parts[] = 'Existem ' . $totalTurmas . ' turmas no ano letivo de ' . $year . '.';
+            }
+
+            if ($wantsAlunos) {
+                $sql = 'SELECT COUNT(*) FROM alunos a JOIN turmas t ON t.id = a.turma_id WHERE a.ativo = 1 AND t.ano_letivo = ?';
+                $params = [$year];
+                if ($turmasVinculadas !== []) {
+                    $placeholders = implode(',', array_fill(0, count($turmasVinculadas), '?'));
+                    $sql .= " AND a.turma_id IN ({$placeholders})";
+                    $params = array_merge($params, $turmasVinculadas);
+                }
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute($params);
+                $totalAlunos = (int) ($stmt->fetchColumn() ?: 0);
+                $parts[] = 'Há ' . $totalAlunos . ' alunos ativos nesse ano letivo.';
+            }
+
+            return $parts !== [] ? implode(' ', $parts) : null;
+        } catch (Throwable $e) {
+            return 'Não consegui consultar as contagens agora. Motivo: ' . $this->formatChatbotToolError($e);
+        }
+    }
+
+    private function tryHandleChatbotStudentsByTurmaQuery(string $rawMessage, string $normalizedMessage, array $turmasVinculadas): ?string
+    {
+        if (!str_contains($normalizedMessage, 'aluno') || !str_contains($normalizedMessage, 'turma')) {
+            return null;
+        }
+
+        if (preg_match('/\bturma\s+([0-9]{1,3}(?:[\.\-][0-9]{1,2})?)\b/u', $rawMessage, $matches) !== 1) {
+            return null;
+        }
+
+        $turmaRef = trim((string) ($matches[1] ?? ''));
+        if ($turmaRef === '') {
+            return null;
+        }
+
+        try {
+            $pdo = Database::connection();
+            $sql = 'SELECT id, nome, ano_letivo FROM turmas WHERE nome = ?';
+            $params = [$turmaRef];
+            if ($turmasVinculadas !== []) {
+                $placeholders = implode(',', array_fill(0, count($turmasVinculadas), '?'));
+                $sql .= " AND id IN ({$placeholders})";
+                $params = array_merge($params, $turmasVinculadas);
+            }
+            $sql .= ' ORDER BY ano_letivo DESC, id DESC LIMIT 1';
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            $turma = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!is_array($turma)) {
+                return 'Não encontrei a turma ' . $turmaRef . ' no seu escopo de acesso.';
+            }
+
+            $stmt = $pdo->prepare('SELECT nome FROM alunos WHERE ativo = 1 AND turma_id = ? ORDER BY nome ASC');
+            $stmt->execute([(int) ($turma['id'] ?? 0)]);
+            $rows = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+            $names = array_values(array_filter(array_map(static fn($value): string => trim((string) $value), is_array($rows) ? $rows : []), static fn(string $value): bool => $value !== ''));
+
+            $header = 'Turma ' . (string) ($turma['nome'] ?? $turmaRef) . ': ' . count($names) . ' aluno(s) ativo(s).';
+            if ($names === []) {
+                return $header;
+            }
+
+            return $header . "\n- " . implode("\n- ", $names);
+        } catch (Throwable $e) {
+            return 'Não consegui listar os alunos da turma ' . $turmaRef . '. Motivo: ' . $this->formatChatbotToolError($e);
+        }
+    }
+
+    private function tryHandleChatbotAvaliacoesByDateQuery(string $rawMessage, string $normalizedMessage): ?string
+    {
+        if (!str_contains($normalizedMessage, 'avalia')) {
+            return null;
+        }
+
+        if (preg_match('/\b(\d{2})\/(\d{2})\/(\d{4})\b/u', $rawMessage, $matches) === 1) {
+            $targetDate = sprintf('%04d-%02d-%02d', (int) $matches[3], (int) $matches[2], (int) $matches[1]);
+        } elseif (preg_match('/\b(\d{4})-(\d{2})-(\d{2})\b/u', $rawMessage, $matches) === 1) {
+            $targetDate = sprintf('%04d-%02d-%02d', (int) $matches[1], (int) $matches[2], (int) $matches[3]);
+        } else {
+            return null;
+        }
+
+        try {
+            $pdo = Database::connection();
+            $stmt = $pdo->prepare('SELECT a.nome, a.turma, a.bimestre, a.aplicacao, a.is_recuperacao, a.is_simulado, u.nome AS autor FROM avaliacoes a LEFT JOIN usuarios u ON u.id = a.autor_id WHERE DATE(a.aplicacao) = ? ORDER BY a.aplicacao ASC, a.nome ASC LIMIT 100');
+            $stmt->execute([$targetDate]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            if (!is_array($rows) || $rows === []) {
+                return 'Não encontrei avaliações com aplicação em ' . date('d/m/Y', strtotime($targetDate)) . '.';
+            }
+
+            $lines = array_map(static function ($row): string {
+                $nome = trim((string) ($row['nome'] ?? 'Avaliação'));
+                $turma = trim((string) ($row['turma'] ?? 'Sem turma'));
+                $bimestre = (int) ($row['bimestre'] ?? 0);
+                $extras = [];
+                if ($bimestre > 0) {
+                    $extras[] = $bimestre . 'º bimestre';
+                }
+                if (!empty($row['is_recuperacao'])) {
+                    $extras[] = 'recuperação';
+                }
+                if (!empty($row['is_simulado'])) {
+                    $extras[] = 'simulado';
+                }
+                return '- ' . $nome . ' • ' . $turma . ($extras !== [] ? ' • ' . implode(' • ', $extras) : '');
+            }, $rows);
+
+            return 'Avaliações previstas para ' . date('d/m/Y', strtotime($targetDate)) . ':' . "\n" . implode("\n", $lines);
+        } catch (Throwable $e) {
+            return 'Não consegui consultar as avaliações dessa data. Motivo: ' . $this->formatChatbotToolError($e);
+        }
+    }
+
+    private function tryHandleChatbotParticipationByBlocoQuery(string $rawMessage, string $normalizedMessage): ?string
+    {
+        $mentionsParticipacao = str_contains($normalizedMessage, 'particip')
+            || str_contains($normalizedMessage, 'fizeram')
+            || str_contains($normalizedMessage, 'realizaram');
+        if (!$mentionsParticipacao || !str_contains($normalizedMessage, 'bloco')) {
+            return null;
+        }
+
+        if (!str_contains($normalizedMessage, 'estudante') && !str_contains($normalizedMessage, 'aluno')) {
+            return null;
+        }
+
+        if (preg_match('/\bbloco\s+(\d{1,2})\b/u', $rawMessage, $matches) !== 1) {
+            return null;
+        }
+
+        $bloco = (int) ($matches[1] ?? 0);
+        $ciclo = $this->extractChatbotOrdinalNumber($normalizedMessage, 'ciclo');
+        $bimestre = $this->extractChatbotOrdinalNumber($normalizedMessage, 'bimestre');
+        if ($bloco <= 0 || $ciclo <= 0 || $bimestre <= 0) {
+            return null;
+        }
+
+        try {
+            $pdo = Database::connection();
+            $blocoNeedle = '%bloco ' . $bloco . '%';
+            $stmt = $pdo->prepare(
+                'SELECT a.id
+                 FROM avaliacoes a
+                 WHERE a.bimestre = ?
+                   AND a.ciclo = ?
+                   AND COALESCE(a.is_recuperacao, 0) = 0
+                   AND (
+                        LOWER(a.nome) LIKE ?
+                        OR LOWER(COALESCE(a.descricao, "")) LIKE ?
+                   )
+                 ORDER BY a.id DESC'
+            );
+            $stmt->execute([$bimestre, $ciclo, $blocoNeedle, $blocoNeedle]);
+            $avaliacaoIds = array_values(array_filter(array_map(
+                static fn(array $row): int => (int) ($row['id'] ?? 0),
+                $stmt->fetchAll(PDO::FETCH_ASSOC) ?: []
+            ), static fn(int $value): bool => $value > 0));
+
+            if ($avaliacaoIds === []) {
+                return 'Não encontrei avaliações do bloco ' . $bloco . ', ciclo ' . $ciclo . ', ' . $bimestre . 'º bimestre.';
+            }
+
+            $placeholders = implode(',', array_fill(0, count($avaliacaoIds), '?'));
+            $stmt = $pdo->prepare(
+                'SELECT COUNT(DISTINCT aluno_id) AS total_estudantes, COUNT(*) AS total_correcoes
+                 FROM avaliacao_correcoes
+                 WHERE avaliacao_id IN (' . $placeholders . ')'
+            );
+            $stmt->execute($avaliacaoIds);
+            $stats = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            $totalEstudantes = (int) ($stats['total_estudantes'] ?? 0);
+            $totalCorrecoes = (int) ($stats['total_correcoes'] ?? 0);
+            $totalAvaliacoes = count($avaliacaoIds);
+
+            return 'No bloco ' . $bloco . ' do ' . $ciclo . 'º ciclo do ' . $bimestre . 'º bimestre, ' . $totalEstudantes . ' estudante(s) participaram, considerando ' . $totalAvaliacoes . ' avaliação(ões) com ' . $totalCorrecoes . ' correção(ões) salva(s).';
+        } catch (Throwable $e) {
+            return 'Não consegui consultar a participação desse bloco agora. Motivo: ' . $this->formatChatbotToolError($e);
+        }
+    }
+
+    private function extractChatbotOrdinalNumber(string $normalizedMessage, string $context): int
+    {
+        if (preg_match('/\b(\d{1,2})\s*(?:º|o)?\s+' . preg_quote($context, '/') . '\b/u', $normalizedMessage, $matches) === 1) {
+            return (int) ($matches[1] ?? 0);
+        }
+
+        $ordinalMap = [
+            'primeiro' => 1,
+            'segundo' => 2,
+            'terceiro' => 3,
+            'quarto' => 4,
+        ];
+        foreach ($ordinalMap as $label => $value) {
+            if (preg_match('/\b' . preg_quote($label, '/') . '\s+' . preg_quote($context, '/') . '\b/u', $normalizedMessage) === 1) {
+                return $value;
+            }
+        }
+
+        return 0;
+    }
+
+    private function tryHandleChatbotAvaliacaoHowToQuery(string $normalizedMessage, bool $isAdmin): ?string
+    {
+        $asksHowTo = str_contains($normalizedMessage, 'como cadastrar')
+            || str_contains($normalizedMessage, 'como criar')
+            || str_contains($normalizedMessage, 'como lançar')
+            || str_contains($normalizedMessage, 'onde cadastrar');
+        if (!$asksHowTo || !str_contains($normalizedMessage, 'avalia')) {
+            return null;
+        }
+
+        $canEditAvaliacoes = $isAdmin
+            || $this->canAccessSubservice('avaliacoes')
+            || $this->canAccessSubservice('cadastro_de_avaliacoes')
+            || $this->canAccessSubservice('gerenciar_avaliacoes');
+
+        if (!$canEditAvaliacoes) {
+            return 'O cadastro de avaliação é feito na tela de avaliações, em /institucional/avaliacoes, mas o botão de criação só aparece para usuários com permissão de editar avaliações.';
+        }
+
+        return 'Para cadastrar uma avaliação, acesse /institucional/avaliacoes, clique em Nova avaliação, informe pelo menos o bimestre, a data da aplicação e as turmas relacionadas, e depois clique em Salvar avaliação.';
+    }
+
     private function buildChatbotSystemPrompt(array $user, array $turmasVinculadas): string
     {
         $nome = (string) ($user['nome'] ?? 'Usuário');
@@ -1411,7 +1817,10 @@ class HomeController extends Controller
         }
 
         $prompt .= "\nUse as ferramentas disponíveis para buscar dados reais antes de responder sempre que a pergunta depender de informações do sistema.\n";
+        $prompt .= "Para perguntas de contagem, total ou quantidade, prefira ferramentas de agregação e contagem em vez de listar registros completos.\n";
+        $prompt .= "Quando o usuário perguntar como fazer algo no sistema, responda com o caminho da tela e os passos objetivos, sem dizer que falta ferramenta se a ação existir na interface.\n";
         $prompt .= "Nunca invente nomes, números, registros ou resultados.\n";
+        $prompt .= "Quando uma ferramenta falhar, informe o motivo de forma curta e específica, sem dizer apenas que houve erro.\n";
         $prompt .= "Quando houver limitação ou ausência de dados, explique isso em uma frase e diga o que falta para concluir.\n";
         $prompt .= "Se o usuário pedir análise pedagógica, destaque primeiro os pontos principais e depois as ações sugeridas.";
 
@@ -1460,6 +1869,24 @@ class HomeController extends Controller
                 ],
             ];
 
+            $descContagem = 'Conta alunos cadastrados ativos.';
+            if ($turmasVinculadas !== []) {
+                $descContagem .= ' Filtrado automaticamente para as turmas vinculadas ao usuário.';
+            }
+
+            $tools[] = [
+                'name'         => 'contar_alunos',
+                'description'  => $descContagem . ' Pode filtrar por ano_letivo, turma_id e nome.',
+                'input_schema' => [
+                    'type'       => 'object',
+                    'properties' => [
+                        'ano_letivo' => ['type' => 'integer', 'description' => 'Ano letivo da turma (ex: 2026)'],
+                        'turma_id'   => ['type' => 'integer', 'description' => 'ID da turma'],
+                        'nome'       => ['type' => 'string', 'description' => 'Filtro parcial pelo nome do aluno'],
+                    ],
+                ],
+            ];
+
             $tools[] = [
                 'name'         => 'buscar_aluno',
                 'description'  => 'Busca um aluno pelo ID ou matrícula.',
@@ -1480,11 +1907,18 @@ class HomeController extends Controller
         ) {
             $tools[] = [
                 'name'         => 'listar_avaliacoes',
-                'description'  => 'Lista avaliações cadastradas. Filtra por bimestre.',
+                'description'  => 'Lista avaliações cadastradas. Pode filtrar por bimestre e por data de aplicação.',
                 'input_schema' => [
                     'type'       => 'object',
                     'properties' => [
-                        'bimestre' => ['type' => 'integer', 'description' => '1, 2, 3 ou 4'],
+                        'bimestre' => [
+                            'anyOf' => [
+                                ['type' => 'integer'],
+                                ['type' => 'string'],
+                            ],
+                            'description' => '1, 2, 3 ou 4',
+                        ],
+                        'aplicacao' => ['type' => 'string', 'description' => 'Data de aplicação no formato YYYY-MM-DD'],
                     ],
                 ],
             ];
@@ -1598,8 +2032,9 @@ class HomeController extends Controller
         for ($i = 0; $i < $maxIter; $i++) {
             $response = $this->callGroqApi($messages, $tools);
 
-            if ($response === null) {
-                return 'Desculpe, ocorreu um erro ao processar sua solicitação.';
+            $responseError = trim((string) ($response['_error'] ?? ''));
+            if ($responseError !== '') {
+                return $responseError;
             }
 
             $choice   = is_array($response['choices'][0] ?? null) ? $response['choices'][0] : [];
@@ -1624,19 +2059,26 @@ class HomeController extends Controller
                 $toolName = (string) ($toolCall['function']['name'] ?? '');
                 $rawArguments = (string) ($toolCall['function']['arguments'] ?? '{}');
                 $toolInput = json_decode($rawArguments, true);
-                if (!is_array($toolInput)) {
-                    $toolInput = [];
-                }
+                $toolResult = '';
 
                 $toolCallId = trim((string) ($toolCall['id'] ?? ''));
                 if ($toolCallId === '' || $toolName === '') {
                     continue;
                 }
 
+                if (!is_array($toolInput)) {
+                    $toolResult = json_encode([
+                        'erro' => 'Falha ao interpretar os argumentos da ferramenta ' . $toolName . '.',
+                        'detalhe' => 'O modelo enviou parâmetros em formato inválido.',
+                    ], JSON_UNESCAPED_UNICODE);
+                } else {
+                    $toolResult = $this->executeChatbotTool($toolName, $toolInput, $turmasVinculadas);
+                }
+
                 $messages[] = [
                     'role' => 'tool',
                     'tool_call_id' => $toolCallId,
-                    'content' => $this->executeChatbotTool($toolName, $toolInput, $turmasVinculadas),
+                    'content' => $toolResult,
                 ];
             }
         }
@@ -1767,6 +2209,46 @@ class HomeController extends Controller
                     $stmt->execute($params);
                     return json_encode($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [], JSON_UNESCAPED_UNICODE);
 
+                case 'contar_alunos':
+                    $anoLetivo = (int) ($input['ano_letivo'] ?? 0);
+                    $turmaId   = (int) ($input['turma_id'] ?? 0);
+                    $nome      = trim((string) ($input['nome'] ?? ''));
+                    $sql       = 'SELECT COUNT(*) AS total FROM alunos a LEFT JOIN turmas t ON t.id = a.turma_id WHERE a.ativo = 1';
+                    $params    = [];
+
+                    if ($turmaIds !== []) {
+                        $placeholders = implode(',', array_fill(0, count($turmaIds), '?'));
+                        $sql .= " AND a.turma_id IN ({$placeholders})";
+                        $params = array_merge($params, $turmaIds);
+                    }
+
+                    if ($anoLetivo > 0) {
+                        $sql .= ' AND t.ano_letivo = ?';
+                        $params[] = $anoLetivo;
+                    }
+
+                    if ($turmaId > 0) {
+                        $sql .= ' AND a.turma_id = ?';
+                        $params[] = $turmaId;
+                    }
+
+                    if ($nome !== '') {
+                        $sql .= ' AND a.nome LIKE ?';
+                        $params[] = "%{$nome}%";
+                    }
+
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute($params);
+                    $total = (int) ($stmt->fetchColumn() ?: 0);
+                    return json_encode([
+                        'total' => $total,
+                        'filtros' => [
+                            'ano_letivo' => $anoLetivo > 0 ? $anoLetivo : null,
+                            'turma_id' => $turmaId > 0 ? $turmaId : null,
+                            'nome' => $nome !== '' ? $nome : null,
+                        ],
+                    ], JSON_UNESCAPED_UNICODE);
+
                 case 'buscar_aluno':
                     $id        = (int)    ($input['id']        ?? 0);
                     $matricula = trim((string) ($input['matricula'] ?? ''));
@@ -1786,11 +2268,16 @@ class HomeController extends Controller
 
                 case 'listar_avaliacoes':
                     $bimestre = (int) ($input['bimestre'] ?? 0);
+                    $aplicacao = trim((string) ($input['aplicacao'] ?? ''));
                     $sql      = 'SELECT a.id, a.nome, a.bimestre, a.aplicacao, a.turma, a.is_recuperacao, a.is_simulado, u.nome AS autor FROM avaliacoes a LEFT JOIN usuarios u ON u.id = a.autor_id WHERE 1=1';
                     $params   = [];
                     if ($bimestre > 0) {
                         $sql .= ' AND a.bimestre = ?';
                         $params[] = $bimestre;
+                    }
+                    if ($aplicacao !== '') {
+                        $sql .= ' AND DATE(a.aplicacao) = ?';
+                        $params[] = $aplicacao;
                     }
 
                     $sql .= ' ORDER BY a.aplicacao DESC, a.created_at DESC LIMIT 100';
@@ -1801,7 +2288,7 @@ class HomeController extends Controller
                 case 'listar_correcoes':
                     $avalId  = (int) ($input['avaliacao_id'] ?? 0);
                     $alunoId = (int) ($input['aluno_id']     ?? 0);
-                    $sql     = 'SELECT ac.id, ac.avaliacao_id, ac.aluno_id, al.nome AS aluno_nome, av.nome AS avaliacao_nome FROM avaliacoes_correcoes ac JOIN alunos al ON al.id = ac.aluno_id AND al.ativo = 1 JOIN avaliacoes av ON av.id = ac.avaliacao_id WHERE 1=1';
+                    $sql     = 'SELECT ac.id, ac.avaliacao_id, ac.aluno_id, al.nome AS aluno_nome, av.nome AS avaliacao_nome FROM avaliacao_correcoes ac JOIN alunos al ON al.id = ac.aluno_id AND al.ativo = 1 JOIN avaliacoes av ON av.id = ac.avaliacao_id WHERE 1=1';
                     $params  = [];
                     if ($avalId  > 0) { $sql .= ' AND ac.avaliacao_id = ?'; $params[] = $avalId; }
                     if ($alunoId > 0) { $sql .= ' AND ac.aluno_id = ?';     $params[] = $alunoId; }
@@ -1881,25 +2368,112 @@ class HomeController extends Controller
                     return json_encode(['erro' => "Ferramenta '{$name}' não reconhecida."]);
             }
         } catch (Throwable $e) {
-            return json_encode(['erro' => $e->getMessage()]);
+            return json_encode([
+                'erro' => 'Falha na ferramenta ' . $name . '.',
+                'detalhe' => $this->formatChatbotToolError($e),
+            ], JSON_UNESCAPED_UNICODE);
         }
     }
 
-    private function callGroqApi(array $messages, array $tools): ?array
+    private function formatChatbotToolError(Throwable $e): string
+    {
+        $message = trim($e->getMessage());
+        if ($message === '') {
+            return 'Erro interno sem mensagem detalhada.';
+        }
+
+        $message = preg_replace('/\s+/', ' ', $message);
+        if (!is_string($message) || $message === '') {
+            return 'Erro interno sem mensagem detalhada.';
+        }
+
+        if (stripos($message, 'SQLSTATE') !== false) {
+            return $message;
+        }
+
+        return mb_substr($message, 0, 220);
+    }
+
+    private function callGroqApi(array $messages, array $tools): array
     {
         $apiKey = $this->getChatbotApiKey();
         if ($apiKey === '') {
-            return null;
+            $this->setChatbotGroqRuntimeState([
+                'last_error' => 'A chave da Groq não está configurada no servidor.',
+                'used_model' => '',
+                'used_fallback' => false,
+                'wait_seconds' => 0,
+            ]);
+            return ['_error' => 'A chave da Groq não está configurada no servidor.'];
         }
 
+        $lastError = 'Falha ao consultar a Groq.';
+        $models = $this->getChatbotGroqModelCandidates();
+        foreach ($models as $index => $model) {
+            $result = $this->performChatbotGroqRequest($apiKey, $model, $messages, $tools);
+            if (!isset($result['_error'])) {
+                $this->setChatbotGroqRuntimeState([
+                    'last_error' => '',
+                    'used_model' => $model,
+                    'used_fallback' => $index > 0,
+                    'wait_seconds' => 0,
+                    'primary_model' => $models[0] ?? $model,
+                    'fallback_model' => $models[1] ?? '',
+                ]);
+                return $result;
+            }
+
+            $lastError = trim((string) ($result['_error'] ?? $lastError));
+            $this->setChatbotGroqRuntimeState([
+                'last_error' => $lastError,
+                'used_model' => $model,
+                'used_fallback' => $index > 0,
+                'wait_seconds' => $this->extractChatbotGroqWaitSeconds($lastError),
+                'primary_model' => $models[0] ?? $model,
+                'fallback_model' => $models[1] ?? '',
+            ]);
+            if (!$this->isChatbotGroqRateLimitError($lastError)) {
+                return ['_error' => $lastError];
+            }
+        }
+
+        return ['_error' => $lastError];
+    }
+
+    private function getChatbotGroqModelCandidates(): array
+    {
+        $candidates = [
+            app_env('GROQ_MODEL', 'llama-3.3-70b-versatile'),
+            app_env('GROQ_FALLBACK_MODEL', 'llama-3.1-8b-instant'),
+            'llama-3.1-8b-instant',
+        ];
+
+        $models = [];
+        foreach ($candidates as $candidate) {
+            $model = trim((string) $candidate);
+            if ($model === '' || in_array($model, $models, true)) {
+                continue;
+            }
+            $models[] = $model;
+        }
+
+        return $models;
+    }
+
+    private function performChatbotGroqRequest(string $apiKey, string $model, array $messages, array $tools): array
+    {
         $payload = json_encode([
-            'model' => app_env('GROQ_MODEL', 'llama-3.3-70b-versatile') ?: 'llama-3.3-70b-versatile',
-            'temperature' => 0.2,
-            'max_tokens' => 4096,
+            'model' => $model,
+            'temperature' => 0.1,
+            'max_tokens' => 700,
             'messages' => $messages,
             'tools' => $tools,
             'tool_choice' => 'auto',
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        if (!is_string($payload) || $payload === '') {
+            return ['_error' => 'Falha ao montar a requisição do assistente.'];
+        }
 
         $ch = curl_init('https://api.groq.com/openai/v1/chat/completions');
         curl_setopt_array($ch, [
@@ -1915,14 +2489,69 @@ class HomeController extends Controller
 
         $raw  = curl_exec($ch);
         $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
         curl_close($ch);
 
-        if ($raw === false || $code < 200 || $code >= 300) {
-            return null;
+        if ($raw === false) {
+            return ['_error' => $curlError !== '' ? ('Falha ao consultar a Groq: ' . $curlError) : 'Falha ao consultar a Groq.'];
+        }
+
+        if ($code < 200 || $code >= 300) {
+            return ['_error' => $this->extractChatbotGroqErrorMessage((string) $raw, $code)];
         }
 
         $decoded = json_decode((string) $raw, true);
-        return is_array($decoded) ? $decoded : null;
+        if (!is_array($decoded)) {
+            return ['_error' => 'A resposta da Groq não pôde ser interpretada.'];
+        }
+
+        return $decoded;
+    }
+
+    private function isChatbotGroqRateLimitError(string $message): bool
+    {
+        return stripos($message, 'rate limit') !== false;
+    }
+
+    private function extractChatbotGroqWaitSeconds(string $message): int
+    {
+        if (preg_match('/cerca de\s+(\d+)\s+segundos?/i', $message, $matches) === 1) {
+            return (int) ($matches[1] ?? 0);
+        }
+
+        if (preg_match('/try again in\s+([0-9.]+)s/i', $message, $matches) === 1) {
+            return (int) ceil((float) ($matches[1] ?? 0));
+        }
+
+        return 0;
+    }
+
+    private function extractChatbotGroqErrorMessage(string $response, int $statusCode): string
+    {
+        $decoded = json_decode($response, true);
+        $message = '';
+        if (is_array($decoded)) {
+            $message = trim((string) ($decoded['error']['message'] ?? $decoded['message'] ?? ''));
+        }
+
+        if ($message !== '' && stripos($message, 'rate limit') !== false) {
+            $waitSeconds = 0.0;
+            if (preg_match('/try again in\s+([0-9.]+)s/i', $message, $matches) === 1) {
+                $waitSeconds = (float) ($matches[1] ?? 0);
+            }
+
+            if ($waitSeconds > 0) {
+                return 'A Groq atingiu o limite momentâneo de uso. Tente novamente em cerca de ' . (string) ceil($waitSeconds) . ' segundos.';
+            }
+
+            return 'A Groq atingiu o limite momentâneo de uso. Tente novamente em instantes.';
+        }
+
+        if ($message !== '') {
+            return 'Falha ao consultar a Groq: ' . $message;
+        }
+
+        return 'Falha ao consultar a Groq. Erro HTTP ' . $statusCode . '.';
     }
 
     private function getChatbotApiKey(): string

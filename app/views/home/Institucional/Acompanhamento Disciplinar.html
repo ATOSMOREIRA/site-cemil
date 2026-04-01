@@ -1,0 +1,1525 @@
+<style>
+	.disciplinar-page {
+		padding: 12px;
+	}
+
+	.disciplinar-toolbar {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 16px;
+	}
+
+	.disciplinar-tabs {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+		margin-bottom: 16px;
+	}
+
+	.disciplinar-tab-btn {
+		border: 1px solid #d0d7de;
+		background: #fff;
+		color: #1f2328;
+		border-radius: 999px;
+		padding: 8px 14px;
+		font-size: 0.875rem;
+		font-weight: 600;
+		cursor: pointer;
+	}
+
+	.disciplinar-tab-btn.is-active {
+		background: #b3261e;
+		border-color: #b3261e;
+		color: #fff;
+	}
+
+	.disciplinar-panel {
+		display: none;
+	}
+
+	.disciplinar-panel.is-active {
+		display: block;
+	}
+
+	.disciplinar-grid {
+		display: grid;
+		gap: 16px;
+		grid-template-columns: repeat(12, minmax(0, 1fr));
+	}
+
+	.disciplinar-card {
+		background: #fff;
+		border: 1px solid #d8dee4;
+		border-radius: 14px;
+		box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+		padding: 16px;
+	}
+
+	.disciplinar-card h2,
+	.disciplinar-card h3 {
+		margin: 0 0 8px;
+		font-size: 1rem;
+		font-weight: 700;
+	}
+
+	.disciplinar-card p.disciplinar-muted {
+		color: #57606a;
+		font-size: 0.875rem;
+		margin-bottom: 12px;
+	}
+
+	.disciplinar-col-12 { grid-column: span 12; }
+	.disciplinar-col-8 { grid-column: span 8; }
+	.disciplinar-col-7 { grid-column: span 7; }
+	.disciplinar-col-6 { grid-column: span 6; }
+	.disciplinar-col-5 { grid-column: span 5; }
+	.disciplinar-col-4 { grid-column: span 4; }
+
+	.disciplinar-kpis {
+		display: grid;
+		gap: 12px;
+		grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+	}
+
+	.disciplinar-kpi {
+		border-radius: 12px;
+		padding: 14px;
+		background: linear-gradient(135deg, #fff8f4 0%, #fff 100%);
+		border: 1px solid #f0d7cf;
+	}
+
+	.disciplinar-kpi strong {
+		display: block;
+		font-size: 1.4rem;
+		line-height: 1;
+		margin-bottom: 6px;
+	}
+
+	.disciplinar-kpi span {
+		color: #57606a;
+		font-size: 0.825rem;
+	}
+
+	.disciplinar-table-wrap {
+		overflow: auto;
+		border: 1px solid #d8dee4;
+		border-radius: 12px;
+		background: #fff;
+	}
+
+	.disciplinar-table {
+		width: 100%;
+		border-collapse: collapse;
+		min-width: 720px;
+	}
+
+	.disciplinar-table th,
+	.disciplinar-table td {
+		padding: 10px 12px;
+		border-bottom: 1px solid #edf1f4;
+		font-size: 0.875rem;
+		vertical-align: top;
+	}
+
+	.disciplinar-table th {
+		background: #f6f8fa;
+		text-align: left;
+		font-weight: 700;
+		position: sticky;
+		top: 0;
+		z-index: 1;
+	}
+
+	.disciplinar-empty {
+		padding: 24px 16px;
+		text-align: center;
+		color: #57606a;
+		font-size: 0.92rem;
+	}
+
+	.disciplinar-form-grid {
+		display: grid;
+		gap: 12px;
+		grid-template-columns: repeat(12, minmax(0, 1fr));
+	}
+
+	.disciplinar-field {
+		grid-column: span 12;
+	}
+
+	.disciplinar-field.col-6 { grid-column: span 6; }
+	.disciplinar-field.col-4 { grid-column: span 4; }
+	.disciplinar-field.col-3 { grid-column: span 3; }
+
+	.disciplinar-field label {
+		display: block;
+		font-size: 0.8rem;
+		font-weight: 600;
+		margin-bottom: 4px;
+		color: #344054;
+	}
+
+	.disciplinar-field input,
+	.disciplinar-field select,
+	.disciplinar-field textarea {
+		width: 100%;
+		border: 1px solid #c9d1d9;
+		border-radius: 10px;
+		padding: 9px 10px;
+		font-size: 0.92rem;
+		background: #fff;
+	}
+
+	.disciplinar-field textarea {
+		min-height: 90px;
+		resize: vertical;
+	}
+
+	.disciplinar-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+		margin-top: 8px;
+	}
+
+	.disciplinar-inline-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+	}
+
+	.disciplinar-inline-actions button,
+	.disciplinar-actions button,
+	.disciplinar-actions a {
+		border: 1px solid transparent;
+		border-radius: 10px;
+		padding: 8px 12px;
+		font-size: 0.84rem;
+		font-weight: 600;
+		cursor: pointer;
+		text-decoration: none;
+	}
+
+	.disciplinar-btn-primary {
+		background: #b3261e;
+		color: #fff;
+	}
+
+	.disciplinar-btn-secondary {
+		background: #fff;
+		color: #344054;
+		border-color: #c9d1d9;
+	}
+
+	.disciplinar-btn-danger {
+		background: #fff5f5;
+		color: #b42318;
+		border-color: #f3b6b6;
+	}
+
+	.disciplinar-badge {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		border-radius: 999px;
+		padding: 4px 10px;
+		font-size: 0.74rem;
+		font-weight: 700;
+	}
+
+	.disciplinar-badge.is-positive { background: #ecfdf3; color: #027a48; }
+	.disciplinar-badge.is-negative { background: #fef3f2; color: #b42318; }
+	.disciplinar-badge.is-neutral { background: #f2f4f7; color: #475467; }
+
+	.disciplinar-listbox {
+		min-height: 120px;
+	}
+
+	.disciplinar-status {
+		display: none;
+		margin-bottom: 12px;
+		padding: 10px 12px;
+		border-radius: 10px;
+		font-size: 0.9rem;
+	}
+
+	.disciplinar-status.is-visible { display: block; }
+	.disciplinar-status.is-error { background: #fef3f2; color: #b42318; border: 1px solid #fecdca; }
+	.disciplinar-status.is-success { background: #ecfdf3; color: #027a48; border: 1px solid #abefc6; }
+
+	.disciplinar-toolbar-meta {
+		color: #57606a;
+		font-size: 0.85rem;
+	}
+
+	@media (max-width: 980px) {
+		.disciplinar-col-8,
+		.disciplinar-col-7,
+		.disciplinar-col-6,
+		.disciplinar-col-5,
+		.disciplinar-col-4,
+		.disciplinar-field.col-6,
+		.disciplinar-field.col-4,
+		.disciplinar-field.col-3 {
+			grid-column: span 12;
+		}
+	}
+</style>
+
+<div class="container-fluid px-0 disciplinary-page-root">
+	<div class="disciplinar-page">
+		<div class="disciplinar-toolbar">
+			<div>
+				<h1 class="h4 fw-bold mb-1">Acompanhamento Disciplinar</h1>
+				<div class="disciplinar-toolbar-meta">Cursos, notas de conceito, faltas, elogios e lançamentos disciplinares.</div>
+			</div>
+			<div class="disciplinar-actions">
+				<button type="button" class="disciplinar-btn-secondary" id="disciplinarRefreshBtn">Atualizar dados</button>
+				<a class="disciplinar-btn-secondary" id="disciplinarBackBtn" href="#" target="_top">Voltar</a>
+			</div>
+		</div>
+
+		<div id="disciplinarStatus" class="disciplinar-status" role="alert" aria-live="polite"></div>
+
+		<div class="disciplinar-tabs" id="disciplinarTabs">
+			<button type="button" class="disciplinar-tab-btn is-active" data-panel="painelGeral">Panorama</button>
+			<button type="button" class="disciplinar-tab-btn" data-panel="painelCursos">Cursos e Critérios</button>
+			<button type="button" class="disciplinar-tab-btn" data-panel="painelMatriculas">Matrículas e Notas</button>
+			<button type="button" class="disciplinar-tab-btn" data-panel="painelRegistros">Lançamentos Disciplinares</button>
+		</div>
+
+		<section class="disciplinar-panel is-active" id="painelGeral">
+			<div class="disciplinar-grid">
+				<div class="disciplinar-card disciplinar-col-12">
+					<h2>Indicadores Gerais</h2>
+					<p class="disciplinar-muted">Resumo rápido do módulo disciplinar.</p>
+					<div class="disciplinar-kpis" id="disciplinarKpis"></div>
+				</div>
+
+				<div class="disciplinar-card disciplinar-col-7">
+					<h2>Ranking de Conceito</h2>
+					<p class="disciplinar-muted">Todos os estudantes iniciam com nota 8 e variam conforme méritos e deméritos.</p>
+					<div class="disciplinar-table-wrap">
+						<table class="disciplinar-table">
+							<thead>
+								<tr>
+									<th>#</th>
+									<th>Estudante</th>
+									<th>Turma</th>
+									<th>Nota Atual</th>
+									<th>Conceito</th>
+									<th>Variação</th>
+								</tr>
+							</thead>
+							<tbody id="disciplinarConceitosBody">
+								<tr><td colspan="6" class="disciplinar-empty">Carregando conceitos...</td></tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+
+				<div class="disciplinar-card disciplinar-col-5">
+					<h2>Faixas de Conceito</h2>
+					<p class="disciplinar-muted">Base inicial extraída da NGA.</p>
+					<div id="disciplinarFaixasList"></div>
+				</div>
+
+				<div class="disciplinar-card disciplinar-col-12">
+					<h2>Normas e Pontuações</h2>
+					<p class="disciplinar-muted">Classificações e referências para faltas, medidas e elogios.</p>
+					<div class="disciplinar-table-wrap">
+						<table class="disciplinar-table">
+							<thead>
+								<tr>
+									<th>Tipo</th>
+									<th>Categoria</th>
+									<th>Título</th>
+									<th>Artigo</th>
+									<th>Pontuação</th>
+								</tr>
+							</thead>
+							<tbody id="disciplinarNormasBody">
+								<tr><td colspan="5" class="disciplinar-empty">Carregando normas...</td></tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<section class="disciplinar-panel" id="painelCursos">
+			<div class="disciplinar-grid">
+				<div class="disciplinar-card disciplinar-col-5">
+					<h2>Novo Curso</h2>
+					<p class="disciplinar-muted">Cadastre cursos como ASCOM, FISCAL, SOCORRISTA e PELOTÃO DE ELITE.</p>
+					<form id="disciplinarCursoForm">
+						<input type="hidden" id="cursoId" value="0">
+						<div class="disciplinar-form-grid">
+							<div class="disciplinar-field col-6">
+								<label for="cursoNome">Nome</label>
+								<input type="text" id="cursoNome" maxlength="120" required>
+							</div>
+							<div class="disciplinar-field col-3">
+								<label for="cursoStatus">Status</label>
+								<select id="cursoStatus">
+									<option value="ativo">Ativo</option>
+									<option value="inativo">Inativo</option>
+								</select>
+							</div>
+							<div class="disciplinar-field col-3">
+								<label for="cursoInicio">Início</label>
+								<input type="date" id="cursoInicio">
+							</div>
+							<div class="disciplinar-field col-3">
+								<label for="cursoFim">Fim</label>
+								<input type="date" id="cursoFim">
+							</div>
+							<div class="disciplinar-field">
+								<label for="cursoDescricao">Descrição</label>
+								<textarea id="cursoDescricao" placeholder="Objetivo, turma-alvo, observações e regras do curso."></textarea>
+							</div>
+						</div>
+						<div class="disciplinar-actions">
+							<button type="submit" class="disciplinar-btn-primary">Salvar curso</button>
+							<button type="button" class="disciplinar-btn-secondary" id="cursoResetBtn">Limpar</button>
+						</div>
+					</form>
+				</div>
+
+				<div class="disciplinar-card disciplinar-col-7">
+					<h2>Cursos Cadastrados</h2>
+					<p class="disciplinar-muted">Gerencie período, status e quantidade de estudantes/critério por curso.</p>
+					<div class="disciplinar-table-wrap">
+						<table class="disciplinar-table">
+							<thead>
+								<tr>
+									<th>Curso</th>
+									<th>Período</th>
+									<th>Status</th>
+									<th>Critérios</th>
+									<th>Matrículas</th>
+									<th>Ações</th>
+								</tr>
+							</thead>
+							<tbody id="disciplinarCursosBody">
+								<tr><td colspan="6" class="disciplinar-empty">Carregando cursos...</td></tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+
+				<div class="disciplinar-card disciplinar-col-12">
+					<h2>Critérios de Nota por Curso</h2>
+					<p class="disciplinar-muted">Cada curso pode ter seus próprios critérios, peso e valor máximo.</p>
+					<form id="disciplinarCriterioForm">
+						<input type="hidden" id="criterioId" value="0">
+						<div class="disciplinar-form-grid">
+							<div class="disciplinar-field col-4">
+								<label for="criterioCursoId">Curso</label>
+								<select id="criterioCursoId" required></select>
+							</div>
+							<div class="disciplinar-field col-4">
+								<label for="criterioNome">Critério</label>
+								<input type="text" id="criterioNome" maxlength="120" required>
+							</div>
+							<div class="disciplinar-field col-2">
+								<label for="criterioValor">Valor Máximo</label>
+								<input type="number" id="criterioValor" min="0" step="0.01" value="10">
+							</div>
+							<div class="disciplinar-field col-2">
+								<label for="criterioPeso">Peso</label>
+								<input type="number" id="criterioPeso" min="0.1" step="0.01" value="1">
+							</div>
+							<div class="disciplinar-field col-2">
+								<label for="criterioOrdem">Ordem</label>
+								<input type="number" id="criterioOrdem" min="0" step="1" value="0">
+							</div>
+							<div class="disciplinar-field col-2">
+								<label for="criterioAtivo">Ativo</label>
+								<select id="criterioAtivo">
+									<option value="1">Sim</option>
+									<option value="0">Não</option>
+								</select>
+							</div>
+							<div class="disciplinar-field">
+								<label for="criterioDescricao">Descrição</label>
+								<textarea id="criterioDescricao" placeholder="Explique como a nota é obtida neste critério."></textarea>
+							</div>
+						</div>
+						<div class="disciplinar-actions">
+							<button type="submit" class="disciplinar-btn-primary">Salvar critério</button>
+							<button type="button" class="disciplinar-btn-secondary" id="criterioResetBtn">Limpar</button>
+						</div>
+					</form>
+
+					<div class="disciplinar-table-wrap mt-3">
+						<table class="disciplinar-table">
+							<thead>
+								<tr>
+									<th>Curso</th>
+									<th>Critério</th>
+									<th>Valor Máx.</th>
+									<th>Peso</th>
+									<th>Status</th>
+									<th>Ações</th>
+								</tr>
+							</thead>
+							<tbody id="disciplinarCriteriosBody">
+								<tr><td colspan="6" class="disciplinar-empty">Carregando critérios...</td></tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<section class="disciplinar-panel" id="painelMatriculas">
+			<div class="disciplinar-grid">
+				<div class="disciplinar-card disciplinar-col-5">
+					<h2>Matrícula em Curso</h2>
+					<p class="disciplinar-muted">Vincule estudantes aos cursos e defina período de participação.</p>
+					<form id="disciplinarMatriculaForm">
+						<input type="hidden" id="matriculaId" value="0">
+						<div class="disciplinar-form-grid">
+							<div class="disciplinar-field col-6">
+								<label for="matriculaCursoId">Curso</label>
+								<select id="matriculaCursoId" required></select>
+							</div>
+							<div class="disciplinar-field col-6">
+								<label for="matriculaAlunoId">Estudante</label>
+								<select id="matriculaAlunoId" required></select>
+							</div>
+							<div class="disciplinar-field col-4">
+								<label for="matriculaInicio">Início</label>
+								<input type="date" id="matriculaInicio">
+							</div>
+							<div class="disciplinar-field col-4">
+								<label for="matriculaFim">Fim</label>
+								<input type="date" id="matriculaFim">
+							</div>
+							<div class="disciplinar-field col-4">
+								<label for="matriculaStatus">Status</label>
+								<select id="matriculaStatus">
+									<option value="ativo">Ativo</option>
+									<option value="concluido">Concluído</option>
+									<option value="cancelado">Cancelado</option>
+								</select>
+							</div>
+							<div class="disciplinar-field">
+								<label for="matriculaObservacoes">Observações</label>
+								<textarea id="matriculaObservacoes"></textarea>
+							</div>
+						</div>
+						<div class="disciplinar-actions">
+							<button type="submit" class="disciplinar-btn-primary">Salvar matrícula</button>
+							<button type="button" class="disciplinar-btn-secondary" id="matriculaResetBtn">Limpar</button>
+						</div>
+					</form>
+				</div>
+
+				<div class="disciplinar-card disciplinar-col-7">
+					<h2>Notas do Curso</h2>
+					<p class="disciplinar-muted">Lance notas por critério e acompanhe a colocação por curso.</p>
+					<form id="disciplinarNotaForm" class="mb-3">
+						<input type="hidden" id="notaId" value="0">
+						<div class="disciplinar-form-grid">
+							<div class="disciplinar-field col-4">
+								<label for="notaMatriculaId">Matrícula</label>
+								<select id="notaMatriculaId" required></select>
+							</div>
+							<div class="disciplinar-field col-4">
+								<label for="notaCriterioId">Critério</label>
+								<select id="notaCriterioId" required></select>
+							</div>
+							<div class="disciplinar-field col-2">
+								<label for="notaValor">Nota</label>
+								<input type="number" id="notaValor" min="0" step="0.01" required>
+							</div>
+							<div class="disciplinar-field col-2">
+								<label for="notaData">Data</label>
+								<input type="date" id="notaData">
+							</div>
+							<div class="disciplinar-field">
+								<label for="notaObservacoes">Observações</label>
+								<textarea id="notaObservacoes"></textarea>
+							</div>
+						</div>
+						<div class="disciplinar-actions">
+							<button type="submit" class="disciplinar-btn-primary">Salvar nota</button>
+							<button type="button" class="disciplinar-btn-secondary" id="notaResetBtn">Limpar</button>
+						</div>
+					</form>
+
+					<div class="disciplinar-table-wrap">
+						<table class="disciplinar-table">
+							<thead>
+								<tr>
+									<th>Curso</th>
+									<th>Estudante</th>
+									<th>Critério</th>
+									<th>Nota</th>
+									<th>Data</th>
+									<th>Ações</th>
+								</tr>
+							</thead>
+							<tbody id="disciplinarNotasBody">
+								<tr><td colspan="6" class="disciplinar-empty">Carregando notas...</td></tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+
+				<div class="disciplinar-card disciplinar-col-12">
+					<h2>Colocação por Curso</h2>
+					<p class="disciplinar-muted">Ranking calculado pela soma simples das notas lançadas por matrícula.</p>
+					<div class="disciplinar-table-wrap">
+						<table class="disciplinar-table">
+							<thead>
+								<tr>
+									<th>Curso</th>
+									<th>Posição</th>
+									<th>Estudante</th>
+									<th>Turma</th>
+									<th>Total de Pontos</th>
+								</tr>
+							</thead>
+							<tbody id="disciplinarRankingCursosBody">
+								<tr><td colspan="5" class="disciplinar-empty">Carregando ranking...</td></tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<section class="disciplinar-panel" id="painelRegistros">
+			<div class="disciplinar-grid">
+				<div class="disciplinar-card disciplinar-col-5">
+					<h2>Novo Lançamento Disciplinar</h2>
+					<p class="disciplinar-muted">Inclui anotação, falta por turma, nota disciplinar inicial, alteração de nota, elogios e faltas coletivas.</p>
+					<form id="disciplinarRegistroForm" enctype="multipart/form-data">
+						<input type="hidden" id="registroId" value="0">
+						<div class="disciplinar-form-grid">
+							<div class="disciplinar-field col-6">
+								<label for="registroTipo">Tipo</label>
+								<select id="registroTipo" required>
+									<option value="anotacao">Nova Anotação</option>
+									<option value="falta_por_turma">Nova Falta Por Turmas</option>
+									<option value="nota_inicial">Nova Nota Disciplinar (Inicial)</option>
+									<option value="alteracao_nota_turma">Alterar Nota Disciplinar/Turma</option>
+									<option value="elogio_coletivo_estudante">Novo Elogio Coletivo (Estudante)</option>
+									<option value="elogio_coletivo_turma">Novo Elogio Coletivo (Turma)</option>
+									<option value="falta_coletiva_estudante">Nova Falta Disciplinar Coletiva (Estudante)</option>
+								</select>
+							</div>
+							<div class="disciplinar-field col-6">
+								<label for="registroData">Data</label>
+								<input type="date" id="registroData" required>
+							</div>
+							<div class="disciplinar-field">
+								<label for="registroTitulo">Título</label>
+								<input type="text" id="registroTitulo" maxlength="180" required>
+							</div>
+							<div class="disciplinar-field col-4">
+								<label for="registroNatureza">Natureza</label>
+								<select id="registroNatureza">
+									<option value="negativo">Negativa</option>
+									<option value="positivo">Positiva</option>
+									<option value="neutro">Neutra</option>
+								</select>
+							</div>
+							<div class="disciplinar-field col-4">
+								<label for="registroNormaId">Norma / Base NGA</label>
+								<select id="registroNormaId"></select>
+							</div>
+							<div class="disciplinar-field col-4">
+								<label for="registroPontos">Variação de Pontos</label>
+								<input type="number" id="registroPontos" step="0.01" value="0">
+							</div>
+							<div class="disciplinar-field col-6">
+								<label for="registroAlunoIds">Estudantes</label>
+								<select id="registroAlunoIds" class="disciplinar-listbox" multiple></select>
+							</div>
+							<div class="disciplinar-field col-6">
+								<label for="registroTurmaIds">Turmas</label>
+								<select id="registroTurmaIds" class="disciplinar-listbox" multiple></select>
+							</div>
+							<div class="disciplinar-field col-6">
+								<label for="registroDocumento">Anexo</label>
+								<input type="file" id="registroDocumento" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx">
+							</div>
+							<div class="disciplinar-field col-6">
+								<label for="registroRemoverDocumento">Remover anexo atual</label>
+								<select id="registroRemoverDocumento">
+									<option value="0">Não</option>
+									<option value="1">Sim</option>
+								</select>
+							</div>
+							<div class="disciplinar-field">
+								<label for="registroDescricao">Descrição</label>
+								<textarea id="registroDescricao"></textarea>
+							</div>
+						</div>
+						<div class="disciplinar-actions">
+							<button type="submit" class="disciplinar-btn-primary">Salvar lançamento</button>
+							<button type="button" class="disciplinar-btn-secondary" id="registroResetBtn">Limpar</button>
+						</div>
+					</form>
+				</div>
+
+				<div class="disciplinar-card disciplinar-col-7">
+					<h2>Registros Lançados</h2>
+					<p class="disciplinar-muted">Edite, exclua e consulte anexos já registrados em uploads/disciplinar.</p>
+					<div class="disciplinar-table-wrap">
+						<table class="disciplinar-table">
+							<thead>
+								<tr>
+									<th>Data</th>
+									<th>Tipo</th>
+									<th>Título</th>
+									<th>Natureza</th>
+									<th>Pontos</th>
+									<th>Anexo</th>
+									<th>Ações</th>
+								</tr>
+							</thead>
+							<tbody id="disciplinarRegistrosBody">
+								<tr><td colspan="7" class="disciplinar-empty">Carregando registros...</td></tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</section>
+	</div>
+</div>
+
+<script>
+	(function () {
+		var state = {
+			data: {
+				faixas: [],
+				normas: [],
+				cursos: [],
+				criterios: [],
+				matriculas: [],
+				notas: [],
+				registros: [],
+				conceitos: [],
+				alunos: [],
+				turmas: []
+			}
+		};
+
+		var statusEl = document.getElementById('disciplinarStatus');
+		var backBtn = document.getElementById('disciplinarBackBtn');
+		var refreshBtn = document.getElementById('disciplinarRefreshBtn');
+		var tabsRoot = document.getElementById('disciplinarTabs');
+
+		var cursoForm = document.getElementById('disciplinarCursoForm');
+		var criterioForm = document.getElementById('disciplinarCriterioForm');
+		var matriculaForm = document.getElementById('disciplinarMatriculaForm');
+		var notaForm = document.getElementById('disciplinarNotaForm');
+		var registroForm = document.getElementById('disciplinarRegistroForm');
+
+		var cursoIdInput = document.getElementById('cursoId');
+		var cursoNomeInput = document.getElementById('cursoNome');
+		var cursoStatusInput = document.getElementById('cursoStatus');
+		var cursoInicioInput = document.getElementById('cursoInicio');
+		var cursoFimInput = document.getElementById('cursoFim');
+		var cursoDescricaoInput = document.getElementById('cursoDescricao');
+
+		var criterioIdInput = document.getElementById('criterioId');
+		var criterioCursoIdInput = document.getElementById('criterioCursoId');
+		var criterioNomeInput = document.getElementById('criterioNome');
+		var criterioValorInput = document.getElementById('criterioValor');
+		var criterioPesoInput = document.getElementById('criterioPeso');
+		var criterioOrdemInput = document.getElementById('criterioOrdem');
+		var criterioAtivoInput = document.getElementById('criterioAtivo');
+		var criterioDescricaoInput = document.getElementById('criterioDescricao');
+
+		var matriculaIdInput = document.getElementById('matriculaId');
+		var matriculaCursoIdInput = document.getElementById('matriculaCursoId');
+		var matriculaAlunoIdInput = document.getElementById('matriculaAlunoId');
+		var matriculaInicioInput = document.getElementById('matriculaInicio');
+		var matriculaFimInput = document.getElementById('matriculaFim');
+		var matriculaStatusInput = document.getElementById('matriculaStatus');
+		var matriculaObservacoesInput = document.getElementById('matriculaObservacoes');
+
+		var notaIdInput = document.getElementById('notaId');
+		var notaMatriculaIdInput = document.getElementById('notaMatriculaId');
+		var notaCriterioIdInput = document.getElementById('notaCriterioId');
+		var notaValorInput = document.getElementById('notaValor');
+		var notaDataInput = document.getElementById('notaData');
+		var notaObservacoesInput = document.getElementById('notaObservacoes');
+
+		var registroIdInput = document.getElementById('registroId');
+		var registroTipoInput = document.getElementById('registroTipo');
+		var registroDataInput = document.getElementById('registroData');
+		var registroTituloInput = document.getElementById('registroTitulo');
+		var registroNaturezaInput = document.getElementById('registroNatureza');
+		var registroNormaIdInput = document.getElementById('registroNormaId');
+		var registroPontosInput = document.getElementById('registroPontos');
+		var registroAlunoIdsInput = document.getElementById('registroAlunoIds');
+		var registroTurmaIdsInput = document.getElementById('registroTurmaIds');
+		var registroDocumentoInput = document.getElementById('registroDocumento');
+		var registroRemoverDocumentoInput = document.getElementById('registroRemoverDocumento');
+		var registroDescricaoInput = document.getElementById('registroDescricao');
+
+		function resolveBasePath() {
+			var pathname = String(window.location.pathname || '');
+			var indexPhpPos = pathname.indexOf('/index.php/');
+			if (indexPhpPos >= 0) {
+				return pathname.slice(0, indexPhpPos);
+			}
+			return '';
+		}
+
+		function buildEndpoint(path) {
+			var base = resolveBasePath();
+			var pathname = String(window.location.pathname || '');
+			if (pathname.indexOf('/index.php/') >= 0) {
+				return base + '/index.php' + String(path || '');
+			}
+			return base + String(path || '');
+		}
+
+		function escapeHtml(value) {
+			return String(value == null ? '' : value)
+				.replace(/&/g, '&amp;')
+				.replace(/</g, '&lt;')
+				.replace(/>/g, '&gt;')
+				.replace(/"/g, '&quot;')
+				.replace(/'/g, '&#39;');
+		}
+
+		function formatDate(value) {
+			var raw = String(value || '').trim();
+			if (!raw) {
+				return '-';
+			}
+			if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+				return raw.slice(8, 10) + '/' + raw.slice(5, 7) + '/' + raw.slice(0, 4);
+			}
+			return raw;
+		}
+
+		function formatNumber(value) {
+			var number = Number(value || 0);
+			return number.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+		}
+
+		function showStatus(message, isError) {
+			if (!statusEl) {
+				return;
+			}
+			statusEl.textContent = String(message || '');
+			statusEl.className = 'disciplinar-status is-visible ' + (isError ? 'is-error' : 'is-success');
+		}
+
+		function clearStatus() {
+			if (!statusEl) {
+				return;
+			}
+			statusEl.textContent = '';
+			statusEl.className = 'disciplinar-status';
+		}
+
+		function setTab(panelId) {
+			Array.prototype.forEach.call(document.querySelectorAll('.disciplinar-tab-btn'), function (button) {
+				button.classList.toggle('is-active', button.getAttribute('data-panel') === panelId);
+			});
+			Array.prototype.forEach.call(document.querySelectorAll('.disciplinar-panel'), function (panel) {
+				panel.classList.toggle('is-active', panel.id === panelId);
+			});
+		}
+
+		function getBadgeClass(natureza) {
+			if (natureza === 'positivo') { return 'is-positive'; }
+			if (natureza === 'negativo') { return 'is-negative'; }
+			return 'is-neutral';
+		}
+
+		function buildOptions(items, valueKey, labelBuilder, includeEmpty) {
+			var html = includeEmpty ? '<option value="">Selecione</option>' : '';
+			html += (Array.isArray(items) ? items : []).map(function (item) {
+				var value = item && item[valueKey] != null ? item[valueKey] : '';
+				return '<option value="' + escapeHtml(value) + '">' + escapeHtml(labelBuilder(item || {})) + '</option>';
+			}).join('');
+			return html;
+		}
+
+		function getCursoById(id) {
+			id = Number(id || 0);
+			return state.data.cursos.find(function (item) { return Number(item.id || 0) === id; }) || null;
+		}
+
+		function getMatriculaById(id) {
+			id = Number(id || 0);
+			return state.data.matriculas.find(function (item) { return Number(item.id || 0) === id; }) || null;
+		}
+
+		function getCriterioById(id) {
+			id = Number(id || 0);
+			return state.data.criterios.find(function (item) { return Number(item.id || 0) === id; }) || null;
+		}
+
+		function getNormaById(id) {
+			id = Number(id || 0);
+			return state.data.normas.find(function (item) { return Number(item.id || 0) === id; }) || null;
+		}
+
+		function getSelectedValues(selectEl) {
+			return Array.prototype.map.call(selectEl && selectEl.selectedOptions ? selectEl.selectedOptions : [], function (option) {
+				return Number(option.value || 0);
+			}).filter(function (value) { return value > 0; });
+		}
+
+		function resetCursoForm() {
+			cursoIdInput.value = '0';
+			cursoNomeInput.value = '';
+			cursoStatusInput.value = 'ativo';
+			cursoInicioInput.value = '';
+			cursoFimInput.value = '';
+			cursoDescricaoInput.value = '';
+		}
+
+		function resetCriterioForm() {
+			criterioIdInput.value = '0';
+			criterioNomeInput.value = '';
+			criterioValorInput.value = '10';
+			criterioPesoInput.value = '1';
+			criterioOrdemInput.value = '0';
+			criterioAtivoInput.value = '1';
+			criterioDescricaoInput.value = '';
+		}
+
+		function resetMatriculaForm() {
+			matriculaIdInput.value = '0';
+			matriculaInicioInput.value = '';
+			matriculaFimInput.value = '';
+			matriculaStatusInput.value = 'ativo';
+			matriculaObservacoesInput.value = '';
+		}
+
+		function resetNotaForm() {
+			notaIdInput.value = '0';
+			notaValorInput.value = '';
+			notaDataInput.value = '';
+			notaObservacoesInput.value = '';
+		}
+
+		function resetRegistroForm() {
+			registroIdInput.value = '0';
+			registroTipoInput.value = 'anotacao';
+			registroDataInput.value = new Date().toISOString().slice(0, 10);
+			registroTituloInput.value = '';
+			registroNaturezaInput.value = 'negativo';
+			registroNormaIdInput.value = '';
+			registroPontosInput.value = '0';
+			Array.prototype.forEach.call(registroAlunoIdsInput.options, function (option) { option.selected = false; });
+			Array.prototype.forEach.call(registroTurmaIdsInput.options, function (option) { option.selected = false; });
+			registroDocumentoInput.value = '';
+			registroRemoverDocumentoInput.value = '0';
+			registroDescricaoInput.value = '';
+		}
+
+		function renderKpis() {
+			var conceitos = state.data.conceitos || [];
+			var cursos = state.data.cursos || [];
+			var registros = state.data.registros || [];
+			var normas = state.data.normas || [];
+			var positive = registros.filter(function (item) { return item.natureza === 'positivo'; }).length;
+			var negative = registros.filter(function (item) { return item.natureza === 'negativo'; }).length;
+			var average = 0;
+			if (conceitos.length) {
+				average = conceitos.reduce(function (sum, item) { return sum + Number(item.nota_atual || 0); }, 0) / conceitos.length;
+			}
+
+			document.getElementById('disciplinarKpis').innerHTML = [
+				{ value: cursos.length, label: 'Cursos cadastrados' },
+				{ value: conceitos.length, label: 'Estudantes com conceito' },
+				{ value: formatNumber(average), label: 'Média de conceito atual' },
+				{ value: registros.length, label: 'Lançamentos disciplinares' },
+				{ value: positive, label: 'Registros positivos' },
+				{ value: negative, label: 'Registros negativos' },
+				{ value: normas.length, label: 'Normas ativas' }
+			].map(function (item) {
+				return '<div class="disciplinar-kpi"><strong>' + escapeHtml(item.value) + '</strong><span>' + escapeHtml(item.label) + '</span></div>';
+			}).join('');
+		}
+
+		function renderConceitos() {
+			var body = document.getElementById('disciplinarConceitosBody');
+			var conceitos = (state.data.conceitos || []).slice().sort(function (a, b) {
+				return Number(b.nota_atual || 0) - Number(a.nota_atual || 0);
+			});
+			if (!conceitos.length) {
+				body.innerHTML = '<tr><td colspan="6" class="disciplinar-empty">Nenhum conceito calculado.</td></tr>';
+				return;
+			}
+
+			body.innerHTML = conceitos.map(function (item, index) {
+				var variacao = Number(item.variacao_total || 0);
+				return [
+					'<tr>',
+					'<td>' + (index + 1) + '</td>',
+					'<td><strong>' + escapeHtml(item.nome) + '</strong><div class="text-muted small">Matrícula ' + escapeHtml(item.matricula || '-') + '</div></td>',
+					'<td>' + escapeHtml(item.turma || '-') + '</td>',
+					'<td>' + escapeHtml(formatNumber(item.nota_atual || 0)) + '</td>',
+					'<td>' + escapeHtml(item.classificacao || '-') + '</td>',
+					'<td>' + (variacao >= 0 ? '+' : '') + escapeHtml(formatNumber(variacao)) + '</td>',
+					'</tr>'
+				].join('');
+			}).join('');
+		}
+
+		function renderFaixas() {
+			var root = document.getElementById('disciplinarFaixasList');
+			var faixas = state.data.faixas || [];
+			if (!faixas.length) {
+				root.innerHTML = '<div class="disciplinar-empty">Nenhuma faixa cadastrada.</div>';
+				return;
+			}
+
+			root.innerHTML = faixas.map(function (item) {
+				return '<div class="disciplinar-kpi" style="margin-bottom:8px;"><strong>' + escapeHtml(item.nome) + '</strong><span>' + escapeHtml(formatNumber(item.nota_min)) + ' até ' + escapeHtml(formatNumber(item.nota_max)) + '</span></div>';
+			}).join('');
+		}
+
+		function renderNormas() {
+			var body = document.getElementById('disciplinarNormasBody');
+			var normas = state.data.normas || [];
+			if (!normas.length) {
+				body.innerHTML = '<tr><td colspan="5" class="disciplinar-empty">Nenhuma norma carregada.</td></tr>';
+				return;
+			}
+
+			body.innerHTML = normas.map(function (item) {
+				var points = Number(item.pontuacao_padrao || 0);
+				return [
+					'<tr>',
+					'<td>' + escapeHtml(item.tipo || '-') + '</td>',
+					'<td>' + escapeHtml(item.categoria || '-') + '</td>',
+					'<td><strong>' + escapeHtml(item.titulo || '-') + '</strong><div class="text-muted small">' + escapeHtml(item.descricao || '') + '</div></td>',
+					'<td>' + escapeHtml(item.artigo_referencia || '-') + '</td>',
+					'<td><span class="disciplinar-badge ' + getBadgeClass(item.natureza) + '">' + (points > 0 ? '+' : '') + escapeHtml(formatNumber(points)) + '</span></td>',
+					'</tr>'
+				].join('');
+			}).join('');
+		}
+
+		function renderCursoOptions() {
+			var html = buildOptions(state.data.cursos || [], 'id', function (item) {
+				return item.nome || 'Curso';
+			}, true);
+			criterioCursoIdInput.innerHTML = html;
+			matriculaCursoIdInput.innerHTML = html;
+		}
+
+		function renderAlunoOptions() {
+			var html = buildOptions(state.data.alunos || [], 'id', function (item) {
+				return (item.nome || 'Estudante') + ' - ' + (item.turma || item.turma_nome || 'Sem turma');
+			}, true);
+			matriculaAlunoIdInput.innerHTML = html;
+			registroAlunoIdsInput.innerHTML = buildOptions(state.data.alunos || [], 'id', function (item) {
+				return (item.nome || 'Estudante') + ' - ' + (item.turma || item.turma_nome || 'Sem turma');
+			}, false);
+		}
+
+		function renderTurmaOptions() {
+			registroTurmaIdsInput.innerHTML = buildOptions(state.data.turmas || [], 'id', function (item) {
+				return item.nome || 'Turma';
+			}, false);
+		}
+
+		function renderNormaOptions() {
+			registroNormaIdInput.innerHTML = buildOptions(state.data.normas || [], 'id', function (item) {
+				return (item.titulo || 'Norma') + ' - ' + (item.artigo_referencia || '');
+			}, true);
+		}
+
+		function renderCursos() {
+			var body = document.getElementById('disciplinarCursosBody');
+			var cursos = state.data.cursos || [];
+			if (!cursos.length) {
+				body.innerHTML = '<tr><td colspan="6" class="disciplinar-empty">Nenhum curso cadastrado.</td></tr>';
+				return;
+			}
+
+			body.innerHTML = cursos.map(function (item) {
+				return [
+					'<tr>',
+					'<td><strong>' + escapeHtml(item.nome) + '</strong><div class="text-muted small">' + escapeHtml(item.descricao || '') + '</div></td>',
+					'<td>' + escapeHtml(formatDate(item.data_inicio)) + ' a ' + escapeHtml(formatDate(item.data_fim)) + '</td>',
+					'<td>' + escapeHtml(item.status || '-') + '</td>',
+					'<td>' + escapeHtml(item.total_criterios || 0) + '</td>',
+					'<td>' + escapeHtml(item.total_matriculas || 0) + '</td>',
+					'<td><div class="disciplinar-inline-actions"><button type="button" class="disciplinar-btn-secondary" data-edit-curso="' + escapeHtml(item.id) + '">Editar</button><button type="button" class="disciplinar-btn-danger" data-delete-curso="' + escapeHtml(item.id) + '">Excluir</button></div></td>',
+					'</tr>'
+				].join('');
+			}).join('');
+		}
+
+		function renderCriterios() {
+			var body = document.getElementById('disciplinarCriteriosBody');
+			var criterios = state.data.criterios || [];
+			if (!criterios.length) {
+				body.innerHTML = '<tr><td colspan="6" class="disciplinar-empty">Nenhum critério cadastrado.</td></tr>';
+				return;
+			}
+
+			body.innerHTML = criterios.map(function (item) {
+				var curso = getCursoById(item.curso_id);
+				return [
+					'<tr>',
+					'<td>' + escapeHtml(curso ? curso.nome : '-') + '</td>',
+					'<td><strong>' + escapeHtml(item.nome || '-') + '</strong><div class="text-muted small">' + escapeHtml(item.descricao || '') + '</div></td>',
+					'<td>' + escapeHtml(formatNumber(item.valor_maximo || 0)) + '</td>',
+					'<td>' + escapeHtml(formatNumber(item.peso || 0)) + '</td>',
+					'<td>' + (Number(item.ativo || 0) === 1 ? 'Ativo' : 'Inativo') + '</td>',
+					'<td><div class="disciplinar-inline-actions"><button type="button" class="disciplinar-btn-secondary" data-edit-criterio="' + escapeHtml(item.id) + '">Editar</button><button type="button" class="disciplinar-btn-danger" data-delete-criterio="' + escapeHtml(item.id) + '">Excluir</button></div></td>',
+					'</tr>'
+				].join('');
+			}).join('');
+		}
+
+		function renderMatriculaOptions() {
+			notaMatriculaIdInput.innerHTML = buildOptions(state.data.matriculas || [], 'id', function (item) {
+				return (item.curso_nome || 'Curso') + ' - ' + (item.aluno_nome || 'Estudante');
+			}, true);
+		}
+
+		function renderCriterioOptionsForNotas() {
+			notaCriterioIdInput.innerHTML = buildOptions(state.data.criterios || [], 'id', function (item) {
+				var curso = getCursoById(item.curso_id);
+				return (curso ? curso.nome : 'Curso') + ' - ' + (item.nome || 'Critério');
+			}, true);
+		}
+
+		function renderNotas() {
+			var body = document.getElementById('disciplinarNotasBody');
+			var notas = state.data.notas || [];
+			if (!notas.length) {
+				body.innerHTML = '<tr><td colspan="6" class="disciplinar-empty">Nenhuma nota lançada.</td></tr>';
+				return;
+			}
+
+			body.innerHTML = notas.map(function (item) {
+				var matricula = getMatriculaById(item.matricula_id);
+				var curso = matricula ? getCursoById(matricula.curso_id) : null;
+				return [
+					'<tr>',
+					'<td>' + escapeHtml(curso ? curso.nome : '-') + '</td>',
+					'<td>' + escapeHtml(item.aluno_nome || '-') + '</td>',
+					'<td>' + escapeHtml(item.criterio_nome || '-') + '</td>',
+					'<td>' + escapeHtml(formatNumber(item.nota || 0)) + '</td>',
+					'<td>' + escapeHtml(formatDate(item.data_lancamento)) + '</td>',
+					'<td><div class="disciplinar-inline-actions"><button type="button" class="disciplinar-btn-secondary" data-edit-nota="' + escapeHtml(item.id) + '">Editar</button><button type="button" class="disciplinar-btn-danger" data-delete-nota="' + escapeHtml(item.id) + '">Excluir</button></div></td>',
+					'</tr>'
+				].join('');
+			}).join('');
+		}
+
+		function renderRankingCursos() {
+			var body = document.getElementById('disciplinarRankingCursosBody');
+			var matriculas = state.data.matriculas || [];
+			var notas = state.data.notas || [];
+			var grouped = {};
+
+			matriculas.forEach(function (item) {
+				var key = String(item.curso_id || 0);
+				if (!grouped[key]) {
+					grouped[key] = [];
+				}
+				grouped[key].push({
+					cursoId: Number(item.curso_id || 0),
+					alunoNome: item.aluno_nome || '-',
+					turma: item.turma_nome || '-',
+					matriculaId: Number(item.id || 0),
+					total: 0
+				});
+			});
+
+			Object.keys(grouped).forEach(function (key) {
+				grouped[key].forEach(function (entry) {
+					entry.total = notas.filter(function (nota) {
+						return Number(nota.matricula_id || 0) === entry.matriculaId;
+					}).reduce(function (sum, nota) {
+						return sum + Number(nota.nota || 0);
+					}, 0);
+				});
+				grouped[key].sort(function (a, b) { return b.total - a.total; });
+			});
+
+			var rows = [];
+			Object.keys(grouped).forEach(function (key) {
+				var curso = getCursoById(Number(key));
+				grouped[key].forEach(function (entry, index) {
+					rows.push([
+						'<tr>',
+						'<td>' + escapeHtml(curso ? curso.nome : '-') + '</td>',
+						'<td>' + (index + 1) + '</td>',
+						'<td>' + escapeHtml(entry.alunoNome) + '</td>',
+						'<td>' + escapeHtml(entry.turma) + '</td>',
+						'<td>' + escapeHtml(formatNumber(entry.total)) + '</td>',
+						'</tr>'
+					].join(''));
+				});
+			});
+
+			body.innerHTML = rows.length ? rows.join('') : '<tr><td colspan="5" class="disciplinar-empty">Ainda não há ranking por curso.</td></tr>';
+		}
+
+		function renderRegistros() {
+			var body = document.getElementById('disciplinarRegistrosBody');
+			var registros = state.data.registros || [];
+			if (!registros.length) {
+				body.innerHTML = '<tr><td colspan="7" class="disciplinar-empty">Nenhum registro disciplinar cadastrado.</td></tr>';
+				return;
+			}
+
+			body.innerHTML = registros.map(function (item) {
+				var anexo = item.documento_path ? '<a class="disciplinar-btn-secondary" href="' + escapeHtml(buildEndpoint('/' + String(item.documento_path).replace(/^\/+/, ''))) + '" target="_blank">Abrir</a>' : '-';
+				return [
+					'<tr>',
+					'<td>' + escapeHtml(formatDate(item.data_registro)) + '</td>',
+					'<td>' + escapeHtml(item.tipo_registro || '-') + '</td>',
+					'<td><strong>' + escapeHtml(item.titulo || '-') + '</strong><div class="text-muted small">' + escapeHtml(item.alunos_nomes || item.norma_titulo || '') + '</div></td>',
+					'<td><span class="disciplinar-badge ' + getBadgeClass(item.natureza) + '">' + escapeHtml(item.natureza || 'neutro') + '</span></td>',
+					'<td>' + (Number(item.pontos_variacao || 0) > 0 ? '+' : '') + escapeHtml(formatNumber(item.pontos_variacao || 0)) + '</td>',
+					'<td>' + anexo + '</td>',
+					'<td><div class="disciplinar-inline-actions"><button type="button" class="disciplinar-btn-secondary" data-edit-registro="' + escapeHtml(item.id) + '">Editar</button><button type="button" class="disciplinar-btn-danger" data-delete-registro="' + escapeHtml(item.id) + '">Excluir</button></div></td>',
+					'</tr>'
+				].join('');
+			}).join('');
+		}
+
+		function renderAll() {
+			renderKpis();
+			renderConceitos();
+			renderFaixas();
+			renderNormas();
+			renderCursoOptions();
+			renderAlunoOptions();
+			renderTurmaOptions();
+			renderNormaOptions();
+			renderCursos();
+			renderCriterios();
+			renderMatriculaOptions();
+			renderCriterioOptionsForNotas();
+			renderNotas();
+			renderRankingCursos();
+			renderRegistros();
+		}
+
+		function requestJson(url, options) {
+			return fetch(url, options || {}).then(function (response) {
+				return response.json().then(function (payload) {
+					if (!response.ok || !payload.ok) {
+						throw new Error(payload.message || payload.error || 'Falha na requisição.');
+					}
+					return payload;
+				});
+			});
+		}
+
+		function loadData() {
+			clearStatus();
+			return requestJson(buildEndpoint('/institucional/disciplinar/dados'), {
+				headers: { 'X-Requested-With': 'XMLHttpRequest' }
+			}).then(function (payload) {
+				state.data = payload.data || state.data;
+				renderAll();
+			}).catch(function (error) {
+				showStatus(error && error.message ? error.message : 'Erro ao carregar o módulo disciplinar.', true);
+			});
+		}
+
+		function postFormData(url, formData) {
+			return requestJson(buildEndpoint(url), {
+				method: 'POST',
+				body: formData,
+				headers: { 'X-Requested-With': 'XMLHttpRequest' }
+			});
+		}
+
+		function fillCursoForm(id) {
+			var item = getCursoById(id);
+			if (!item) { return; }
+			cursoIdInput.value = String(item.id || 0);
+			cursoNomeInput.value = item.nome || '';
+			cursoStatusInput.value = item.status || 'ativo';
+			cursoInicioInput.value = item.data_inicio || '';
+			cursoFimInput.value = item.data_fim || '';
+			cursoDescricaoInput.value = item.descricao || '';
+			setTab('painelCursos');
+		}
+
+		function fillCriterioForm(id) {
+			var item = getCriterioById(id);
+			if (!item) { return; }
+			criterioIdInput.value = String(item.id || 0);
+			criterioCursoIdInput.value = String(item.curso_id || '');
+			criterioNomeInput.value = item.nome || '';
+			criterioValorInput.value = String(item.valor_maximo || '10');
+			criterioPesoInput.value = String(item.peso || '1');
+			criterioOrdemInput.value = String(item.ordem_exibicao || '0');
+			criterioAtivoInput.value = Number(item.ativo || 0) === 1 ? '1' : '0';
+			criterioDescricaoInput.value = item.descricao || '';
+			setTab('painelCursos');
+		}
+
+		function fillNotaForm(id) {
+			var item = (state.data.notas || []).find(function (entry) { return Number(entry.id || 0) === Number(id || 0); });
+			if (!item) { return; }
+			notaIdInput.value = String(item.id || 0);
+			notaMatriculaIdInput.value = String(item.matricula_id || '');
+			notaCriterioIdInput.value = String(item.criterio_id || '');
+			notaValorInput.value = String(item.nota || '');
+			notaDataInput.value = item.data_lancamento || '';
+			notaObservacoesInput.value = item.observacoes || '';
+			setTab('painelMatriculas');
+		}
+
+		function fillRegistroForm(id) {
+			var item = (state.data.registros || []).find(function (entry) { return Number(entry.id || 0) === Number(id || 0); });
+			if (!item) { return; }
+			registroIdInput.value = String(item.id || 0);
+			registroTipoInput.value = item.tipo_registro || 'anotacao';
+			registroDataInput.value = item.data_registro || '';
+			registroTituloInput.value = item.titulo || '';
+			registroNaturezaInput.value = item.natureza || 'neutro';
+			registroNormaIdInput.value = item.norma_id ? String(item.norma_id) : '';
+			registroPontosInput.value = String(item.pontos_variacao || 0);
+			registroDescricaoInput.value = item.descricao || '';
+			registroRemoverDocumentoInput.value = '0';
+			registroDocumentoInput.value = '';
+
+			var alunoIds = [];
+			try { alunoIds = JSON.parse(item.aluno_ids_json || '[]') || []; } catch (error) { alunoIds = []; }
+			var turmaIds = [];
+			try { turmaIds = JSON.parse(item.turma_ids_json || '[]') || []; } catch (error) { turmaIds = []; }
+			Array.prototype.forEach.call(registroAlunoIdsInput.options, function (option) {
+				option.selected = alunoIds.indexOf(Number(option.value || 0)) !== -1;
+			});
+			Array.prototype.forEach.call(registroTurmaIdsInput.options, function (option) {
+				option.selected = turmaIds.indexOf(Number(option.value || 0)) !== -1;
+			});
+			setTab('painelRegistros');
+		}
+
+		if (tabsRoot) {
+			tabsRoot.addEventListener('click', function (event) {
+				var button = event.target.closest('.disciplinar-tab-btn');
+				if (!button) {
+					return;
+				}
+				setTab(button.getAttribute('data-panel') || 'painelGeral');
+			});
+		}
+
+		if (backBtn) {
+			backBtn.href = buildEndpoint('/institucional');
+		}
+
+		if (refreshBtn) {
+			refreshBtn.addEventListener('click', function () {
+				loadData().then(function () {
+					showStatus('Dados atualizados.', false);
+				});
+			});
+		}
+
+		document.getElementById('cursoResetBtn').addEventListener('click', resetCursoForm);
+		document.getElementById('criterioResetBtn').addEventListener('click', resetCriterioForm);
+		document.getElementById('matriculaResetBtn').addEventListener('click', resetMatriculaForm);
+		document.getElementById('notaResetBtn').addEventListener('click', resetNotaForm);
+		document.getElementById('registroResetBtn').addEventListener('click', resetRegistroForm);
+
+		cursoForm.addEventListener('submit', function (event) {
+			event.preventDefault();
+			var payload = new FormData();
+			payload.append('id', cursoIdInput.value);
+			payload.append('nome', cursoNomeInput.value.trim());
+			payload.append('status', cursoStatusInput.value);
+			payload.append('data_inicio', cursoInicioInput.value);
+			payload.append('data_fim', cursoFimInput.value);
+			payload.append('descricao', cursoDescricaoInput.value.trim());
+			postFormData('/institucional/disciplinar/cursos/salvar', payload)
+				.then(function (result) {
+					showStatus(result.message || 'Curso salvo com sucesso.', false);
+					resetCursoForm();
+					return loadData();
+				})
+				.catch(function (error) {
+					showStatus(error && error.message ? error.message : 'Erro ao salvar o curso.', true);
+				});
+		});
+
+		criterioForm.addEventListener('submit', function (event) {
+			event.preventDefault();
+			var payload = new FormData();
+			payload.append('id', criterioIdInput.value);
+			payload.append('curso_id', criterioCursoIdInput.value);
+			payload.append('nome', criterioNomeInput.value.trim());
+			payload.append('valor_maximo', criterioValorInput.value);
+			payload.append('peso', criterioPesoInput.value);
+			payload.append('ordem_exibicao', criterioOrdemInput.value);
+			payload.append('ativo', criterioAtivoInput.value);
+			payload.append('descricao', criterioDescricaoInput.value.trim());
+			postFormData('/institucional/disciplinar/criterios/salvar', payload)
+				.then(function (result) {
+					showStatus(result.message || 'Critério salvo com sucesso.', false);
+					resetCriterioForm();
+					return loadData();
+				})
+				.catch(function (error) {
+					showStatus(error && error.message ? error.message : 'Erro ao salvar o critério.', true);
+				});
+		});
+
+		matriculaForm.addEventListener('submit', function (event) {
+			event.preventDefault();
+			var payload = new FormData();
+			payload.append('id', matriculaIdInput.value);
+			payload.append('curso_id', matriculaCursoIdInput.value);
+			payload.append('aluno_id', matriculaAlunoIdInput.value);
+			payload.append('data_inicio', matriculaInicioInput.value);
+			payload.append('data_fim', matriculaFimInput.value);
+			payload.append('status', matriculaStatusInput.value);
+			payload.append('observacoes', matriculaObservacoesInput.value.trim());
+			postFormData('/institucional/disciplinar/matriculas/salvar', payload)
+				.then(function (result) {
+					showStatus(result.message || 'Matrícula salva com sucesso.', false);
+					resetMatriculaForm();
+					return loadData();
+				})
+				.catch(function (error) {
+					showStatus(error && error.message ? error.message : 'Erro ao salvar a matrícula.', true);
+				});
+		});
+
+		notaForm.addEventListener('submit', function (event) {
+			event.preventDefault();
+			var payload = new FormData();
+			payload.append('id', notaIdInput.value);
+			payload.append('matricula_id', notaMatriculaIdInput.value);
+			payload.append('criterio_id', notaCriterioIdInput.value);
+			payload.append('nota', notaValorInput.value);
+			payload.append('data_lancamento', notaDataInput.value);
+			payload.append('observacoes', notaObservacoesInput.value.trim());
+			postFormData('/institucional/disciplinar/notas/salvar', payload)
+				.then(function (result) {
+					showStatus(result.message || 'Nota salva com sucesso.', false);
+					resetNotaForm();
+					return loadData();
+				})
+				.catch(function (error) {
+					showStatus(error && error.message ? error.message : 'Erro ao salvar a nota.', true);
+				});
+		});
+
+		registroForm.addEventListener('submit', function (event) {
+			event.preventDefault();
+			var payload = new FormData();
+			payload.append('id', registroIdInput.value);
+			payload.append('tipo_registro', registroTipoInput.value);
+			payload.append('data_registro', registroDataInput.value);
+			payload.append('titulo', registroTituloInput.value.trim());
+			payload.append('natureza', registroNaturezaInput.value);
+			payload.append('norma_id', registroNormaIdInput.value);
+			payload.append('pontos_variacao', registroPontosInput.value);
+			payload.append('descricao', registroDescricaoInput.value.trim());
+			payload.append('remover_documento', registroRemoverDocumentoInput.value);
+			getSelectedValues(registroAlunoIdsInput).forEach(function (id) {
+				payload.append('aluno_ids[]', String(id));
+			});
+			getSelectedValues(registroTurmaIdsInput).forEach(function (id) {
+				payload.append('turma_ids[]', String(id));
+			});
+			if (registroDocumentoInput.files && registroDocumentoInput.files[0]) {
+				payload.append('documento', registroDocumentoInput.files[0]);
+			}
+
+			postFormData('/institucional/disciplinar/registros/salvar', payload)
+				.then(function (result) {
+					showStatus(result.message || 'Registro salvo com sucesso.', false);
+					resetRegistroForm();
+					return loadData();
+				})
+				.catch(function (error) {
+					showStatus(error && error.message ? error.message : 'Erro ao salvar o registro.', true);
+				});
+		});
+
+		document.addEventListener('click', function (event) {
+			var cursoEdit = event.target.closest('[data-edit-curso]');
+			var cursoDelete = event.target.closest('[data-delete-curso]');
+			var criterioEdit = event.target.closest('[data-edit-criterio]');
+			var criterioDelete = event.target.closest('[data-delete-criterio]');
+			var notaEdit = event.target.closest('[data-edit-nota]');
+			var notaDelete = event.target.closest('[data-delete-nota]');
+			var registroEdit = event.target.closest('[data-edit-registro]');
+			var registroDelete = event.target.closest('[data-delete-registro]');
+
+			if (cursoEdit) {
+				fillCursoForm(Number(cursoEdit.getAttribute('data-edit-curso') || 0));
+				return;
+			}
+			if (cursoDelete) {
+				if (!window.confirm('Deseja realmente excluir este curso?')) { return; }
+				var payloadCurso = new FormData();
+				payloadCurso.append('id', String(cursoDelete.getAttribute('data-delete-curso') || '0'));
+				postFormData('/institucional/disciplinar/cursos/excluir', payloadCurso)
+					.then(function (result) { showStatus(result.message || 'Curso excluído.', false); return loadData(); })
+					.catch(function (error) { showStatus(error && error.message ? error.message : 'Erro ao excluir o curso.', true); });
+				return;
+			}
+			if (criterioEdit) {
+				fillCriterioForm(Number(criterioEdit.getAttribute('data-edit-criterio') || 0));
+				return;
+			}
+			if (criterioDelete) {
+				if (!window.confirm('Deseja realmente excluir este critério?')) { return; }
+				var payloadCriterio = new FormData();
+				payloadCriterio.append('id', String(criterioDelete.getAttribute('data-delete-criterio') || '0'));
+				postFormData('/institucional/disciplinar/criterios/excluir', payloadCriterio)
+					.then(function (result) { showStatus(result.message || 'Critério excluído.', false); return loadData(); })
+					.catch(function (error) { showStatus(error && error.message ? error.message : 'Erro ao excluir o critério.', true); });
+				return;
+			}
+			if (notaEdit) {
+				fillNotaForm(Number(notaEdit.getAttribute('data-edit-nota') || 0));
+				return;
+			}
+			if (notaDelete) {
+				if (!window.confirm('Deseja realmente excluir esta nota?')) { return; }
+				var payloadNota = new FormData();
+				payloadNota.append('id', String(notaDelete.getAttribute('data-delete-nota') || '0'));
+				postFormData('/institucional/disciplinar/notas/excluir', payloadNota)
+					.then(function (result) { showStatus(result.message || 'Nota excluída.', false); return loadData(); })
+					.catch(function (error) { showStatus(error && error.message ? error.message : 'Erro ao excluir a nota.', true); });
+				return;
+			}
+			if (registroEdit) {
+				fillRegistroForm(Number(registroEdit.getAttribute('data-edit-registro') || 0));
+				return;
+			}
+			if (registroDelete) {
+				if (!window.confirm('Deseja realmente excluir este lançamento disciplinar?')) { return; }
+				var payloadRegistro = new FormData();
+				payloadRegistro.append('id', String(registroDelete.getAttribute('data-delete-registro') || '0'));
+				postFormData('/institucional/disciplinar/registros/excluir', payloadRegistro)
+					.then(function (result) { showStatus(result.message || 'Registro excluído.', false); return loadData(); })
+					.catch(function (error) { showStatus(error && error.message ? error.message : 'Erro ao excluir o registro.', true); });
+			}
+		});
+
+		resetRegistroForm();
+		loadData();
+	})();
+</script>
