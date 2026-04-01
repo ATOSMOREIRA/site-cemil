@@ -73,6 +73,25 @@ class EntradaSaidaModel
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
         );
 
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS auditoria_entrada_saida (
+                id            INT           NOT NULL AUTO_INCREMENT,
+                entidade      VARCHAR(32)   NOT NULL,
+                acao          VARCHAR(24)   NOT NULL,
+                referencia_id INT           NULL,
+                aluno_id      INT           NULL,
+                usuario_id    INT           NULL,
+                resumo        VARCHAR(255)  NOT NULL,
+                detalhes_json LONGTEXT      NULL,
+                created_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                KEY idx_auditoria_entidade_data (entidade, created_at),
+                KEY idx_auditoria_acao_data (acao, created_at),
+                KEY idx_auditoria_usuario_data (usuario_id, created_at),
+                KEY idx_auditoria_aluno_data (aluno_id, created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+        );
+
         $this->seedDefaultTipos();
     }
 
@@ -147,10 +166,11 @@ class EntradaSaidaModel
         return $row !== false ? $row : null;
     }
 
-    public function salvarTipo(int $id, string $nome, string $natureza, string $descricao, string $horIni, string $horFim, string $cor, bool $ativo): int
+    public function salvarTipo(int $id, string $nome, string $natureza, string $descricao, string $horIni, string $horFim, string $cor, bool $ativo, ?int $usuarioId = null): int
     {
         $pdo = Database::connection();
         $natureza = $this->normalizeNatureza($natureza);
+        $tipoAnterior = $id > 0 ? $this->getTipoById($id) : null;
 
         if ($id > 0) {
             $stmt = $pdo->prepare(
@@ -175,6 +195,30 @@ class EntradaSaidaModel
                 'ativo' => (int) $ativo,
             ]);
 
+            $this->registrarAuditoria(
+                'tipo_movimentacao',
+                'alteracao',
+                $usuarioId,
+                'Tipo de movimentação atualizado: ' . $nome,
+                [
+                    'tipo_id' => $id,
+                    'antes' => $tipoAnterior,
+                    'depois' => [
+                        'id' => $id,
+                        'nome' => $nome,
+                        'natureza' => $natureza,
+                        'descricao' => $descricao !== '' ? $descricao : null,
+                        'horario_ini' => $horIni !== '' ? $horIni : null,
+                        'horario_fim' => $horFim !== '' ? $horFim : null,
+                        'cor' => $cor,
+                        'ativo' => (int) $ativo,
+                    ],
+                ],
+                $id,
+                null,
+                $pdo
+            );
+
             return $id;
         }
 
@@ -193,12 +237,34 @@ class EntradaSaidaModel
             'ativo' => (int) $ativo,
         ]);
 
-        return (int) $pdo->lastInsertId();
+        $novoId = (int) $pdo->lastInsertId();
+        $this->registrarAuditoria(
+            'tipo_movimentacao',
+            'inclusao',
+            $usuarioId,
+            'Tipo de movimentação criado: ' . $nome,
+            [
+                'tipo_id' => $novoId,
+                'nome' => $nome,
+                'natureza' => $natureza,
+                'descricao' => $descricao !== '' ? $descricao : null,
+                'horario_ini' => $horIni !== '' ? $horIni : null,
+                'horario_fim' => $horFim !== '' ? $horFim : null,
+                'cor' => $cor,
+                'ativo' => (int) $ativo,
+            ],
+            $novoId,
+            null,
+            $pdo
+        );
+
+        return $novoId;
     }
 
-    public function excluirTipo(int $id): void
+    public function excluirTipo(int $id, ?int $usuarioId = null): void
     {
         $pdo = Database::connection();
+        $tipo = $this->getTipoById($id);
         $stmt = $pdo->prepare('SELECT COUNT(*) FROM entrada_saida_registros WHERE tipo_movimentacao_id = :id');
         $stmt->execute(['id' => $id]);
 
@@ -208,6 +274,20 @@ class EntradaSaidaModel
 
         $del = $pdo->prepare('DELETE FROM entrada_saida_tipos_movimentacao WHERE id = :id');
         $del->execute(['id' => $id]);
+
+        $this->registrarAuditoria(
+            'tipo_movimentacao',
+            'exclusao',
+            $usuarioId,
+            'Tipo de movimentação excluído: ' . trim((string) ($tipo['nome'] ?? ('#' . $id))),
+            [
+                'tipo_id' => $id,
+                'tipo' => $tipo,
+            ],
+            $id,
+            null,
+            $pdo
+        );
     }
 
     public function buscarAlunoPorMatricula(string $matricula): ?array
@@ -466,6 +546,8 @@ class EntradaSaidaModel
     public function registrarMovimentacao(int $alunoId, int $tipoId, string $data, string $horario, ?int $usuarioId, string $obs = ''): int
     {
         $pdo = Database::connection();
+        $aluno = $this->buscarAlunoPorId($alunoId);
+        $tipo = $this->getTipoById($tipoId);
         $stmt = $pdo->prepare(
             'INSERT INTO entrada_saida_registros
                 (aluno_id, tipo_movimentacao_id, data, horario, usuario_id, obs, saida_automatica)
@@ -480,7 +562,27 @@ class EntradaSaidaModel
             'obs' => $obs !== '' ? $obs : null,
         ]);
 
-        return (int) $pdo->lastInsertId();
+        $novoId = (int) $pdo->lastInsertId();
+        $this->registrarAuditoria(
+            'registro',
+            'inclusao',
+            $usuarioId,
+            'Registro de movimentação incluído para ' . trim((string) ($aluno['nome'] ?? ('Aluno #' . $alunoId))),
+            [
+                'registro_id' => $novoId,
+                'aluno' => $aluno,
+                'tipo' => $tipo,
+                'data' => $data,
+                'horario' => $horario,
+                'obs' => $obs !== '' ? $obs : null,
+                'saida_automatica' => 0,
+            ],
+            $novoId,
+            $alunoId,
+            $pdo
+        );
+
+        return $novoId;
     }
 
     public function processarSaidasAutomaticasPendentes(?DateTimeImmutable $agora = null): int
@@ -537,6 +639,26 @@ class EntradaSaidaModel
                 'horario' => '23:59:59',
                 'obs' => 'Saída automática gerada após verificação às 03:00 por ausência de registro de saída.',
             ]);
+            $registroId = (int) $pdo->lastInsertId();
+            $aluno = $this->buscarAlunoPorId((int) $pendente['aluno_id']);
+            $this->registrarAuditoria(
+                'registro',
+                'automacao',
+                null,
+                'Saída automática gerada para ' . trim((string) ($aluno['nome'] ?? ('Aluno #' . (int) $pendente['aluno_id']))),
+                [
+                    'registro_id' => $registroId,
+                    'aluno' => $aluno,
+                    'tipo' => $tipoSaida,
+                    'data' => (string) $pendente['data'],
+                    'horario' => '23:59:59',
+                    'obs' => 'Saída automática gerada após verificação às 03:00 por ausência de registro de saída.',
+                    'saida_automatica' => 1,
+                ],
+                $registroId,
+                (int) $pendente['aluno_id'],
+                $pdo
+            );
             $totalGerado += 1;
         }
 
@@ -551,6 +673,7 @@ class EntradaSaidaModel
         }
 
         $pdo = Database::connection();
+        $aluno = $this->buscarAlunoPorId($alunoId);
         $existente = $this->buscarLiberacaoSaidaAtiva($alunoId, $data);
         if ($existente !== null) {
             $stmt = $pdo->prepare(
@@ -565,7 +688,24 @@ class EntradaSaidaModel
                 'obs' => $obs !== '' ? $obs : ($existente['obs'] ?? null),
             ]);
 
-            return $this->buscarLiberacaoSaidaAtiva($alunoId, $data) ?: $existente;
+            $atualizada = $this->buscarLiberacaoSaidaAtiva($alunoId, $data) ?: $existente;
+            $this->registrarAuditoria(
+                'liberacao',
+                'alteracao',
+                $usuarioId,
+                'Liberação atualizada para ' . trim((string) ($aluno['nome'] ?? ('Aluno #' . $alunoId))),
+                [
+                    'liberacao_id' => (int) $existente['id'],
+                    'aluno' => $aluno,
+                    'antes' => $existente,
+                    'depois' => $atualizada,
+                ],
+                (int) $existente['id'],
+                $alunoId,
+                $pdo
+            );
+
+            return $atualizada;
         }
 
         $stmt = $pdo->prepare(
@@ -580,7 +720,7 @@ class EntradaSaidaModel
             'obs' => $obs !== '' ? $obs : null,
         ]);
 
-        return $this->buscarLiberacaoSaidaAtiva($alunoId, $data) ?: [
+        $novaLiberacao = $this->buscarLiberacaoSaidaAtiva($alunoId, $data) ?: [
             'id' => (int) $pdo->lastInsertId(),
             'aluno_id' => $alunoId,
             'data' => $data,
@@ -588,11 +728,35 @@ class EntradaSaidaModel
             'obs' => $obs !== '' ? $obs : null,
             'status' => 'pendente',
         ];
+        $this->registrarAuditoria(
+            'liberacao',
+            'inclusao',
+            $usuarioId,
+            'Liberação criada para ' . trim((string) ($aluno['nome'] ?? ('Aluno #' . $alunoId))),
+            [
+                'liberacao' => $novaLiberacao,
+                'aluno' => $aluno,
+            ],
+            (int) ($novaLiberacao['id'] ?? 0),
+            $alunoId,
+            $pdo
+        );
+
+        return $novaLiberacao;
     }
 
-    public function consumirLiberacaoSaida(int $liberacaoId, int $registroSaidaId): void
+    public function consumirLiberacaoSaida(int $liberacaoId, int $registroSaidaId, ?int $usuarioId = null): void
     {
         $pdo = Database::connection();
+        $stmtInfo = $pdo->prepare(
+            'SELECT l.id, l.aluno_id, l.data, l.usuario_id, l.obs, l.status, l.created_at, a.nome AS aluno_nome
+               FROM entrada_saida_liberacoes l
+               JOIN alunos a ON a.id = l.aluno_id
+              WHERE l.id = :id
+              LIMIT 1'
+        );
+        $stmtInfo->execute(['id' => $liberacaoId]);
+        $liberacao = $stmtInfo->fetch() ?: null;
         $stmt = $pdo->prepare(
             "UPDATE entrada_saida_liberacoes
                 SET status = 'utilizada',
@@ -605,9 +769,25 @@ class EntradaSaidaModel
             'id' => $liberacaoId,
             'registro_saida_id' => $registroSaidaId,
         ]);
+
+        if (is_array($liberacao)) {
+            $this->registrarAuditoria(
+                'liberacao',
+                'consumo',
+                $usuarioId,
+                'Liberação consumida para registrar saída de ' . trim((string) ($liberacao['aluno_nome'] ?? ('Aluno #' . (int) $liberacao['aluno_id']))),
+                [
+                    'liberacao' => $liberacao,
+                    'registro_saida_id' => $registroSaidaId,
+                ],
+                $liberacaoId,
+                (int) ($liberacao['aluno_id'] ?? 0),
+                $pdo
+            );
+        }
     }
 
-    public function cancelarLiberacaoSaida(int $liberacaoId): void
+    public function cancelarLiberacaoSaida(int $liberacaoId, ?int $usuarioId = null): void
     {
         $pdo = Database::connection();
         $stmt = $pdo->prepare(
@@ -634,6 +814,7 @@ class EntradaSaidaModel
                 $registroSaidaId = (int) $liberacao['registro_saida_id'];
                 $alunoId = (int) $liberacao['aluno_id'];
                 $data = (string) $liberacao['data'];
+                $registroRemovido = $this->buscarRegistroPorId($registroSaidaId);
 
                 $posteriorStmt = $pdo->prepare(
                     'SELECT COUNT(*)
@@ -658,6 +839,21 @@ class EntradaSaidaModel
                       LIMIT 1'
                 );
                 $deleteRegistroStmt->execute(['id' => $registroSaidaId]);
+
+                $this->registrarAuditoria(
+                    'registro',
+                    'exclusao',
+                    $usuarioId,
+                    'Registro de saída removido ao cancelar liberação',
+                    [
+                        'motivo' => 'cancelamento_liberacao',
+                        'registro' => $registroRemovido,
+                        'liberacao_id' => $liberacaoId,
+                    ],
+                    $registroSaidaId,
+                    $alunoId,
+                    $pdo
+                );
             }
 
             $deleteLiberacaoStmt = $pdo->prepare(
@@ -666,6 +862,19 @@ class EntradaSaidaModel
                   LIMIT 1'
             );
             $deleteLiberacaoStmt->execute(['id' => $liberacaoId]);
+
+            $this->registrarAuditoria(
+                'liberacao',
+                'cancelamento',
+                $usuarioId,
+                'Liberação cancelada',
+                [
+                    'liberacao' => $liberacao,
+                ],
+                $liberacaoId,
+                (int) ($liberacao['aluno_id'] ?? 0),
+                $pdo
+            );
 
             $pdo->commit();
         } catch (Throwable $e) {
@@ -802,10 +1011,12 @@ class EntradaSaidaModel
 
         $stmt = $pdo->prepare(
             'SELECT r.id, r.data, r.horario,
-                    a.nome AS aluno_nome, a.matricula, a.turma, a.turma_id,
-                    t.nome AS refeicao_nome, t.cor AS refeicao_cor,
-                    t.natureza,
-                    r.tipo_movimentacao_id AS tipo_refeicao_id,
+                a.nome AS aluno_nome, a.matricula, a.turma, a.turma_id,
+                t.nome AS refeicao_nome, t.cor AS refeicao_cor,
+                t.natureza,
+                r.tipo_movimentacao_id AS tipo_refeicao_id,
+                r.usuario_id,
+                COALESCE(u.nome, u.usuario, "") AS usuario_nome,
                                         CASE
                                                 WHEN t.natureza = "entrada" AND EXISTS (
                                                         SELECT 1
@@ -822,6 +1033,7 @@ class EntradaSaidaModel
                FROM entrada_saida_registros r
                JOIN alunos a ON a.id = r.aluno_id
                JOIN entrada_saida_tipos_movimentacao t ON t.id = r.tipo_movimentacao_id
+               LEFT JOIN usuarios u ON u.id = r.usuario_id
               WHERE ' . implode(' AND ', $wheres) . '
               ORDER BY r.data DESC, r.horario DESC, r.id DESC'
         );
@@ -899,6 +1111,8 @@ class EntradaSaidaModel
             'SELECT r.id, r.horario,
                     a.nome AS aluno_nome, a.turma,
                     t.nome AS tipo_nome, t.cor AS tipo_cor, t.natureza,
+                    r.usuario_id,
+                    COALESCE(u.nome, u.usuario, "") AS usuario_nome,
                     r.saida_automatica,
                     CASE
                         WHEN t.natureza = "entrada" AND EXISTS (
@@ -915,6 +1129,7 @@ class EntradaSaidaModel
                FROM entrada_saida_registros r
                JOIN alunos a ON a.id = r.aluno_id
                JOIN entrada_saida_tipos_movimentacao t ON t.id = r.tipo_movimentacao_id
+               LEFT JOIN usuarios u ON u.id = r.usuario_id
               WHERE r.data = :data
               ORDER BY r.id DESC
               LIMIT ' . max(1, $limit)
@@ -953,11 +1168,14 @@ class EntradaSaidaModel
         $pdo = Database::connection();
         $stmt = $pdo->prepare(
             'SELECT r.id, r.data, r.horario, r.obs,
-                    r.tipo_movimentacao_id AS tipo_refeicao_id,
-                    r.saida_automatica,
-                    a.nome AS aluno_nome
+                r.tipo_movimentacao_id AS tipo_refeicao_id,
+                r.usuario_id,
+                COALESCE(u.nome, u.usuario, "") AS usuario_nome,
+                r.saida_automatica,
+                a.nome AS aluno_nome
                FROM entrada_saida_registros r
                JOIN alunos a ON a.id = r.aluno_id
+               LEFT JOIN usuarios u ON u.id = r.usuario_id
               WHERE r.id = :id
               LIMIT 1'
         );
@@ -967,9 +1185,10 @@ class EntradaSaidaModel
         return $row ?: null;
     }
 
-    public function salvarRegistro(int $id, string $data, string $horario, int $tipoId, string $obs): void
+    public function salvarRegistro(int $id, string $data, string $horario, int $tipoId, string $obs, ?int $usuarioId = null): void
     {
         $pdo = Database::connection();
+        $antes = $this->buscarRegistroPorId($id);
         $stmt = $pdo->prepare(
             'UPDATE entrada_saida_registros
                 SET data = :data,
@@ -985,13 +1204,80 @@ class EntradaSaidaModel
             'tipo' => $tipoId,
             'obs' => $obs,
         ]);
+
+        $depois = $this->buscarRegistroPorId($id);
+        $this->registrarAuditoria(
+            'registro',
+            'alteracao',
+            $usuarioId,
+            'Registro atualizado de ' . trim((string) ($depois['aluno_nome'] ?? $antes['aluno_nome'] ?? ('#' . $id))),
+            [
+                'antes' => $antes,
+                'depois' => $depois,
+            ],
+            $id,
+            null,
+            $pdo
+        );
     }
 
-    public function excluirRegistro(int $id): void
+    public function excluirRegistro(int $id, ?int $usuarioId = null): void
     {
         $pdo = Database::connection();
+        $registro = $this->buscarRegistroPorId($id);
         $stmt = $pdo->prepare('DELETE FROM entrada_saida_registros WHERE id = :id');
         $stmt->execute(['id' => $id]);
+
+        $this->registrarAuditoria(
+            'registro',
+            'exclusao',
+            $usuarioId,
+            'Registro excluído de ' . trim((string) ($registro['aluno_nome'] ?? ('#' . $id))),
+            [
+                'registro' => $registro,
+            ],
+            $id,
+            null,
+            $pdo
+        );
+    }
+
+    public function listarAuditoria(string $dataInicio, string $dataFim, array $acoes = [], array $entidades = [], string $busca = ''): array
+    {
+        $pdo = Database::connection();
+        $wheres = ['DATE(a.created_at) BETWEEN :ini AND :fim'];
+        $params = ['ini' => $dataInicio, 'fim' => $dataFim];
+        $acoes = $this->normalizeAuditValueList($acoes);
+        $entidades = $this->normalizeAuditValueList($entidades);
+        $busca = trim($busca);
+
+        if (!empty($acoes)) {
+            $wheres[] = 'a.acao IN (' . $this->buildStringInClause($acoes, 'acao_audit', $params) . ')';
+        }
+
+        if (!empty($entidades)) {
+            $wheres[] = 'a.entidade IN (' . $this->buildStringInClause($entidades, 'entidade_audit', $params) . ')';
+        }
+
+        if ($busca !== '') {
+            $params['busca'] = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $busca) . '%';
+            $wheres[] = '(a.resumo LIKE :busca OR COALESCE(u.nome, u.usuario, "") LIKE :busca OR COALESCE(al.nome, "") LIKE :busca)';
+        }
+
+        $stmt = $pdo->prepare(
+            'SELECT a.id, a.entidade, a.acao, a.referencia_id, a.aluno_id, a.usuario_id,
+                    a.resumo, a.detalhes_json, a.created_at,
+                    COALESCE(u.nome, u.usuario, "") AS usuario_nome,
+                    COALESCE(al.nome, "") AS aluno_nome
+               FROM auditoria_entrada_saida a
+               LEFT JOIN usuarios u ON u.id = a.usuario_id
+               LEFT JOIN alunos al ON al.id = a.aluno_id
+              WHERE ' . implode(' AND ', $wheres) . '
+              ORDER BY a.created_at DESC, a.id DESC'
+        );
+        $stmt->execute($params);
+
+        return $stmt->fetchAll() ?: [];
     }
 
     public function totalAlunosAtivos($turmaIds = null): int
@@ -1070,6 +1356,51 @@ class EntradaSaidaModel
         $row = $stmt->fetch();
 
         return $row ?: null;
+    }
+
+    private function registrarAuditoria(string $entidade, string $acao, ?int $usuarioId, string $resumo, array $detalhes = [], ?int $referenciaId = null, ?int $alunoId = null, ?PDO $pdo = null): void
+    {
+        $pdo = $pdo ?: Database::connection();
+        $stmt = $pdo->prepare(
+            'INSERT INTO auditoria_entrada_saida
+                (entidade, acao, referencia_id, aluno_id, usuario_id, resumo, detalhes_json)
+             VALUES (:entidade, :acao, :referencia_id, :aluno_id, :usuario_id, :resumo, :detalhes_json)'
+        );
+        $stmt->execute([
+            'entidade' => substr(trim($entidade), 0, 32),
+            'acao' => substr(trim($acao), 0, 24),
+            'referencia_id' => $referenciaId ?: null,
+            'aluno_id' => $alunoId ?: null,
+            'usuario_id' => $usuarioId ?: null,
+            'resumo' => mb_substr(trim($resumo), 0, 255),
+            'detalhes_json' => !empty($detalhes) ? json_encode($detalhes, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : null,
+        ]);
+    }
+
+    private function normalizeAuditValueList(array $values): array
+    {
+        $items = [];
+        foreach ($values as $value) {
+            $normalized = strtolower(trim((string) $value));
+            if ($normalized === '') {
+                continue;
+            }
+            $items[$normalized] = $normalized;
+        }
+
+        return array_values($items);
+    }
+
+    private function buildStringInClause(array $values, string $prefix, array &$params): string
+    {
+        $placeholders = [];
+        foreach (array_values($values) as $index => $value) {
+            $key = $prefix . '_' . $index;
+            $placeholders[] = ':' . $key;
+            $params[$key] = (string) $value;
+        }
+
+        return implode(', ', $placeholders);
     }
 
     private function normalizeIdList($values): array

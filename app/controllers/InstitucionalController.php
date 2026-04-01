@@ -7468,9 +7468,10 @@ class InstitucionalController extends HomeController
 
 		$model = new RefeitorioModel();
 		$model->ensureTableStructure();
+		$usuarioId = isset($_SESSION['auth']['id']) ? (int) $_SESSION['auth']['id'] : null;
 
 		try {
-			$savedId = $model->salvarTipo($id, $nome, $descricao, $horIni, $horFim, $cor, $ativo);
+			$savedId = $model->salvarTipo($id, $nome, $descricao, $horIni, $horFim, $cor, $ativo, $usuarioId);
 		} catch (Throwable $e) {
 			$this->respondJson(['ok' => false, 'message' => $e->getMessage()], 500);
 		}
@@ -7495,9 +7496,10 @@ class InstitucionalController extends HomeController
 
 		$model = new RefeitorioModel();
 		$model->ensureTableStructure();
+		$usuarioId = isset($_SESSION['auth']['id']) ? (int) $_SESSION['auth']['id'] : null;
 
 		try {
-			$model->excluirTipo($id);
+			$model->excluirTipo($id, $usuarioId);
 		} catch (Throwable $e) {
 			$this->respondJson(['ok' => false, 'message' => $e->getMessage()], 409);
 		}
@@ -7546,6 +7548,40 @@ class InstitucionalController extends HomeController
 			'totais'     => $totais,
 			'data_inicio'=> $dataInicio,
 			'data_fim'   => $dataFim,
+		]);
+	}
+
+	public function refeitorioAuditoria(): void
+	{
+		if (!$this->canAccessSubservice('controle_refeitorio')) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		$dataInicio = trim((string) ($_GET['data_inicio'] ?? ''));
+		$dataFim = trim((string) ($_GET['data_fim'] ?? ''));
+		$busca = trim((string) ($_GET['busca'] ?? ''));
+		$acoes = array_values(array_filter(array_unique(array_map('trim', preg_split('/\s*,\s*/', trim((string) ($_GET['acoes'] ?? '')), -1, PREG_SPLIT_NO_EMPTY)))));
+		$entidades = array_values(array_filter(array_unique(array_map('trim', preg_split('/\s*,\s*/', trim((string) ($_GET['entidades'] ?? '')), -1, PREG_SPLIT_NO_EMPTY)))));
+
+		if ($dataInicio === '' || $dataFim === '') {
+			$dataInicio = date('Y-m-d');
+			$dataFim = date('Y-m-d');
+		}
+
+		$model = new RefeitorioModel();
+		$model->ensureTableStructure();
+
+		try {
+			$auditoria = $model->listarAuditoria($dataInicio, $dataFim, $acoes, $entidades, $busca);
+		} catch (Throwable $e) {
+			$this->respondJson(['ok' => false, 'message' => $e->getMessage()], 500);
+		}
+
+		$this->respondJson([
+			'ok' => true,
+			'auditoria' => $auditoria,
+			'data_inicio' => $dataInicio,
+			'data_fim' => $dataFim,
 		]);
 	}
 
@@ -7612,9 +7648,10 @@ class InstitucionalController extends HomeController
 
 		$model = new RefeitorioModel();
 		$model->ensureTableStructure();
+		$usuarioId = isset($_SESSION['auth']['id']) ? (int) $_SESSION['auth']['id'] : null;
 
 		try {
-			$model->salvarRegistro($id, $data, $horario, $tipoId, $obs);
+			$model->salvarRegistro($id, $data, $horario, $tipoId, $obs, $usuarioId);
 		} catch (Throwable $e) {
 			$this->respondJson(['ok' => false, 'message' => $e->getMessage()], 409);
 		}
@@ -7639,9 +7676,10 @@ class InstitucionalController extends HomeController
 
 		$model = new RefeitorioModel();
 		$model->ensureTableStructure();
+		$usuarioId = isset($_SESSION['auth']['id']) ? (int) $_SESSION['auth']['id'] : null;
 
 		try {
-			$model->excluirRegistro($id);
+			$model->excluirRegistro($id, $usuarioId);
 		} catch (Throwable $e) {
 			$this->respondJson(['ok' => false, 'message' => $e->getMessage()], 409);
 		}
@@ -7869,7 +7907,7 @@ class InstitucionalController extends HomeController
 			$id = $model->registrarMovimentacao($alunoId, $tipoId, $today, $horario, $usuarioId, $obs);
 			$tipo = $model->getTipoById($tipoId);
 			if (!empty($avaliacao['liberacao_antecipada']) && !empty($avaliacao['liberacao']['id'])) {
-				$model->consumirLiberacaoSaida((int) $avaliacao['liberacao']['id'], $id);
+				$model->consumirLiberacaoSaida((int) $avaliacao['liberacao']['id'], $id, $usuarioId);
 			}
 		} catch (Throwable $e) {
 			$this->respondJson(['ok' => false, 'message' => 'Erro ao registrar: ' . $e->getMessage()], 500);
@@ -7957,7 +7995,8 @@ class InstitucionalController extends HomeController
 		$today = date('Y-m-d');
 
 		try {
-			$model->cancelarLiberacaoSaida($liberacaoId);
+			$usuarioId = isset($_SESSION['auth']['id']) ? (int) $_SESSION['auth']['id'] : null;
+			$model->cancelarLiberacaoSaida($liberacaoId, $usuarioId);
 			$liberacoesAtivas = $model->listarLiberacoesDoDia($today);
 		} catch (Throwable $e) {
 			$this->respondJson(['ok' => false, 'message' => $e->getMessage()], 409);
@@ -8005,7 +8044,8 @@ class InstitucionalController extends HomeController
 		$model->ensureTableStructure();
 
 		try {
-			$savedId = $model->salvarTipo($id, $nome, $natureza, $descricao, $horIni, $horFim, $cor, $ativo);
+			$usuarioId = isset($_SESSION['auth']['id']) ? (int) $_SESSION['auth']['id'] : null;
+			$savedId = $model->salvarTipo($id, $nome, $natureza, $descricao, $horIni, $horFim, $cor, $ativo, $usuarioId);
 		} catch (Throwable $e) {
 			$this->respondJson(['ok' => false, 'message' => $e->getMessage()], 500);
 		}
@@ -8032,7 +8072,8 @@ class InstitucionalController extends HomeController
 		$model->ensureTableStructure();
 
 		try {
-			$model->excluirTipo($id);
+			$usuarioId = isset($_SESSION['auth']['id']) ? (int) $_SESSION['auth']['id'] : null;
+			$model->excluirTipo($id, $usuarioId);
 		} catch (Throwable $e) {
 			$this->respondJson(['ok' => false, 'message' => $e->getMessage()], 409);
 		}
@@ -8107,6 +8148,40 @@ class InstitucionalController extends HomeController
 		]);
 	}
 
+	public function entradaSaidaAuditoria(): void
+	{
+		if (!$this->canAccessEntradaSaidaModule()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		$dataInicio = trim((string) ($_GET['data_inicio'] ?? ''));
+		$dataFim = trim((string) ($_GET['data_fim'] ?? ''));
+		$busca = trim((string) ($_GET['busca'] ?? ''));
+		$acoes = array_values(array_filter(array_unique(array_map('trim', preg_split('/\s*,\s*/', trim((string) ($_GET['acoes'] ?? '')), -1, PREG_SPLIT_NO_EMPTY)))));
+		$entidades = array_values(array_filter(array_unique(array_map('trim', preg_split('/\s*,\s*/', trim((string) ($_GET['entidades'] ?? '')), -1, PREG_SPLIT_NO_EMPTY)))));
+
+		if ($dataInicio === '' || $dataFim === '') {
+			$dataInicio = date('Y-m-d');
+			$dataFim = date('Y-m-d');
+		}
+
+		$model = new EntradaSaidaModel();
+		$model->ensureTableStructure();
+
+		try {
+			$auditoria = $model->listarAuditoria($dataInicio, $dataFim, $acoes, $entidades, $busca);
+		} catch (Throwable $e) {
+			$this->respondJson(['ok' => false, 'message' => $e->getMessage()], 500);
+		}
+
+		$this->respondJson([
+			'ok' => true,
+			'auditoria' => $auditoria,
+			'data_inicio' => $dataInicio,
+			'data_fim' => $dataFim,
+		]);
+	}
+
 	public function entradaSaidaQrCodes(): void
 	{
 		if (!$this->canAccessEntradaSaidaModule()) {
@@ -8172,7 +8247,8 @@ class InstitucionalController extends HomeController
 		$model->ensureTableStructure();
 
 		try {
-			$model->salvarRegistro($id, $data, $horario, $tipoId, $obs);
+			$usuarioId = isset($_SESSION['auth']['id']) ? (int) $_SESSION['auth']['id'] : null;
+			$model->salvarRegistro($id, $data, $horario, $tipoId, $obs, $usuarioId);
 		} catch (Throwable $e) {
 			$this->respondJson(['ok' => false, 'message' => $e->getMessage()], 409);
 		}
@@ -8199,7 +8275,8 @@ class InstitucionalController extends HomeController
 		$model->ensureTableStructure();
 
 		try {
-			$model->excluirRegistro($id);
+			$usuarioId = isset($_SESSION['auth']['id']) ? (int) $_SESSION['auth']['id'] : null;
+			$model->excluirRegistro($id, $usuarioId);
 		} catch (Throwable $e) {
 			$this->respondJson(['ok' => false, 'message' => $e->getMessage()], 409);
 		}

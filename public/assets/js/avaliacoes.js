@@ -1740,6 +1740,12 @@
             });
           }
 
+          var simuladoAtivo = !!(isSimuladoInput && isSimuladoInput.checked);
+          if (simuladoAtivo && peso !== 1) {
+            peso = 1;
+            gabaritoQuestoesItens[qi].peso = 1;
+          }
+
           var pesoWrap = document.createElement('label');
           pesoWrap.style.cssText = 'display:inline-flex;align-items:center;gap:4px;margin-left:6px;';
 
@@ -1756,6 +1762,10 @@
           pesoInput.setAttribute('step', '0.01');
           pesoInput.setAttribute('inputmode', 'decimal');
           pesoInput.value = String(peso).replace(/\.00$/, '');
+          if (simuladoAtivo) {
+            pesoInput.setAttribute('disabled', 'disabled');
+            pesoInput.title = 'Em simulados, o peso das questões fica fixo em 1.';
+          }
           pesoInput.style.cssText = 'width:4.75rem;min-width:4.75rem;padding:1px 4px;font-size:0.72rem;line-height:1.2;height:1.8rem;';
           pesoWrap.appendChild(pesoInput);
 
@@ -8114,6 +8124,7 @@
           );
 
           applyGabaritoConfig(parseGabaritoConfig(button.getAttribute('data-gabarito')));
+          syncSimuladoFieldState();
 
           if (submitButton) {
             submitButton.innerHTML = '<i class="las la-save me-1"></i>Atualizar avaliação';
@@ -8348,6 +8359,7 @@
       }
 
       applyGabaritoConfig(null);
+      syncSimuladoFieldState();
 
       updateTurmasSummary();
       updateAlunosSummary();
@@ -8360,6 +8372,57 @@
 
       if (formModalTitle) {
         formModalTitle.textContent = 'Nova avaliação';
+      }
+    }
+
+    function isSimuladoDisponivelNoFormulario() {
+      return !!(cicloInput && String(cicloInput.value || '').trim() === '2' && !(isRecuperacaoInput && isRecuperacaoInput.checked));
+    }
+
+    function normalizeGabaritoPesosParaSimulado() {
+      if (!(isSimuladoInput && isSimuladoInput.checked) || !Array.isArray(gabaritoQuestoesItens)) {
+        return false;
+      }
+
+      var changed = false;
+      gabaritoQuestoesItens = gabaritoQuestoesItens.map(function (item) {
+        var safeItem = item && typeof item === 'object' ? Object.assign({}, item) : {};
+        if (sanitizeQuestaoPeso(safeItem.peso, 1) !== 1) {
+          changed = true;
+        }
+        safeItem.peso = 1;
+        return safeItem;
+      });
+
+      return changed;
+    }
+
+    function syncSimuladoFieldState(options) {
+      var opts = options || {};
+      var disponivel = isSimuladoDisponivelNoFormulario();
+
+      if (simuladoWrap) {
+        simuladoWrap.classList.toggle('d-none', !disponivel);
+      }
+
+      if (!isSimuladoInput) {
+        return;
+      }
+
+      if (!disponivel) {
+        isSimuladoInput.checked = false;
+        isSimuladoInput.setAttribute('disabled', 'disabled');
+      } else {
+        isSimuladoInput.removeAttribute('disabled');
+      }
+
+      var changed = normalizeGabaritoPesosParaSimulado();
+      if (changed) {
+        markGabaritoPendingChanges();
+      }
+
+      if (opts.skipRender !== true && questoesListContainer) {
+        renderGabaritoQuestoesEditor();
       }
     }
 
@@ -9130,6 +9193,7 @@
         return 'high';
       }
 
+                syncSimuladoFieldState();
       if (
         Number(metrics.markStrength || 0) >= 0.46
         && Number(metrics.centerDarkGain || 0) >= 0.28
@@ -22106,6 +22170,26 @@
       });
     }
 
+    if (isRecuperacaoInput) {
+      isRecuperacaoInput.addEventListener('change', function () {
+        syncSimuladoFieldState();
+      });
+    }
+
+    if (cicloInput) {
+      cicloInput.addEventListener('change', function () {
+        syncSimuladoFieldState();
+      });
+    }
+
+    if (isSimuladoInput) {
+      isSimuladoInput.addEventListener('change', function () {
+        syncSimuladoFieldState();
+      });
+    }
+
+    syncSimuladoFieldState({ skipRender: true });
+
     if (form) {
       form.addEventListener('submit', function (event) {
         event.preventDefault();
@@ -22116,6 +22200,7 @@
 
         persistGabaritoBackgroundIfNeeded()
           .then(function () {
+            syncSimuladoFieldState({ skipRender: true });
             syncGabaritoInput();
             var formData = new FormData(form);
 
@@ -22506,6 +22591,11 @@
           return;
         }
 
+          if (isSimuladoInput && isSimuladoInput.checked) {
+            target.value = '1';
+            return;
+          }
+
         var qi = parseInt(target.getAttribute('data-question-index'), 10);
         if (isNaN(qi) || qi < 0 || qi >= gabaritoQuestoesItens.length) {
           return;
@@ -22523,6 +22613,15 @@
       questoesListContainer.addEventListener('change', function (event) {
         var target = event.target;
         if (!(target instanceof HTMLInputElement) || !target.classList.contains('js-admin-gabarito-peso')) {
+          return;
+        }
+
+        if (isSimuladoInput && isSimuladoInput.checked) {
+          target.value = '1';
+          var simuladoQi = parseInt(target.getAttribute('data-question-index'), 10);
+          if (!isNaN(simuladoQi) && simuladoQi >= 0 && simuladoQi < gabaritoQuestoesItens.length) {
+            gabaritoQuestoesItens[simuladoQi].peso = 1;
+          }
           return;
         }
 

@@ -1243,6 +1243,12 @@
 						<i class="las la-chart-bar me-1"></i>Dashboard &amp; Relatórios
 					</button>
 				</li>
+				<li class="nav-item" role="presentation">
+					<button class="nav-link" id="tab-auditoria-btn" data-bs-toggle="tab" data-bs-target="#tabAuditoria"
+						type="button" role="tab">
+						<i class="las la-clipboard-list me-1"></i>Auditoria
+					</button>
+				</li>
 			</ul>
 
 			<div class="tab-content" id="refTabsContent">
@@ -1664,6 +1670,76 @@
 					</div>
 
 				</div><!-- /tabDash -->
+
+				<!-- ========================================
+		     ABA 6 — Auditoria
+		     ======================================== -->
+				<div class="tab-pane fade" id="tabAuditoria" role="tabpanel">
+					<div class="card border-0 shadow-sm mb-3 no-print">
+						<div class="card-body">
+							<div class="row g-2 align-items-end">
+								<div class="col-sm-auto">
+									<label class="form-label form-label-sm mb-1">Período</label>
+									<div class="d-flex gap-2">
+										<input type="date" id="auditDataInicio" class="form-control form-control-sm" style="max-width:150px">
+										<span class="align-self-center text-muted">até</span>
+										<input type="date" id="auditDataFim" class="form-control form-control-sm" style="max-width:150px">
+									</div>
+								</div>
+								<div class="col-sm-auto">
+									<label class="form-label form-label-sm mb-1" for="auditEntidade">Seção</label>
+									<select id="auditEntidade" class="form-select form-select-sm">
+										<option value="">Todas</option>
+										<option value="registro">Registros</option>
+										<option value="tipo_refeicao">Tipos de refeição</option>
+									</select>
+								</div>
+								<div class="col-sm-auto">
+									<label class="form-label form-label-sm mb-1" for="auditAcao">Ação</label>
+									<select id="auditAcao" class="form-select form-select-sm">
+										<option value="">Todas</option>
+										<option value="inclusao">Inclusão</option>
+										<option value="alteracao">Alteração</option>
+										<option value="exclusao">Exclusão</option>
+									</select>
+								</div>
+								<div class="col-sm-4 col-lg-3 ms-sm-auto">
+									<label class="form-label form-label-sm mb-1" for="auditBusca">Busca</label>
+									<div class="input-group input-group-sm">
+										<span class="input-group-text"><i class="las la-search"></i></span>
+										<input type="text" id="auditBusca" class="form-control" maxlength="120" placeholder="Resumo, usuário, estudante..." autocomplete="off">
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div class="card border-0 shadow-sm">
+						<div class="card-header bg-white border-0 fw-semibold d-flex align-items-center justify-content-between flex-wrap gap-2">
+							<span>Trilha de auditoria <span id="auditTotal" class="badge bg-danger ms-1">0</span></span>
+							<div id="auditStatus" class="small text-muted">Abra a aba para carregar os eventos auditados.</div>
+						</div>
+						<div class="table-scroll-only">
+							<table class="table table-sm mb-0">
+								<thead>
+									<tr>
+										<th>Data/Hora</th>
+										<th>Seção</th>
+										<th>Ação</th>
+										<th>Resumo</th>
+										<th>Usuário</th>
+										<th>Estudante</th>
+									</tr>
+								</thead>
+								<tbody id="auditBody">
+									<tr>
+										<td colspan="6" class="muted-empty">Abra a aba para carregar os eventos auditados.</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</div><!-- /tabAuditoria -->
 			</div><!-- /tab-content -->
 		</div><!-- /ref-wrap -->
 
@@ -1908,6 +1984,9 @@
 				dashboardReportLoaded: false,
 				dashboardFiltroSelecoes: { tipos: [], turmas: [] },
 				dashboardFiltrosAplicados: null,
+				auditRegistros: [],
+				auditFiltrosAplicados: null,
+				auditBusca: '',
 				gerencRegistros: [],
 				gerencFiltroSelecoes: { tipos: [], turmas: [] },
 				gerencFiltrosAplicados: null,
@@ -1939,6 +2018,20 @@
 				var parts = String(d).split('-');
 				if (parts.length === 3) return parts[2] + '/' + parts[1] + '/' + parts[0];
 				return d;
+			}
+
+			function formatDataHora(dt) {
+				if (!dt) return '';
+				var normalized = String(dt).replace(' ', 'T');
+				var parsed = new Date(normalized);
+				if (isNaN(parsed.getTime())) return String(dt);
+				return parsed.toLocaleString('pt-BR', {
+					day: '2-digit',
+					month: '2-digit',
+					year: 'numeric',
+					hour: '2-digit',
+					minute: '2-digit',
+				});
 			}
 
 			function formatNumero(n) {
@@ -1980,6 +2073,31 @@
 				if (horarioIni) return 'A partir de ' + horarioIni;
 				if (horarioFim) return 'Até ' + horarioFim;
 				return 'Disponível para registro';
+			}
+
+			function getAuditEntidadeMeta(entidade) {
+				var key = String(entidade || '').toLowerCase();
+				if (key === 'registro') {
+					return { label: 'Registros', badge: 'bg-primary' };
+				}
+				if (key === 'tipo_refeicao') {
+					return { label: 'Tipos de refeição', badge: 'bg-secondary' };
+				}
+				return { label: 'Outro', badge: 'bg-light text-dark border' };
+			}
+
+			function getAuditAcaoMeta(acao) {
+				var key = String(acao || '').toLowerCase();
+				if (key === 'inclusao') {
+					return { label: 'Inclusão', badge: 'bg-success' };
+				}
+				if (key === 'alteracao') {
+					return { label: 'Alteração', badge: 'bg-primary' };
+				}
+				if (key === 'exclusao') {
+					return { label: 'Exclusão', badge: 'bg-danger' };
+				}
+				return { label: key || 'Outro', badge: 'bg-light text-dark border' };
 			}
 
 			function obterRotuloSelect(id, fallback) {
@@ -2163,6 +2281,29 @@
 				filtros.tipo = filtros.tipos[0] || '';
 				filtros.turma = filtros.turmas[0] || '';
 				filtros.url = construirUrlRelatorio(filtros);
+				return filtros;
+			}
+
+			function construirUrlAuditoria(filtros) {
+				var entidade = String(filtros.entidade || '').trim();
+				var acao = String(filtros.acao || '').trim();
+				var busca = String(filtros.busca || '').trim();
+				return '/institucional/refeitorio/auditoria?data_inicio=' + encodeURIComponent(filtros.ini) +
+					'&data_fim=' + encodeURIComponent(filtros.fim) +
+					(entidade ? '&entidades=' + encodeURIComponent(entidade) : '') +
+					(acao ? '&acoes=' + encodeURIComponent(acao) : '') +
+					(busca ? '&busca=' + encodeURIComponent(busca) : '');
+			}
+
+			function obterFiltrosAuditoriaDom() {
+				var filtros = {
+					ini: document.getElementById('auditDataInicio').value,
+					fim: document.getElementById('auditDataFim').value,
+					entidade: document.getElementById('auditEntidade').value,
+					acao: document.getElementById('auditAcao').value,
+					busca: String(state.auditBusca || '').trim(),
+				};
+				filtros.url = construirUrlAuditoria(filtros);
 				return filtros;
 			}
 
@@ -2367,6 +2508,14 @@
 						silent: true,
 						preservePage: true,
 						filtros: state.gerencFiltrosAplicados,
+						persistir: false,
+					});
+				}
+
+				if (abaAtiva === 'tab-auditoria-btn' && state.auditFiltrosAplicados) {
+					filtrarAuditoria({
+						silent: true,
+						filtros: state.auditFiltrosAplicados,
 						persistir: false,
 					});
 				}
@@ -2892,7 +3041,7 @@
 					var houveMudanca = state.pollingAssinatura !== '' && state.pollingAssinatura !== proximaAssinatura;
 					state.pollingAssinatura = proximaAssinatura;
 					applyPollData(res);
-					if (houveMudanca || obterAbaAtivaId() === 'tab-dash-btn' || obterAbaAtivaId() === 'tab-gerenc-btn') {
+					if (houveMudanca || obterAbaAtivaId() === 'tab-dash-btn' || obterAbaAtivaId() === 'tab-gerenc-btn' || obterAbaAtivaId() === 'tab-auditoria-btn') {
 						sincronizarSecoesTempoReal();
 					}
 				}, { silent: true });
@@ -2936,7 +3085,7 @@
 			function init() {
 				// datas padrão do relatório e gerenciamento
 				var today = dateInputValueLocal(new Date());
-				['relDataInicio', 'relDataFim', 'gerencDataInicio', 'gerencDataFim'].forEach(function (id) {
+				['relDataInicio', 'relDataFim', 'gerencDataInicio', 'gerencDataFim', 'auditDataInicio', 'auditDataFim'].forEach(function (id) {
 					var el = document.getElementById(id);
 					if (el) el.value = today;
 				});
@@ -3696,6 +3845,81 @@
 				}, { silent: silent });
 			}
 
+			function renderAuditoriaTabela() {
+				var tbody = document.getElementById('auditBody');
+				var totalEl = document.getElementById('auditTotal');
+				var statusEl = document.getElementById('auditStatus');
+				var registros = Array.isArray(state.auditRegistros) ? state.auditRegistros : [];
+
+				if (totalEl) {
+					totalEl.textContent = formatNumero(registros.length);
+				}
+
+				if (!tbody) {
+					return;
+				}
+
+				if (!registros.length) {
+					tbody.innerHTML = '<tr><td colspan="6" class="muted-empty">Nenhum evento de auditoria encontrado para os filtros informados.</td></tr>';
+					if (statusEl) {
+						statusEl.textContent = 'Sem eventos no período selecionado.';
+					}
+					return;
+				}
+
+				if (statusEl) {
+					statusEl.textContent = formatNumero(registros.length) + ' evento(s) localizados na trilha de auditoria.';
+				}
+
+				var html = '';
+				registros.forEach(function (item) {
+					var entidadeMeta = getAuditEntidadeMeta(item.entidade);
+					var acaoMeta = getAuditAcaoMeta(item.acao);
+					var usuarioNome = String(item.usuario_nome || '').trim() || 'Sistema';
+					var alunoNome = String(item.aluno_nome || '').trim() || 'Não informado';
+					html += '<tr>' +
+						'<td>' + esc(formatDataHora(item.created_at)) + '</td>' +
+						'<td><span class="badge ' + esc(entidadeMeta.badge) + '">' + esc(entidadeMeta.label) + '</span></td>' +
+						'<td><span class="badge ' + esc(acaoMeta.badge) + '">' + esc(acaoMeta.label) + '</span></td>' +
+						'<td>' + esc(item.resumo || '-') + '</td>' +
+						'<td>' + esc(usuarioNome) + '</td>' +
+						'<td>' + esc(alunoNome) + '</td>' +
+						'</tr>';
+				});
+
+				tbody.innerHTML = html;
+			}
+
+			function filtrarAuditoria(options) {
+				options = options || {};
+				var silent = options.silent === true;
+				var filtros = cloneObject(options.filtros || obterFiltrosAuditoriaDom());
+				var url = filtros.url || construirUrlAuditoria(filtros);
+
+				filtros.url = url;
+				if (options.persistir !== false) {
+					state.auditFiltrosAplicados = cloneObject(filtros);
+				}
+
+				if (!silent) {
+					document.getElementById('auditStatus').textContent = 'Carregando trilha de auditoria...';
+					document.getElementById('auditBody').innerHTML = '<tr><td colspan="6" class="muted-empty"><span class="spinner-border spinner-border-sm me-1"></span>Carregando auditoria...</td></tr>';
+				}
+
+				get(url, function (res) {
+					if (!res.ok) {
+						if (!silent) {
+							showStatus(res.message || 'Erro ao carregar auditoria.', 'error');
+							document.getElementById('auditStatus').textContent = 'Não foi possível carregar a auditoria agora.';
+						}
+						return;
+					}
+
+					state.auditRegistros = Array.isArray(res.auditoria) ? res.auditoria : [];
+					renderAuditoriaTabela();
+				}, { silent: silent });
+			}
+
 			window.gerencEditar = function (id) {
 				get('/institucional/refeitorio/registro?id=' + id, function (res) {
 					if (!res.ok) { showStatus(res.message || 'Erro ao carregar registro.', 'error'); return; }
@@ -3967,6 +4191,29 @@
 						}
 					});
 				});
+				['auditDataInicio', 'auditDataFim'].forEach(function (id) {
+					document.getElementById(id).addEventListener('change', function () {
+						if (obterAbaAtivaId() === 'tab-auditoria-btn') {
+							filtrarAuditoria();
+						}
+					});
+				});
+				document.getElementById('auditEntidade').addEventListener('change', function () {
+					if (obterAbaAtivaId() === 'tab-auditoria-btn') {
+						filtrarAuditoria();
+					}
+				});
+				document.getElementById('auditAcao').addEventListener('change', function () {
+					if (obterAbaAtivaId() === 'tab-auditoria-btn') {
+						filtrarAuditoria();
+					}
+				});
+				document.getElementById('auditBusca').addEventListener('input', function () {
+					state.auditBusca = this.value || '';
+					if (obterAbaAtivaId() === 'tab-auditoria-btn') {
+						filtrarAuditoria();
+					}
+				});
 				document.querySelectorAll('.filter-trigger-btn').forEach(function (btn) {
 					btn.addEventListener('click', function () {
 						state.filtroModalConfig = {
@@ -4036,6 +4283,10 @@
 				// Ao abrir aba de gerenciamento, filtrar
 				document.getElementById('tab-gerenc-btn').addEventListener('shown.bs.tab', function () {
 					filtrarGerenc();
+				});
+
+				document.getElementById('tab-auditoria-btn').addEventListener('shown.bs.tab', function () {
+					filtrarAuditoria();
 				});
 
 				// Parar câmera ao mudar de aba

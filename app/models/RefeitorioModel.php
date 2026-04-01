@@ -49,6 +49,25 @@ class RefeitorioModel
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
         );
 
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS auditoria_refeitorio (
+                id            INT           NOT NULL AUTO_INCREMENT,
+                entidade      VARCHAR(32)   NOT NULL,
+                acao          VARCHAR(24)   NOT NULL,
+                referencia_id INT           NULL,
+                aluno_id      INT           NULL,
+                usuario_id    INT           NULL,
+                resumo        VARCHAR(255)  NOT NULL,
+                detalhes_json LONGTEXT      NULL,
+                created_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                KEY idx_auditoria_refeitorio_entidade_data (entidade, created_at),
+                KEY idx_auditoria_refeitorio_acao_data (acao, created_at),
+                KEY idx_auditoria_refeitorio_usuario_data (usuario_id, created_at),
+                KEY idx_auditoria_refeitorio_aluno_data (aluno_id, created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+        );
+
         $this->seedDefaultTipos();
     }
 
@@ -108,9 +127,25 @@ class RefeitorioModel
         return $stmt ? $stmt->fetchAll() : [];
     }
 
-    public function salvarTipo(int $id, string $nome, string $descricao, string $horIni, string $horFim, string $cor, bool $ativo): int
+    public function getTipoById(int $id): ?array
+    {
+        $pdo  = Database::connection();
+        $stmt = $pdo->prepare(
+            'SELECT id, nome, descricao, horario_ini, horario_fim, cor, ativo
+               FROM refeitorio_tipos_refeicao
+              WHERE id = :id
+              LIMIT 1'
+        );
+        $stmt->execute(['id' => $id]);
+        $row = $stmt->fetch();
+
+        return $row !== false ? $row : null;
+    }
+
+    public function salvarTipo(int $id, string $nome, string $descricao, string $horIni, string $horFim, string $cor, bool $ativo, ?int $usuarioId = null): int
     {
         $pdo = Database::connection();
+        $tipoAnterior = $id > 0 ? $this->getTipoById($id) : null;
 
         if ($id > 0) {
             $stmt = $pdo->prepare(
@@ -125,6 +160,30 @@ class RefeitorioModel
                 'ini'  => ($horIni ?: null), 'fim' => ($horFim ?: null),
                 'cor'  => $cor, 'ativo' => (int) $ativo, 'id' => $id,
             ]);
+
+            $this->registrarAuditoria(
+                'tipo_refeicao',
+                'alteracao',
+                $usuarioId,
+                'Tipo de refeição atualizado: ' . $nome,
+                [
+                    'tipo_id' => $id,
+                    'antes' => $tipoAnterior,
+                    'depois' => [
+                        'id' => $id,
+                        'nome' => $nome,
+                        'descricao' => $descricao ?: null,
+                        'horario_ini' => $horIni ?: null,
+                        'horario_fim' => $horFim ?: null,
+                        'cor' => $cor,
+                        'ativo' => (int) $ativo,
+                    ],
+                ],
+                $id,
+                null,
+                $pdo
+            );
+
             return $id;
         }
 
@@ -137,12 +196,34 @@ class RefeitorioModel
             'ini'  => ($horIni ?: null), 'fim' => ($horFim ?: null),
             'cor'  => $cor, 'ativo' => (int) $ativo,
         ]);
-        return (int) $pdo->lastInsertId();
+
+        $novoId = (int) $pdo->lastInsertId();
+        $this->registrarAuditoria(
+            'tipo_refeicao',
+            'inclusao',
+            $usuarioId,
+            'Tipo de refeição criado: ' . $nome,
+            [
+                'tipo_id' => $novoId,
+                'nome' => $nome,
+                'descricao' => $descricao ?: null,
+                'horario_ini' => $horIni ?: null,
+                'horario_fim' => $horFim ?: null,
+                'cor' => $cor,
+                'ativo' => (int) $ativo,
+            ],
+            $novoId,
+            null,
+            $pdo
+        );
+
+        return $novoId;
     }
 
-    public function excluirTipo(int $id): void
+    public function excluirTipo(int $id, ?int $usuarioId = null): void
     {
         $pdo  = Database::connection();
+        $tipo = $this->getTipoById($id);
         $stmt = $pdo->prepare('SELECT COUNT(*) FROM refeitorio_registros WHERE tipo_refeicao_id = :id');
         $stmt->execute(['id' => $id]);
         if ((int) $stmt->fetchColumn() > 0) {
@@ -150,6 +231,19 @@ class RefeitorioModel
         }
         $del = $pdo->prepare('DELETE FROM refeitorio_tipos_refeicao WHERE id = :id');
         $del->execute(['id' => $id]);
+
+        if ($tipo !== null) {
+            $this->registrarAuditoria(
+                'tipo_refeicao',
+                'exclusao',
+                $usuarioId,
+                'Tipo de refeição excluído: ' . (string) ($tipo['nome'] ?? 'Registro removido'),
+                ['tipo' => $tipo],
+                $id,
+                null,
+                $pdo
+            );
+        }
     }
 
     // ------------------------------------------------------------------
@@ -264,7 +358,30 @@ class RefeitorioModel
             'usuario' => $usuarioId ?: null,
             'obs'     => ($obs !== '' ? $obs : null),
         ]);
-        return (int) $pdo->lastInsertId();
+
+        $novoId = (int) $pdo->lastInsertId();
+        $aluno = $this->buscarAlunoPorId($alunoId);
+        $tipo = $this->getTipoById($tipoId);
+
+        $this->registrarAuditoria(
+            'registro',
+            'inclusao',
+            $usuarioId,
+            'Consumo registrado para ' . (string) ($aluno['nome'] ?? 'estudante') . ' em ' . (string) ($tipo['nome'] ?? 'refeição'),
+            [
+                'registro_id' => $novoId,
+                'aluno' => $aluno,
+                'tipo_refeicao' => $tipo,
+                'data' => $data,
+                'horario' => $horario,
+                'obs' => $obs !== '' ? $obs : null,
+            ],
+            $novoId,
+            $alunoId,
+            $pdo
+        );
+
+        return $novoId;
     }
 
     // ------------------------------------------------------------------
@@ -428,9 +545,10 @@ class RefeitorioModel
         return $row ?: null;
     }
 
-    public function salvarRegistro(int $id, string $data, string $horario, int $tipoId, string $obs): void
+    public function salvarRegistro(int $id, string $data, string $horario, int $tipoId, string $obs, ?int $usuarioId = null): void
     {
         $pdo  = Database::connection();
+        $registroAnterior = $this->buscarRegistroAuditoriaPorId($id);
         $stmt = $pdo->prepare(
             'UPDATE refeitorio_registros
                 SET data             = :data,
@@ -446,12 +564,150 @@ class RefeitorioModel
             'obs'     => $obs,
             'id'      => $id,
         ]);
+
+        $registroAtual = $this->buscarRegistroAuditoriaPorId($id);
+        if ($registroAtual !== null) {
+            $this->registrarAuditoria(
+                'registro',
+                'alteracao',
+                $usuarioId,
+                'Registro de refeição atualizado para ' . (string) ($registroAtual['aluno_nome'] ?? 'estudante'),
+                [
+                    'registro_id' => $id,
+                    'antes' => $registroAnterior,
+                    'depois' => $registroAtual,
+                ],
+                $id,
+                (int) ($registroAtual['aluno_id'] ?? 0),
+                $pdo
+            );
+        }
     }
 
-    public function excluirRegistro(int $id): void
+    public function excluirRegistro(int $id, ?int $usuarioId = null): void
     {
         $pdo  = Database::connection();
+        $registro = $this->buscarRegistroAuditoriaPorId($id);
         $stmt = $pdo->prepare('DELETE FROM refeitorio_registros WHERE id = :id');
         $stmt->execute(['id' => $id]);
+
+        if ($registro !== null) {
+            $this->registrarAuditoria(
+                'registro',
+                'exclusao',
+                $usuarioId,
+                'Registro de refeição excluído para ' . (string) ($registro['aluno_nome'] ?? 'estudante'),
+                [
+                    'registro' => $registro,
+                ],
+                $id,
+                (int) ($registro['aluno_id'] ?? 0),
+                $pdo
+            );
+        }
+    }
+
+    public function listarAuditoria(string $dataInicio, string $dataFim, array $acoes = [], array $entidades = [], string $busca = ''): array
+    {
+        $pdo = Database::connection();
+        $wheres = ['DATE(a.created_at) BETWEEN :ini AND :fim'];
+        $params = ['ini' => $dataInicio, 'fim' => $dataFim];
+        $acoes = $this->normalizeAuditValueList($acoes);
+        $entidades = $this->normalizeAuditValueList($entidades);
+        $busca = trim($busca);
+
+        if (!empty($acoes)) {
+            $wheres[] = 'a.acao IN (' . $this->buildStringInClause($acoes, 'acao_audit', $params) . ')';
+        }
+
+        if (!empty($entidades)) {
+            $wheres[] = 'a.entidade IN (' . $this->buildStringInClause($entidades, 'entidade_audit', $params) . ')';
+        }
+
+        if ($busca !== '') {
+            $params['busca'] = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $busca) . '%';
+            $wheres[] = '(a.resumo LIKE :busca OR COALESCE(u.nome, u.usuario, "") LIKE :busca OR COALESCE(al.nome, "") LIKE :busca)';
+        }
+
+        $stmt = $pdo->prepare(
+            'SELECT a.id, a.entidade, a.acao, a.referencia_id, a.aluno_id, a.usuario_id,
+                    a.resumo, a.detalhes_json, a.created_at,
+                    COALESCE(u.nome, u.usuario, "") AS usuario_nome,
+                    COALESCE(al.nome, "") AS aluno_nome
+               FROM auditoria_refeitorio a
+               LEFT JOIN usuarios u ON u.id = a.usuario_id
+               LEFT JOIN alunos al ON al.id = a.aluno_id
+              WHERE ' . implode(' AND ', $wheres) . '
+              ORDER BY a.created_at DESC, a.id DESC'
+        );
+        $stmt->execute($params);
+
+        return $stmt->fetchAll() ?: [];
+    }
+
+    private function buscarRegistroAuditoriaPorId(int $id): ?array
+    {
+        $pdo = Database::connection();
+        $stmt = $pdo->prepare(
+            'SELECT r.id, r.aluno_id, r.tipo_refeicao_id, r.data, r.horario, r.usuario_id, r.obs, r.created_at,
+                    a.nome AS aluno_nome, a.turma, a.matricula,
+                    t.nome AS refeicao_nome, t.cor AS refeicao_cor,
+                    COALESCE(u.nome, u.usuario, "") AS usuario_nome
+               FROM refeitorio_registros r
+               JOIN alunos a ON a.id = r.aluno_id
+               JOIN refeitorio_tipos_refeicao t ON t.id = r.tipo_refeicao_id
+               LEFT JOIN usuarios u ON u.id = r.usuario_id
+              WHERE r.id = :id
+              LIMIT 1'
+        );
+        $stmt->execute(['id' => $id]);
+        $row = $stmt->fetch();
+
+        return $row !== false ? $row : null;
+    }
+
+    private function registrarAuditoria(string $entidade, string $acao, ?int $usuarioId, string $resumo, array $detalhes = [], ?int $referenciaId = null, ?int $alunoId = null, ?PDO $pdo = null): void
+    {
+        $pdo = $pdo ?: Database::connection();
+        $stmt = $pdo->prepare(
+            'INSERT INTO auditoria_refeitorio
+                (entidade, acao, referencia_id, aluno_id, usuario_id, resumo, detalhes_json)
+             VALUES (:entidade, :acao, :referencia_id, :aluno_id, :usuario_id, :resumo, :detalhes_json)'
+        );
+        $stmt->execute([
+            'entidade' => substr(trim($entidade), 0, 32),
+            'acao' => substr(trim($acao), 0, 24),
+            'referencia_id' => $referenciaId ?: null,
+            'aluno_id' => $alunoId ?: null,
+            'usuario_id' => $usuarioId ?: null,
+            'resumo' => mb_substr(trim($resumo), 0, 255),
+            'detalhes_json' => !empty($detalhes) ? json_encode($detalhes, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : null,
+        ]);
+    }
+
+    private function normalizeAuditValueList(array $values): array
+    {
+        $items = [];
+        foreach ($values as $value) {
+            $normalized = strtolower(trim((string) $value));
+            if ($normalized === '') {
+                continue;
+            }
+            $items[$normalized] = $normalized;
+        }
+
+        return array_values($items);
+    }
+
+    private function buildStringInClause(array $values, string $prefix, array &$params): string
+    {
+        $placeholders = [];
+        foreach (array_values($values) as $index => $value) {
+            $key = $prefix . '_' . $index;
+            $placeholders[] = ':' . $key;
+            $params[$key] = (string) $value;
+        }
+
+        return implode(', ', $placeholders);
     }
 }

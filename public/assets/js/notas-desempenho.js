@@ -863,6 +863,7 @@
     function resolveManualComponentCategory(entry) {
       var categoria = normalizeText(entry && entry.categoria ? entry.categoria : '');
       var categoriaLabel = normalizeText(entry && entry.categoria_label ? entry.categoria_label : '');
+      var ciclo = Number(entry && entry.ciclo ? entry.ciclo : 0);
 
       if (categoria === 'recuperacao' || categoriaLabel.indexOf('recuperacao') >= 0) {
         return 'recuperacao';
@@ -879,7 +880,7 @@
         || categoriaLabel.indexOf('avaliacao subjetiva') >= 0
         || categoriaLabel.indexOf('subjetiva') >= 0
       ) {
-        return 'subjetiva';
+        return ciclo === 2 ? 'subjetiva_ciclo_2' : 'subjetiva_ciclo_1';
       }
 
       return '';
@@ -899,8 +900,19 @@
     }
 
     function extractManualComponentsForBimestre(alunoId, disciplina, bimestreSelecionado) {
-      var result = { subjetiva: null, prod_textual: null, recuperacao: null };
-      var latestTs = { subjetiva: -1, prod_textual: -1, recuperacao: -1 };
+      var result = {
+        subjetiva: null,
+        subjetiva_ciclo_1: null,
+        subjetiva_ciclo_2: null,
+        prod_textual: null,
+        recuperacao: null
+      };
+      var latestTs = {
+        subjetiva_ciclo_1: -1,
+        subjetiva_ciclo_2: -1,
+        prod_textual: -1,
+        recuperacao: -1
+      };
       var recoverySum = 0;
       var recoveryCount = 0;
       var entries = state.data && Array.isArray(state.data.entries) ? state.data.entries : [];
@@ -948,10 +960,17 @@
 
         latestTs[component] = ts;
         result[component] = nota;
+        if (component === 'subjetiva_ciclo_1') {
+          result.subjetiva = nota;
+        }
       });
 
       if (recoveryCount > 0) {
         result.recuperacao = Number(recoverySum.toFixed(2));
+      }
+
+      if (result.subjetiva === null) {
+        result.subjetiva = result.subjetiva_ciclo_1;
       }
 
       return result;
@@ -976,7 +995,6 @@
       var d = payload.detalhe || {};
       var fontes = Array.isArray(d.avaliacao_fontes) ? d.avaliacao_fontes : [];
       var permiteProdTextual = isDisciplinaLinguaPortuguesa(disciplina);
-      var formula = permiteProdTextual ? '50% Subjetiva + 30% Avaliação + 20% Produção Textual' : '50% Subjetiva + 50% Avaliação';
       var bimestresSelecionados = selectedValues(bimestreSelect).map(function (value) { return Number(value); }).filter(function (value) { return value >= 1 && value <= 4; });
       var exigeSelecaoBimestre = bimestresSelecionados.length !== 1;
       var origemContextKey = String(aluno.aluno_id || '') + '|' + String(disciplina || '');
@@ -1018,52 +1036,123 @@
         return Number(bimestreEscolhido || 0) <= 0 || srcBimestre === Number(bimestreEscolhido || 0);
       });
 
+      function aggregateFontesNota(items) {
+        var pontuacao = 0;
+        var pontuacaoTotal = 0;
+        (Array.isArray(items) ? items : []).forEach(function (src) {
+          pontuacao += Number(src && src.pontuacao ? src.pontuacao : 0);
+          pontuacaoTotal += Number(src && src.pontuacao_total ? src.pontuacao_total : 0);
+        });
+        if (pontuacaoTotal <= 0) {
+          return null;
+        }
+        return Number(((pontuacao / pontuacaoTotal) * 10).toFixed(2));
+      }
+
+      function computeCycleAverage(ciclo1, ciclo2) {
+        if (ciclo1 === null && ciclo2 === null) {
+          return null;
+        }
+        if (ciclo1 !== null && ciclo2 !== null) {
+          return Number((((Number(ciclo1) + Number(ciclo2)) / 2).toFixed(2)));
+        }
+        return Number((ciclo1 !== null ? ciclo1 : ciclo2).toFixed(2));
+      }
+
+      function renderFontesTable(items, emptyLabel) {
+        if (!items.length) {
+          return '<div class="small text-secondary">' + esc(emptyLabel) + '</div>';
+        }
+
+        return '<div class="table-responsive"><table class="table table-sm table-bordered mb-0">'
+          + '<thead><tr><th>Avaliação</th><th class="text-center">Data</th><th class="text-center">Acertos</th><th class="text-center">Nota</th><th class="text-center">Correção</th></tr></thead><tbody>'
+          + items.map(function (src) {
+            var adaptedBadge = src && src.is_adapted
+              ? ' <span class="badge bg-info text-dark">Nota adaptada ' + esc(formatAdaptedGradeLabel(src.adapted_grade)) + '</span>'
+              : '';
+            return '<tr>'
+              + '<td>' + esc(src.avaliacao_nome || 'Avaliação') + adaptedBadge + '</td>'
+              + '<td class="text-center">' + esc(fmtDate(src.aplicacao || '')) + '</td>'
+              + '<td class="text-center">' + esc(String(src.corretas || 0)) + '/' + esc(String(src.total || 0)) + '</td>'
+              + '<td class="text-center fw-semibold">' + esc(fmtNota(src.nota)) + '</td>'
+              + '<td class="text-center"><button type="button" class="btn btn-outline-primary btn-sm js-notas-origem-abrir-correcao"'
+              + ' data-avaliacao-id="' + esc(String(src.avaliacao_id || 0)) + '"'
+              + ' data-aluno-id="' + esc(String(aluno.aluno_id || 0)) + '"'
+              + ' data-turma-id="' + esc(String(aluno.turma_id || 0)) + '"'
+              + ' data-disciplina="' + esc(disciplina || '') + '">Abrir correção</button></td>'
+              + '</tr>';
+          }).join('')
+          + '</tbody></table></div>';
+      }
+
+      function resolveEntryCycleLabel(entry) {
+        var categoria = resolveManualComponentCategory(entry);
+        if (categoria === 'subjetiva_ciclo_2') {
+          return '2º ciclo';
+        }
+        if (categoria === 'subjetiva_ciclo_1' || categoria === 'prod_textual') {
+          return '1º ciclo';
+        }
+        return '-';
+      }
+
+      var fontesCiclo1 = fontesFiltradasPorBimestre.filter(function (src) {
+        return Number(src && src.ciclo ? src.ciclo : 0) === 1 && !(src && src.is_simulado);
+      });
+      var fontesCiclo2 = fontesFiltradasPorBimestre.filter(function (src) {
+        return Number(src && src.ciclo ? src.ciclo : 0) === 2 && !(src && src.is_simulado);
+      });
+      var fontesSimulado = fontesFiltradasPorBimestre.filter(function (src) {
+        return Number(src && src.ciclo ? src.ciclo : 0) === 2 && !!(src && src.is_simulado);
+      });
+
       var manualForBimestre = extractManualComponentsForBimestre(aluno.aluno_id, disciplina, bimestreEscolhido);
-      var subjetivaValor = manualForBimestre.subjetiva !== null ? manualForBimestre.subjetiva : d.subjetiva;
+      var subjetivaCiclo1Valor = manualForBimestre.subjetiva_ciclo_1 !== null
+        ? manualForBimestre.subjetiva_ciclo_1
+        : (d.subjetiva_ciclo_1 != null ? d.subjetiva_ciclo_1 : d.subjetiva);
+      var subjetivaCiclo2Valor = manualForBimestre.subjetiva_ciclo_2 !== null
+        ? manualForBimestre.subjetiva_ciclo_2
+        : (d.subjetiva_ciclo_2 != null ? d.subjetiva_ciclo_2 : null);
       var prodTextualValor = manualForBimestre.prod_textual !== null ? manualForBimestre.prod_textual : d.prod_textual;
       var recuperacaoValor = manualForBimestre.recuperacao !== null ? manualForBimestre.recuperacao : d.recuperacao;
       if (!permiteProdTextual) {
         prodTextualValor = null;
       }
 
-      var avaliacaoValor = null;
-      if (fontesFiltradasPorBimestre.length) {
-        var fontesCorretas = 0;
-        var fontesTotal = 0;
-        fontesFiltradasPorBimestre.forEach(function (src) {
-          fontesCorretas += Number(src && src.corretas ? src.corretas : 0);
-          fontesTotal += Number(src && src.total ? src.total : 0);
-        });
-        if (fontesTotal > 0) {
-          avaliacaoValor = Number(((fontesCorretas / fontesTotal) * 10).toFixed(2));
-        }
-      }
-      var mediaValor = null;
-      if (permiteProdTextual) {
-        if (subjetivaValor !== null || avaliacaoValor !== null || prodTextualValor !== null) {
-          mediaValor = Number(((0.5 * Number(subjetivaValor || 0)) + (0.3 * Number(avaliacaoValor || 0)) + (0.2 * Number(prodTextualValor || 0))).toFixed(2));
-        }
-      } else {
-        if (subjetivaValor !== null || avaliacaoValor !== null) {
-          mediaValor = Number(((0.5 * Number(subjetivaValor || 0)) + (0.5 * Number(avaliacaoValor || 0))).toFixed(2));
-        }
-      }
-
-      var finalValor = mediaValor;
-      if (mediaValor !== null && recuperacaoValor !== null && Number(mediaValor) < 6) {
-        finalValor = Number((((Number(mediaValor) + Number(recuperacaoValor)) / 2).toFixed(2)));
-      }
+      var avaliacaoCiclo1Valor = d.avaliacao_ciclo_1 != null ? d.avaliacao_ciclo_1 : aggregateFontesNota(fontesCiclo1);
+      var avaliacaoCiclo2Valor = d.avaliacao_ciclo_2 != null ? d.avaliacao_ciclo_2 : aggregateFontesNota(fontesCiclo2);
+      var simuladoValor = d.simulado != null ? d.simulado : aggregateFontesNota(fontesSimulado);
+      var ciclo1Valor = d.ciclo_1 != null
+        ? d.ciclo_1
+        : (permiteProdTextual
+          ? ((subjetivaCiclo1Valor !== null || avaliacaoCiclo1Valor !== null || prodTextualValor !== null)
+            ? Number(((0.5 * Number(subjetivaCiclo1Valor || 0)) + (0.3 * Number(avaliacaoCiclo1Valor || 0)) + (0.2 * Number(prodTextualValor || 0))).toFixed(2))
+            : null)
+          : ((subjetivaCiclo1Valor !== null || avaliacaoCiclo1Valor !== null)
+            ? Number(((0.5 * Number(subjetivaCiclo1Valor || 0)) + (0.5 * Number(avaliacaoCiclo1Valor || 0))).toFixed(2))
+            : null));
+      var ciclo2Valor = d.ciclo_2 != null
+        ? d.ciclo_2
+        : ((subjetivaCiclo2Valor !== null || avaliacaoCiclo2Valor !== null || simuladoValor !== null)
+          ? Number(((0.5 * Number(subjetivaCiclo2Valor || 0)) + (0.3 * Number(avaliacaoCiclo2Valor || 0)) + (0.2 * Number(simuladoValor || 0))).toFixed(2))
+          : null);
+      var mediaValor = d.media != null ? d.media : computeCycleAverage(ciclo1Valor, ciclo2Valor);
+      var finalValor = d.nota_final != null
+        ? d.nota_final
+        : (mediaValor !== null && recuperacaoValor !== null && Number(mediaValor) < 6
+          ? Number((((Number(mediaValor) + Number(recuperacaoValor)) / 2).toFixed(2)))
+          : mediaValor);
+      var proficienciaFinal = d.proficiencia || classificarProficienciaPorNota(finalValor);
 
       if (boletimOrigemModalLabel) {
         boletimOrigemModalLabel.textContent = 'Origem da nota • ' + String(aluno.aluno_nome || '-') + ' • ' + String(disciplina || '-');
       }
 
-      var inputSubjetiva = fmtNota(subjetivaValor);
-
+      var inputSubjetivaCiclo1 = fmtNota(subjetivaCiclo1Valor);
+      var inputSubjetivaCiclo2 = fmtNota(subjetivaCiclo2Valor);
       var inputProd = permiteProdTextual
         ? fmtNota(prodTextualValor)
         : '<span class="small text-secondary">Não se aplica</span>';
-
       var inputRecuperacao = fmtNota(recuperacaoValor);
       var seletorBimestreHtml = exigeSelecaoBimestre
         ? '<div class="d-flex align-items-center gap-2 mt-2">'
@@ -1083,28 +1172,6 @@
         + ' data-disciplina="' + esc(disciplina || '') + '">'
         + '<i class="las la-plus me-1"></i>Novo lançamento manual'
         + '</button>';
-
-      var fontesHtml = fontesFiltradasPorBimestre.length
-        ? '<div class="table-responsive"><table class="table table-sm table-bordered mb-0">'
-          + '<thead><tr><th>Avaliação</th><th class="text-center">Data</th><th class="text-center">Acertos</th><th class="text-center">Nota</th><th class="text-center">Correção</th></tr></thead><tbody>'
-          + fontesFiltradasPorBimestre.map(function (src) {
-            var adaptedBadge = src && src.is_adapted
-              ? ' <span class="badge bg-info text-dark">Nota adaptada ' + esc(formatAdaptedGradeLabel(src.adapted_grade)) + '</span>'
-              : '';
-            return '<tr>'
-              + '<td>' + esc(src.avaliacao_nome || 'Avaliação') + adaptedBadge + '</td>'
-              + '<td class="text-center">' + esc(fmtDate(src.aplicacao || '')) + '</td>'
-              + '<td class="text-center">' + esc(String(src.corretas || 0)) + '/' + esc(String(src.total || 0)) + '</td>'
-              + '<td class="text-center fw-semibold">' + esc(fmtNota(src.nota)) + '</td>'
-              + '<td class="text-center"><button type="button" class="btn btn-outline-primary btn-sm js-notas-origem-abrir-correcao"'
-              + ' data-avaliacao-id="' + esc(String(src.avaliacao_id || 0)) + '"'
-              + ' data-aluno-id="' + esc(String(aluno.aluno_id || 0)) + '"'
-              + ' data-turma-id="' + esc(String(aluno.turma_id || 0)) + '"'
-              + ' data-disciplina="' + esc(disciplina || '') + '">Abrir correção</button></td>'
-              + '</tr>';
-          }).join('')
-          + '</tbody></table></div>'
-        : '<div class="small text-secondary">Nenhuma avaliação corrigida encontrada para este bimestre neste componente curricular.</div>';
 
       var lancamentos = (state.data && Array.isArray(state.data.entries) ? state.data.entries : []).filter(function (entry) {
         var sameAluno = Number(entry && entry.aluno_id ? entry.aluno_id : 0) === Number(aluno.aluno_id || 0);
@@ -1135,7 +1202,7 @@
 
       var lancamentosHtml = lancamentos.length
         ? '<div class="table-responsive"><table class="table table-sm table-bordered mb-0">'
-          + '<thead><tr><th>Data</th><th>Título</th><th>Categoria</th><th class="text-center">Nota</th><th class="text-center">Ações</th></tr></thead><tbody>'
+          + '<thead><tr><th>Data</th><th>Título</th><th>Categoria</th><th class="text-center">Ciclo</th><th class="text-center">Nota</th><th class="text-center">Ações</th></tr></thead><tbody>'
           + lancamentos.map(function (entry) {
             var recordId = String(entry && entry.id ? entry.id : '').trim();
             var highlightClass = (highlightedRecordId !== '' && recordId === highlightedRecordId)
@@ -1152,6 +1219,7 @@
               + '<td>' + esc(fmtDate(entry.data_referencia || '')) + '</td>'
               + '<td>' + esc(entry.titulo || '-') + '</td>'
               + '<td>' + esc(entry.categoria_label || entry.categoria || '-') + '</td>'
+              + '<td class="text-center small text-secondary">' + esc(resolveEntryCycleLabel(entry)) + '</td>'
               + '<td class="text-center">' + esc(fmtScore(entry.nota, entry.nota_maxima)) + '</td>'
               + '<td class="text-center">' + actionsHtml + '</td>'
               + '</tr>';
@@ -1164,24 +1232,40 @@
         + '  <div><strong>Estudante:</strong> ' + esc(aluno.aluno_nome || '-') + '</div>'
         + '  <div><strong>Turma:</strong> ' + esc(aluno.turma_nome || '-') + '</div>'
         + '  <div><strong>Componente Curricular:</strong> ' + esc(disciplina || '-') + '</div>'
-        + '  <div class="small text-secondary mt-1">Fórmula aplicada: ' + esc(formula) + '</div>'
         + seletorBimestreHtml
-        + '<div class="small text-secondary mt-1">As notas manuais são atualizadas pelo botão Novo lançamento.</div>'
         + '<div class="mt-2">' + novoLancamentoBtn + '</div>'
         + '</div>'
+        + '<div class="mb-2 fw-semibold">1º ciclo</div>'
         + '<div class="table-responsive mb-3"><table class="table table-sm table-bordered mb-0">'
         + '<thead><tr><th>Componente</th><th class="text-center">Valor</th><th class="text-center">Observação</th></tr></thead><tbody>'
-        + '<tr><td>Avaliação (automática)</td><td class="text-center fw-semibold">' + esc(fmtNota(avaliacaoValor)) + '</td><td class="text-center small text-secondary">Ligado às correções</td></tr>'
-        + '<tr><td>Subjetiva</td><td class="text-center">' + inputSubjetiva + '</td><td class="text-center small text-secondary">Componente manual</td></tr>'
+        + '<tr><td>Blocos do 1º ciclo</td><td class="text-center fw-semibold">' + esc(fmtNota(avaliacaoCiclo1Valor)) + '</td><td class="text-center small text-secondary">Avaliações automáticas do 1º ciclo</td></tr>'
+        + '<tr><td>Subjetiva do 1º ciclo</td><td class="text-center">' + inputSubjetivaCiclo1 + '</td><td class="text-center small text-secondary">Componente manual</td></tr>'
         + (permiteProdTextual
-          ? '<tr><td>Produção Textual</td><td class="text-center">' + inputProd + '</td><td class="text-center small text-secondary">Somente em Língua Portuguesa</td></tr>'
+          ? '<tr><td>Produção textual</td><td class="text-center">' + inputProd + '</td><td class="text-center small text-secondary">Somente em Língua Portuguesa</td></tr>'
           : '')
-        + '<tr><td>Média</td><td class="text-center fw-bold">' + esc(fmtNota(mediaValor)) + '</td><td class="text-center small text-secondary">Calculada automaticamente</td></tr>'
-        + '<tr><td>Recuperação</td><td class="text-center">' + inputRecuperacao + '</td><td class="text-center small text-secondary">Componente manual</td></tr>'
-        + '<tr><td>Final</td><td class="text-center fw-bold">' + esc(fmtNota(finalValor)) + '</td><td class="text-center"><span class="badge ' + profBadgeClass(d.proficiencia) + '">' + esc(d.proficiencia || '-') + '</span></td></tr>'
+        + '<tr><td>Resultado do 1º ciclo</td><td class="text-center fw-bold">' + esc(fmtNota(ciclo1Valor)) + '</td><td class="text-center small text-secondary">Calculado automaticamente</td></tr>'
         + '</tbody></table></div>'
-        + '<div class="mb-2 fw-semibold">Avaliações que compõem a nota automática</div>'
-        + '<div class="mb-3">' + fontesHtml + '</div>'
+        + '<div class="mb-2 fw-semibold">2º ciclo</div>'
+        + '<div class="table-responsive mb-3"><table class="table table-sm table-bordered mb-0">'
+        + '<thead><tr><th>Componente</th><th class="text-center">Valor</th><th class="text-center">Observação</th></tr></thead><tbody>'
+        + '<tr><td>Blocos do 2º ciclo</td><td class="text-center fw-semibold">' + esc(fmtNota(avaliacaoCiclo2Valor)) + '</td><td class="text-center small text-secondary">Avaliações automáticas do 2º ciclo</td></tr>'
+        + '<tr><td>Subjetiva do 2º ciclo</td><td class="text-center">' + inputSubjetivaCiclo2 + '</td><td class="text-center small text-secondary">Componente manual</td></tr>'
+        + '<tr><td>Simulado</td><td class="text-center">' + esc(fmtNota(simuladoValor)) + '</td><td class="text-center small text-secondary">Componente automático do 2º ciclo</td></tr>'
+        + '<tr><td>Resultado do 2º ciclo</td><td class="text-center fw-bold">' + esc(fmtNota(ciclo2Valor)) + '</td><td class="text-center small text-secondary">Calculado automaticamente</td></tr>'
+        + '</tbody></table></div>'
+        + '<div class="mb-2 fw-semibold">Fechamento bimestral</div>'
+        + '<div class="table-responsive mb-3"><table class="table table-sm table-bordered mb-0">'
+        + '<thead><tr><th>Componente</th><th class="text-center">Valor</th><th class="text-center">Observação</th></tr></thead><tbody>'
+        + '<tr><td>Média dos ciclos</td><td class="text-center fw-bold">' + esc(fmtNota(mediaValor)) + '</td><td class="text-center small text-secondary">(1º ciclo + 2º ciclo) / 2</td></tr>'
+        + '<tr><td>Recuperação</td><td class="text-center">' + inputRecuperacao + '</td><td class="text-center small text-secondary">Ajuste adicional quando houver lançamento</td></tr>'
+        + '<tr><td>Nota bimestral</td><td class="text-center fw-bold">' + esc(fmtNota(finalValor)) + '</td><td class="text-center"><span class="badge ' + profBadgeClass(proficienciaFinal) + '">' + esc(proficienciaFinal || '-') + '</span></td></tr>'
+        + '</tbody></table></div>'
+        + '<div class="mb-2 fw-semibold">Avaliações automáticas do 1º ciclo</div>'
+        + '<div class="mb-3">' + renderFontesTable(fontesCiclo1, 'Nenhuma avaliação corrigida encontrada para o 1º ciclo neste componente curricular.') + '</div>'
+        + '<div class="mb-2 fw-semibold">Avaliações automáticas do 2º ciclo</div>'
+        + '<div class="mb-3">' + renderFontesTable(fontesCiclo2, 'Nenhuma avaliação corrigida encontrada para o 2º ciclo neste componente curricular.') + '</div>'
+        + '<div class="mb-2 fw-semibold">Simulados do 2º ciclo</div>'
+        + '<div class="mb-3">' + renderFontesTable(fontesSimulado, 'Nenhum simulado corrigido encontrado para o 2º ciclo neste componente curricular.') + '</div>'
         + '<div class="mb-2 fw-semibold">Lançamentos vinculados</div>'
         + '<div>' + lancamentosHtml + '</div>';
 

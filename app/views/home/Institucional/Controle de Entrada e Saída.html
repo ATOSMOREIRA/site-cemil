@@ -1247,6 +1247,12 @@
 						<i class="las la-chart-bar me-1"></i>Dashboard &amp; Relatórios
 					</button>
 				</li>
+				<li class="nav-item" role="presentation">
+					<button class="nav-link" id="tab-auditoria-btn" data-bs-toggle="tab" data-bs-target="#tabAuditoria"
+						type="button" role="tab">
+						<i class="las la-clipboard-list me-1"></i>Auditoria
+					</button>
+				</li>
 			</ul>
 
 			<div class="tab-content" id="refTabsContent">
@@ -1723,6 +1729,80 @@
 					</div>
 
 				</div><!-- /tabDash -->
+
+				<!-- ========================================
+		     ABA 7 — Auditoria
+		     ======================================== -->
+				<div class="tab-pane fade" id="tabAuditoria" role="tabpanel">
+					<div class="card border-0 shadow-sm mb-3 no-print">
+						<div class="card-body">
+							<div class="row g-2 align-items-end">
+								<div class="col-sm-auto">
+									<label class="form-label form-label-sm mb-1">Período</label>
+									<div class="d-flex gap-2">
+										<input type="date" id="auditDataInicio" class="form-control form-control-sm" style="max-width:150px">
+										<span class="align-self-center text-muted">até</span>
+										<input type="date" id="auditDataFim" class="form-control form-control-sm" style="max-width:150px">
+									</div>
+								</div>
+								<div class="col-sm-auto">
+									<label class="form-label form-label-sm mb-1" for="auditEntidade">Seção</label>
+									<select id="auditEntidade" class="form-select form-select-sm">
+										<option value="">Todas</option>
+										<option value="registro">Registros</option>
+										<option value="liberacao">Liberações</option>
+										<option value="tipo_movimentacao">Tipos de movimentação</option>
+									</select>
+								</div>
+								<div class="col-sm-auto">
+									<label class="form-label form-label-sm mb-1" for="auditAcao">Ação</label>
+									<select id="auditAcao" class="form-select form-select-sm">
+										<option value="">Todas</option>
+										<option value="inclusao">Inclusão</option>
+										<option value="alteracao">Alteração</option>
+										<option value="exclusao">Exclusão</option>
+										<option value="cancelamento">Cancelamento</option>
+										<option value="consumo">Consumo</option>
+										<option value="automacao">Automação</option>
+									</select>
+								</div>
+								<div class="col-sm-4 col-lg-3 ms-sm-auto">
+									<label class="form-label form-label-sm mb-1" for="auditBusca">Busca</label>
+									<div class="input-group input-group-sm">
+										<span class="input-group-text"><i class="las la-search"></i></span>
+										<input type="text" id="auditBusca" class="form-control" maxlength="120" placeholder="Resumo, usuário, estudante..." autocomplete="off">
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div class="card border-0 shadow-sm">
+						<div class="card-header bg-white border-0 fw-semibold d-flex align-items-center justify-content-between flex-wrap gap-2">
+							<span>Trilha de auditoria <span id="auditTotal" class="badge bg-danger ms-1">0</span></span>
+							<div id="auditStatus" class="small text-muted">Abra a aba para carregar os eventos auditados.</div>
+						</div>
+						<div class="table-scroll-only">
+							<table class="table table-sm mb-0">
+								<thead>
+									<tr>
+										<th>Data/Hora</th>
+										<th>Seção</th>
+										<th>Ação</th>
+										<th>Resumo</th>
+										<th>Usuário</th>
+										<th>Estudante</th>
+									</tr>
+								</thead>
+								<tbody id="auditBody">
+									<tr>
+										<td colspan="6" class="muted-empty">Abra a aba para carregar os eventos auditados.</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</div><!-- /tabAuditoria -->
 			</div><!-- /tab-content -->
 		</div><!-- /ref-wrap -->
 
@@ -2020,6 +2100,9 @@
 				gerencFiltroSelecoes: { tipos: [], turmas: [] },
 				gerencFiltrosAplicados: null,
 				gerencBusca: '',
+				auditRegistros: [],
+				auditFiltrosAplicados: null,
+				auditBusca: '',
 				liberacoesBusca: '',
 				liberacoesFiltroSelecoes: { status: [] },
 				gerencSelecionados: [],
@@ -2239,6 +2322,14 @@
 				return Number(item && item.saida_automatica ? item.saida_automatica : 0) === 1;
 			}
 
+			function getRegistroResponsavelLabel(item) {
+				if (isRegistroSaidaAutomatica(item)) {
+					return 'Sistema';
+				}
+				var usuarioNome = String(item && item.usuario_nome ? item.usuario_nome : '').trim();
+				return usuarioNome || 'Não informado';
+			}
+
 			function getRegistroTipoLabel(item) {
 				if (!item) return '';
 				if (isRegistroSaidaAutomatica(item)) {
@@ -2251,6 +2342,43 @@
 					nome: item.tipo_nome || item.refeicao_nome || item.nome || '',
 					natureza: item.natureza || 'entrada',
 				});
+			}
+
+			function getAuditEntidadeMeta(entidade) {
+				var key = String(entidade || '').toLowerCase();
+				if (key === 'registro') {
+					return { label: 'Registros', badge: 'bg-primary' };
+				}
+				if (key === 'liberacao') {
+					return { label: 'Liberações', badge: 'bg-warning text-dark' };
+				}
+				if (key === 'tipo_movimentacao') {
+					return { label: 'Tipos', badge: 'bg-secondary' };
+				}
+				return { label: 'Outro', badge: 'bg-light text-dark border' };
+			}
+
+			function getAuditAcaoMeta(acao) {
+				var key = String(acao || '').toLowerCase();
+				if (key === 'inclusao') {
+					return { label: 'Inclusão', badge: 'bg-success' };
+				}
+				if (key === 'alteracao') {
+					return { label: 'Alteração', badge: 'bg-primary' };
+				}
+				if (key === 'exclusao') {
+					return { label: 'Exclusão', badge: 'bg-danger' };
+				}
+				if (key === 'cancelamento') {
+					return { label: 'Cancelamento', badge: 'bg-dark' };
+				}
+				if (key === 'consumo') {
+					return { label: 'Consumo', badge: 'bg-info text-dark' };
+				}
+				if (key === 'automacao') {
+					return { label: 'Automação', badge: 'bg-secondary' };
+				}
+				return { label: key || 'Outro', badge: 'bg-light text-dark border' };
 			}
 
 			function obterDiaSemana(dataIso) {
@@ -2460,6 +2588,29 @@
 				return filtros;
 			}
 
+			function construirUrlAuditoria(filtros) {
+				var entidade = String(filtros.entidade || '').trim();
+				var acao = String(filtros.acao || '').trim();
+				var busca = String(filtros.busca || '').trim();
+				return API_BASE + '/auditoria?data_inicio=' + encodeURIComponent(filtros.ini) +
+					'&data_fim=' + encodeURIComponent(filtros.fim) +
+					(entidade ? '&entidades=' + encodeURIComponent(entidade) : '') +
+					(acao ? '&acoes=' + encodeURIComponent(acao) : '') +
+					(busca ? '&busca=' + encodeURIComponent(busca) : '');
+			}
+
+			function obterFiltrosAuditoriaDom() {
+				var filtros = {
+					ini: document.getElementById('auditDataInicio').value,
+					fim: document.getElementById('auditDataFim').value,
+					entidade: document.getElementById('auditEntidade').value,
+					acao: document.getElementById('auditAcao').value,
+					busca: String(state.auditBusca || '').trim(),
+				};
+				filtros.url = construirUrlAuditoria(filtros);
+				return filtros;
+			}
+
 			function atualizarBotaoLimparFiltroModal() {
 				var btn = document.getElementById('btnLimparFiltroSelecao');
 				var config = state.filtroModalConfig || {};
@@ -2602,6 +2753,14 @@
 						silent: true,
 						preservePage: true,
 						filtros: state.gerencFiltrosAplicados,
+						persistir: false,
+					});
+				}
+
+				if (abaAtiva === 'tab-auditoria-btn' && state.auditFiltrosAplicados) {
+					filtrarAuditoria({
+						silent: true,
+						filtros: state.auditFiltrosAplicados,
 						persistir: false,
 					});
 				}
@@ -3062,13 +3221,14 @@
 					'<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">' +
 					'<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/line-awesome@1.3.0/dist/line-awesome/css/line-awesome.min.css">' +
 					'<style>' +
+					'@page{size:auto;margin:12mm;}' +
 					':root{color-scheme:light only;}' +
 					'*{-webkit-print-color-adjust:exact;print-color-adjust:exact;box-sizing:border-box;}' +
 					'body{margin:0;padding:24px;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background:#f8fafc;color:#1f2937;}' +
 					'.print-head{margin-bottom:18px;padding-bottom:14px;border-bottom:2px solid #e5e7eb;}' +
 					'.print-head h1{margin:0 0 4px;font-size:24px;color:#7f1d1d;}' +
 					'.print-head p{margin:0;font-size:13px;color:#6b7280;}' +
-					'.card{border:none;border-radius:1rem;overflow:hidden;background:#fff;box-shadow:0 10px 24px rgba(15,23,42,.08);page-break-inside:avoid;}' +
+					'.card{border:none;border-radius:1rem;overflow:visible;background:#fff;box-shadow:0 10px 24px rgba(15,23,42,.08);page-break-inside:avoid;break-inside:avoid;}' +
 					'.card-body{padding:20px;}' +
 					'.dashboard-hero-card{border:1px solid #fed7aa;border-top:6px solid #c2410c;border-radius:1.1rem;background:linear-gradient(180deg,#fff7ed 0%,#ffffff 100%);box-shadow:none;color:#7c2d12;}' +
 					'.dashboard-hero-card .card-body{padding:18px 20px;}' +
@@ -3106,8 +3266,8 @@
 					'.dashboard-chart-meta{display:flex;justify-content:space-between;gap:.75rem;flex-wrap:wrap;margin-bottom:.85rem;}' +
 					'.dashboard-chart-badge{display:inline-flex;align-items:center;gap:.35rem;padding:.35rem .65rem;border-radius:999px;background:rgba(249,115,22,.12);color:#9a3412;font-size:.76rem;font-weight:700;}' +
 					'.dashboard-chart-peak{font-size:.82rem;color:#7c2d12;}' +
-					'.dashboard-chart-wrap{width:100%;overflow-x:auto;}' +
-					'.dashboard-chart-svg{width:100%;height:auto;display:block;min-height:320px;}' +
+					'.dashboard-chart-wrap{width:100%;overflow:visible;}' +
+					'.dashboard-chart-svg{width:100%;max-width:100%;height:auto;display:block;min-height:320px;}' +
 					'.dashboard-chart-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.75rem;margin-top:.95rem;}' +
 					'.dashboard-chart-summary-card{padding:.75rem .85rem;border-radius:.9rem;background:#fff;border:1px solid rgba(15,23,42,.08);box-shadow:0 8px 20px rgba(15,23,42,.05);}' +
 					'.dashboard-chart-summary-label{font-size:.75rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#9a3412;margin-bottom:.25rem;}' +
@@ -3117,7 +3277,7 @@
 					'.col-12{width:100%;}' +
 					'.col-6,.col-md-3,.col-md-6,.col-xl-3,.col-xl-5,.col-xl-6,.col-xl-7{flex:1 1 240px;min-width:240px;}' +
 					'.d-flex{display:flex;}.flex-column{flex-direction:column;}.gap-3{gap:1rem;}.h-100{height:100%;}.mb-3{margin-bottom:1rem;}.mt-3{margin-top:1rem;}.text-center{text-align:center;}.justify-content-center{justify-content:center;}.justify-content-between{justify-content:space-between;}.align-items-center{align-items:center;}.flex-wrap{flex-wrap:wrap;}' +
-					'@media print{body{padding:18px;background:#fff;} .row{break-inside:avoid;} .card,.dashboard-distribution-card,.dashboard-chart-shell,.dashboard-insight-item,.dashboard-chart-summary-card{break-inside:avoid;}}' +
+					'@media print{html,body{width:auto;height:auto;overflow:visible !important;} body{padding:0;background:#fff;} #relPainelWrap{overflow:visible !important;} .row{display:block;margin:0;break-inside:auto;} .row > [class*="col-"]{display:block;width:100% !important;max-width:100% !important;min-width:0 !important;flex:none !important;padding:0 !important;margin-bottom:12px !important;} .card,.dashboard-distribution-card,.dashboard-chart-shell,.dashboard-insight-item,.dashboard-chart-summary-card{break-inside:avoid;page-break-inside:avoid;box-shadow:none;} .dashboard-chart-wrap{overflow:visible !important;} .dashboard-chart-svg{min-height:0;}}' +
 					'</style></head><body>' +
 					'<div class="print-head"><h1>Dashboard de Entrada e Saída</h1><p>Relatório gerado em ' + esc(new Date().toLocaleString('pt-BR')) + '</p></div>' +
 					painel.innerHTML +
@@ -3237,7 +3397,7 @@
 							var houveMudanca = state.pollingAssinatura !== '' && state.pollingAssinatura !== proximaAssinatura;
 							state.pollingAssinatura = proximaAssinatura;
 							applyPollData(res);
-							if (houveMudanca || obterAbaAtivaId() === 'tab-dash-btn' || obterAbaAtivaId() === 'tab-gerenc-btn') {
+							if (houveMudanca || obterAbaAtivaId() === 'tab-dash-btn' || obterAbaAtivaId() === 'tab-gerenc-btn' || obterAbaAtivaId() === 'tab-auditoria-btn') {
 								sincronizarSecoesTempoReal();
 							}
 						}
@@ -3263,11 +3423,12 @@
 				}
 				var html = '';
 				ultimas.forEach(function (r) {
+					var responsavelLabel = getRegistroResponsavelLabel(r);
 					html += '<tr>' +
 						'<td>' + esc(formatHora(r.horario)) + '</td>' +
 						'<td class="fw-semibold">' + esc(r.aluno_nome) + '</td>' +
 						'<td>' + esc(r.turma || '\u2014') + '</td>' +
-						'<td>' + esc(getRegistroTipoLabel(r)) + '</td>' +
+						'<td>' + esc(getRegistroTipoLabel(r)) + '<div class="small text-muted">Registrado por: ' + esc(responsavelLabel) + '</div></td>' +
 						'</tr>';
 				});
 				tbody.innerHTML = html;
@@ -3287,7 +3448,7 @@
 			function init() {
 				// datas padrão do relatório e gerenciamento
 				var today = dateInputValueLocal(new Date());
-				['relDataInicio', 'relDataFim', 'gerencDataInicio', 'gerencDataFim'].forEach(function (id) {
+				['relDataInicio', 'relDataFim', 'gerencDataInicio', 'gerencDataFim', 'auditDataInicio', 'auditDataFim'].forEach(function (id) {
 					var el = document.getElementById(id);
 					if (el) el.value = today;
 				});
@@ -4026,13 +4187,14 @@
 				var html = '';
 				paginaRegistros.forEach(function (r) {
 					var tipoLabel = getRegistroTipoLabel(r);
+					var responsavelLabel = getRegistroResponsavelLabel(r);
 					html += '<tr data-id="' + r.id + '">' +
 						'<td><input type="checkbox" class="form-check-input mt-0 gerenc-check" value="' + r.id + '" ' + (selecionadosMap[String(r.id)] ? 'checked ' : '') + 'onchange="_atualizarBotaoExcluirSelecionados()"></td>' +
 						'<td>' + esc(formatData(r.data)) + '</td>' +
 						'<td>' + esc(formatHora(r.horario)) + '</td>' +
 						'<td class="fw-semibold">' + esc(r.aluno_nome) + '</td>' +
 						'<td>' + esc(r.turma) + '</td>' +
-						'<td><span class="tipo-badge" style="background:' + esc(r.refeicao_cor || '#ccc') + '"></span>' + esc(tipoLabel) + '</td>' +
+						'<td><span class="tipo-badge" style="background:' + esc(r.refeicao_cor || '#ccc') + '"></span>' + esc(tipoLabel) + '<div class="small text-muted">Registrado por: ' + esc(responsavelLabel) + '</div></td>' +
 						'<td class="text-end">' +
 						'<button class="btn btn-outline-primary btn-sm me-1" onclick="gerencEditar(' + r.id + ')" title="Editar"><i class="las la-pen"></i></button>' +
 						'<button class="btn btn-outline-danger btn-sm" onclick="gerencExcluir(' + r.id + ',\'' + esc(r.aluno_nome).replace(/'/g, '') + '\')" title="Excluir"><i class="las la-trash"></i></button>' +
@@ -4080,6 +4242,81 @@
 					}
 					state.gerencRegistros = Array.isArray(res.registros) ? res.registros : [];
 					renderGerencTabela();
+				}, { silent: silent });
+			}
+
+			function renderAuditoriaTabela() {
+				var tbody = document.getElementById('auditBody');
+				var totalEl = document.getElementById('auditTotal');
+				var statusEl = document.getElementById('auditStatus');
+				var registros = Array.isArray(state.auditRegistros) ? state.auditRegistros : [];
+
+				if (totalEl) {
+					totalEl.textContent = formatNumero(registros.length);
+				}
+
+				if (!tbody) {
+					return;
+				}
+
+				if (!registros.length) {
+					tbody.innerHTML = '<tr><td colspan="6" class="muted-empty">Nenhum evento de auditoria encontrado para os filtros informados.</td></tr>';
+					if (statusEl) {
+						statusEl.textContent = 'Sem eventos no período selecionado.';
+					}
+					return;
+				}
+
+				if (statusEl) {
+					statusEl.textContent = formatNumero(registros.length) + ' evento(s) localizados na trilha de auditoria.';
+				}
+
+				var html = '';
+				registros.forEach(function (item) {
+					var entidadeMeta = getAuditEntidadeMeta(item.entidade);
+					var acaoMeta = getAuditAcaoMeta(item.acao);
+					var usuarioNome = String(item.usuario_nome || '').trim() || 'Sistema';
+					var alunoNome = String(item.aluno_nome || '').trim() || 'Não informado';
+					html += '<tr>' +
+						'<td>' + esc(formatDataHora(item.created_at)) + '</td>' +
+						'<td><span class="badge ' + esc(entidadeMeta.badge) + '">' + esc(entidadeMeta.label) + '</span></td>' +
+						'<td><span class="badge ' + esc(acaoMeta.badge) + '">' + esc(acaoMeta.label) + '</span></td>' +
+						'<td>' + esc(item.resumo || '-') + '</td>' +
+						'<td>' + esc(usuarioNome) + '</td>' +
+						'<td>' + esc(alunoNome) + '</td>' +
+						'</tr>';
+				});
+
+				tbody.innerHTML = html;
+			}
+
+			function filtrarAuditoria(options) {
+				options = options || {};
+				var silent = options.silent === true;
+				var filtros = cloneObject(options.filtros || obterFiltrosAuditoriaDom());
+				var url = filtros.url || construirUrlAuditoria(filtros);
+
+				filtros.url = url;
+				if (options.persistir !== false) {
+					state.auditFiltrosAplicados = cloneObject(filtros);
+				}
+
+				if (!silent) {
+					document.getElementById('auditStatus').textContent = 'Carregando trilha de auditoria...';
+					document.getElementById('auditBody').innerHTML = '<tr><td colspan="6" class="muted-empty"><span class="spinner-border spinner-border-sm me-1"></span>Carregando auditoria...</td></tr>';
+				}
+
+				get(url, function (res) {
+					if (!res.ok) {
+						if (!silent) {
+							showStatus(res.message || 'Erro ao carregar auditoria.', 'error');
+							document.getElementById('auditStatus').textContent = 'Não foi possível carregar a auditoria agora.';
+						}
+						return;
+					}
+
+					state.auditRegistros = Array.isArray(res.auditoria) ? res.auditoria : [];
+					renderAuditoriaTabela();
 				}, { silent: silent });
 			}
 
@@ -4649,6 +4886,29 @@
 						}
 					});
 				});
+				['auditDataInicio', 'auditDataFim'].forEach(function (id) {
+					document.getElementById(id).addEventListener('change', function () {
+						if (obterAbaAtivaId() === 'tab-auditoria-btn') {
+							filtrarAuditoria();
+						}
+					});
+				});
+				document.getElementById('auditEntidade').addEventListener('change', function () {
+					if (obterAbaAtivaId() === 'tab-auditoria-btn') {
+						filtrarAuditoria();
+					}
+				});
+				document.getElementById('auditAcao').addEventListener('change', function () {
+					if (obterAbaAtivaId() === 'tab-auditoria-btn') {
+						filtrarAuditoria();
+					}
+				});
+				document.getElementById('auditBusca').addEventListener('input', function () {
+					state.auditBusca = this.value || '';
+					if (obterAbaAtivaId() === 'tab-auditoria-btn') {
+						filtrarAuditoria();
+					}
+				});
 				document.querySelectorAll('.filter-trigger-btn').forEach(function (btn) {
 					btn.addEventListener('click', function () {
 						state.filtroModalConfig = {
@@ -4727,6 +4987,10 @@
 				// Ao abrir aba de gerenciamento, filtrar
 				document.getElementById('tab-gerenc-btn').addEventListener('shown.bs.tab', function () {
 					filtrarGerenc();
+				});
+
+				document.getElementById('tab-auditoria-btn').addEventListener('shown.bs.tab', function () {
+					filtrarAuditoria();
 				});
 
 				// Ao abrir aba de liberações, sincronizar lista do dia

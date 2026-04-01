@@ -125,6 +125,13 @@ class AlunoDesempenhoService
             $questionMeta = $this->extractQuestionMeta($avaliacao);
             $correcoes    = $this->decodeJsonArray($cor['correcoes_json'] ?? null);
             $alunoId      = (int) ($cor['aluno_id'] ?? 0);
+            $aplicacao = trim((string) ($avaliacao['aplicacao'] ?? ''));
+            $aplicacaoTs = $aplicacao !== '' ? strtotime($aplicacao) : false;
+            $simuladoDisciplinas = [];
+            $simuladoPontuacao = 0.0;
+            $simuladoPontuacaoTotal = 0.0;
+            $simuladoAcertos = 0;
+            $simuladoTotalQuestoes = 0;
 
             foreach ($correcoes as $item) {
                 if (!is_array($item)) continue;
@@ -151,24 +158,24 @@ class AlunoDesempenhoService
                 } elseif ($earnedPoints > $maxPoints) {
                     $earnedPoints = $maxPoints;
                 }
-                $aplicacao = trim((string) ($avaliacao['aplicacao'] ?? ''));
-                $aplicacaoTs = $aplicacao !== '' ? strtotime($aplicacao) : false;
+
+                if (!$avaliacaoIsRecuperacao && $avaliacaoCiclo === 2 && $avaliacaoIsSimulado) {
+                    $simuladoDisciplinas[$disciplina] = true;
+                    $simuladoPontuacao += $earnedPoints;
+                    $simuladoPontuacaoTotal += $maxPoints;
+                    $simuladoTotalQuestoes++;
+                    $simuladoAcertos += $isCorrect ? 1 : 0;
+                }
 
                 $key = $alunoId . '|' . $disciplina;
                 if (!$avaliacaoIsRecuperacao) {
-                    if ($avaliacaoCiclo === 2 && $avaliacaoIsSimulado) {
-                        if (!isset($perStudentDisciplineSimuladoGrades[$key])) {
-                            $perStudentDisciplineSimuladoGrades[$key] = ['corretas' => 0, 'total' => 0];
-                        }
-                        $perStudentDisciplineSimuladoGrades[$key]['total']++;
-                        $perStudentDisciplineSimuladoGrades[$key]['corretas'] += $isCorrect ? 1 : 0;
-                    } elseif ($avaliacaoCiclo === 2) {
+                    if ($avaliacaoCiclo === 2 && !$avaliacaoIsSimulado) {
                         if (!isset($perStudentDisciplineCycle2Grades[$key])) {
                             $perStudentDisciplineCycle2Grades[$key] = ['corretas' => 0, 'total' => 0];
                         }
                         $perStudentDisciplineCycle2Grades[$key]['total']++;
                         $perStudentDisciplineCycle2Grades[$key]['corretas'] += $isCorrect ? 1 : 0;
-                    } else {
+                    } elseif ($avaliacaoCiclo !== 2) {
                         if (!isset($perStudentDisciplineGrades[$key])) {
                             $perStudentDisciplineGrades[$key] = ['corretas' => 0, 'total' => 0];
                         }
@@ -196,18 +203,20 @@ class AlunoDesempenhoService
                             'adapted_grade'  => null,
                         ];
                     }
-                    $adaptedGrade = $this->extractAdaptedGradeFromCorrectionItem($item, $earnedPoints, $maxPoints);
-                    $perStudentDisciplineSources[$key][$avaliacaoId]['total']++;
-                    $perStudentDisciplineSources[$key][$avaliacaoId]['corretas'] += $isCorrect ? 1 : 0;
-                    $perStudentDisciplineSources[$key][$avaliacaoId]['pontuacao'] += $earnedPoints;
-                    $perStudentDisciplineSources[$key][$avaliacaoId]['pontuacao_total'] += $maxPoints;
-                    if ($adaptedGrade === null) {
-                        $perStudentDisciplineSources[$key][$avaliacaoId]['is_adapted'] = false;
-                    } elseif ($perStudentDisciplineSources[$key][$avaliacaoId]['adapted_grade'] === null) {
-                        $perStudentDisciplineSources[$key][$avaliacaoId]['adapted_grade'] = $adaptedGrade;
-                    } elseif (abs((float) $perStudentDisciplineSources[$key][$avaliacaoId]['adapted_grade'] - $adaptedGrade) > 0.02) {
-                        $perStudentDisciplineSources[$key][$avaliacaoId]['is_adapted'] = false;
-                        $perStudentDisciplineSources[$key][$avaliacaoId]['adapted_grade'] = null;
+                    if (!($avaliacaoCiclo === 2 && $avaliacaoIsSimulado)) {
+                        $adaptedGrade = $this->extractAdaptedGradeFromCorrectionItem($item, $earnedPoints, $maxPoints);
+                        $perStudentDisciplineSources[$key][$avaliacaoId]['total']++;
+                        $perStudentDisciplineSources[$key][$avaliacaoId]['corretas'] += $isCorrect ? 1 : 0;
+                        $perStudentDisciplineSources[$key][$avaliacaoId]['pontuacao'] += $earnedPoints;
+                        $perStudentDisciplineSources[$key][$avaliacaoId]['pontuacao_total'] += $maxPoints;
+                        if ($adaptedGrade === null) {
+                            $perStudentDisciplineSources[$key][$avaliacaoId]['is_adapted'] = false;
+                        } elseif ($perStudentDisciplineSources[$key][$avaliacaoId]['adapted_grade'] === null) {
+                            $perStudentDisciplineSources[$key][$avaliacaoId]['adapted_grade'] = $adaptedGrade;
+                        } elseif (abs((float) $perStudentDisciplineSources[$key][$avaliacaoId]['adapted_grade'] - $adaptedGrade) > 0.02) {
+                            $perStudentDisciplineSources[$key][$avaliacaoId]['is_adapted'] = false;
+                            $perStudentDisciplineSources[$key][$avaliacaoId]['adapted_grade'] = null;
+                        }
                     }
                 } else {
                     if (!isset($perStudentDisciplineRecoverySources[$key])) {
@@ -249,6 +258,37 @@ class AlunoDesempenhoService
                 $diagnosticoMap[$dKey]['corretas'] += $isCorrect ? 1 : 0;
                 $diagnosticoMap[$dKey]['pontuacao'] += $earnedPoints;
                 $diagnosticoMap[$dKey]['pontuacao_total'] += $maxPoints;
+            }
+
+            if (!$avaliacaoIsRecuperacao && $avaliacaoCiclo === 2 && $avaliacaoIsSimulado && $simuladoDisciplinas !== []) {
+                foreach (array_keys($simuladoDisciplinas) as $disciplinaSimulado) {
+                    $gradeKey = $alunoId . '|' . $disciplinaSimulado;
+
+                    if (!isset($perStudentDisciplineSimuladoGrades[$gradeKey])) {
+                        $perStudentDisciplineSimuladoGrades[$gradeKey] = ['corretas' => 0, 'total' => 0];
+                    }
+                    $perStudentDisciplineSimuladoGrades[$gradeKey]['corretas'] += $simuladoPontuacao;
+                    $perStudentDisciplineSimuladoGrades[$gradeKey]['total'] += $simuladoPontuacaoTotal;
+
+                    if (!isset($perStudentDisciplineSources[$gradeKey])) {
+                        $perStudentDisciplineSources[$gradeKey] = [];
+                    }
+                    $perStudentDisciplineSources[$gradeKey][$avaliacaoId] = [
+                        'avaliacao_id'   => $avaliacaoId,
+                        'avaliacao_nome' => trim((string) ($avaliacao['nome'] ?? 'Avaliação')),
+                        'bimestre'       => (int) ($avaliacao['bimestre'] ?? 0),
+                        'ciclo'          => $avaliacaoCiclo,
+                        'is_simulado'    => true,
+                        'ano_letivo'     => $aplicacaoTs !== false ? (int) date('Y', (int) $aplicacaoTs) : null,
+                        'aplicacao'      => $aplicacao,
+                        'corretas'       => $simuladoAcertos,
+                        'total'          => $simuladoTotalQuestoes,
+                        'pontuacao'      => $simuladoPontuacao,
+                        'pontuacao_total'=> $simuladoPontuacaoTotal,
+                        'is_adapted'     => false,
+                        'adapted_grade'  => null,
+                    ];
+                }
             }
         }
 

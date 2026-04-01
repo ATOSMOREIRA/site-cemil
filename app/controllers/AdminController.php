@@ -2124,6 +2124,7 @@ class AdminController extends HomeController
                 $this->redirect($this->getAvaliacoesRedirectPath());
             }
 
+            $decodedGabarito = $this->normalizeAvaliacaoGabaritoForSimulado($decodedGabarito, $isSimulado);
             $gabaritoConfig = json_encode($decodedGabarito, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         }
 
@@ -2152,6 +2153,12 @@ class AdminController extends HomeController
         }
 
         $isNew = $id <= 0;
+        $shouldReprocessCorrecoes = !$isNew
+            && ($existing !== null)
+            && (
+                ((int) ($existing['is_simulado'] ?? 0) !== ($isSimulado ? 1 : 0))
+                || trim((string) ($existing['gabarito'] ?? '')) !== trim((string) ($gabaritoConfig ?? ''))
+            );
 
         if ($isNew) {
             $currentAutorId = $this->getCurrentAuthUserId();
@@ -2211,6 +2218,13 @@ class AdminController extends HomeController
             $cleanupAvaliacaoId = $isNew ? null : $id;
             if ($cleanupAvaliacaoId !== null && $cleanupAvaliacaoId > 0) {
                 $this->cleanupAvaliacaoLayoutOrphanFiles($cleanupAvaliacaoId, $decodedGabarito);
+            }
+
+            if ($shouldReprocessCorrecoes) {
+                $savedAvaliacao = $avaliacaoModel->findById($id);
+                if (is_array($savedAvaliacao)) {
+                    $this->reprocessAvaliacaoCorrecoes($savedAvaliacao);
+                }
             }
 
             if ($isAjax) {
@@ -2301,9 +2315,23 @@ class AdminController extends HomeController
             $this->redirect($this->getAvaliacoesRedirectPath());
         }
 
+        if (is_array($decodedGabarito)) {
+            $decodedGabarito = $this->normalizeAvaliacaoGabaritoForSimulado($decodedGabarito, ((int) ($existing['is_simulado'] ?? 0)) === 1);
+            $gabaritoConfig = json_encode($decodedGabarito, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
+
+        $shouldReprocessCorrecoes = trim((string) ($existing['gabarito'] ?? '')) !== trim((string) ($gabaritoConfig ?? ''));
+
         try {
             $avaliacaoModel->updateGabarito($id, $gabaritoConfig);
             $this->cleanupAvaliacaoLayoutOrphanFiles($id, $decodedGabarito);
+
+            if ($shouldReprocessCorrecoes) {
+                $savedAvaliacao = $avaliacaoModel->findById($id);
+                if (is_array($savedAvaliacao)) {
+                    $this->reprocessAvaliacaoCorrecoes($savedAvaliacao);
+                }
+            }
 
             if ($isAjax) {
                 $this->respondJson([
@@ -2911,6 +2939,323 @@ class AdminController extends HomeController
             (int) ($correcao['avaliacao_id'] ?? 0),
             (int) ($correcao['turma_id'] ?? 0)
         );
+    }
+
+    private function normalizeAvaliacaoGabaritoForSimulado(array $decodedGabarito, bool $isSimulado): array
+    {
+        if (!$isSimulado) {
+            return $decodedGabarito;
+        }
+
+        $itens = $decodedGabarito['itens'] ?? null;
+        if (!is_array($itens)) {
+            return $decodedGabarito;
+        }
+
+        foreach ($itens as $index => $item) {
+            $safeItem = is_array($item) ? $item : [];
+            $safeItem['peso'] = 1.0;
+            $itens[$index] = $safeItem;
+        }
+
+        $decodedGabarito['itens'] = array_values($itens);
+        return $decodedGabarito;
+    }
+
+    private function reprocessAvaliacaoCorrecoes(array $avaliacao): void
+    {
+        $avaliacaoId = (int) ($avaliacao['id'] ?? 0);
+        if ($avaliacaoId <= 0) {
+            return;
+        }
+
+        $correcaoModel = new AvaliacaoCorrecaoModel();
+        $correcoes = $correcaoModel->listByAvaliacaoId($avaliacaoId);
+        if ($correcoes === []) {
+            return;
+        }
+
+        foreach ($correcoes as $correcao) {
+            if (!is_array($correcao)) {
+                continue;
+            }
+
+            $correcaoId = (int) ($correcao['id'] ?? 0);
+            if ($correcaoId <= 0) {
+                continue;
+            }
+
+            $status = trim((string) ($correcao['status'] ?? 'corrigida'));
+            if ($status === 'ausente') {
+                continue;
+            }
+
+            $computed = $this->buildAdminCorrecoesSnapshot($avaliacao, $correcao);
+            $correcaoModel->updateById($correcaoId, [
+                'numeracao' => trim((string) ($correcao['numeracao'] ?? '')),
+                'qr_payload' => trim((string) ($correcao['qr_payload'] ?? '')),
+                'respostas_json' => json_encode($computed['respostas'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                'correcoes_json' => json_encode($computed['correcoes'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                'status' => $status,
+                'acertos' => $computed['acertos'],
+                'total_questoes' => $computed['total_questoes'],
+                'pontuacao' => $computed['pontuacao'],
+                'pontuacao_total' => $computed['pontuacao_total'],
+                'percentual' => $computed['percentual'],
+                'corrigido_em' => date('Y-m-d H:i:s'),
+            ]);
+
+            $updatedCorrecao = $correcaoModel->findById($correcaoId);
+            if (is_array($updatedCorrecao)) {
+                $this->syncAlunoDesempenhoFromCorrecao($avaliacao, $updatedCorrecao);
+            }
+        }
+    }
+
+    private function buildAdminCorrecoesSnapshot(array $avaliacao, array $correcao): array
+    {
+        $itens = $this->extractAvaliacaoImportQuestionItems($avaliacao);
+        $respostasOriginais = is_array($correcao['respostas'] ?? null) ? $correcao['respostas'] : [];
+        $correcoesAtuais = is_array($correcao['correcoes'] ?? null) ? $correcao['correcoes'] : [];
+        $adaptedGradesByDiscipline = $this->extractAdminAdaptedDisciplineMap($correcoesAtuais, $itens);
+
+        $normalizedRespostas = [];
+        $computedCorrecoes = [];
+        $acertos = 0;
+        $pontuacao = 0.0;
+        $pontuacaoTotal = 0.0;
+
+        foreach ($itens as $index => $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $questionNumber = $index + 1;
+            $key = (string) $questionNumber;
+            $tipo = $this->normalizeAdminAvaliacaoQuestionType((string) ($item['tipo'] ?? 'multipla'));
+            $peso = max(0.01, round((float) ($item['peso'] ?? 1), 2));
+            $disciplinaId = trim((string) ($item['disciplina'] ?? ''));
+            $disciplinaNome = $this->resolveAdminAvaliacaoDisciplinaLabel($disciplinaId);
+            $disciplineKey = $this->buildAdminAdaptedDisciplineKey($disciplinaId, $disciplinaNome);
+            $adaptedEntry = $adaptedGradesByDiscipline[$disciplineKey] ?? null;
+            $respostaRaw = $respostasOriginais[$key] ?? null;
+            $correta = trim((string) ($item['correta'] ?? ''));
+            $anulada = (($item['anulada'] ?? false) === true);
+
+            $pontuacaoTotal += $peso;
+
+            if (is_array($adaptedEntry) && isset($adaptedEntry['adaptedGrade']) && is_numeric($adaptedEntry['adaptedGrade'])) {
+                $adaptedGrade = round((float) $adaptedEntry['adaptedGrade'], 2);
+                $adaptedRatio = max(0, min(1, $adaptedGrade / 10));
+                $earned = round($peso * $adaptedRatio, 2);
+                if ($earned >= $peso) {
+                    $acertos++;
+                }
+                $pontuacao += $earned;
+
+                if ($tipo === 'discursiva') {
+                    $normalizedRespostas[$key] = $respostaRaw !== null && $respostaRaw !== '' ? round((float) $respostaRaw, 2) : null;
+                } else {
+                    $selectedRaw = strtoupper(trim((string) ($respostaRaw ?? '')));
+                    $normalizedRespostas[$key] = preg_match('/^[A-Z]$/', $selectedRaw) ? $selectedRaw : null;
+                }
+
+                $computedCorrecoes[] = [
+                    'questionNumber' => $questionNumber,
+                    'questionType' => $tipo,
+                    'peso' => $peso,
+                    'studentAnswer' => $normalizedRespostas[$key] ?? null,
+                    'correctAnswer' => $tipo === 'discursiva' ? null : strtoupper($correta),
+                    'isCorrect' => $earned >= $peso,
+                    'pontuacao' => $earned,
+                    'pontuacao_maxima' => $peso,
+                    'adaptedMode' => true,
+                    'adaptedGrade' => $adaptedGrade,
+                    'adaptedRatio' => round($adaptedRatio, 4),
+                    'adaptedDisciplineId' => (string) ($adaptedEntry['disciplinaId'] ?? $disciplinaId),
+                    'adaptedDisciplineName' => (string) ($adaptedEntry['disciplinaNome'] ?? $disciplinaNome),
+                    'manualLaunchMode' => 'adaptada',
+                ];
+                continue;
+            }
+
+            if ($tipo === 'discursiva') {
+                $nota = $respostaRaw !== null && $respostaRaw !== '' ? round((float) $respostaRaw, 2) : 0.0;
+                if ($nota < 0) {
+                    $nota = 0.0;
+                }
+                if ($nota > $peso) {
+                    $nota = $peso;
+                }
+
+                $isCorrect = $nota >= $peso;
+                if ($isCorrect) {
+                    $acertos++;
+                }
+                $pontuacao += $nota;
+
+                $normalizedRespostas[$key] = $nota;
+                $computedCorrecoes[] = [
+                    'questionNumber' => $questionNumber,
+                    'questionType' => 'discursiva',
+                    'peso' => $peso,
+                    'studentAnswer' => (string) $nota,
+                    'correctAnswer' => null,
+                    'isCorrect' => $isCorrect,
+                    'pontuacao' => round($nota, 2),
+                    'pontuacao_maxima' => $peso,
+                ];
+                continue;
+            }
+
+            $selected = strtoupper(trim((string) ($respostaRaw ?? '')));
+            $selected = preg_match('/^[A-Z]$/', $selected) ? $selected : '';
+            $correta = preg_match('/^[A-Z]$/', strtoupper($correta)) ? strtoupper($correta) : '';
+            $isCorrect = $selected !== '' && ($anulada || ($correta !== '' && $selected === $correta));
+            $earned = $isCorrect ? $peso : 0.0;
+            if ($isCorrect) {
+                $acertos++;
+            }
+            $pontuacao += $earned;
+
+            $normalizedRespostas[$key] = $selected !== '' ? $selected : null;
+            $computedCorrecoes[] = [
+                'questionNumber' => $questionNumber,
+                'questionType' => $tipo,
+                'peso' => $peso,
+                'studentAnswer' => $selected !== '' ? $selected : null,
+                'correctAnswer' => $correta !== '' ? $correta : null,
+                'isCorrect' => $isCorrect,
+                'pontuacao' => round($earned, 2),
+                'pontuacao_maxima' => $peso,
+                'answerConfidence' => 'manual',
+                'readStrength' => null,
+            ];
+        }
+
+        $totalQuestoes = count($computedCorrecoes);
+        $percentual = $pontuacaoTotal > 0 ? round(($pontuacao / $pontuacaoTotal) * 100, 2) : 0.0;
+
+        return [
+            'respostas' => $normalizedRespostas,
+            'correcoes' => $computedCorrecoes,
+            'acertos' => $acertos,
+            'total_questoes' => $totalQuestoes,
+            'pontuacao' => round($pontuacao, 2),
+            'pontuacao_total' => round($pontuacaoTotal, 2),
+            'percentual' => $percentual,
+        ];
+    }
+
+    private function extractAdminAdaptedDisciplineMap(array $correcoes, array $itens): array
+    {
+        $result = [];
+
+        foreach ($correcoes as $item) {
+            if (!is_array($item) || !$this->isAdminAdaptedCorrecaoItem($item)) {
+                continue;
+            }
+
+            $questionNumber = (int) ($item['questionNumber'] ?? 0);
+            $questionItem = $questionNumber > 0 ? ($itens[$questionNumber - 1] ?? null) : null;
+            $disciplinaId = trim((string) ($item['adaptedDisciplineId'] ?? (is_array($questionItem) ? ($questionItem['disciplina'] ?? '') : '')));
+            $disciplinaNome = trim((string) ($item['adaptedDisciplineName'] ?? ''));
+            if ($disciplinaNome === '') {
+                $disciplinaNome = $this->resolveAdminAvaliacaoDisciplinaLabel($disciplinaId !== '' ? $disciplinaId : (is_array($questionItem) ? (string) ($questionItem['disciplina'] ?? '') : ''));
+            }
+
+            $mapKey = $this->buildAdminAdaptedDisciplineKey($disciplinaId, $disciplinaNome);
+            $adaptedGrade = isset($item['adaptedGrade']) && is_numeric($item['adaptedGrade'])
+                ? round((float) $item['adaptedGrade'], 2)
+                : round($this->getAdminCorrecaoEarnedRatio($item, $questionItem) * 10, 2);
+
+            if (!isset($result[$mapKey])) {
+                $result[$mapKey] = [
+                    'disciplinaId' => $disciplinaId,
+                    'disciplinaNome' => $disciplinaNome,
+                    'adaptedGrade' => $adaptedGrade,
+                ];
+                continue;
+            }
+
+            if (abs((float) $result[$mapKey]['adaptedGrade'] - $adaptedGrade) > 0.02) {
+                unset($result[$mapKey]);
+            }
+        }
+
+        return $result;
+    }
+
+    private function isAdminAdaptedCorrecaoItem(array $item): bool
+    {
+        return (($item['adaptedMode'] ?? false) === true)
+            || strtolower(trim((string) ($item['manualLaunchMode'] ?? ''))) === 'adaptada'
+            || (isset($item['adaptedGrade']) && is_numeric($item['adaptedGrade']));
+    }
+
+    private function getAdminCorrecaoEarnedRatio(array $item, $questionItem = null): float
+    {
+        $peso = round((float) ($item['pontuacao_maxima'] ?? ($item['peso'] ?? (is_array($questionItem) ? ($questionItem['peso'] ?? 1) : 1))), 2);
+        if ($peso <= 0) {
+            $peso = 1.0;
+        }
+
+        $earned = round((float) ($item['pontuacao'] ?? 0), 2);
+        if ($earned < 0) {
+            $earned = 0.0;
+        }
+        if ($earned > $peso) {
+            $earned = $peso;
+        }
+
+        return $peso > 0 ? ($earned / $peso) : 0.0;
+    }
+
+    private function buildAdminAdaptedDisciplineKey(string $disciplinaId, string $disciplinaNome): string
+    {
+        $disciplinaId = trim($disciplinaId);
+        if ($disciplinaId !== '') {
+            return $disciplinaId;
+        }
+
+        return 'disciplina:' . $this->normalizeCorrecaoImportSearchValue($disciplinaNome);
+    }
+
+    private function resolveAdminAvaliacaoDisciplinaLabel(string $value): string
+    {
+        $label = trim($value);
+        if ($label === '') {
+            return '';
+        }
+
+        if (ctype_digit($label)) {
+            try {
+                $disciplinaModel = new DisciplinaModel();
+                $disciplina = $disciplinaModel->findById((int) $label);
+                if (is_array($disciplina)) {
+                    $nome = trim((string) ($disciplina['nome'] ?? ''));
+                    if ($nome !== '') {
+                        return $nome;
+                    }
+                }
+            } catch (Throwable) {
+            }
+        }
+
+        return $label;
+    }
+
+    private function normalizeAdminAvaliacaoQuestionType(string $value): string
+    {
+        $normalized = strtolower(trim($value));
+        if (in_array($normalized, ['discursiva', 'discursivo'], true)) {
+            return 'discursiva';
+        }
+        if (in_array($normalized, ['vf', 'v/f', 'verdadeiro-falso', 'verdadeiro_falso'], true)) {
+            return 'vf';
+        }
+
+        return 'multipla';
     }
 
     public function painelAdministrativoAvaliacoesCorrecoesImportarPreview(): void
@@ -3621,6 +3966,7 @@ class AdminController extends HomeController
     private function extractAvaliacaoImportQuestionItems(array $avaliacao): array
     {
         $gabaritoRaw = trim((string) ($avaliacao['gabarito'] ?? ''));
+        $avaliacaoIsSimulado = ((int) ($avaliacao['is_simulado'] ?? 0)) === 1;
         if ($gabaritoRaw === '') {
             return [];
         }
@@ -3632,13 +3978,14 @@ class AdminController extends HomeController
 
         $items = $decoded['itens'] ?? null;
         if (is_array($items) && $items !== []) {
-            return array_values(array_map(function ($item): array {
+            return array_values(array_map(function ($item) use ($avaliacaoIsSimulado): array {
                 $safeItem = is_array($item) ? $item : [];
                 return [
                     'tipo' => trim((string) ($safeItem['tipo'] ?? 'multipla')),
-                    'peso' => max(0.01, round((float) ($safeItem['peso'] ?? 1), 2)),
+                    'peso' => $avaliacaoIsSimulado ? 1.0 : max(0.01, round((float) ($safeItem['peso'] ?? 1), 2)),
                     'correta' => trim((string) ($safeItem['correta'] ?? '')),
                     'anulada' => (($safeItem['anulada'] ?? false) === true),
+                    'disciplina' => trim((string) ($safeItem['disciplina'] ?? '')),
                 ];
             }, $items));
         }
@@ -3656,6 +4003,7 @@ class AdminController extends HomeController
                 'peso' => 1.0,
                 'correta' => trim((string) ($legacyAnswers[(string) $questionNumber] ?? '')),
                 'anulada' => false,
+                'disciplina' => '',
             ];
         }
 

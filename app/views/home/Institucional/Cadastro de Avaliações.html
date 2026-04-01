@@ -809,12 +809,15 @@ foreach ($avaliacoes as $avaliacaoOption) {
                                     <div class="form-text">Obrigatório para avaliações que não são recuperação.</div>
                                 </div>
                                 <div class="col-md-8 d-none" id="adminAvaliacaoSimuladoWrap">
-                                    <div class="form-check mt-4 pt-2">
+                                    <div class="form-check mt-1 pt-0 pt-md-4">
                                         <input class="form-check-input" type="checkbox" id="adminAvaliacaoIsSimulado"
                                             name="is_simulado" value="1">
-                                        <label class="form-check-label" for="adminAvaliacaoIsSimulado">Esta avaliação do
-                                            2º ciclo é um Simulado</label>
+                                        <label class="form-check-label" for="adminAvaliacaoIsSimulado">Esta avaliação
+                                            é um Simulado</label>
                                     </div>
+                                    <div class="form-text">Disponível apenas para avaliações do 2º ciclo. Quando
+                                        marcado, o peso das questões fica fixo em 1 e a nota automática do simulado é
+                                        global para todos os componentes curriculares vinculados.</div>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label">Usuários aplicadores</label>
