@@ -315,6 +315,101 @@
 			line-height: 1.2;
 		}
 
+		.filter-trigger-wrap {
+			position: relative;
+			display: flex;
+			flex-direction: column;
+			gap: 0;
+			min-width: 180px;
+		}
+
+		.filter-trigger-btn {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			gap: .4rem;
+			width: 100%;
+		}
+
+		.filter-trigger-summary {
+			position: absolute;
+			left: 0;
+			top: calc(100% + .2rem);
+			font-size: .78rem;
+			color: #6b7280;
+			line-height: 1.25;
+			min-height: 1rem;
+			white-space: nowrap;
+			max-width: 100%;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+
+		.filter-modal-list {
+			display: grid;
+			gap: .6rem;
+		}
+
+		.filter-modal-option {
+			display: flex;
+			align-items: center;
+			gap: .75rem;
+			padding: .85rem .95rem;
+			border: 1px solid #e5e7eb;
+			border-radius: .9rem;
+			background: #fff;
+			cursor: pointer;
+			transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+		}
+
+		.filter-modal-option:hover {
+			border-color: #fed7aa;
+			box-shadow: 0 8px 18px rgba(194, 65, 12, .08);
+			transform: translateY(-1px);
+		}
+
+		.filter-modal-option input {
+			margin-top: 0;
+			flex-shrink: 0;
+		}
+
+		.filter-modal-option:has(input:checked) {
+			border-color: #ea580c;
+			box-shadow: 0 0 0 3px rgba(249, 115, 22, .14);
+			background: #fff7ed;
+		}
+
+		.filter-modal-option-icon {
+			width: 1.85rem;
+			height: 1.85rem;
+			border-radius: 50%;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			color: #fff;
+			font-size: .95rem;
+			flex-shrink: 0;
+		}
+
+		.filter-modal-option-text {
+			display: flex;
+			flex-direction: column;
+			gap: .1rem;
+			min-width: 0;
+		}
+
+		.filter-modal-option-title {
+			font-weight: 700;
+			line-height: 1.2;
+			color: #1f2937;
+		}
+
+		.filter-modal-option-subtitle {
+			font-size: .76rem;
+			color: #6b7280;
+			line-height: 1.2;
+		}
+
 		/* --- dashboard --- */
 		.dash-stat-card {
 			border-radius: 1rem;
@@ -1306,7 +1401,7 @@
 					</div>
 					<div id="qrGrid" class="qr-grid">
 						<p class="text-muted small">Selecione uma turma ou clique em "Gerar QR Codes" para exibir todos
-							os alunos.</p>
+							os estudantes.</p>
 					</div>
 				</div>
 
@@ -1364,20 +1459,28 @@
 								</div>
 								<div class="col-sm-auto">
 									<label class="form-label form-label-sm mb-1">Movimentação</label>
-									<select id="gerencTipo" class="form-select form-select-sm" style="max-width:180px">
-										<option value="">Todas</option>
-									</select>
+									<div class="filter-trigger-wrap">
+										<button id="gerencTipoFiltro" class="btn btn-outline-secondary btn-sm filter-trigger-btn" data-contexto="gerenc" data-categoria="tipos" type="button">
+											<i class="las la-exchange-alt"></i>Selecionar
+										</button>
+										<div id="gerencTipoResumo" class="filter-trigger-summary">Todas</div>
+									</div>
 								</div>
 								<div class="col-sm-auto">
 									<label class="form-label form-label-sm mb-1">Turma</label>
-									<select id="gerencTurma" class="form-select form-select-sm" style="max-width:180px">
-										<option value="">Todas</option>
-									</select>
+									<div class="filter-trigger-wrap">
+										<button id="gerencTurmaFiltro" class="btn btn-outline-secondary btn-sm filter-trigger-btn" data-contexto="gerenc" data-categoria="turmas" type="button">
+											<i class="las la-school"></i>Selecionar
+										</button>
+										<div id="gerencTurmaResumo" class="filter-trigger-summary">Todas</div>
+									</div>
 								</div>
-								<div class="col-sm-auto">
-									<button id="btnGerencFiltrar" class="btn btn-danger btn-sm" type="button">
-										<i class="las la-filter me-1"></i>Filtrar
-									</button>
+								<div class="col-sm-4 col-lg-3 ms-sm-auto">
+									<label class="form-label form-label-sm mb-1" for="gerencBusca">Busca</label>
+									<div class="input-group input-group-sm">
+										<span class="input-group-text"><i class="las la-search"></i></span>
+										<input type="text" id="gerencBusca" class="form-control" maxlength="120" placeholder="Nome, matrícula, turma, observação..." autocomplete="off">
+									</div>
 								</div>
 							</div>
 						</div>
@@ -1447,17 +1550,30 @@
 				<div class="tab-pane fade" id="tabLiberacoes" role="tabpanel">
 					<div class="card border-0 shadow-sm mb-3 no-print">
 						<div class="card-body">
-							<div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">
-								<div>
-									<div class="fw-semibold">Liberação antecipada de saída</div>
-									<div class="text-muted small">Autorize um estudante a sair antes do horário configurado para a movimentação de saída.</div>
+							<div class="row g-2 align-items-end mb-3">
+								<div class="col-sm-5 col-lg-4">
+										<label class="form-label form-label-sm mb-1" for="liberacoesBusca">Busca</label>
+										<div class="input-group input-group-sm">
+											<span class="input-group-text"><i class="las la-search"></i></span>
+											<input type="text" id="liberacoesBusca" class="form-control" maxlength="120" placeholder="Nome, matrícula, turma, observação..." autocomplete="off">
+										</div>
 								</div>
-								<button id="btnAbrirModalLiberacao" class="btn btn-outline-danger btn-sm" type="button">
-									<i class="las la-unlock me-1"></i>Liberar estudante
-								</button>
+								<div class="col-sm-auto">
+									<div class="filter-trigger-wrap">
+										<button id="liberacoesStatusFiltro" class="btn btn-outline-secondary btn-sm filter-trigger-btn" data-contexto="liberacoes" data-categoria="status" type="button">
+											<i class="las la-filter"></i>Status
+										</button>
+										<div id="liberacoesStatusResumo" class="filter-trigger-summary">Todos os status</div>
+									</div>
+								</div>
+								<div class="col-sm-auto ms-sm-auto">
+									<button id="btnAbrirModalLiberacao" class="btn btn-outline-danger btn-sm" type="button">
+										<i class="las la-unlock me-1"></i>Nova Liberação
+									</button>
+								</div>
 							</div>
 							<div id="liberacoesAtivasWrap" class="d-flex flex-column gap-2">
-								<div class="muted-empty p-0">Nenhuma liberação antecipada ativa para hoje.</div>
+								<div class="muted-empty p-0">Nenhuma liberação antecipada registrada hoje.</div>
 							</div>
 						</div>
 					</div>
@@ -1484,20 +1600,21 @@
 								</div>
 								<div class="col-sm-auto">
 									<label class="form-label form-label-sm mb-1">Movimentação</label>
-									<select id="relTipo" class="form-select form-select-sm" style="max-width:180px">
-										<option value="">Todas</option>
-									</select>
+									<div class="filter-trigger-wrap">
+										<button id="relTipoFiltro" class="btn btn-outline-secondary btn-sm filter-trigger-btn" data-contexto="rel" data-categoria="tipos" type="button">
+											<i class="las la-exchange-alt"></i>Selecionar
+										</button>
+										<div id="relTipoResumo" class="filter-trigger-summary">Todas</div>
+									</div>
 								</div>
 								<div class="col-sm-auto">
 									<label class="form-label form-label-sm mb-1">Turma</label>
-									<select id="relTurma" class="form-select form-select-sm" style="max-width:180px">
-										<option value="">Todas</option>
-									</select>
-								</div>
-								<div class="col-sm-auto">
-									<button id="btnRelatorioFiltrar" class="btn btn-danger btn-sm" type="button">
-										<i class="las la-filter me-1"></i>Filtrar
-									</button>
+									<div class="filter-trigger-wrap">
+										<button id="relTurmaFiltro" class="btn btn-outline-secondary btn-sm filter-trigger-btn" data-contexto="rel" data-categoria="turmas" type="button">
+											<i class="las la-school"></i>Selecionar
+										</button>
+										<div id="relTurmaResumo" class="filter-trigger-summary">Todas</div>
+									</div>
 								</div>
 								<div class="col-sm-auto ms-sm-auto">
 									<button id="btnRelatorioImprimir" class="btn btn-outline-secondary btn-sm" type="button" disabled>
@@ -1512,6 +1629,19 @@
 						<div id="relResumoHero"></div>
 						<div id="relDestaquesWrap" class="row g-3"></div>
 						<div class="row g-3">
+							<div class="col-12">
+								<div class="card border-0 shadow-sm h-100">
+									<div class="card-body">
+										<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+											<div>
+												<h3 class="dashboard-section-title">Permanência no período</h3>
+												<p class="dashboard-section-subtitle">Leitura dos tempos de permanência calculados a partir dos pares de entrada e saída registrados.</p>
+											</div>
+										</div>
+										<div id="relPermanenciaWrap" class="row g-3"></div>
+									</div>
+								</div>
+							</div>
 							<div class="col-xl-7">
 								<div class="card border-0 shadow-sm h-100">
 									<div class="card-body">
@@ -1595,6 +1725,27 @@
 				</div><!-- /tabDash -->
 			</div><!-- /tab-content -->
 		</div><!-- /ref-wrap -->
+
+		<!-- =========================================================
+	     MODAL — Seleção de filtros
+	     ========================================================= -->
+		<div class="modal fade" id="modalFiltroSelecao" tabindex="-1" aria-hidden="true">
+			<div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+				<div class="modal-content site-modal-content">
+					<div class="modal-header">
+						<h2 class="modal-title fs-5" id="filtroSelecaoTitulo">Selecionar filtro</h2>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+					</div>
+					<div class="modal-body">
+						<div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">
+							<p id="filtroSelecaoDescricao" class="text-muted small mb-0">Marque ou desmarque para aplicar imediatamente.</p>
+							<button id="btnLimparFiltroSelecao" class="btn btn-outline-secondary btn-sm" type="button">Limpar seleção</button>
+						</div>
+						<div id="filtroSelecaoLista" class="filter-modal-list"></div>
+					</div>
+				</div>
+			</div>
+		</div>
 
 		<!-- =========================================================
 	    MODAL — Editar registro de entrada e saída
@@ -1842,7 +1993,7 @@
 				if (_iframeModalOpenCount === 0) { _notifyParentModal(false); }
 			}
 			function _bindModalNotify() {
-				['modalTipo', 'modalEditarRegistro', 'modalConfirmarExcluirTipo', 'modalConfirmarExcluirRegistro', 'modalLiberacaoSaida'].forEach(function (id) {
+				['modalTipo', 'modalFiltroSelecao', 'modalEditarRegistro', 'modalConfirmarExcluirTipo', 'modalConfirmarExcluirRegistro', 'modalLiberacaoSaida'].forEach(function (id) {
 					var el = document.getElementById(id);
 					if (!el) { return; }
 					el.addEventListener('show.bs.modal', _onModalShow);
@@ -1863,12 +2014,18 @@
 				tipoAtualId: 0,
 				animFrameId: null,
 				dashboardReportLoaded: false,
+				dashboardFiltroSelecoes: { tipos: [], turmas: [] },
 				dashboardFiltrosAplicados: null,
 				gerencRegistros: [],
+				gerencFiltroSelecoes: { tipos: [], turmas: [] },
 				gerencFiltrosAplicados: null,
+				gerencBusca: '',
+				liberacoesBusca: '',
+				liberacoesFiltroSelecoes: { status: [] },
 				gerencSelecionados: [],
 				gerencPaginaAtual: 1,
 				gerencPorPagina: 10,
+				filtroModalConfig: null,
 				pollingAssinatura: '',
 			};
 
@@ -1920,6 +2077,119 @@
 				});
 			}
 
+			function formatDuracaoMinutos(totalMinutos) {
+				var minutos = Math.max(0, Math.round(Number(totalMinutos || 0)));
+				var horas = Math.floor(minutos / 60);
+				var restante = minutos % 60;
+				if (horas <= 0) {
+					return restante + ' min';
+				}
+				if (restante === 0) {
+					return horas + 'h';
+				}
+				return horas + 'h ' + String(restante).padStart(2, '0') + 'min';
+			}
+
+			function horarioParaMinutos(valor) {
+				var partes = String(valor || '').split(':');
+				if (partes.length < 2) {
+					return null;
+				}
+				var horas = parseInt(partes[0], 10);
+				var minutos = parseInt(partes[1], 10);
+				if (!isFinite(horas) || !isFinite(minutos)) {
+					return null;
+				}
+				return (horas * 60) + minutos;
+			}
+
+			function calcularPermanenciaResumo(registros) {
+				var grupos = {};
+				var permanencias = [];
+
+				(Array.isArray(registros) ? registros : []).forEach(function (registro) {
+					var alunoKey = String(registro.matricula || registro.aluno_nome || '').trim().toLowerCase();
+					var dataKey = String(registro.data || '').trim();
+					if (!alunoKey || !dataKey) {
+						return;
+					}
+					var chave = alunoKey + '|' + dataKey;
+					if (!grupos[chave]) {
+						grupos[chave] = [];
+					}
+					grupos[chave].push(registro);
+				});
+
+				Object.keys(grupos).forEach(function (chave) {
+					var itens = grupos[chave].slice().sort(function (a, b) {
+						var aMin = horarioParaMinutos(a.horario);
+						var bMin = horarioParaMinutos(b.horario);
+						if (aMin === bMin) {
+							return Number(a.id || 0) - Number(b.id || 0);
+						}
+						return Number(aMin || 0) - Number(bMin || 0);
+					});
+
+					var entradaPendente = null;
+					itens.forEach(function (item) {
+						var natureza = String(item.natureza || '').toLowerCase() === 'saida' ? 'saida' : 'entrada';
+						var horarioMinutos = horarioParaMinutos(item.horario);
+						if (horarioMinutos === null) {
+							return;
+						}
+
+						if (natureza === 'entrada') {
+							entradaPendente = item;
+							return;
+						}
+
+						if (!entradaPendente) {
+							return;
+						}
+
+						var entradaMinutos = horarioParaMinutos(entradaPendente.horario);
+						if (entradaMinutos === null || horarioMinutos < entradaMinutos) {
+							entradaPendente = null;
+							return;
+						}
+
+						permanencias.push({
+							aluno_nome: item.aluno_nome || entradaPendente.aluno_nome || '',
+							turma: item.turma || entradaPendente.turma || '',
+							data: item.data || entradaPendente.data || '',
+							entrada: entradaPendente.horario || '',
+							saida: item.horario || '',
+							duracaoMinutos: horarioMinutos - entradaMinutos,
+						});
+						entradaPendente = null;
+					});
+				});
+
+				var totalMinutos = permanencias.reduce(function (acc, item) {
+					return acc + Number(item.duracaoMinutos || 0);
+				}, 0);
+				var mediaMinutos = permanencias.length ? (totalMinutos / permanencias.length) : 0;
+				var maior = permanencias.slice().sort(function (a, b) {
+					return Number(b.duracaoMinutos || 0) - Number(a.duracaoMinutos || 0);
+				})[0] || null;
+				var menor = permanencias.slice().sort(function (a, b) {
+					return Number(a.duracaoMinutos || 0) - Number(b.duracaoMinutos || 0);
+				})[0] || null;
+				var saidasRegistradas = (Array.isArray(registros) ? registros : []).filter(function (item) {
+					return String(item.natureza || '').toLowerCase() === 'saida';
+				}).length;
+
+				return {
+					permanencias: permanencias,
+					totalMinutos: totalMinutos,
+					mediaMinutos: mediaMinutos,
+					maior: maior,
+					menor: menor,
+					totalPares: permanencias.length,
+					saidasCobertas: saidasRegistradas,
+				};
+			}
+
 			function getTipoSelecionado() {
 				var checked = document.querySelector('input[name="movimentacao_tipo_principal"]:checked');
 				if (!checked) return null;
@@ -1961,12 +2231,26 @@
 				return descricao ? (naturezaLabel + ' · ' + descricao) : naturezaLabel;
 			}
 
-			function obterRotuloSelect(id, fallback) {
-				var el = document.getElementById(id);
-				if (!el || el.selectedIndex < 0 || !el.options[el.selectedIndex]) {
-					return fallback || 'Todos';
+			function isRegistroRetorno(item) {
+				return Number(item && item.is_retorno ? item.is_retorno : 0) === 1;
+			}
+
+			function isRegistroSaidaAutomatica(item) {
+				return Number(item && item.saida_automatica ? item.saida_automatica : 0) === 1;
+			}
+
+			function getRegistroTipoLabel(item) {
+				if (!item) return '';
+				if (isRegistroSaidaAutomatica(item)) {
+					return 'Saída automática';
 				}
-				return el.options[el.selectedIndex].text || fallback || 'Todos';
+				if (isRegistroRetorno(item)) {
+					return 'Retorno';
+				}
+				return getTipoDisplayLabel({
+					nome: item.tipo_nome || item.refeicao_nome || item.nome || '',
+					natureza: item.natureza || 'entrada',
+				});
 			}
 
 			function obterDiaSemana(dataIso) {
@@ -1984,6 +2268,150 @@
 				return copy;
 			}
 
+			function normalizarListaIds(items) {
+				var vistos = {};
+				return (Array.isArray(items) ? items : []).map(function (item) {
+					return String(item || '').trim();
+				}).filter(function (item) {
+					if (!item || vistos[item]) {
+						return false;
+					}
+					vistos[item] = true;
+					return true;
+				});
+			}
+
+			function obterEstadoSelecaoFiltro(contexto) {
+				if (contexto === 'rel') {
+					return state.dashboardFiltroSelecoes;
+				}
+				if (contexto === 'liberacoes') {
+					return state.liberacoesFiltroSelecoes;
+				}
+				return state.gerencFiltroSelecoes;
+			}
+
+			function obterConfiguracaoContextoFiltro(contexto) {
+				if (contexto === 'rel') {
+					return {
+						prefixo: 'rel',
+						titulo: 'Filtro do dashboard',
+						descricao: 'o dashboard',
+					};
+				}
+				if (contexto === 'liberacoes') {
+					return {
+						prefixo: 'liberacoes',
+						titulo: 'Filtro das liberações',
+						descricao: 'a lista de liberações',
+					};
+				}
+				return {
+					prefixo: 'gerenc',
+					titulo: 'Filtro dos registros',
+					descricao: 'os registros',
+				};
+			}
+
+			function obterOpcoesFiltro(categoria) {
+				if (categoria === 'tipos') {
+					return (state.tipos || []).map(function (tipo) {
+						return {
+							id: String(tipo.id || ''),
+							nome: getTipoDisplayLabel(tipo) || 'Sem movimentação',
+							subtitulo: getTipoInputHelpLabel(tipo),
+							cor: tipo.cor || '#b91c1c',
+							icone: String(tipo.natureza || 'entrada') === 'saida' ? 'la-sign-out-alt' : 'la-sign-in-alt',
+						};
+					});
+				}
+
+				if (categoria === 'status') {
+					return [
+						{ id: 'pendente', nome: 'Pendentes', subtitulo: 'Aguardando uso da liberação', cor: '#f59e0b', icone: 'la-hourglass-half' },
+						{ id: 'utilizada', nome: 'Liberadas', subtitulo: 'Saída já registrada com a liberação', cor: '#198754', icone: 'la-check-circle' },
+					];
+				}
+
+				return (state.turmas || []).map(function (turma) {
+					return {
+						id: String(turma.id || ''),
+						nome: String(turma.nome || '').trim() || 'Sem turma',
+						subtitulo: 'Turma disponível para filtragem',
+						cor: '#475569',
+						icone: 'la-school',
+					};
+				});
+			}
+
+			function obterResumoSelecao(categoria, selecionados) {
+				var ids = normalizarListaIds(selecionados);
+				if (!ids.length) {
+					return categoria === 'status' ? 'Todos os status' : 'Todas';
+				}
+
+				var opcoesMap = {};
+				obterOpcoesFiltro(categoria).forEach(function (opcao) {
+					opcoesMap[String(opcao.id)] = opcao.nome;
+				});
+
+				var labels = ids.map(function (id) {
+					return opcoesMap[String(id)] || '';
+				}).filter(Boolean);
+
+				if (!labels.length) {
+					return categoria === 'status' ? 'Todos os status' : 'Todas';
+				}
+
+				if (labels.length <= 2) {
+					return labels.join(', ');
+				}
+
+				return labels.length + ' selecionados';
+			}
+
+			function atualizarResumoFiltroContexto(contexto, categoria) {
+				var config = obterConfiguracaoContextoFiltro(contexto);
+				var chave = categoria === 'tipos' ? 'Tipo' : (categoria === 'turmas' ? 'Turma' : 'Status');
+				var resumoEl = document.getElementById(config.prefixo + chave + 'Resumo');
+				var botaoEl = document.getElementById(config.prefixo + chave + 'Filtro');
+				var selecionados = obterEstadoSelecaoFiltro(contexto)[categoria] || [];
+				var possuiSelecao = normalizarListaIds(selecionados).length > 0;
+				var resumo = obterResumoSelecao(categoria, selecionados);
+
+				if (resumoEl) {
+					resumoEl.textContent = resumo;
+				}
+
+				if (botaoEl) {
+					botaoEl.classList.toggle('btn-danger', possuiSelecao);
+					botaoEl.classList.toggle('btn-outline-secondary', !possuiSelecao);
+				}
+			}
+
+			function atualizarTodosResumosFiltro() {
+				[['rel', 'tipos'], ['rel', 'turmas'], ['gerenc', 'tipos'], ['gerenc', 'turmas'], ['liberacoes', 'status']].forEach(function (item) {
+					atualizarResumoFiltroContexto(item[0], item[1]);
+				});
+			}
+
+			function sincronizarSelecaoFiltro(contexto, categoria) {
+				var permitidos = {};
+				obterOpcoesFiltro(categoria).forEach(function (opcao) {
+					permitidos[String(opcao.id)] = true;
+				});
+				obterEstadoSelecaoFiltro(contexto)[categoria] = normalizarListaIds(obterEstadoSelecaoFiltro(contexto)[categoria]).filter(function (id) {
+					return !!permitidos[String(id)];
+				});
+			}
+
+			function sincronizarTodosFiltros() {
+				[['rel', 'tipos'], ['rel', 'turmas'], ['gerenc', 'tipos'], ['gerenc', 'turmas'], ['liberacoes', 'status']].forEach(function (item) {
+					sincronizarSelecaoFiltro(item[0], item[1]);
+				});
+				atualizarTodosResumosFiltro();
+			}
+
 			function obterAbaAtivaId() {
 				var activeTab = document.querySelector('#refTabs .nav-link.active');
 				return activeTab ? String(activeTab.id || '') : '';
@@ -1994,34 +2422,124 @@
 			}
 
 			function construirUrlRelatorio(filtros) {
+				var tipos = normalizarListaIds(filtros.tipos || (filtros.tipo ? [filtros.tipo] : []));
+				var turmas = normalizarListaIds(filtros.turmas || (filtros.turma ? [filtros.turma] : []));
 				return API_BASE + '/relatorio?data_inicio=' + encodeURIComponent(filtros.ini) +
 					'&data_fim=' + encodeURIComponent(filtros.fim) +
-					(filtros.tipo ? '&tipo_id=' + encodeURIComponent(filtros.tipo) : '') +
-					(filtros.turma ? '&turma_id=' + encodeURIComponent(filtros.turma) : '');
+					(tipos.length ? '&tipo_ids=' + encodeURIComponent(tipos.join(',')) : '') +
+					(turmas.length ? '&turma_ids=' + encodeURIComponent(turmas.join(',')) : '');
 			}
 
 			function obterFiltrosRelatorioDom() {
+				var selecoes = obterEstadoSelecaoFiltro('rel');
 				var filtros = {
 					ini: document.getElementById('relDataInicio').value,
 					fim: document.getElementById('relDataFim').value,
-					tipo: document.getElementById('relTipo').value,
-					turma: document.getElementById('relTurma').value,
-					tipoLabel: obterRotuloSelect('relTipo', 'Todas'),
-					turmaLabel: obterRotuloSelect('relTurma', 'Todas'),
+					tipos: normalizarListaIds(selecoes.tipos),
+					turmas: normalizarListaIds(selecoes.turmas),
 				};
+				filtros.tipo = filtros.tipos[0] || '';
+				filtros.turma = filtros.turmas[0] || '';
+				filtros.tipoLabel = obterResumoSelecao('tipos', filtros.tipos);
+				filtros.turmaLabel = obterResumoSelecao('turmas', filtros.turmas);
 				filtros.url = construirUrlRelatorio(filtros);
 				return filtros;
 			}
 
 			function obterFiltrosGerencDom() {
+				var selecoes = obterEstadoSelecaoFiltro('gerenc');
 				var filtros = {
 					ini: document.getElementById('gerencDataInicio').value,
 					fim: document.getElementById('gerencDataFim').value,
-					tipo: document.getElementById('gerencTipo').value,
-					turma: document.getElementById('gerencTurma').value,
+					tipos: normalizarListaIds(selecoes.tipos),
+					turmas: normalizarListaIds(selecoes.turmas),
 				};
+				filtros.tipo = filtros.tipos[0] || '';
+				filtros.turma = filtros.turmas[0] || '';
 				filtros.url = construirUrlRelatorio(filtros);
 				return filtros;
+			}
+
+			function atualizarBotaoLimparFiltroModal() {
+				var btn = document.getElementById('btnLimparFiltroSelecao');
+				var config = state.filtroModalConfig || {};
+				if (!btn || !config.contexto || !config.categoria) {
+					return;
+				}
+				var selecionados = normalizarListaIds(obterEstadoSelecaoFiltro(config.contexto)[config.categoria]);
+				btn.disabled = selecionados.length === 0;
+			}
+
+			function renderModalFiltroSelecao() {
+				var config = state.filtroModalConfig || {};
+				var contexto = config.contexto || 'rel';
+				var categoria = config.categoria || 'tipos';
+				var tituloEl = document.getElementById('filtroSelecaoTitulo');
+				var descricaoEl = document.getElementById('filtroSelecaoDescricao');
+				var listaEl = document.getElementById('filtroSelecaoLista');
+				var opcoes = obterOpcoesFiltro(categoria);
+				var selecionados = normalizarListaIds(obterEstadoSelecaoFiltro(contexto)[categoria]);
+				var contextoConfig = obterConfiguracaoContextoFiltro(contexto);
+				var tituloCategoria = categoria === 'tipos' ? 'Movimentações' : (categoria === 'turmas' ? 'Turmas' : 'Status');
+
+				if (tituloEl) {
+					tituloEl.textContent = contextoConfig.titulo + ' • ' + tituloCategoria;
+				}
+
+				if (descricaoEl) {
+					descricaoEl.textContent = 'Marque ou desmarque para atualizar ' + contextoConfig.descricao + ' imediatamente.';
+				}
+
+				if (!listaEl) {
+					return;
+				}
+
+				if (!opcoes.length) {
+					listaEl.innerHTML = '<div class="muted-empty">Nenhuma opção disponível no momento.</div>';
+					atualizarBotaoLimparFiltroModal();
+					return;
+				}
+
+				listaEl.innerHTML = opcoes.map(function (opcao) {
+					var id = String(opcao.id || '');
+					var inputId = 'filtroModal_' + contexto + '_' + categoria + '_' + id.replace(/[^a-zA-Z0-9_-]/g, '_');
+					var checked = selecionados.indexOf(id) !== -1;
+					return '<label class="filter-modal-option" for="' + esc(inputId) + '">' +
+						'<input class="form-check-input" type="checkbox" id="' + esc(inputId) + '" value="' + esc(id) + '" data-contexto="' + esc(contexto) + '" data-categoria="' + esc(categoria) + '" ' + (checked ? 'checked' : '') + '>' +
+						'<span class="filter-modal-option-icon" style="background:' + esc(opcao.cor || '#475569') + '"><i class="las ' + esc(opcao.icone || 'la-filter') + '"></i></span>' +
+						'<span class="filter-modal-option-text"><span class="filter-modal-option-title">' + esc(opcao.nome || '') + '</span><span class="filter-modal-option-subtitle">' + esc(opcao.subtitulo || '') + '</span></span>' +
+						'</label>';
+				}).join('');
+
+				atualizarBotaoLimparFiltroModal();
+			}
+
+			function aplicarFiltroDoContexto(contexto) {
+				if (contexto === 'rel') {
+					filtrarRelatorio();
+					return;
+				}
+				if (contexto === 'liberacoes') {
+					renderLiberacoesAtivas();
+					return;
+				}
+				filtrarGerenc();
+			}
+
+			function alternarSelecaoFiltro(contexto, categoria, valor, marcado) {
+				var estado = obterEstadoSelecaoFiltro(contexto);
+				var atual = normalizarListaIds(estado[categoria]);
+				if (marcado) {
+					atual.push(String(valor || ''));
+				} else {
+					atual = atual.filter(function (item) {
+						return String(item) !== String(valor || '');
+					});
+				}
+				estado[categoria] = normalizarListaIds(atual);
+				atualizarResumoFiltroContexto(contexto, categoria);
+				atualizarBotaoLimparFiltroModal();
+				aplicarFiltroDoContexto(contexto);
 			}
 
 			function construirAssinaturaPolling(res) {
@@ -2033,7 +2551,7 @@
 				}).join('|') + '#' + ultimas.map(function (item) {
 					return [item.id || 0, item.horario || '', item.aluno_nome || ''].join(':');
 				}).join('|') + '#' + liberacoes.map(function (item) {
-					return [item.id || 0, item.aluno_id || 0, item.created_at || ''].join(':');
+					return [item.id || 0, item.aluno_id || 0, item.status || '', item.created_at || '', item.usado_em || ''].join(':');
 				}).join('|');
 			}
 
@@ -2130,6 +2648,7 @@
 				document.getElementById('relHorarioResumo').innerHTML = '';
 				document.getElementById('relInsightsWrap').innerHTML = '<div class="muted-empty">Sem dados suficientes para gerar insights.</div>';
 				document.getElementById('relTurmasWrap').innerHTML = '<div class="muted-empty">Sem ranking disponível.</div>';
+				document.getElementById('relPermanenciaWrap').innerHTML = '<div class="col-12"><div class="muted-empty">Sem dados de permanência disponíveis.</div></div>';
 				document.getElementById('relFluxoWrap').innerHTML = '<div class="muted-empty">Sem série diária disponível.</div>';
 			}
 
@@ -2319,6 +2838,7 @@
 
 				var alunosMap = {};
 				var alunosEntradaMap = {};
+				var alunosPorTipoMap = {};
 				var turmasMap = {};
 				var datasMap = {};
 				var horasMap = {};
@@ -2339,6 +2859,13 @@
 						if (natureza === 'entrada') {
 							alunosEntradaMap[alunoKey] = true;
 						}
+						var tipoKey = String(r.tipo_refeicao_id || '');
+						if (tipoKey) {
+							if (!alunosPorTipoMap[tipoKey]) {
+								alunosPorTipoMap[tipoKey] = {};
+							}
+							alunosPorTipoMap[tipoKey][alunoKey] = true;
+						}
 					}
 					turmasMap[turmaNome] = (turmasMap[turmaNome] || 0) + 1;
 					if (dataIso) datasMap[dataIso] = (datasMap[dataIso] || 0) + 1;
@@ -2358,10 +2885,41 @@
 				var diasComMovimento = Object.keys(datasMap).length;
 				var mediaPorDia = diasComMovimento ? totalMovimentacoes / diasComMovimento : 0;
 				var mediaPorAluno = alunosAtendidos ? totalMovimentacoes / alunosAtendidos : 0;
-				var totalAlunosAtivos = Number(meta.total_alunos_ativos || 0);
-				var taxaPresenca = totalAlunosAtivos > 0 ? ((alunosComEntrada / totalAlunosAtivos) * 100) : 0;
+				var totalAlunosCursando = Number(meta.total_alunos_ativos || 0);
+				var totalSaidasComLiberacao = Number(meta.total_saidas_com_liberacao || 0);
+				var alunosComSaidaLiberada = Number(meta.alunos_com_saida_liberada || 0);
+				var taxaPresenca = totalAlunosCursando > 0 ? ((alunosComEntrada / totalAlunosCursando) * 100) : 0;
+				var percentualLiberacoes = totalAlunosCursando > 0 ? ((alunosComSaidaLiberada / totalAlunosCursando) * 100) : 0;
 
-				var totaisOrdenados = totais.slice().sort(function (a, b) {
+				var totaisDashboardMap = {};
+				registros.forEach(function (registro) {
+					var chave = isRegistroSaidaAutomatica(registro)
+						? 'saida_automatica'
+						: (isRegistroRetorno(registro)
+						? 'retorno'
+						: ('tipo_' + String(registro.tipo_refeicao_id || getRegistroTipoLabel(registro))));
+					if (!totaisDashboardMap[chave]) {
+						totaisDashboardMap[chave] = {
+							key: chave,
+							label: getRegistroTipoLabel(registro),
+							total: 0,
+							cor: isRegistroSaidaAutomatica(registro)
+								? '#7c3aed'
+								: (isRegistroRetorno(registro) ? '#2563eb' : (registro.refeicao_cor || '#b91c1c')),
+							descricao: isRegistroSaidaAutomatica(registro)
+								? 'Saídas geradas automaticamente após 03:00 do dia seguinte por ausência de registro manual.'
+								: (isRegistroRetorno(registro)
+								? 'Total de retornos registrados no período.'
+								: (String(registro.natureza || '').toLowerCase() === 'saida'
+									? 'Total de saídas registradas no período.'
+									: 'Total de entradas registradas no período.')),
+						};
+					}
+					totaisDashboardMap[chave].total += 1;
+				});
+				var totaisOrdenados = Object.keys(totaisDashboardMap).map(function (key) {
+					return totaisDashboardMap[key];
+				}).sort(function (a, b) {
 					return Number(b.total || 0) - Number(a.total || 0);
 				});
 				var topTipo = totaisOrdenados[0] || null;
@@ -2395,6 +2953,8 @@
 				}).sort(function (a, b) {
 					return b.total - a.total;
 				});
+				var permanenciaResumo = calcularPermanenciaResumo(registros);
+				var mediaPermanencia = permanenciaResumo.mediaMinutos;
 
 				var topoTurma = rankingTurmas[0] || null;
 				var tipoLabel = filtros.tipoLabel === 'Todas' ? 'todas as movimentações' : filtros.tipoLabel;
@@ -2409,14 +2969,14 @@
 					'<div class="row g-3 justify-content-center mt-3">' +
 					'<div class="col-6 col-md-3"><div class="dashboard-hero-metric"><div class="dashboard-hero-metric-value">' + formatNumero(totalEntradas) + '</div><div class="dashboard-hero-metric-label">entradas</div></div></div>' +
 					'<div class="col-6 col-md-3"><div class="dashboard-hero-metric"><div class="dashboard-hero-metric-value">' + formatNumero(totalSaidas) + '</div><div class="dashboard-hero-metric-label">saídas</div></div></div>' +
-					'<div class="col-6 col-md-3"><div class="dashboard-hero-metric"><div class="dashboard-hero-metric-value">' + formatNumero(alunosComEntrada) + '</div><div class="dashboard-hero-metric-label">alunos com presença</div></div></div>' +
-					'<div class="col-6 col-md-3"><div class="dashboard-hero-metric"><div class="dashboard-hero-metric-value">' + (totalAlunosAtivos > 0 ? (formatDecimal(taxaPresenca) + '%') : 'N/A') + '</div><div class="dashboard-hero-metric-label">taxa de presença</div></div></div>' +
+					'<div class="col-6 col-md-3"><div class="dashboard-hero-metric"><div class="dashboard-hero-metric-value">' + formatNumero(alunosComEntrada) + '</div><div class="dashboard-hero-metric-label">estudantes com presença</div></div></div>' +
+					'<div class="col-6 col-md-3"><div class="dashboard-hero-metric"><div class="dashboard-hero-metric-value">' + (totalAlunosCursando > 0 ? (formatDecimal(taxaPresenca) + '%') : 'N/A') + '</div><div class="dashboard-hero-metric-label">taxa de presença</div></div></div>' +
 					'</div></div></div>';
 
 				document.getElementById('relDestaquesWrap').innerHTML =
 					'<div class="col-md-6 col-xl-3"><div class="card dashboard-mini-card"><div class="card-body">' +
 					'<div class="mini-kicker">Movimentação destaque</div>' +
-					'<div class="mini-value">' + esc(topTipo ? topTipo.nome : 'Sem destaque') + '</div>' +
+					'<div class="mini-value">' + esc(topTipo ? topTipo.label : 'Sem destaque') + '</div>' +
 					'<div class="mini-caption">' + (topTipo ? (formatNumero(topTipo.total) + ' registros no período') : 'Nenhum registro consolidado') + '</div>' +
 					'</div></div></div>' +
 					'<div class="col-md-6 col-xl-3"><div class="card dashboard-mini-card"><div class="card-body">' +
@@ -2433,33 +2993,50 @@
 					'<div class="mini-kicker">Horário de pico</div>' +
 					'<div class="mini-value">' + esc(picoHora ? picoHora.label : 'Sem dados') + '</div>' +
 					'<div class="mini-caption">' + (picoHora ? (formatNumero(picoHora.total) + ' registros concentrados') : 'Sem concentração identificada') + '</div>' +
+					'</div></div></div>' +
+					'<div class="col-md-6 col-xl-3"><div class="card dashboard-mini-card"><div class="card-body">' +
+					'<div class="mini-kicker">Permanência média</div>' +
+					'<div class="mini-value">' + esc(permanenciaResumo.totalPares ? formatDuracaoMinutos(mediaPermanencia) : 'Sem dados') + '</div>' +
+					'<div class="mini-caption">' + (permanenciaResumo.totalPares ? (formatNumero(permanenciaResumo.totalPares) + ' permanência(s) calculada(s)') : 'Sem pares completos de entrada e saída') + '</div>' +
 					'</div></div></div>';
 
 				var totaisHtml = '';
 				totaisOrdenados.forEach(function (t) {
 					var total = Number(t.total || 0);
-					var percentual = totalMovimentacoes > 0 ? ((total / totalMovimentacoes) * 100) : 0;
-					totaisHtml += '<div class="col-sm-6 col-xl-6">' +
+					totaisHtml += '<div class="col-sm-6 col-xl-4">' +
 						'<div class="dashboard-distribution-card" style="background:' + esc(t.cor || '#b91c1c') + '">' +
 						'<div class="dashboard-distribution-total">' + formatNumero(total) + '</div>' +
-						'<div class="dashboard-distribution-label">' + esc(getTipoDisplayLabel(t)) + '</div>' +
-						'<div class="dashboard-distribution-share">Participação de ' + formatDecimal(percentual) + '% no período</div>' +
+						'<div class="dashboard-distribution-label">' + esc(t.label || 'Movimentação') + '</div>' +
+						'<div class="dashboard-distribution-share">' + esc(t.descricao || 'Total de movimentações registradas no período.') + '</div>' +
 						'</div>' +
 						'</div>';
 				});
+				totaisHtml += '<div class="col-sm-6 col-xl-4">' +
+					'<div class="dashboard-distribution-card" style="background:#ea580c">' +
+					'<div class="dashboard-distribution-total">' + formatNumero(totalSaidasComLiberacao) + '</div>' +
+					'<div class="dashboard-distribution-label">Saídas com liberação</div>' +
+					'<div class="dashboard-distribution-share">' + (totalAlunosCursando > 0 ? (formatDecimal(percentualLiberacoes) + '% dos estudantes saíram com liberação antecipada, sem debitar do total de saídas.') : 'Sem base de estudantes cursando para calcular') + '</div>' +
+					'</div>' +
+					'</div>';
 				document.getElementById('relTotaisWrap').innerHTML = totaisHtml;
 
 				document.getElementById('relInsightsWrap').innerHTML =
 					'<div class="dashboard-insight-item"><div class="dashboard-insight-icon"><i class="las la-calendar-day"></i></div><div class="dashboard-insight-text"><strong>Ritmo diário</strong><span>' + formatDecimal(mediaPorDia) + ' movimentações em média por dia com movimento, distribuídas em ' + formatNumero(diasComMovimento) + ' dia(s).</span></div></div>' +
 					'<div class="dashboard-insight-item"><div class="dashboard-insight-icon"><i class="las la-users"></i></div><div class="dashboard-insight-text"><strong>Presença registrada</strong><span>' + formatNumero(alunosComEntrada) + ' estudante(s) tiveram entrada no período, com média de ' + formatDecimal(mediaPorAluno) + ' movimentações por estudante.</span></div></div>' +
 					'<div class="dashboard-insight-item"><div class="dashboard-insight-icon"><i class="las la-door-open"></i></div><div class="dashboard-insight-text"><strong>Saldo de permanência</strong><span>' + formatNumero(totalEntradas - totalSaidas) + ' movimentação(ões) a mais de entrada do que de saída no recorte consultado.</span></div></div>' +
+					'<div class="dashboard-insight-item"><div class="dashboard-insight-icon"><i class="las la-hourglass-half"></i></div><div class="dashboard-insight-text"><strong>Permanência média</strong><span>' + (permanenciaResumo.totalPares ? ('Os pares completos de entrada e saída indicam média de ' + esc(formatDuracaoMinutos(mediaPermanencia)) + ' por permanência, cobrindo ' + formatNumero(permanenciaResumo.totalPares) + ' saída(s) com cálculo válido.') : 'Ainda não há pares completos de entrada e saída suficientes para medir permanência.') + '</span></div></div>' +
 					'<div class="dashboard-insight-item"><div class="dashboard-insight-icon"><i class="las la-school"></i></div><div class="dashboard-insight-text"><strong>Concentração por turma</strong><span>' + (topoTurma ? ('A turma ' + esc(topoTurma.label) + ' lidera com ' + formatNumero(topoTurma.total) + ' registros.') : 'Nenhuma turma se destacou neste período.') + '</span></div></div>' +
 					'<div class="dashboard-insight-item"><div class="dashboard-insight-icon"><i class="las la-chart-line"></i></div><div class="dashboard-insight-text"><strong>Padrão semanal</strong><span>' + (rankingSemana[0] ? (esc(rankingSemana[0].label) + ' foi o dia mais movimentado, com ' + formatNumero(rankingSemana[0].total) + ' movimentações.') : 'Ainda não há um padrão semanal identificável.') + '</span></div></div>';
+
+				document.getElementById('relPermanenciaWrap').innerHTML =
+					'<div class="col-md-6 col-xl-3"><div class="dashboard-chart-summary-card h-100"><div class="dashboard-chart-summary-label">Permanência média</div><div class="dashboard-chart-summary-value">' + esc(permanenciaResumo.totalPares ? formatDuracaoMinutos(mediaPermanencia) : 'Sem dados') + '</div><div class="mini-caption mt-2">Média dos pares completos de entrada e saída.</div></div></div>' +
+					'<div class="col-md-6 col-xl-3"><div class="dashboard-chart-summary-card h-100"><div class="dashboard-chart-summary-label">Maior permanência</div><div class="dashboard-chart-summary-value">' + esc(permanenciaResumo.maior ? formatDuracaoMinutos(permanenciaResumo.maior.duracaoMinutos) : 'Sem dados') + '</div><div class="mini-caption mt-2">' + (permanenciaResumo.maior ? (esc(permanenciaResumo.maior.aluno_nome || 'Estudante') + ' em ' + esc(formatData(permanenciaResumo.maior.data || ''))) : 'Sem par completo identificado.') + '</div></div></div>' +
+					'<div class="col-md-6 col-xl-3"><div class="dashboard-chart-summary-card h-100"><div class="dashboard-chart-summary-label">Saídas com cálculo</div><div class="dashboard-chart-summary-value">' + formatNumero(permanenciaResumo.totalPares) + '</div><div class="mini-caption mt-2">' + (permanenciaResumo.saidasCobertas > 0 ? (formatDecimal((permanenciaResumo.totalPares / permanenciaResumo.saidasCobertas) * 100) + '% das saídas registradas no período.') : 'Nenhuma saída registrada no período.') + '</div></div></div>';
 
 				renderGraficoEvolucao(rankingDias, totalMovimentacoes);
 				renderGraficoHorarioPico(rankingHoras, totalMovimentacoes);
 
-				renderListaProgresso('relTurmasWrap', rankingTurmas.slice(0, 7), 'Nenhuma turma com movimentação no período.', function (item) {
+				renderListaProgresso('relTurmasWrap', rankingTurmas, 'Nenhuma turma com movimentação no período.', function (item) {
 					return formatNumero(item.total) + ' registros';
 				});
 
@@ -2690,7 +3267,7 @@
 						'<td>' + esc(formatHora(r.horario)) + '</td>' +
 						'<td class="fw-semibold">' + esc(r.aluno_nome) + '</td>' +
 						'<td>' + esc(r.turma || '\u2014') + '</td>' +
-						'<td>' + esc(r.tipo_nome) + '</td>' +
+						'<td>' + esc(getRegistroTipoLabel(r)) + '</td>' +
 						'</tr>';
 				});
 				tbody.innerHTML = html;
@@ -2724,6 +3301,7 @@
 
 					preencherSelectTipo();
 					preencherSelectsTurma();
+					sincronizarTodosFiltros();
 					renderTiposTabela();
 					renderLiberacoesAtivas();
 
@@ -2741,11 +3319,8 @@
 			   -------------------------------------------------------- */
 			function preencherSelectTipo() {
 				var sel = document.getElementById('selecionarTipo');
-				var relT = document.getElementById('relTipo');
-				var gerT = document.getElementById('gerencTipo');
 				var edT = document.getElementById('editRegTipo');
 				var radiosHtml = '';
-				var rhtml = '<option value="">Todas</option>';
 				var ehtml = '';
 				var entradaPadraoId = 0;
 
@@ -2763,12 +3338,9 @@
 							'</div>';
 						ehtml += '<option value="' + esc(t.id) + '">' + esc(getTipoDisplayLabel(t)) + '</option>';
 					}
-					rhtml += '<option value="' + esc(t.id) + '">' + esc(getTipoDisplayLabel(t)) + '</option>';
 				});
 
 				sel.innerHTML = radiosHtml || '<div class="text-muted small">Nenhum tipo ativo disponível.</div>';
-				relT.innerHTML = rhtml;
-				gerT.innerHTML = rhtml;
 				edT.innerHTML = ehtml;
 
 				var radioToCheck = entradaPadraoId > 0
@@ -2780,7 +3352,7 @@
 			}
 
 			function preencherSelectsTurma() {
-				['filtroTurmaQr', 'relTurma', 'gerencTurma'].forEach(function (id) {
+				['filtroTurmaQr'].forEach(function (id) {
 					var sel = document.getElementById(id);
 					var html = '<option value="">Todas</option>';
 					state.turmas.forEach(function (t) {
@@ -3279,6 +3851,10 @@
 					renderTiposTabela();
 					preencherSelectTipo();
 					preencherSelectsTurma();
+					sincronizarTodosFiltros();
+					if (state.filtroModalConfig) {
+						renderModalFiltroSelecao();
+					}
 					renderLiberacoesAtivas();
 				});
 			}
@@ -3373,8 +3949,33 @@
 				}
 			}
 
-			function renderGerencTabela() {
+			function obterGerencRegistrosFiltrados() {
 				var registros = Array.isArray(state.gerencRegistros) ? state.gerencRegistros : [];
+				var termo = String(state.gerencBusca || '').trim().toLowerCase();
+				if (!termo) {
+					return registros;
+				}
+
+				return registros.filter(function (r) {
+					var tipoLabel = getTipoDisplayLabel({ nome: r.refeicao_nome, natureza: r.natureza });
+					var campos = [
+						r.aluno_nome,
+						r.matricula,
+						r.turma,
+						r.obs,
+						r.refeicao_nome,
+						tipoLabel,
+						formatData(r.data),
+						formatHora(r.horario)
+					];
+					return campos.some(function (campo) {
+						return String(campo || '').toLowerCase().indexOf(termo) !== -1;
+					});
+				});
+			}
+
+			function renderGerencTabela() {
+				var registros = obterGerencRegistrosFiltrados();
 				var tbody = document.getElementById('gerencBody');
 				var totalEl = document.getElementById('gerencTotal');
 				var chkAll = document.getElementById('gerencCheckAll');
@@ -3424,13 +4025,14 @@
 
 				var html = '';
 				paginaRegistros.forEach(function (r) {
+					var tipoLabel = getRegistroTipoLabel(r);
 					html += '<tr data-id="' + r.id + '">' +
 						'<td><input type="checkbox" class="form-check-input mt-0 gerenc-check" value="' + r.id + '" ' + (selecionadosMap[String(r.id)] ? 'checked ' : '') + 'onchange="_atualizarBotaoExcluirSelecionados()"></td>' +
 						'<td>' + esc(formatData(r.data)) + '</td>' +
 						'<td>' + esc(formatHora(r.horario)) + '</td>' +
 						'<td class="fw-semibold">' + esc(r.aluno_nome) + '</td>' +
 						'<td>' + esc(r.turma) + '</td>' +
-						'<td><span class="tipo-badge" style="background:' + esc(r.refeicao_cor || '#ccc') + '"></span>' + esc(r.refeicao_nome) + '</td>' +
+						'<td><span class="tipo-badge" style="background:' + esc(r.refeicao_cor || '#ccc') + '"></span>' + esc(tipoLabel) + '</td>' +
 						'<td class="text-end">' +
 						'<button class="btn btn-outline-primary btn-sm me-1" onclick="gerencEditar(' + r.id + ')" title="Editar"><i class="las la-pen"></i></button>' +
 						'<button class="btn btn-outline-danger btn-sm" onclick="gerencExcluir(' + r.id + ',\'' + esc(r.aluno_nome).replace(/'/g, '') + '\')" title="Excluir"><i class="las la-trash"></i></button>' +
@@ -3658,6 +4260,12 @@
 				});
 			}
 
+			function obterStatusLiberacaoMeta(status) {
+				return String(status || 'pendente') === 'utilizada'
+					? { label: 'Liberada', badge: 'bg-success' }
+					: { label: 'Pendente', badge: 'text-bg-warning border' };
+			}
+
 			function renderLiberacoesAtivas() {
 				var wrap = document.getElementById('liberacoesAtivasWrap');
 				if (!wrap) {
@@ -3665,26 +4273,74 @@
 				}
 
 				var itens = Array.isArray(state.liberacoesAtivas) ? state.liberacoesAtivas : [];
+				var statusSelecionados = normalizarListaIds(obterEstadoSelecaoFiltro('liberacoes').status);
+				var termoBusca = String(state.liberacoesBusca || '').trim().toLowerCase();
+				var itensFiltrados = !statusSelecionados.length
+					? itens
+					: itens.filter(function (item) {
+						return statusSelecionados.indexOf(String(item.status || 'pendente')) !== -1;
+					});
+
+				if (termoBusca) {
+					itensFiltrados = itensFiltrados.filter(function (item) {
+						var campos = [
+							item.aluno_nome,
+							item.matricula,
+							item.turma,
+							item.obs,
+							item.usuario_nome,
+							obterStatusLiberacaoMeta(item.status).label,
+							formatDataHora(item.created_at || ''),
+							formatDataHora(item.usado_em || '')
+						];
+						return campos.some(function (campo) {
+							return String(campo || '').toLowerCase().indexOf(termoBusca) !== -1;
+						});
+					});
+				}
+
 				if (!itens.length) {
-					wrap.innerHTML = '<div class="text-muted small border rounded-3 p-3 bg-light">Nenhuma liberação antecipada pendente hoje.</div>';
+					wrap.innerHTML = '<div class="text-muted small border rounded-3 p-3 bg-light">Nenhuma liberação antecipada registrada hoje.</div>';
+					return;
+				}
+
+				if (!itensFiltrados.length) {
+					wrap.innerHTML = '<div class="text-muted small border rounded-3 p-3 bg-light">Nenhuma liberação encontrada para os filtros informados.</div>';
 					return;
 				}
 
 				var html = '';
-				itens.forEach(function (item) {
+				itensFiltrados.forEach(function (item) {
+					var statusMeta = obterStatusLiberacaoMeta(item.status);
+					var cancelLabel = String(item.status || 'pendente') === 'utilizada'
+						? 'Cancelar liberação e desfazer saída'
+						: 'Cancelar liberação';
+					var detalheStatus = String(item.status || 'pendente') === 'utilizada'
+						? 'Saída registrada em ' + esc(formatDataHora(item.usado_em || item.created_at))
+						: 'Liberado em ' + esc(formatDataHora(item.created_at));
+					var usuarioNome = String(item.usuario_nome || '').trim();
 					html += '<div class="border rounded-3 p-3 bg-white shadow-sm">' +
 						'<div class="d-flex flex-wrap justify-content-between align-items-start gap-2">' +
 						'<div>' +
 						'<div class="fw-semibold">' + esc(item.aluno_nome || 'Estudante') + '</div>' +
 						'<div class="text-muted small">' + esc(item.turma || 'Sem turma') + ' · Matrícula ' + esc(item.matricula || '—') + '</div>' +
 						'</div>' +
-						'<span class="badge text-bg-warning border">Pendente</span>' +
+						'<span class="badge ' + esc(statusMeta.badge) + '">' + esc(statusMeta.label) + '</span>' +
 						'</div>' +
-						'<div class="small text-muted mt-2">Liberado em ' + esc(formatDataHora(item.created_at)) + '</div>' +
+						'<div class="small text-muted mt-2">' + detalheStatus + '</div>' +
+						(usuarioNome ? ('<div class="small text-muted mt-1"><strong>Liberado por:</strong> ' + esc(usuarioNome) + '</div>') : '') +
 						(item.obs ? ('<div class="small mt-2"><strong>Obs.:</strong> ' + esc(item.obs) + '</div>') : '') +
+						'<div class="mt-3 d-flex justify-content-end">' +
+						'<button type="button" class="btn btn-outline-danger btn-sm js-cancelar-liberacao" data-id="' + esc(String(item.id || '0')) + '" data-status="' + esc(String(item.status || 'pendente')) + '" data-aluno="' + esc(String(item.aluno_nome || 'Estudante')) + '"><i class="las la-ban me-1"></i>' + cancelLabel + '</button>' +
+						'</div>' +
 						'</div>';
 				});
 				wrap.innerHTML = html;
+				wrap.querySelectorAll('.js-cancelar-liberacao').forEach(function (btn) {
+					btn.addEventListener('click', function () {
+						cancelarLiberacao(btn.dataset.id, btn.dataset.status, btn.dataset.aluno);
+					});
+				});
 			}
 
 			function resetLiberacaoForm(clearBusca) {
@@ -3714,7 +4370,7 @@
 					? 'Dentro da unidade'
 					: (aluno.estado_atual === 'fora' ? 'Fora da unidade' : 'Sem registro hoje');
 				var ultimaLabel = ultima
-					? ((ultima.tipo_nome || (ultima.natureza === 'saida' ? 'Saída' : 'Entrada')) + ' às ' + formatHora(ultima.horario || ''))
+					? (getRegistroTipoLabel(ultima) + ' às ' + formatHora(ultima.horario || ''))
 					: 'Nenhuma movimentação hoje';
 				var painel = document.getElementById('liberacaoAlunoSelecionado');
 				painel.className = 'border rounded-3 p-3 bg-white';
@@ -3863,6 +4519,36 @@
 				});
 			}
 
+			function cancelarLiberacao(liberacaoId, status, alunoNome) {
+				var id = parseInt(liberacaoId, 10) || 0;
+				if (!id) {
+					showStatus('Liberação inválida para cancelamento.', 'error');
+					return;
+				}
+
+				var mensagem = String(status || 'pendente') === 'utilizada'
+					? 'Cancelar a liberação de ' + (alunoNome || 'este estudante') + ' e desfazer a saída já registrada?'
+					: 'Cancelar a liberação de ' + (alunoNome || 'este estudante') + '?';
+
+				if (!window.confirm(mensagem)) {
+					return;
+				}
+
+				post(API_BASE + '/cancelar-liberacao', {
+					liberacao_id: id,
+				}, function (res) {
+					if (!res.ok) {
+						showStatus(res.message || 'Erro ao cancelar liberação.', 'error');
+						return;
+					}
+
+					state.liberacoesAtivas = Array.isArray(res.liberacoes_ativas) ? res.liberacoes_ativas : [];
+					renderLiberacoesAtivas();
+					showStatus(res.message || 'Liberação cancelada com sucesso.', 'success');
+					pollServidor();
+				});
+			}
+
 			/* --------------------------------------------------------
 			   Bind eventos
 			   -------------------------------------------------------- */
@@ -3944,15 +4630,68 @@
 				});
 
 				// Relatório
-				document.getElementById('btnRelatorioFiltrar').addEventListener('click', filtrarRelatorio);
 				document.getElementById('btnRelatorioImprimir').addEventListener('click', imprimirRelatorio);
+				['relDataInicio', 'relDataFim'].forEach(function (id) {
+					document.getElementById(id).addEventListener('change', function () {
+						if (obterAbaAtivaId() === 'tab-dash-btn') {
+							filtrarRelatorio();
+						}
+					});
+				});
 
 				// Gerenciamento
-				document.getElementById('btnGerencFiltrar').addEventListener('click', filtrarGerenc);
 				document.getElementById('formEditarRegistro').addEventListener('submit', salvarRegistroEditado);
 				document.getElementById('btnExcluirSelecionados').addEventListener('click', window.gerencExcluirSelecionados);
+				['gerencDataInicio', 'gerencDataFim'].forEach(function (id) {
+					document.getElementById(id).addEventListener('change', function () {
+						if (obterAbaAtivaId() === 'tab-gerenc-btn') {
+							filtrarGerenc();
+						}
+					});
+				});
+				document.querySelectorAll('.filter-trigger-btn').forEach(function (btn) {
+					btn.addEventListener('click', function () {
+						state.filtroModalConfig = {
+							contexto: String(btn.getAttribute('data-contexto') || ''),
+							categoria: String(btn.getAttribute('data-categoria') || ''),
+						};
+						renderModalFiltroSelecao();
+						bootstrap.Modal.getOrCreateInstance(document.getElementById('modalFiltroSelecao')).show();
+					});
+				});
+				document.getElementById('filtroSelecaoLista').addEventListener('change', function (event) {
+					var input = event.target;
+					if (!input || input.type !== 'checkbox') {
+						return;
+					}
+					alternarSelecaoFiltro(
+						String(input.getAttribute('data-contexto') || ''),
+						String(input.getAttribute('data-categoria') || ''),
+						String(input.value || ''),
+						!!input.checked
+					);
+				});
+				document.getElementById('btnLimparFiltroSelecao').addEventListener('click', function () {
+					var config = state.filtroModalConfig || {};
+					if (!config.contexto || !config.categoria) {
+						return;
+					}
+					obterEstadoSelecaoFiltro(config.contexto)[config.categoria] = [];
+					atualizarResumoFiltroContexto(config.contexto, config.categoria);
+					renderModalFiltroSelecao();
+					aplicarFiltroDoContexto(config.contexto);
+				});
+				document.getElementById('liberacoesBusca').addEventListener('input', function () {
+					state.liberacoesBusca = this.value || '';
+					renderLiberacoesAtivas();
+				});
 				document.getElementById('gerencPorPagina').addEventListener('change', function () {
 					state.gerencPorPagina = this.value === 'all' ? 'all' : Math.max(1, parseInt(this.value, 10) || 10);
+					state.gerencPaginaAtual = 1;
+					renderGerencTabela();
+				});
+				document.getElementById('gerencBusca').addEventListener('input', function () {
+					state.gerencBusca = this.value || '';
 					state.gerencPaginaAtual = 1;
 					renderGerencTabela();
 				});
@@ -3990,7 +4729,7 @@
 					filtrarGerenc();
 				});
 
-				// Ao abrir aba de liberações, sincronizar lista pendente
+				// Ao abrir aba de liberações, sincronizar lista do dia
 				document.getElementById('tab-liberacoes-btn').addEventListener('shown.bs.tab', function () {
 					renderLiberacoesAtivas();
 					pollServidor();

@@ -6239,6 +6239,7 @@ class InstitucionalController extends HomeController
 	{
 		return $this->canAccessSubservice('notas_e_desempenho')
 			|| $this->canAccessSubservice('notas_desempenho')
+			|| $this->canAccessSubservice('ranking_pedagogico')
 			|| (bool) (($_SESSION['auth']['tipo'] ?? '') === 'admin');
 	}
 
@@ -6617,6 +6618,10 @@ class InstitucionalController extends HomeController
 			return true;
 		}
 
+		if (!$this->isNotasDesempenhoProfessorScopedUser()) {
+			return true;
+		}
+
 		$departmentId = (int) ($_SESSION['auth']['departamento'] ?? 0);
 		if ($departmentId <= 0) {
 			return false;
@@ -6637,6 +6642,35 @@ class InstitucionalController extends HomeController
 
 		$departmentNormalized = $this->normalizeInstitutionalSearch($departmentName);
 		return in_array($departmentNormalized, ['coordenacao pedagogica', 'gestor'], true);
+	}
+
+	private function isNotasDesempenhoProfessorScopedUser(): bool
+	{
+		$authType = $this->normalizePermissionToken((string) ($_SESSION['auth']['tipo'] ?? ''));
+		if ($authType === 'professor') {
+			return true;
+		}
+
+		$functionId = (int) ($_SESSION['auth']['funcao'] ?? 0);
+		if ($functionId <= 0) {
+			return false;
+		}
+
+		$functions = $this->getAdminFunctions();
+		foreach ($functions as $function) {
+			if (!is_array($function)) {
+				continue;
+			}
+
+			if ((int) ($function['id'] ?? 0) !== $functionId) {
+				continue;
+			}
+
+			$functionName = $this->normalizeInstitutionalSearch((string) ($function['nome'] ?? ''));
+			return $functionName === 'professor';
+		}
+
+		return false;
 	}
 
 	private function getNotasDesempenhoUserScope(): array
@@ -7638,12 +7672,13 @@ class InstitucionalController extends HomeController
 		$model->ensureTableStructure();
 
 		try {
+			$model->processarSaidasAutomaticasPendentes();
 			$tipos = $model->getTodos();
 			$turmas = (new TurmaModel())->getAllOrdered();
 			$today = date('Y-m-d');
 			$resumo = $model->resumoHoje($today);
 			$meta = $model->resumoPresencaHoje($today);
-			$liberacoesAtivas = $model->listarLiberacoesAtivas($today);
+			$liberacoesAtivas = $model->listarLiberacoesDoDia($today);
 		} catch (Throwable $e) {
 			$this->respondJson(['ok' => false, 'message' => 'Erro ao carregar dados: ' . $e->getMessage()], 500);
 		}
@@ -7667,6 +7702,7 @@ class InstitucionalController extends HomeController
 
 		$model = new EntradaSaidaModel();
 		$model->ensureTableStructure();
+		$model->processarSaidasAutomaticasPendentes();
 		$today = date('Y-m-d');
 
 		$this->respondJson([
@@ -7674,7 +7710,7 @@ class InstitucionalController extends HomeController
 			'resumo_hoje' => $model->resumoHoje($today),
 			'ultimas_entradas' => $model->ultimasMovimentacoesHoje($today, 10),
 			'meta' => $model->resumoPresencaHoje($today),
-			'liberacoes_ativas' => $model->listarLiberacoesAtivas($today),
+			'liberacoes_ativas' => $model->listarLiberacoesDoDia($today),
 		]);
 	}
 
@@ -7843,7 +7879,7 @@ class InstitucionalController extends HomeController
 			'ok' => true,
 			'id' => $id,
 			'horario' => $horario,
-			'tipo_nome' => (string) ($tipo['nome'] ?? ''),
+			'tipo_nome' => !empty($avaliacao['is_retorno']) ? 'Retorno' : (string) ($tipo['nome'] ?? ''),
 			'message' => 'Movimentação registrada com sucesso.',
 		]);
 	}
@@ -7881,7 +7917,7 @@ class InstitucionalController extends HomeController
 		try {
 			$usuarioId = isset($_SESSION['auth']['id']) ? (int) $_SESSION['auth']['id'] : null;
 			$liberacao = $model->concederLiberacaoSaida($alunoId, $today, $usuarioId, $obs);
-			$liberacoesAtivas = $model->listarLiberacoesAtivas($today);
+			$liberacoesAtivas = $model->listarLiberacoesDoDia($today);
 		} catch (Throwable $e) {
 			$this->respondJson(['ok' => false, 'message' => $e->getMessage()], 409);
 		}
@@ -7897,6 +7933,40 @@ class InstitucionalController extends HomeController
 				'matricula' => $aluno['matricula'],
 				'turma' => $aluno['turma'],
 			],
+		]);
+	}
+
+	public function entradaSaidaCancelarLiberacao(): void
+	{
+		if (!$this->canAccessEntradaSaidaModule()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+			$this->respondJson(['ok' => false, 'message' => 'Método não permitido.'], 405);
+		}
+
+		$liberacaoId = (int) ($_POST['liberacao_id'] ?? 0);
+
+		if ($liberacaoId <= 0) {
+			$this->respondJson(['ok' => false, 'message' => 'Liberação inválida.'], 422);
+		}
+
+		$model = new EntradaSaidaModel();
+		$model->ensureTableStructure();
+		$today = date('Y-m-d');
+
+		try {
+			$model->cancelarLiberacaoSaida($liberacaoId);
+			$liberacoesAtivas = $model->listarLiberacoesDoDia($today);
+		} catch (Throwable $e) {
+			$this->respondJson(['ok' => false, 'message' => $e->getMessage()], 409);
+		}
+
+		$this->respondJson([
+			'ok' => true,
+			'message' => 'Liberação cancelada com sucesso.',
+			'liberacoes_ativas' => $liberacoesAtivas,
 		]);
 	}
 
@@ -7980,6 +8050,16 @@ class InstitucionalController extends HomeController
 		$dataFim = trim((string) ($_GET['data_fim'] ?? ''));
 		$tipoId = (int) ($_GET['tipo_id'] ?? 0);
 		$turmaId = trim((string) ($_GET['turma_id'] ?? ''));
+		$tipoIds = array_values(array_filter(array_unique(array_map('intval', preg_split('/\s*,\s*/', trim((string) ($_GET['tipo_ids'] ?? '')), -1, PREG_SPLIT_NO_EMPTY)))));
+		$turmaIds = array_values(array_filter(array_unique(array_map('intval', preg_split('/\s*,\s*/', trim((string) ($_GET['turma_ids'] ?? '')), -1, PREG_SPLIT_NO_EMPTY)))));
+
+		if (empty($tipoIds) && $tipoId > 0) {
+			$tipoIds = [$tipoId];
+		}
+
+		if (empty($turmaIds) && $turmaId !== '') {
+			$turmaIds = [(int) $turmaId];
+		}
 
 		if ($dataInicio === '' || $dataFim === '') {
 			$dataInicio = date('Y-m-d');
@@ -7990,20 +8070,28 @@ class InstitucionalController extends HomeController
 		$model->ensureTableStructure();
 
 		try {
+			$model->processarSaidasAutomaticasPendentes();
 			$registros = $model->relatorio(
 				$dataInicio,
 				$dataFim,
-				$tipoId > 0 ? $tipoId : null,
-				$turmaId !== '' ? $turmaId : null
+				!empty($tipoIds) ? $tipoIds : null,
+				!empty($turmaIds) ? $turmaIds : null
 			);
 			$totais = $model->totalPorTipoNoPeriodo(
 				$dataInicio,
 				$dataFim,
-				$tipoId > 0 ? $tipoId : null,
-				$turmaId !== '' ? $turmaId : null
+				!empty($tipoIds) ? $tipoIds : null,
+				!empty($turmaIds) ? $turmaIds : null
+			);
+			$liberacoesMeta = $model->resumoLiberacoesNoPeriodo(
+				$dataInicio,
+				$dataFim,
+				!empty($turmaIds) ? $turmaIds : null
 			);
 			$meta = [
-				'total_alunos_ativos' => $model->totalAlunosAtivos($turmaId !== '' ? (int) $turmaId : null),
+				'total_alunos_ativos' => $model->totalAlunosAtivos(!empty($turmaIds) ? $turmaIds : null),
+				'total_saidas_com_liberacao' => (int) ($liberacoesMeta['total_saidas_com_liberacao'] ?? 0),
+				'alunos_com_saida_liberada' => (int) ($liberacoesMeta['alunos_com_saida_liberada'] ?? 0),
 			];
 		} catch (Throwable $e) {
 			$this->respondJson(['ok' => false, 'message' => $e->getMessage()], 500);

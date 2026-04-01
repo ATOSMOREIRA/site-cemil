@@ -34,6 +34,7 @@ class EntradaSaidaModel
                 horario             TIME         NOT NULL,
                 usuario_id          INT          NULL,
                 obs                 VARCHAR(255) NULL,
+                saida_automatica    TINYINT(1)   NOT NULL DEFAULT 0,
                 created_at          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY (id),
                 KEY idx_entrada_saida_data            (data),
@@ -45,6 +46,12 @@ class EntradaSaidaModel
                     REFERENCES entrada_saida_tipos_movimentacao (id) ON DELETE RESTRICT ON UPDATE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
         );
+
+        try {
+            $pdo->exec('ALTER TABLE entrada_saida_registros ADD COLUMN saida_automatica TINYINT(1) NOT NULL DEFAULT 0 AFTER obs');
+        } catch (Throwable $e) {
+            // Coluna já existente em bases migradas.
+        }
 
         $pdo->exec(
             "CREATE TABLE IF NOT EXISTS entrada_saida_liberacoes (
@@ -382,6 +389,7 @@ class EntradaSaidaModel
                     'message' => 'Não há entrada registrada hoje para lançar a saída.',
                     'ultima_movimentacao' => null,
                     'estado_atual' => 'sem_registro',
+                    'is_retorno' => false,
                     'liberacao_antecipada' => false,
                     'liberacao' => null,
                 ];
@@ -393,6 +401,7 @@ class EntradaSaidaModel
                     'message' => 'A última movimentação de hoje já é uma saída.',
                     'ultima_movimentacao' => $ultima,
                     'estado_atual' => 'fora',
+                    'is_retorno' => false,
                     'liberacao_antecipada' => false,
                     'liberacao' => null,
                 ];
@@ -410,6 +419,7 @@ class EntradaSaidaModel
                         : 'Saída bloqueada até liberação da gestão.',
                     'ultima_movimentacao' => $ultima,
                     'estado_atual' => 'dentro',
+                    'is_retorno' => false,
                     'liberacao_antecipada' => false,
                     'liberacao' => null,
                 ];
@@ -422,6 +432,7 @@ class EntradaSaidaModel
                     : 'Saída liberada para registro.',
                 'ultima_movimentacao' => $ultima,
                 'estado_atual' => 'dentro',
+                'is_retorno' => false,
                 'liberacao_antecipada' => $liberacao !== null,
                 'liberacao' => $liberacao,
             ];
@@ -433,16 +444,20 @@ class EntradaSaidaModel
                 'message' => 'Este estudante já possui entrada registrada hoje e ainda não saiu.',
                 'ultima_movimentacao' => $ultima,
                 'estado_atual' => 'dentro',
+                'is_retorno' => false,
                 'liberacao_antecipada' => false,
                 'liberacao' => null,
             ];
         }
 
+		$isRetorno = $ultima !== null && ($ultima['natureza'] ?? '') === 'saida';
+
         return [
             'permitido' => true,
-            'message' => 'Entrada liberada para registro.',
+            'message' => $isRetorno ? 'Retorno liberado para registro.' : 'Entrada liberada para registro.',
             'ultima_movimentacao' => $ultima,
             'estado_atual' => $ultima === null ? 'sem_registro' : 'fora',
+            'is_retorno' => $isRetorno,
             'liberacao_antecipada' => false,
             'liberacao' => null,
         ];
@@ -453,8 +468,8 @@ class EntradaSaidaModel
         $pdo = Database::connection();
         $stmt = $pdo->prepare(
             'INSERT INTO entrada_saida_registros
-                (aluno_id, tipo_movimentacao_id, data, horario, usuario_id, obs)
-             VALUES (:aluno_id, :tipo_movimentacao_id, :data, :horario, :usuario_id, :obs)'
+                (aluno_id, tipo_movimentacao_id, data, horario, usuario_id, obs, saida_automatica)
+             VALUES (:aluno_id, :tipo_movimentacao_id, :data, :horario, :usuario_id, :obs, 0)'
         );
         $stmt->execute([
             'aluno_id' => $alunoId,
@@ -466,6 +481,66 @@ class EntradaSaidaModel
         ]);
 
         return (int) $pdo->lastInsertId();
+    }
+
+    public function processarSaidasAutomaticasPendentes(?DateTimeImmutable $agora = null): int
+    {
+        $agora = $agora ?: new DateTimeImmutable('now');
+        $dataLimite = $this->obterDataLimiteSaidasAutomaticas($agora);
+        if ($dataLimite === null) {
+            return 0;
+        }
+
+        $tipoSaida = $this->buscarTipoSaidaPadrao();
+        if ($tipoSaida === null) {
+            return 0;
+        }
+
+        $pdo = Database::connection();
+        $pendentesStmt = $pdo->prepare(
+            'SELECT r.id, r.aluno_id, r.data
+               FROM entrada_saida_registros r
+               JOIN entrada_saida_tipos_movimentacao t ON t.id = r.tipo_movimentacao_id
+              WHERE r.data <= :data_limite
+                AND t.natureza = "entrada"
+                AND NOT EXISTS (
+                    SELECT 1
+                      FROM entrada_saida_registros r2
+                      JOIN entrada_saida_tipos_movimentacao t2 ON t2.id = r2.tipo_movimentacao_id
+                     WHERE r2.aluno_id = r.aluno_id
+                       AND r2.data = r.data
+                       AND (
+                            r2.horario > r.horario
+                            OR (r2.horario = r.horario AND r2.id > r.id)
+                       )
+                )
+              ORDER BY r.data, r.aluno_id, r.id'
+        );
+        $pendentesStmt->execute(['data_limite' => $dataLimite]);
+        $pendentes = $pendentesStmt->fetchAll();
+        if (!is_array($pendentes) || $pendentes === []) {
+            return 0;
+        }
+
+        $insertStmt = $pdo->prepare(
+            'INSERT INTO entrada_saida_registros
+                (aluno_id, tipo_movimentacao_id, data, horario, usuario_id, obs, saida_automatica)
+             VALUES (:aluno_id, :tipo_movimentacao_id, :data, :horario, NULL, :obs, 1)'
+        );
+
+        $totalGerado = 0;
+        foreach ($pendentes as $pendente) {
+            $insertStmt->execute([
+                'aluno_id' => (int) $pendente['aluno_id'],
+                'tipo_movimentacao_id' => (int) $tipoSaida['id'],
+                'data' => (string) $pendente['data'],
+                'horario' => '23:59:59',
+                'obs' => 'Saída automática gerada após verificação às 03:00 por ausência de registro de saída.',
+            ]);
+            $totalGerado += 1;
+        }
+
+        return $totalGerado;
     }
 
     public function concederLiberacaoSaida(int $alunoId, string $data, ?int $usuarioId, string $obs = ''): array
@@ -532,21 +607,110 @@ class EntradaSaidaModel
         ]);
     }
 
-    public function listarLiberacoesAtivas(string $data): array
+    public function cancelarLiberacaoSaida(int $liberacaoId): void
     {
         $pdo = Database::connection();
-                $stmt = $pdo->prepare(
-                        "SELECT l.id, l.aluno_id, l.data, l.obs, l.created_at,
-                                        a.nome AS aluno_nome, a.matricula, a.turma
-                             FROM entrada_saida_liberacoes l
-                             JOIN alunos a ON a.id = l.aluno_id
-                            WHERE l.data = :data
-                                AND l.status = 'pendente'
-                            ORDER BY l.created_at DESC, l.id DESC"
+        $stmt = $pdo->prepare(
+            'SELECT id, aluno_id, data, status, registro_saida_id
+               FROM entrada_saida_liberacoes
+              WHERE id = :id
+              LIMIT 1'
+        );
+        $stmt->execute(['id' => $liberacaoId]);
+        $liberacao = $stmt->fetch();
+
+        if (!$liberacao) {
+            throw new RuntimeException('Liberação não encontrada.');
+        }
+
+        $status = (string) ($liberacao['status'] ?? '');
+        if (!in_array($status, ['pendente', 'utilizada'], true)) {
+            throw new RuntimeException('Esta liberação não pode mais ser cancelada.');
+        }
+
+        $pdo->beginTransaction();
+        try {
+            if ($status === 'utilizada' && !empty($liberacao['registro_saida_id'])) {
+                $registroSaidaId = (int) $liberacao['registro_saida_id'];
+                $alunoId = (int) $liberacao['aluno_id'];
+                $data = (string) $liberacao['data'];
+
+                $posteriorStmt = $pdo->prepare(
+                    'SELECT COUNT(*)
+                       FROM entrada_saida_registros
+                      WHERE aluno_id = :aluno_id
+                        AND data = :data
+                        AND id > :registro_id'
                 );
-        $stmt->execute(['data' => $data]);
+                $posteriorStmt->execute([
+                    'aluno_id' => $alunoId,
+                    'data' => $data,
+                    'registro_id' => $registroSaidaId,
+                ]);
+
+                if ((int) ($posteriorStmt->fetchColumn() ?: 0) > 0) {
+                    throw new RuntimeException('Não é possível cancelar esta liberação porque já existem movimentações posteriores para o estudante no dia.');
+                }
+
+                $deleteRegistroStmt = $pdo->prepare(
+                    'DELETE FROM entrada_saida_registros
+                      WHERE id = :id
+                      LIMIT 1'
+                );
+                $deleteRegistroStmt->execute(['id' => $registroSaidaId]);
+            }
+
+            $deleteLiberacaoStmt = $pdo->prepare(
+                'DELETE FROM entrada_saida_liberacoes
+                  WHERE id = :id
+                  LIMIT 1'
+            );
+            $deleteLiberacaoStmt->execute(['id' => $liberacaoId]);
+
+            $pdo->commit();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    public function listarLiberacoesDoDia(string $data, $status = null): array
+    {
+        $pdo = Database::connection();
+        $params = ['data' => $data];
+        $wheres = ['l.data = :data'];
+        $statusList = $this->normalizeIdList($status);
+
+        if (!empty($statusList)) {
+            $placeholders = [];
+            foreach ($statusList as $index => $statusValue) {
+                $key = 'status_' . $index;
+                $placeholders[] = ':' . $key;
+                $params[$key] = $statusValue;
+            }
+            $wheres[] = 'l.status IN (' . implode(', ', $placeholders) . ')';
+        }
+
+        $stmt = $pdo->prepare(
+            'SELECT l.id, l.aluno_id, l.data, l.obs, l.status, l.created_at, l.usado_em, l.registro_saida_id,
+                l.usuario_id, a.nome AS aluno_nome, a.matricula, a.turma,
+                COALESCE(u.nome, u.usuario, "") AS usuario_nome
+               FROM entrada_saida_liberacoes l
+               JOIN alunos a ON a.id = l.aluno_id
+               LEFT JOIN usuarios u ON u.id = l.usuario_id
+              WHERE ' . implode(' AND ', $wheres) . '
+              ORDER BY l.created_at DESC, l.id DESC'
+        );
+        $stmt->execute($params);
 
         return $stmt->fetchAll();
+    }
+
+    public function listarLiberacoesAtivas(string $data): array
+    {
+        return $this->listarLiberacoesDoDia($data);
     }
 
     public function resumoHoje(string $data): array
@@ -620,28 +784,40 @@ class EntradaSaidaModel
         ];
     }
 
-    public function relatorio(string $dataInicio, string $dataFim, ?int $tipoId = null, ?string $turmaId = null): array
+    public function relatorio(string $dataInicio, string $dataFim, $tipoIds = null, $turmaIds = null): array
     {
         $pdo = Database::connection();
         $wheres = ['r.data BETWEEN :ini AND :fim'];
         $params = ['ini' => $dataInicio, 'fim' => $dataFim];
+        $tipoList = $this->normalizeIdList($tipoIds);
+        $turmaList = $this->normalizeIdList($turmaIds);
 
-        if ($tipoId !== null && $tipoId > 0) {
-            $wheres[] = 'r.tipo_movimentacao_id = :tipo';
-            $params['tipo'] = $tipoId;
+        if (!empty($tipoList)) {
+            $wheres[] = 'r.tipo_movimentacao_id IN (' . $this->buildIntegerInClause($tipoList, 'tipo', $params) . ')';
         }
 
-        if ($turmaId !== null && $turmaId !== '') {
-            $wheres[] = 'a.turma_id = :turma';
-            $params['turma'] = (int) $turmaId;
+        if (!empty($turmaList)) {
+            $wheres[] = 'a.turma_id IN (' . $this->buildIntegerInClause($turmaList, 'turma', $params) . ')';
         }
 
         $stmt = $pdo->prepare(
             'SELECT r.id, r.data, r.horario,
-                    a.nome AS aluno_nome, a.matricula, a.turma,
+                    a.nome AS aluno_nome, a.matricula, a.turma, a.turma_id,
                     t.nome AS refeicao_nome, t.cor AS refeicao_cor,
                     t.natureza,
                     r.tipo_movimentacao_id AS tipo_refeicao_id,
+                                        CASE
+                                                WHEN t.natureza = "entrada" AND EXISTS (
+                                                        SELECT 1
+                                                            FROM entrada_saida_registros r_prev
+                                                            JOIN entrada_saida_tipos_movimentacao t_prev ON t_prev.id = r_prev.tipo_movimentacao_id
+                                                         WHERE r_prev.aluno_id = r.aluno_id
+                                                             AND r_prev.data = r.data
+                                                             AND t_prev.natureza = "saida"
+                                                             AND (r_prev.horario < r.horario OR (r_prev.horario = r.horario AND r_prev.id < r.id))
+                                                ) THEN 1
+                                                ELSE 0
+                                        END AS is_retorno,
                     r.obs
                FROM entrada_saida_registros r
                JOIN alunos a ON a.id = r.aluno_id
@@ -654,21 +830,21 @@ class EntradaSaidaModel
         return $stmt->fetchAll();
     }
 
-    public function totalPorTipoNoPeriodo(string $dataInicio, string $dataFim, ?int $tipoId = null, ?string $turmaId = null): array
+    public function totalPorTipoNoPeriodo(string $dataInicio, string $dataFim, $tipoIds = null, $turmaIds = null): array
     {
         $pdo = Database::connection();
         $params = ['ini' => $dataInicio, 'fim' => $dataFim];
         $where = ['t.ativo = 1'];
         $countExpr = 'SUM(CASE WHEN r.id IS NOT NULL THEN 1 ELSE 0 END)';
+        $tipoList = $this->normalizeIdList($tipoIds);
+        $turmaList = $this->normalizeIdList($turmaIds);
 
-        if ($tipoId !== null && $tipoId > 0) {
-            $where[] = 't.id = :tipo';
-            $params['tipo'] = $tipoId;
+        if (!empty($tipoList)) {
+            $where[] = 't.id IN (' . $this->buildIntegerInClause($tipoList, 'tipo_total', $params) . ')';
         }
 
-        if ($turmaId !== null && $turmaId !== '') {
-            $countExpr = 'SUM(CASE WHEN r.id IS NOT NULL AND a.turma_id = :turma THEN 1 ELSE 0 END)';
-            $params['turma'] = (int) $turmaId;
+        if (!empty($turmaList)) {
+            $countExpr = 'SUM(CASE WHEN r.id IS NOT NULL AND a.turma_id IN (' . $this->buildIntegerInClause($turmaList, 'turma_total', $params) . ') THEN 1 ELSE 0 END)';
         }
 
         $sql = 'SELECT t.id, t.nome, t.cor, t.natureza,
@@ -688,13 +864,54 @@ class EntradaSaidaModel
         return $stmt->fetchAll();
     }
 
+    public function resumoLiberacoesNoPeriodo(string $dataInicio, string $dataFim, $turmaIds = null): array
+    {
+        $pdo = Database::connection();
+        $params = ['ini' => $dataInicio, 'fim' => $dataFim];
+        $wheres = ['l.data BETWEEN :ini AND :fim', "l.status = 'utilizada'", 'l.registro_saida_id IS NOT NULL'];
+        $turmaList = $this->normalizeIdList($turmaIds);
+
+        if (!empty($turmaList)) {
+            $wheres[] = 'a.turma_id IN (' . $this->buildIntegerInClause($turmaList, 'turma_lib', $params) . ')';
+        }
+
+        $stmt = $pdo->prepare(
+            'SELECT COUNT(*) AS total_liberacoes,
+                    COUNT(DISTINCT l.aluno_id) AS alunos_com_liberacao
+               FROM entrada_saida_liberacoes l
+               JOIN alunos a ON a.id = l.aluno_id
+              WHERE ' . implode(' AND ', $wheres)
+        );
+        $stmt->execute($params);
+
+        $row = $stmt->fetch() ?: [];
+
+        return [
+            'total_saidas_com_liberacao' => (int) ($row['total_liberacoes'] ?? 0),
+            'alunos_com_saida_liberada' => (int) ($row['alunos_com_liberacao'] ?? 0),
+        ];
+    }
+
     public function ultimasMovimentacoesHoje(string $data, int $limit = 10): array
     {
         $pdo = Database::connection();
         $stmt = $pdo->prepare(
             'SELECT r.id, r.horario,
                     a.nome AS aluno_nome, a.turma,
-                    t.nome AS tipo_nome, t.cor AS tipo_cor, t.natureza
+                    t.nome AS tipo_nome, t.cor AS tipo_cor, t.natureza,
+                    r.saida_automatica,
+                    CASE
+                        WHEN t.natureza = "entrada" AND EXISTS (
+                            SELECT 1
+                              FROM entrada_saida_registros r_prev
+                              JOIN entrada_saida_tipos_movimentacao t_prev ON t_prev.id = r_prev.tipo_movimentacao_id
+                             WHERE r_prev.aluno_id = r.aluno_id
+                               AND r_prev.data = r.data
+                               AND t_prev.natureza = "saida"
+                               AND (r_prev.horario < r.horario OR (r_prev.horario = r.horario AND r_prev.id < r.id))
+                        ) THEN 1
+                        ELSE 0
+                    END AS is_retorno
                FROM entrada_saida_registros r
                JOIN alunos a ON a.id = r.aluno_id
                JOIN entrada_saida_tipos_movimentacao t ON t.id = r.tipo_movimentacao_id
@@ -737,6 +954,7 @@ class EntradaSaidaModel
         $stmt = $pdo->prepare(
             'SELECT r.id, r.data, r.horario, r.obs,
                     r.tipo_movimentacao_id AS tipo_refeicao_id,
+                    r.saida_automatica,
                     a.nome AS aluno_nome
                FROM entrada_saida_registros r
                JOIN alunos a ON a.id = r.aluno_id
@@ -776,16 +994,17 @@ class EntradaSaidaModel
         $stmt->execute(['id' => $id]);
     }
 
-    public function totalAlunosAtivos(?int $turmaId = null): int
+    public function totalAlunosAtivos($turmaIds = null): int
     {
         $pdo = Database::connection();
         $anoAtual = (int) date('Y');
-        $sql = 'SELECT COUNT(*) FROM alunos a JOIN turmas t ON t.id = a.turma_id WHERE a.ativo = 1 AND t.ano_letivo = :ano_letivo';
+        $sql = 'SELECT COUNT(*) FROM alunos a JOIN turmas t ON t.id = a.turma_id WHERE a.ativo = 1 AND a.situacao = :situacao AND t.ano_letivo = :ano_letivo';
         $params = ['ano_letivo' => $anoAtual];
+        $params['situacao'] = 'Cursando';
+        $turmaList = $this->normalizeIdList($turmaIds);
 
-        if ($turmaId !== null && $turmaId > 0) {
-            $sql = 'SELECT COUNT(*) FROM alunos a JOIN turmas t ON t.id = a.turma_id WHERE a.turma_id = :turma_id AND a.ativo = 1 AND t.ano_letivo = :ano_letivo';
-            $params['turma_id'] = $turmaId;
+        if (!empty($turmaList)) {
+            $sql .= ' AND a.turma_id IN (' . $this->buildIntegerInClause($turmaList, 'turma_ativa', $params) . ')';
         }
 
         $stmt = $pdo->prepare($sql);
@@ -802,6 +1021,19 @@ class EntradaSaidaModel
                     t.id AS tipo_id,
                     t.nome AS tipo_nome,
                     t.natureza,
+                    r.saida_automatica,
+                    CASE
+                        WHEN t.natureza = "entrada" AND EXISTS (
+                            SELECT 1
+                              FROM entrada_saida_registros r_prev
+                              JOIN entrada_saida_tipos_movimentacao t_prev ON t_prev.id = r_prev.tipo_movimentacao_id
+                             WHERE r_prev.aluno_id = r.aluno_id
+                               AND r_prev.data = r.data
+                               AND t_prev.natureza = "saida"
+                               AND (r_prev.horario < r.horario OR (r_prev.horario = r.horario AND r_prev.id < r.id))
+                        ) THEN 1
+                        ELSE 0
+                    END AS is_retorno,
                     t.cor
                FROM entrada_saida_registros r
                JOIN entrada_saida_tipos_movimentacao t ON t.id = r.tipo_movimentacao_id
@@ -838,6 +1070,63 @@ class EntradaSaidaModel
         $row = $stmt->fetch();
 
         return $row ?: null;
+    }
+
+    private function normalizeIdList($values): array
+    {
+        if ($values === null || $values === '') {
+            return [];
+        }
+
+        if (!is_array($values)) {
+            $values = explode(',', (string) $values);
+        }
+
+        $normalized = [];
+        foreach ($values as $value) {
+            $item = trim((string) $value);
+            if ($item === '' || in_array($item, $normalized, true)) {
+                continue;
+            }
+            $normalized[] = $item;
+        }
+
+        return $normalized;
+    }
+
+    private function buildIntegerInClause(array $values, string $prefix, array &$params): string
+    {
+        $placeholders = [];
+        foreach ($values as $index => $value) {
+            $key = $prefix . '_' . $index;
+            $placeholders[] = ':' . $key;
+            $params[$key] = (int) $value;
+        }
+
+        return implode(', ', $placeholders);
+    }
+
+    private function obterDataLimiteSaidasAutomaticas(DateTimeImmutable $agora): ?string
+    {
+        $horaAtual = $agora->format('H:i:s');
+        $intervaloDias = $horaAtual >= '03:00:00' ? 1 : 2;
+        $dataLimite = $agora->setTime(0, 0, 0)->modify('-' . $intervaloDias . ' day');
+        return $dataLimite->format('Y-m-d');
+    }
+
+    private function buscarTipoSaidaPadrao(): ?array
+    {
+        $pdo = Database::connection();
+        $stmt = $pdo->query(
+            "SELECT id, nome, natureza, descricao, horario_ini, horario_fim, cor, ativo
+               FROM entrada_saida_tipos_movimentacao
+              WHERE natureza = 'saida'
+              ORDER BY ativo DESC, horario_ini, nome
+              LIMIT 1"
+        );
+        $row = $stmt ? $stmt->fetch() : false;
+
+        return $row !== false ? $row : null;
     }
 
     private function saidaDentroDoHorario(array $tipo, string $horarioAtual): bool

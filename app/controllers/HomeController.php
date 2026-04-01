@@ -426,6 +426,8 @@ class HomeController extends Controller
             'nome' => $user['nome'] ?? 'Usuário',
             'email' => $user['email'] ?? $credential,
             'tipo' => $authType,
+            'departamento' => (int) ($user['departamento'] ?? 0),
+            'funcao' => (int) ($user['funcao'] ?? 0),
             'servicos' => $rawServices,
             'can_view_institucional' => $this->canAccessInstitutionalAreaByRules($authType, $rawServices),
             'can_access_cadastro_de_estudantes' => $this->canAccessSubserviceByRules($authType, $rawServices, 'cadastro_de_estudantes'),

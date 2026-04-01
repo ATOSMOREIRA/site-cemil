@@ -2724,7 +2724,7 @@
 				renderGraficoEvolucao(rankingDias, totalRefeicoes);
 				renderGraficoHorarioPico(rankingHoras, totalRefeicoes);
 
-				renderListaProgresso('relTurmasWrap', rankingTurmas.slice(0, 7), 'Nenhuma turma com consumo no período.', function (item) {
+				renderListaProgresso('relTurmasWrap', rankingTurmas, 'Nenhuma turma com consumo no período.', function (item) {
 					return formatNumero(item.total) + ' registros';
 				});
 

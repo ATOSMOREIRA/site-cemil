@@ -3541,11 +3541,12 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
       }
 
+      var formData = new FormData(myProfileFormElement);
       setLoadingState(true);
 
       fetch(submitEndpoint, {
         method: 'POST',
-        body: new FormData(myProfileFormElement),
+        body: formData,
         headers: {
           'X-Requested-With': 'XMLHttpRequest',
         },

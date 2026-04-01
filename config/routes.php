@@ -100,6 +100,7 @@ return [
     '/institucional/entrada-saida/pesquisar-alunos-liberacao' => ['InstitucionalController', 'entradaSaidaSearchAlunosLiberacao'],
     '/institucional/entrada-saida/registrar' => ['InstitucionalController', 'entradaSaidaRegistrar'],
     '/institucional/entrada-saida/liberar-saida' => ['InstitucionalController', 'entradaSaidaLiberarSaida'],
+    '/institucional/entrada-saida/cancelar-liberacao' => ['InstitucionalController', 'entradaSaidaCancelarLiberacao'],
     '/institucional/entrada-saida/tipos/salvar' => ['InstitucionalController', 'entradaSaidaTiposSalvar'],
     '/institucional/entrada-saida/tipos/excluir' => ['InstitucionalController', 'entradaSaidaTiposExcluir'],
     '/institucional/entrada-saida/relatorio' => ['InstitucionalController', 'entradaSaidaRelatorio'],
