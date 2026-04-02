@@ -186,6 +186,27 @@
 			color: #6c757d;
 		}
 
+		.qr-card.is-selected {
+			border-color: #ea580c;
+			box-shadow: 0 0 0 3px rgba(249, 115, 22, .14);
+			background: #fff7ed;
+		}
+
+		.qr-card-select {
+			display: flex;
+			justify-content: flex-end;
+			margin-bottom: .35rem;
+		}
+
+		.qr-card-select .form-check {
+			margin: 0;
+		}
+
+		.qr-toolbar-search {
+			min-width: 220px;
+			max-width: 320px;
+		}
+
 		@media print {
 
 			.ref-nav-tabs,
@@ -701,6 +722,21 @@
 			height: auto;
 			display: block;
 			min-height: 320px;
+		}
+
+		.dashboard-chart-axis-labels {
+			display: grid;
+			gap: 0;
+			margin-top: .35rem;
+			padding: 0 24px 0 52px;
+		}
+
+		.dashboard-chart-axis-label {
+			font-size: .72rem;
+			line-height: 1.2;
+			color: #64748b;
+			text-align: center;
+			white-space: nowrap;
 		}
 
 		.dashboard-chart-summary {
@@ -1394,8 +1430,15 @@
 						<select id="filtroTurmaQr" class="form-select form-select-sm" style="max-width:220px">
 							<option value="">Todas as turmas</option>
 						</select>
+						<input id="filtroBuscaQr" class="form-control form-control-sm qr-toolbar-search" type="search" placeholder="Buscar aluno para marcar..." maxlength="80" autocomplete="off" aria-label="Buscar aluno nos QR codes">
 						<button id="btnGerarQr" class="btn btn-danger btn-sm" type="button">
 							<i class="las la-sync me-1"></i>Gerar QR Codes
+						</button>
+						<button id="btnSelecionarTodosQr" class="btn btn-outline-danger btn-sm" type="button">
+							<i class="las la-check-square me-1"></i>Selecionar visíveis
+						</button>
+						<button id="btnLimparSelecaoQr" class="btn btn-outline-secondary btn-sm" type="button">
+							<i class="las la-eraser me-1"></i>Limpar seleção
 						</button>
 						<button id="btnImprimirQr" class="btn btn-outline-secondary btn-sm" type="button">
 							<i class="las la-print me-1"></i>Imprimir
@@ -1976,6 +2019,10 @@
 			var state = {
 				tipos: [],
 				turmas: [],
+				qrAlunos: [],
+				qrBusca: '',
+				qrSelecionados: {},
+				qrCardHtmlMap: {},
 				scanAtivo: false,
 				stream: null,
 				alunoAtual: null,
@@ -2043,6 +2090,14 @@
 					minimumFractionDigits: 1,
 					maximumFractionDigits: 1,
 				});
+			}
+
+			function normalizeSearchText(value) {
+				return String(value || '')
+					.normalize('NFD')
+					.replace(/[\u0300-\u036f]/g, '')
+					.toLowerCase()
+					.trim();
 			}
 
 			function getTipoSelecionado() {
@@ -2670,8 +2725,8 @@
 				}
 
 				var width = Math.max(760, series.length * 84);
-				var height = 320;
-				var padding = { top: 24, right: 24, bottom: 58, left: 52 };
+				var height = 344;
+				var padding = { top: 24, right: 24, bottom: 76, left: 52 };
 				var chartWidth = width - padding.left - padding.right;
 				var chartHeight = height - padding.top - padding.bottom;
 				var maxValue = series.reduce(function (acc, item) {
@@ -2681,7 +2736,7 @@
 				var gap = series.length > 0 ? chartWidth / series.length : chartWidth;
 				var grids = '';
 				var bars = '';
-				var labels = '';
+				var axisLabels = '';
 				var yTicks = 4;
 				var pico = series.slice().sort(function (a, b) {
 					return Number(b.total || 0) - Number(a.total || 0);
@@ -2707,7 +2762,7 @@
 					bars += '<rect x="' + x + '" y="' + y + '" width="' + barWidth + '" height="' + barHeight + '" rx="12" fill="' + (isPeak ? 'url(#hourPeakGradient)' : 'url(#hourBarGradient)') + '"></rect>' +
 						'<text x="' + (x + (barWidth / 2)) + '" y="' + (y - 8) + '" text-anchor="middle" font-size="11" font-weight="700" fill="#9a3412">' + esc(formatNumero(total)) + '</text>' +
 						'<rect x="' + x + '" y="' + y + '" width="' + barWidth + '" height="' + barHeight + '" rx="12" fill="transparent"><title>' + esc(item.label + ': ' + formatNumero(total) + ' refeições') + '</title></rect>';
-					labels += '<text x="' + (x + (barWidth / 2)) + '" y="' + (height - 18) + '" text-anchor="middle" font-size="11" fill="#64748b">' + esc(item.label) + '</text>';
+					axisLabels += '<div class="dashboard-chart-axis-label">' + esc(item.label) + '</div>';
 				});
 
 				metaEl.innerHTML =
@@ -2727,10 +2782,11 @@
 					'</linearGradient>' +
 					'</defs>' +
 					'<rect x="0" y="0" width="' + width + '" height="' + height + '" rx="18" fill="#fff"></rect>' +
+					'<line x1="' + padding.left + '" y1="' + (padding.top + chartHeight) + '" x2="' + (width - padding.right) + '" y2="' + (padding.top + chartHeight) + '" stroke="rgba(148,163,184,.35)" stroke-width="1"></line>' +
 					grids +
 					bars +
-					labels +
-					'</svg>';
+					'</svg>' +
+					'<div class="dashboard-chart-axis-labels" style="grid-template-columns:repeat(' + Math.max(series.length, 1) + ', minmax(0, 1fr));">' + axisLabels + '</div>';
 
 				resumoEl.innerHTML =
 					'<div class="dashboard-chart-summary-card"><div class="dashboard-chart-summary-label">Faixa líder</div><div class="dashboard-chart-summary-value">' + (pico ? esc(pico.label + ' · ' + formatNumero(pico.total)) : 'Sem dados') + '</div></div>' +
@@ -2749,6 +2805,7 @@
 				}
 
 				var alunosMap = {};
+				var alunosPorTipoMap = {};
 				var turmasMap = {};
 				var datasMap = {};
 				var horasMap = {};
@@ -2760,8 +2817,15 @@
 					var dataIso = String(r.data || '').trim();
 					var horaLabel = r.horario ? String(r.horario).substring(0, 2) + ':00' : '';
 					var diaSemana = obterDiaSemana(dataIso) || 'Sem data';
+					var tipoKey = String(r.tipo_refeicao_id || '').trim();
 
 					if (alunoKey) alunosMap[alunoKey] = true;
+					if (alunoKey && tipoKey) {
+						if (!alunosPorTipoMap[tipoKey]) {
+							alunosPorTipoMap[tipoKey] = {};
+						}
+						alunosPorTipoMap[tipoKey][alunoKey] = true;
+					}
 					turmasMap[turmaNome] = (turmasMap[turmaNome] || 0) + 1;
 					if (dataIso) datasMap[dataIso] = (datasMap[dataIso] || 0) + 1;
 					if (horaLabel) horasMap[horaLabel] = (horasMap[horaLabel] || 0) + 1;
@@ -2852,12 +2916,14 @@
 				var totaisHtml = '';
 				totaisOrdenados.forEach(function (t) {
 					var total = Number(t.total || 0);
-					var percentual = totalRefeicoes > 0 ? ((total / totalRefeicoes) * 100) : 0;
+					var tipoKey = String(t.id || '').trim();
+					var alunosDoTipo = tipoKey && alunosPorTipoMap[tipoKey] ? Object.keys(alunosPorTipoMap[tipoKey]).length : 0;
+					var percentual = alunosAtendidos > 0 ? ((alunosDoTipo / alunosAtendidos) * 100) : 0;
 					totaisHtml += '<div class="col-sm-6 col-xl-6">' +
 						'<div class="dashboard-distribution-card" style="background:' + esc(t.cor || '#b91c1c') + '">' +
 						'<div class="dashboard-distribution-total">' + formatNumero(total) + '</div>' +
 						'<div class="dashboard-distribution-label">' + esc(t.nome) + '</div>' +
-						'<div class="dashboard-distribution-share">Participação de ' + formatDecimal(percentual) + '% no período</div>' +
+						'<div class="dashboard-distribution-share">Participação de ' + formatDecimal(percentual) + '% dos estudantes atendidos no período</div>' +
 						'</div>' +
 						'</div>';
 				});
@@ -2943,8 +3009,10 @@
 					'.dashboard-chart-meta{display:flex;justify-content:space-between;gap:.75rem;flex-wrap:wrap;margin-bottom:.85rem;}' +
 					'.dashboard-chart-badge{display:inline-flex;align-items:center;gap:.35rem;padding:.35rem .65rem;border-radius:999px;background:rgba(249,115,22,.12);color:#9a3412;font-size:.76rem;font-weight:700;}' +
 					'.dashboard-chart-peak{font-size:.82rem;color:#7c2d12;}' +
-					'.dashboard-chart-wrap{width:100%;overflow-x:auto;}' +
+					'.dashboard-chart-wrap{width:100%;overflow:visible;}' +
 					'.dashboard-chart-svg{width:100%;height:auto;display:block;min-height:320px;}' +
+					'.dashboard-chart-axis-labels{display:grid;gap:0;margin-top:.35rem;padding:0 24px 0 52px;}' +
+					'.dashboard-chart-axis-label{font-size:.72rem;line-height:1.2;color:#64748b;text-align:center;white-space:nowrap;}' +
 					'.dashboard-chart-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.75rem;margin-top:.95rem;}' +
 					'.dashboard-chart-summary-card{padding:.75rem .85rem;border-radius:.9rem;background:#fff;border:1px solid rgba(15,23,42,.08);box-shadow:0 8px 20px rgba(15,23,42,.05);}' +
 					'.dashboard-chart-summary-label{font-size:.75rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#9a3412;margin-bottom:.25rem;}' +
@@ -3490,6 +3558,139 @@
 			/* --------------------------------------------------------
 			   QR Codes — geração
 			   -------------------------------------------------------- */
+			function getQrAlunoKey(aluno) {
+				return String(aluno && (aluno.matricula || aluno.aluno_id || aluno.nome) || '').trim();
+			}
+
+			function getQrAlunosVisiveis() {
+				var termo = normalizeSearchText(state.qrBusca);
+				return (state.qrAlunos || []).filter(function (aluno) {
+					if (!termo) {
+						return true;
+					}
+					return [aluno.nome, aluno.matricula, aluno.turma].some(function (campo) {
+						return normalizeSearchText(campo).indexOf(termo) !== -1;
+					});
+				});
+			}
+
+			function updateQrSelectionSummary() {
+				var visiveis = getQrAlunosVisiveis();
+				var selecionadosTotal = Object.keys(state.qrSelecionados || {}).length;
+				var contador = document.getElementById('qrContador');
+				var btnSelecionarTodos = document.getElementById('btnSelecionarTodosQr');
+				var btnLimpar = document.getElementById('btnLimparSelecaoQr');
+				var btnImprimir = document.getElementById('btnImprimirQr');
+
+				if (contador) {
+					contador.textContent = formatNumero(visiveis.length) + ' visível(is) • ' + formatNumero(selecionadosTotal) + ' selecionado(s)';
+				}
+				if (btnSelecionarTodos) {
+					btnSelecionarTodos.disabled = visiveis.length === 0;
+				}
+				if (btnLimpar) {
+					btnLimpar.disabled = selecionadosTotal === 0;
+				}
+				if (btnImprimir) {
+					btnImprimir.disabled = selecionadosTotal === 0;
+				}
+			}
+
+			function cachePrintableQrCard(key, card) {
+				if (!key || !card) {
+					return;
+				}
+				var printableCard = card.cloneNode(true);
+				var selectWrap = printableCard.querySelector('.qr-card-select');
+				if (selectWrap && selectWrap.parentNode) {
+					selectWrap.parentNode.removeChild(selectWrap);
+				}
+				printableCard.classList.remove('is-selected');
+				state.qrCardHtmlMap[key] = printableCard.outerHTML;
+			}
+
+			function renderQrCodesGrid() {
+				var grid = document.getElementById('qrGrid');
+				var alunos = getQrAlunosVisiveis();
+
+				if (!state.qrAlunos.length) {
+					grid.innerHTML = '<p class="text-muted small">Selecione uma turma ou clique em "Gerar QR Codes" para exibir todos os alunos.</p>';
+					updateQrSelectionSummary();
+					return;
+				}
+
+				if (!alunos.length) {
+					grid.innerHTML = '<p class="text-muted small">Nenhum aluno encontrado para a busca informada.</p>';
+					updateQrSelectionSummary();
+					return;
+				}
+
+				grid.innerHTML = '';
+				alunos.forEach(function (aluno) {
+					var alunoKey = getQrAlunoKey(aluno);
+					var card = document.createElement('div');
+					card.className = 'qr-card' + (state.qrSelecionados[alunoKey] ? ' is-selected' : '');
+
+					var selectWrap = document.createElement('div');
+					selectWrap.className = 'qr-card-select no-print';
+					selectWrap.innerHTML = '<div class="form-check"><input class="form-check-input qr-card-check" type="checkbox" value="' + esc(alunoKey) + '" id="qrCheck_' + esc(alunoKey) + '" ' + (state.qrSelecionados[alunoKey] ? 'checked' : '') + '><label class="form-check-label small" for="qrCheck_' + esc(alunoKey) + '">Marcar</label></div>';
+
+					var qrWrap = document.createElement('div');
+					qrWrap.className = 'qr-img-wrap';
+
+					var nome = document.createElement('div');
+					nome.className = 'qr-nome';
+					nome.textContent = aluno.nome;
+
+					var turma = document.createElement('div');
+					turma.className = 'qr-turma';
+					turma.textContent = aluno.turma || '';
+
+					card.appendChild(selectWrap);
+					card.appendChild(qrWrap);
+					card.appendChild(nome);
+					card.appendChild(turma);
+					grid.appendChild(card);
+
+					var checkbox = card.querySelector('.qr-card-check');
+					if (checkbox) {
+						checkbox.addEventListener('change', function () {
+							if (checkbox.checked) {
+								state.qrSelecionados[alunoKey] = true;
+								card.classList.add('is-selected');
+							} else {
+								delete state.qrSelecionados[alunoKey];
+								card.classList.remove('is-selected');
+							}
+							updateQrSelectionSummary();
+						});
+					}
+
+					try {
+						new QRCode(qrWrap, {
+							text: aluno.matricula,
+							width: 120,
+							height: 120,
+							colorDark: '#000000',
+							colorLight: '#ffffff',
+							correctLevel: QRCode.CorrectLevel.M,
+						});
+						setTimeout(function () {
+							var canvas = qrWrap.querySelector('canvas');
+							var img = qrWrap.querySelector('img');
+							if (canvas) { canvas.parentNode.removeChild(canvas); }
+							if (img) { img.style.display = 'block'; img.style.width = '120px'; img.style.height = '120px'; }
+							cachePrintableQrCard(alunoKey, card);
+						}, 80);
+					} catch (e) {
+						qrWrap.textContent = aluno.matricula;
+						cachePrintableQrCard(alunoKey, card);
+					}
+				});
+
+				updateQrSelectionSummary();
+			}
+
 			function gerarQrCodes() {
 				var turmaId = document.getElementById('filtroTurmaQr').value;
 				var grid = document.getElementById('qrGrid');
@@ -3498,58 +3699,19 @@
 				get('/institucional/refeitorio/qrcodes' + (turmaId ? '?turma_id=' + encodeURIComponent(turmaId) : ''), function (res) {
 					if (!res.ok) { showStatus(res.message || 'Erro ao carregar estudantes.', 'error'); return; }
 
-					var alunos = res.alunos || [];
-					document.getElementById('qrContador').textContent = alunos.length + ' estudante(s)';
+					state.qrAlunos = Array.isArray(res.alunos) ? res.alunos : [];
+					state.qrBusca = '';
+					state.qrSelecionados = {};
+					state.qrCardHtmlMap = {};
+					document.getElementById('filtroBuscaQr').value = '';
 
-					if (!alunos.length) {
+					if (!state.qrAlunos.length) {
+						updateQrSelectionSummary();
 						grid.innerHTML = '<p class="text-muted small">Nenhum estudante encontrado.</p>';
 						return;
 					}
 
-					// Limpa e cria cards
-					grid.innerHTML = '';
-					alunos.forEach(function (aluno) {
-						var card = document.createElement('div');
-						card.className = 'qr-card';
-
-						var qrWrap = document.createElement('div');
-						qrWrap.className = 'qr-img-wrap';
-
-						var nome = document.createElement('div');
-						nome.className = 'qr-nome';
-						nome.textContent = aluno.nome;
-
-						var turma = document.createElement('div');
-						turma.className = 'qr-turma';
-						turma.textContent = aluno.turma || '';
-
-						card.appendChild(qrWrap);
-						card.appendChild(nome);
-						card.appendChild(turma);
-						grid.appendChild(card);
-
-						// Gera QR code com a matrícula
-						try {
-							new QRCode(qrWrap, {
-								text: aluno.matricula,
-								width: 120,
-								height: 120,
-								colorDark: '#000000',
-								colorLight: '#ffffff',
-								correctLevel: QRCode.CorrectLevel.M,
-							});
-							// QRCode.js cria canvas (visível) + img (oculta com data URL pronto)
-							// Remove o canvas e exibe a img para garantir impressão correta
-							setTimeout(function () {
-								var canvas = qrWrap.querySelector('canvas');
-								var img = qrWrap.querySelector('img');
-								if (canvas) { canvas.parentNode.removeChild(canvas); }
-								if (img) { img.style.display = 'block'; img.style.width = '120px'; img.style.height = '120px'; }
-							}, 80);
-						} catch (e) {
-							qrWrap.textContent = aluno.matricula;
-						}
-					});
+					renderQrCodesGrid();
 				});
 			}
 
@@ -4126,15 +4288,40 @@
 
 				// QR Codes
 				document.getElementById('btnGerarQr').addEventListener('click', gerarQrCodes);
+				document.getElementById('filtroBuscaQr').addEventListener('input', function () {
+					state.qrBusca = this.value || '';
+					renderQrCodesGrid();
+				});
+				document.getElementById('btnSelecionarTodosQr').addEventListener('click', function () {
+					getQrAlunosVisiveis().forEach(function (aluno) {
+						var key = getQrAlunoKey(aluno);
+						if (key) {
+							state.qrSelecionados[key] = true;
+						}
+					});
+					renderQrCodesGrid();
+				});
+				document.getElementById('btnLimparSelecaoQr').addEventListener('click', function () {
+					state.qrSelecionados = {};
+					renderQrCodesGrid();
+				});
 				document.getElementById('btnImprimirQr').addEventListener('click', function () {
-					var cards = document.querySelectorAll('#qrGrid .qr-card');
-					if (!cards.length) {
-						showStatus('Gere os QR codes antes de imprimir.', 'error');
+					var selecionados = Object.keys(state.qrSelecionados || {});
+					if (!selecionados.length) {
+						showStatus('Selecione ao menos um QR code para imprimir.', 'error');
 						return;
 					}
 
 					var cardsHtml = '';
-					cards.forEach(function (card) { cardsHtml += card.outerHTML; });
+					selecionados.forEach(function (key) {
+						if (state.qrCardHtmlMap[key]) {
+							cardsHtml += state.qrCardHtmlMap[key];
+						}
+					});
+					if (!cardsHtml) {
+						showStatus('Os QR codes selecionados ainda estão sendo preparados. Tente novamente em instantes.', 'error');
+						return;
+					}
 
 					var htmlContent =
 						'<!DOCTYPE html><html><head><meta charset="UTF-8">' +

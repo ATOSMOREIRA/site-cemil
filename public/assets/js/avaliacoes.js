@@ -19695,14 +19695,35 @@
             );
         });
 
-        var secondAlsoMarked = duplicateCandidates.length > 0 || (
-          second.decisionScore >= Math.max(0.09, best.decisionScore - 0.035)
-          && second.legacyBubbleScore >= Math.max(0.08, best.legacyBubbleScore - 0.05)
-        ) || (
-            second.legacyBubbleScore >= Math.max(0.10, best.legacyBubbleScore - 0.04)
-            && second.roiAdaptiveDarkGain >= Math.max(0.045, best.roiAdaptiveDarkGain - 0.025)
-            && second.centerBrightnessDrop >= Math.max(8, best.centerBrightnessDrop - 8)
-          );
+        var strongDuplicateCandidates = duplicateCandidates.filter(function (option) {
+          var relativeStrength = best.decisionScore > 0 ? (option.decisionScore / best.decisionScore) : 0;
+          var strongSignals = 0;
+
+          if (option.decisionScore >= Math.max(0.12, best.decisionScore * 0.72)) {
+            strongSignals += 1;
+          }
+          if (option.legacyBubbleScore >= Math.max(0.12, best.legacyBubbleScore * 0.74, best.legacyBubbleScore - 0.03)) {
+            strongSignals += 1;
+          }
+          if (option.roiMarkStrength >= Math.max(0.10, best.roiMarkStrength * 0.74, best.roiMarkStrength - 0.025)) {
+            strongSignals += 1;
+          }
+          if (option.roiAdaptiveDarkGain >= Math.max(0.06, best.roiAdaptiveDarkGain * 0.76, best.roiAdaptiveDarkGain - 0.02)) {
+            strongSignals += 1;
+          }
+          if (option.centerBrightnessDrop >= Math.max(12, best.centerBrightnessDrop * 0.72, best.centerBrightnessDrop - 4)) {
+            strongSignals += 1;
+          }
+          if (option.score.centerDarkRatio >= Math.max(0.22, best.score.centerDarkRatio * 0.76, best.score.centerDarkRatio - 0.05)) {
+            strongSignals += 1;
+          }
+
+          return relativeStrength >= 0.68
+            && option.ringPenalty <= 0.08
+            && strongSignals >= 3;
+        });
+
+        var secondAlsoMarked = strongDuplicateCandidates.length > 0;
         var hasSingleMarkedCandidate = candidateMarkedOptions.length === 1
           && candidateMarkedOptions[0].alternativa === best.alternativa;
 

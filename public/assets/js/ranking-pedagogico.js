@@ -357,6 +357,25 @@
     });
   }
 
+  function buildSelectSelectionSignature(select) {
+    return selectedValues(select).sort(compareText).join('|');
+  }
+
+  function buildChecklistSelectionSignature(listEl) {
+    if (!listEl) {
+      return '';
+    }
+
+    var values = [];
+    listEl.querySelectorAll('.js-ranking-filter-checkbox').forEach(function (checkbox) {
+      if (checkbox instanceof HTMLInputElement && checkbox.checked) {
+        values.push(String(checkbox.value || '').trim());
+      }
+    });
+
+    return values.sort(compareText).join('|');
+  }
+
   function setAllChecklist(listEl, checked) {
     if (!listEl) {
       return;
@@ -382,6 +401,24 @@
       return;
     }
 
+    function syncModalSelection() {
+      var before = buildSelectSelectionSignature(config.select);
+      var after = buildChecklistSelectionSignature(config.listEl);
+
+      applyChecklistToSelect(config.select, config.listEl);
+      updateSummary(config.select, config.summaryEl, config.defaultLabel, 2);
+
+      if (before === after) {
+        return;
+      }
+
+      if (config.reloadMode === 'server') {
+        loadDashboard();
+      } else {
+        renderDashboard(state.rawData || {});
+      }
+    }
+
     config.openBtn.addEventListener('click', function () {
       renderChecklistFromSelect(config.select, config.listEl, config.prefix);
       var modal = getModalInstance(config.modalEl);
@@ -404,15 +441,13 @@
 
     if (config.applyBtn) {
       config.applyBtn.addEventListener('click', function () {
-        applyChecklistToSelect(config.select, config.listEl);
-        updateSummary(config.select, config.summaryEl, config.defaultLabel, 2);
-        if (config.reloadMode === 'server') {
-          loadDashboard();
-        } else {
-          renderDashboard(state.rawData || {});
-        }
+        syncModalSelection();
       });
     }
+
+    config.modalEl.addEventListener('hidden.bs.modal', function () {
+      syncModalSelection();
+    });
   }
 
   function collectServerFilters() {

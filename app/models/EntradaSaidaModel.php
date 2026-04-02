@@ -637,7 +637,7 @@ class EntradaSaidaModel
                 'tipo_movimentacao_id' => (int) $tipoSaida['id'],
                 'data' => (string) $pendente['data'],
                 'horario' => '23:59:59',
-                'obs' => 'Saída automática gerada após verificação às 03:00 por ausência de registro de saída.',
+                'obs' => 'Saída automática gerada às 23:59 por ausência de registro de saída.',
             ]);
             $registroId = (int) $pdo->lastInsertId();
             $aluno = $this->buscarAlunoPorId((int) $pendente['aluno_id']);
@@ -652,7 +652,7 @@ class EntradaSaidaModel
                     'tipo' => $tipoSaida,
                     'data' => (string) $pendente['data'],
                     'horario' => '23:59:59',
-                    'obs' => 'Saída automática gerada após verificação às 03:00 por ausência de registro de saída.',
+                    'obs' => 'Saída automática gerada às 23:59 por ausência de registro de saída.',
                     'saida_automatica' => 1,
                 ],
                 $registroId,
@@ -1440,7 +1440,7 @@ class EntradaSaidaModel
     private function obterDataLimiteSaidasAutomaticas(DateTimeImmutable $agora): ?string
     {
         $horaAtual = $agora->format('H:i:s');
-        $intervaloDias = $horaAtual >= '03:00:00' ? 1 : 2;
+        $intervaloDias = $horaAtual >= '23:59:00' ? 0 : 1;
         $dataLimite = $agora->setTime(0, 0, 0)->modify('-' . $intervaloDias . ' day');
         return $dataLimite->format('Y-m-d');
     }

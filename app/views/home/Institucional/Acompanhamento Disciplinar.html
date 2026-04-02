@@ -3,15 +3,6 @@
 		padding: 12px;
 	}
 
-	.disciplinar-toolbar {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 8px;
-		align-items: center;
-		justify-content: space-between;
-		margin-bottom: 16px;
-	}
-
 	.disciplinar-tabs {
 		display: flex;
 		flex-wrap: wrap;
@@ -69,6 +60,30 @@
 		color: #57606a;
 		font-size: 0.875rem;
 		margin-bottom: 12px;
+	}
+
+	.disciplinar-card-header {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 10px;
+		align-items: flex-start;
+		justify-content: space-between;
+		margin-bottom: 12px;
+	}
+
+	.disciplinar-card-header-copy {
+		min-width: 0;
+	}
+
+	.disciplinar-card-header-copy h2,
+	.disciplinar-card-header-copy h3 {
+		margin-bottom: 6px;
+	}
+
+	.disciplinar-card-header-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
 	}
 
 	.disciplinar-col-12 { grid-column: span 12; }
@@ -191,20 +206,29 @@
 		gap: 6px;
 	}
 
-	.disciplinar-inline-actions button,
-	.disciplinar-actions button,
-	.disciplinar-actions a {
+	.disciplinar-btn-primary,
+	.disciplinar-btn-secondary,
+	.disciplinar-btn-danger {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
 		border: 1px solid transparent;
 		border-radius: 10px;
 		padding: 8px 12px;
 		font-size: 0.84rem;
 		font-weight: 600;
+		line-height: 1.2;
 		cursor: pointer;
 		text-decoration: none;
+		appearance: none;
+		-webkit-appearance: none;
+		box-shadow: none;
+		transition: background-color .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease;
 	}
 
 	.disciplinar-btn-primary {
 		background: #b3261e;
+		border-color: #b3261e;
 		color: #fff;
 	}
 
@@ -218,6 +242,34 @@
 		background: #fff5f5;
 		color: #b42318;
 		border-color: #f3b6b6;
+	}
+
+	.disciplinar-btn-primary:hover,
+	.disciplinar-btn-primary:focus-visible {
+		background: #981b15;
+		border-color: #981b15;
+		color: #fff;
+	}
+
+	.disciplinar-btn-secondary:hover,
+	.disciplinar-btn-secondary:focus-visible {
+		background: #f8fafc;
+		color: #1f2937;
+		border-color: #b8c2cc;
+	}
+
+	.disciplinar-btn-danger:hover,
+	.disciplinar-btn-danger:focus-visible {
+		background: #feeceb;
+		color: #912018;
+		border-color: #e89b9b;
+	}
+
+	.disciplinar-btn-primary:focus-visible,
+	.disciplinar-btn-secondary:focus-visible,
+	.disciplinar-btn-danger:focus-visible {
+		outline: 0;
+		box-shadow: 0 0 0 0.2rem rgba(179, 38, 30, 0.18);
 	}
 
 	.disciplinar-badge {
@@ -250,9 +302,23 @@
 	.disciplinar-status.is-error { background: #fef3f2; color: #b42318; border: 1px solid #fecdca; }
 	.disciplinar-status.is-success { background: #ecfdf3; color: #027a48; border: 1px solid #abefc6; }
 
-	.disciplinar-toolbar-meta {
-		color: #57606a;
-		font-size: 0.85rem;
+	.disciplinar-modal .modal-content {
+		border: 0;
+		border-radius: 16px;
+	}
+
+	.disciplinar-modal .modal-header {
+		padding: 16px 20px 0;
+		border-bottom: 0;
+	}
+
+	.disciplinar-modal .modal-body {
+		padding: 16px 20px;
+	}
+
+	.disciplinar-modal .modal-footer {
+		padding: 0 20px 20px;
+		border-top: 0;
 	}
 
 	@media (max-width: 980px) {
@@ -266,22 +332,19 @@
 		.disciplinar-field.col-3 {
 			grid-column: span 12;
 		}
+
+		.disciplinar-card-header {
+			align-items: stretch;
+		}
+
+		.disciplinar-card-header-actions {
+			width: 100%;
+		}
 	}
 </style>
 
 <div class="container-fluid px-0 disciplinary-page-root">
 	<div class="disciplinar-page">
-		<div class="disciplinar-toolbar">
-			<div>
-				<h1 class="h4 fw-bold mb-1">Acompanhamento Disciplinar</h1>
-				<div class="disciplinar-toolbar-meta">Cursos, notas de conceito, faltas, elogios e lançamentos disciplinares.</div>
-			</div>
-			<div class="disciplinar-actions">
-				<button type="button" class="disciplinar-btn-secondary" id="disciplinarRefreshBtn">Atualizar dados</button>
-				<a class="disciplinar-btn-secondary" id="disciplinarBackBtn" href="#" target="_top">Voltar</a>
-			</div>
-		</div>
-
 		<div id="disciplinarStatus" class="disciplinar-status" role="alert" aria-live="polite"></div>
 
 		<div class="disciplinar-tabs" id="disciplinarTabs">
@@ -352,46 +415,16 @@
 
 		<section class="disciplinar-panel" id="painelCursos">
 			<div class="disciplinar-grid">
-				<div class="disciplinar-card disciplinar-col-5">
-					<h2>Novo Curso</h2>
-					<p class="disciplinar-muted">Cadastre cursos como ASCOM, FISCAL, SOCORRISTA e PELOTÃO DE ELITE.</p>
-					<form id="disciplinarCursoForm">
-						<input type="hidden" id="cursoId" value="0">
-						<div class="disciplinar-form-grid">
-							<div class="disciplinar-field col-6">
-								<label for="cursoNome">Nome</label>
-								<input type="text" id="cursoNome" maxlength="120" required>
-							</div>
-							<div class="disciplinar-field col-3">
-								<label for="cursoStatus">Status</label>
-								<select id="cursoStatus">
-									<option value="ativo">Ativo</option>
-									<option value="inativo">Inativo</option>
-								</select>
-							</div>
-							<div class="disciplinar-field col-3">
-								<label for="cursoInicio">Início</label>
-								<input type="date" id="cursoInicio">
-							</div>
-							<div class="disciplinar-field col-3">
-								<label for="cursoFim">Fim</label>
-								<input type="date" id="cursoFim">
-							</div>
-							<div class="disciplinar-field">
-								<label for="cursoDescricao">Descrição</label>
-								<textarea id="cursoDescricao" placeholder="Objetivo, turma-alvo, observações e regras do curso."></textarea>
-							</div>
+				<div class="disciplinar-card disciplinar-col-12">
+					<div class="disciplinar-card-header">
+						<div class="disciplinar-card-header-copy">
+							<h2>Cursos Cadastrados</h2>
+							<p class="disciplinar-muted">Gerencie período, status e quantidade de estudantes/critério por curso.</p>
 						</div>
-						<div class="disciplinar-actions">
-							<button type="submit" class="disciplinar-btn-primary">Salvar curso</button>
-							<button type="button" class="disciplinar-btn-secondary" id="cursoResetBtn">Limpar</button>
+						<div class="disciplinar-card-header-actions">
+							<button type="button" class="disciplinar-btn-primary" id="btnNovoCurso">Novo curso</button>
 						</div>
-					</form>
-				</div>
-
-				<div class="disciplinar-card disciplinar-col-7">
-					<h2>Cursos Cadastrados</h2>
-					<p class="disciplinar-muted">Gerencie período, status e quantidade de estudantes/critério por curso.</p>
+					</div>
 					<div class="disciplinar-table-wrap">
 						<table class="disciplinar-table">
 							<thead>
@@ -412,50 +445,16 @@
 				</div>
 
 				<div class="disciplinar-card disciplinar-col-12">
-					<h2>Critérios de Nota por Curso</h2>
-					<p class="disciplinar-muted">Cada curso pode ter seus próprios critérios, peso e valor máximo.</p>
-					<form id="disciplinarCriterioForm">
-						<input type="hidden" id="criterioId" value="0">
-						<div class="disciplinar-form-grid">
-							<div class="disciplinar-field col-4">
-								<label for="criterioCursoId">Curso</label>
-								<select id="criterioCursoId" required></select>
-							</div>
-							<div class="disciplinar-field col-4">
-								<label for="criterioNome">Critério</label>
-								<input type="text" id="criterioNome" maxlength="120" required>
-							</div>
-							<div class="disciplinar-field col-2">
-								<label for="criterioValor">Valor Máximo</label>
-								<input type="number" id="criterioValor" min="0" step="0.01" value="10">
-							</div>
-							<div class="disciplinar-field col-2">
-								<label for="criterioPeso">Peso</label>
-								<input type="number" id="criterioPeso" min="0.1" step="0.01" value="1">
-							</div>
-							<div class="disciplinar-field col-2">
-								<label for="criterioOrdem">Ordem</label>
-								<input type="number" id="criterioOrdem" min="0" step="1" value="0">
-							</div>
-							<div class="disciplinar-field col-2">
-								<label for="criterioAtivo">Ativo</label>
-								<select id="criterioAtivo">
-									<option value="1">Sim</option>
-									<option value="0">Não</option>
-								</select>
-							</div>
-							<div class="disciplinar-field">
-								<label for="criterioDescricao">Descrição</label>
-								<textarea id="criterioDescricao" placeholder="Explique como a nota é obtida neste critério."></textarea>
-							</div>
+					<div class="disciplinar-card-header">
+						<div class="disciplinar-card-header-copy">
+							<h2>Critérios de Nota por Curso</h2>
+							<p class="disciplinar-muted">Cada curso pode ter seus próprios critérios, peso e valor máximo.</p>
 						</div>
-						<div class="disciplinar-actions">
-							<button type="submit" class="disciplinar-btn-primary">Salvar critério</button>
-							<button type="button" class="disciplinar-btn-secondary" id="criterioResetBtn">Limpar</button>
+						<div class="disciplinar-card-header-actions">
+							<button type="button" class="disciplinar-btn-primary" id="btnNovoCriterio">Novo critério</button>
 						</div>
-					</form>
-
-					<div class="disciplinar-table-wrap mt-3">
+					</div>
+					<div class="disciplinar-table-wrap">
 						<table class="disciplinar-table">
 							<thead>
 								<tr>
@@ -478,81 +477,17 @@
 
 		<section class="disciplinar-panel" id="painelMatriculas">
 			<div class="disciplinar-grid">
-				<div class="disciplinar-card disciplinar-col-5">
-					<h2>Matrícula em Curso</h2>
-					<p class="disciplinar-muted">Vincule estudantes aos cursos e defina período de participação.</p>
-					<form id="disciplinarMatriculaForm">
-						<input type="hidden" id="matriculaId" value="0">
-						<div class="disciplinar-form-grid">
-							<div class="disciplinar-field col-6">
-								<label for="matriculaCursoId">Curso</label>
-								<select id="matriculaCursoId" required></select>
-							</div>
-							<div class="disciplinar-field col-6">
-								<label for="matriculaAlunoId">Estudante</label>
-								<select id="matriculaAlunoId" required></select>
-							</div>
-							<div class="disciplinar-field col-4">
-								<label for="matriculaInicio">Início</label>
-								<input type="date" id="matriculaInicio">
-							</div>
-							<div class="disciplinar-field col-4">
-								<label for="matriculaFim">Fim</label>
-								<input type="date" id="matriculaFim">
-							</div>
-							<div class="disciplinar-field col-4">
-								<label for="matriculaStatus">Status</label>
-								<select id="matriculaStatus">
-									<option value="ativo">Ativo</option>
-									<option value="concluido">Concluído</option>
-									<option value="cancelado">Cancelado</option>
-								</select>
-							</div>
-							<div class="disciplinar-field">
-								<label for="matriculaObservacoes">Observações</label>
-								<textarea id="matriculaObservacoes"></textarea>
-							</div>
+				<div class="disciplinar-card disciplinar-col-12">
+					<div class="disciplinar-card-header">
+						<div class="disciplinar-card-header-copy">
+							<h2>Notas do Curso</h2>
+							<p class="disciplinar-muted">Lance notas por critério e acompanhe a colocação por curso.</p>
 						</div>
-						<div class="disciplinar-actions">
-							<button type="submit" class="disciplinar-btn-primary">Salvar matrícula</button>
-							<button type="button" class="disciplinar-btn-secondary" id="matriculaResetBtn">Limpar</button>
+						<div class="disciplinar-card-header-actions">
+							<button type="button" class="disciplinar-btn-secondary" id="btnNovaMatricula">Nova matrícula</button>
+							<button type="button" class="disciplinar-btn-primary" id="btnNovaNota">Nova nota</button>
 						</div>
-					</form>
-				</div>
-
-				<div class="disciplinar-card disciplinar-col-7">
-					<h2>Notas do Curso</h2>
-					<p class="disciplinar-muted">Lance notas por critério e acompanhe a colocação por curso.</p>
-					<form id="disciplinarNotaForm" class="mb-3">
-						<input type="hidden" id="notaId" value="0">
-						<div class="disciplinar-form-grid">
-							<div class="disciplinar-field col-4">
-								<label for="notaMatriculaId">Matrícula</label>
-								<select id="notaMatriculaId" required></select>
-							</div>
-							<div class="disciplinar-field col-4">
-								<label for="notaCriterioId">Critério</label>
-								<select id="notaCriterioId" required></select>
-							</div>
-							<div class="disciplinar-field col-2">
-								<label for="notaValor">Nota</label>
-								<input type="number" id="notaValor" min="0" step="0.01" required>
-							</div>
-							<div class="disciplinar-field col-2">
-								<label for="notaData">Data</label>
-								<input type="date" id="notaData">
-							</div>
-							<div class="disciplinar-field">
-								<label for="notaObservacoes">Observações</label>
-								<textarea id="notaObservacoes"></textarea>
-							</div>
-						</div>
-						<div class="disciplinar-actions">
-							<button type="submit" class="disciplinar-btn-primary">Salvar nota</button>
-							<button type="button" class="disciplinar-btn-secondary" id="notaResetBtn">Limpar</button>
-						</div>
-					</form>
-
+					</div>
 					<div class="disciplinar-table-wrap">
 						<table class="disciplinar-table">
 							<thead>
@@ -597,82 +532,16 @@
 
 		<section class="disciplinar-panel" id="painelRegistros">
 			<div class="disciplinar-grid">
-				<div class="disciplinar-card disciplinar-col-5">
-					<h2>Novo Lançamento Disciplinar</h2>
-					<p class="disciplinar-muted">Inclui anotação, falta por turma, nota disciplinar inicial, alteração de nota, elogios e faltas coletivas.</p>
-					<form id="disciplinarRegistroForm" enctype="multipart/form-data">
-						<input type="hidden" id="registroId" value="0">
-						<div class="disciplinar-form-grid">
-							<div class="disciplinar-field col-6">
-								<label for="registroTipo">Tipo</label>
-								<select id="registroTipo" required>
-									<option value="anotacao">Nova Anotação</option>
-									<option value="falta_por_turma">Nova Falta Por Turmas</option>
-									<option value="nota_inicial">Nova Nota Disciplinar (Inicial)</option>
-									<option value="alteracao_nota_turma">Alterar Nota Disciplinar/Turma</option>
-									<option value="elogio_coletivo_estudante">Novo Elogio Coletivo (Estudante)</option>
-									<option value="elogio_coletivo_turma">Novo Elogio Coletivo (Turma)</option>
-									<option value="falta_coletiva_estudante">Nova Falta Disciplinar Coletiva (Estudante)</option>
-								</select>
-							</div>
-							<div class="disciplinar-field col-6">
-								<label for="registroData">Data</label>
-								<input type="date" id="registroData" required>
-							</div>
-							<div class="disciplinar-field">
-								<label for="registroTitulo">Título</label>
-								<input type="text" id="registroTitulo" maxlength="180" required>
-							</div>
-							<div class="disciplinar-field col-4">
-								<label for="registroNatureza">Natureza</label>
-								<select id="registroNatureza">
-									<option value="negativo">Negativa</option>
-									<option value="positivo">Positiva</option>
-									<option value="neutro">Neutra</option>
-								</select>
-							</div>
-							<div class="disciplinar-field col-4">
-								<label for="registroNormaId">Norma / Base NGA</label>
-								<select id="registroNormaId"></select>
-							</div>
-							<div class="disciplinar-field col-4">
-								<label for="registroPontos">Variação de Pontos</label>
-								<input type="number" id="registroPontos" step="0.01" value="0">
-							</div>
-							<div class="disciplinar-field col-6">
-								<label for="registroAlunoIds">Estudantes</label>
-								<select id="registroAlunoIds" class="disciplinar-listbox" multiple></select>
-							</div>
-							<div class="disciplinar-field col-6">
-								<label for="registroTurmaIds">Turmas</label>
-								<select id="registroTurmaIds" class="disciplinar-listbox" multiple></select>
-							</div>
-							<div class="disciplinar-field col-6">
-								<label for="registroDocumento">Anexo</label>
-								<input type="file" id="registroDocumento" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx">
-							</div>
-							<div class="disciplinar-field col-6">
-								<label for="registroRemoverDocumento">Remover anexo atual</label>
-								<select id="registroRemoverDocumento">
-									<option value="0">Não</option>
-									<option value="1">Sim</option>
-								</select>
-							</div>
-							<div class="disciplinar-field">
-								<label for="registroDescricao">Descrição</label>
-								<textarea id="registroDescricao"></textarea>
-							</div>
+				<div class="disciplinar-card disciplinar-col-12">
+					<div class="disciplinar-card-header">
+						<div class="disciplinar-card-header-copy">
+							<h2>Registros Lançados</h2>
+							<p class="disciplinar-muted">Edite, exclua e consulte anexos já registrados em uploads/disciplinar.</p>
 						</div>
-						<div class="disciplinar-actions">
-							<button type="submit" class="disciplinar-btn-primary">Salvar lançamento</button>
-							<button type="button" class="disciplinar-btn-secondary" id="registroResetBtn">Limpar</button>
+						<div class="disciplinar-card-header-actions">
+							<button type="button" class="disciplinar-btn-primary" id="btnNovoRegistro">Novo lançamento</button>
 						</div>
-					</form>
-				</div>
-
-				<div class="disciplinar-card disciplinar-col-7">
-					<h2>Registros Lançados</h2>
-					<p class="disciplinar-muted">Edite, exclua e consulte anexos já registrados em uploads/disciplinar.</p>
+					</div>
 					<div class="disciplinar-table-wrap">
 						<table class="disciplinar-table">
 							<thead>
@@ -697,8 +566,285 @@
 	</div>
 </div>
 
+<div class="modal fade disciplinar-modal" id="cursoModal" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h2 class="modal-title fs-5" id="cursoModalTitle">Novo Curso</h2>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+			</div>
+			<form id="disciplinarCursoForm">
+				<div class="modal-body">
+					<input type="hidden" id="cursoId" value="0">
+					<div class="disciplinar-form-grid">
+						<div class="disciplinar-field col-6">
+							<label for="cursoNome">Nome</label>
+							<input type="text" id="cursoNome" maxlength="120" required>
+						</div>
+						<div class="disciplinar-field col-3">
+							<label for="cursoStatus">Status</label>
+							<select id="cursoStatus">
+								<option value="ativo">Ativo</option>
+								<option value="inativo">Inativo</option>
+							</select>
+						</div>
+						<div class="disciplinar-field col-3">
+							<label for="cursoInicio">Início</label>
+							<input type="date" id="cursoInicio">
+						</div>
+						<div class="disciplinar-field col-3">
+							<label for="cursoFim">Fim</label>
+							<input type="date" id="cursoFim">
+						</div>
+						<div class="disciplinar-field">
+							<label for="cursoDescricao">Descrição</label>
+							<textarea id="cursoDescricao" placeholder="Objetivo, turma-alvo, observações e regras do curso."></textarea>
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="submit" class="disciplinar-btn-primary" id="cursoSubmitBtn">Salvar curso</button>
+					<button type="button" class="disciplinar-btn-secondary" id="cursoResetBtn">Limpar</button>
+					<button type="button" class="disciplinar-btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<div class="modal fade disciplinar-modal" id="criterioModal" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h2 class="modal-title fs-5" id="criterioModalTitle">Novo Critério</h2>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+			</div>
+			<form id="disciplinarCriterioForm">
+				<div class="modal-body">
+					<input type="hidden" id="criterioId" value="0">
+					<div class="disciplinar-form-grid">
+						<div class="disciplinar-field col-4">
+							<label for="criterioCursoId">Curso</label>
+							<select id="criterioCursoId" required></select>
+						</div>
+						<div class="disciplinar-field col-4">
+							<label for="criterioNome">Critério</label>
+							<input type="text" id="criterioNome" maxlength="120" required>
+						</div>
+						<div class="disciplinar-field col-2">
+							<label for="criterioValor">Valor Máximo</label>
+							<input type="number" id="criterioValor" min="0" step="0.01" value="10">
+						</div>
+						<div class="disciplinar-field col-2">
+							<label for="criterioPeso">Peso</label>
+							<input type="number" id="criterioPeso" min="0.1" step="0.01" value="1">
+						</div>
+						<div class="disciplinar-field col-2">
+							<label for="criterioOrdem">Ordem</label>
+							<input type="number" id="criterioOrdem" min="0" step="1" value="0">
+						</div>
+						<div class="disciplinar-field col-2">
+							<label for="criterioAtivo">Ativo</label>
+							<select id="criterioAtivo">
+								<option value="1">Sim</option>
+								<option value="0">Não</option>
+							</select>
+						</div>
+						<div class="disciplinar-field">
+							<label for="criterioDescricao">Descrição</label>
+							<textarea id="criterioDescricao" placeholder="Explique como a nota é obtida neste critério."></textarea>
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="submit" class="disciplinar-btn-primary" id="criterioSubmitBtn">Salvar critério</button>
+					<button type="button" class="disciplinar-btn-secondary" id="criterioResetBtn">Limpar</button>
+					<button type="button" class="disciplinar-btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<div class="modal fade disciplinar-modal" id="matriculaModal" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h2 class="modal-title fs-5" id="matriculaModalTitle">Nova Matrícula</h2>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+			</div>
+			<form id="disciplinarMatriculaForm">
+				<div class="modal-body">
+					<input type="hidden" id="matriculaId" value="0">
+					<div class="disciplinar-form-grid">
+						<div class="disciplinar-field col-6">
+							<label for="matriculaCursoId">Curso</label>
+							<select id="matriculaCursoId" required></select>
+						</div>
+						<div class="disciplinar-field col-6">
+							<label for="matriculaAlunoId">Estudante</label>
+							<select id="matriculaAlunoId" required></select>
+						</div>
+						<div class="disciplinar-field col-4">
+							<label for="matriculaInicio">Início</label>
+							<input type="date" id="matriculaInicio">
+						</div>
+						<div class="disciplinar-field col-4">
+							<label for="matriculaFim">Fim</label>
+							<input type="date" id="matriculaFim">
+						</div>
+						<div class="disciplinar-field col-4">
+							<label for="matriculaStatus">Status</label>
+							<select id="matriculaStatus">
+								<option value="ativo">Ativo</option>
+								<option value="concluido">Concluído</option>
+								<option value="cancelado">Cancelado</option>
+							</select>
+						</div>
+						<div class="disciplinar-field">
+							<label for="matriculaObservacoes">Observações</label>
+							<textarea id="matriculaObservacoes"></textarea>
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="submit" class="disciplinar-btn-primary" id="matriculaSubmitBtn">Salvar matrícula</button>
+					<button type="button" class="disciplinar-btn-secondary" id="matriculaResetBtn">Limpar</button>
+					<button type="button" class="disciplinar-btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<div class="modal fade disciplinar-modal" id="notaModal" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h2 class="modal-title fs-5" id="notaModalTitle">Nova Nota</h2>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+			</div>
+			<form id="disciplinarNotaForm">
+				<div class="modal-body">
+					<input type="hidden" id="notaId" value="0">
+					<div class="disciplinar-form-grid">
+						<div class="disciplinar-field col-4">
+							<label for="notaMatriculaId">Matrícula</label>
+							<select id="notaMatriculaId" required></select>
+						</div>
+						<div class="disciplinar-field col-4">
+							<label for="notaCriterioId">Critério</label>
+							<select id="notaCriterioId" required></select>
+						</div>
+						<div class="disciplinar-field col-2">
+							<label for="notaValor">Nota</label>
+							<input type="number" id="notaValor" min="0" step="0.01" required>
+						</div>
+						<div class="disciplinar-field col-2">
+							<label for="notaData">Data</label>
+							<input type="date" id="notaData">
+						</div>
+						<div class="disciplinar-field">
+							<label for="notaObservacoes">Observações</label>
+							<textarea id="notaObservacoes"></textarea>
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="submit" class="disciplinar-btn-primary" id="notaSubmitBtn">Salvar nota</button>
+					<button type="button" class="disciplinar-btn-secondary" id="notaResetBtn">Limpar</button>
+					<button type="button" class="disciplinar-btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<div class="modal fade disciplinar-modal" id="registroModal" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h2 class="modal-title fs-5" id="registroModalTitle">Novo Lançamento Disciplinar</h2>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+			</div>
+			<form id="disciplinarRegistroForm" enctype="multipart/form-data">
+				<div class="modal-body">
+					<input type="hidden" id="registroId" value="0">
+					<div class="disciplinar-form-grid">
+						<div class="disciplinar-field col-6">
+							<label for="registroTipo">Tipo</label>
+							<select id="registroTipo" required>
+								<option value="anotacao">Nova Anotação</option>
+								<option value="falta_por_turma">Nova Falta Por Turmas</option>
+								<option value="nota_inicial">Nova Nota Disciplinar (Inicial)</option>
+								<option value="alteracao_nota_turma">Alterar Nota Disciplinar/Turma</option>
+								<option value="elogio_coletivo_estudante">Novo Elogio Coletivo (Estudante)</option>
+								<option value="elogio_coletivo_turma">Novo Elogio Coletivo (Turma)</option>
+								<option value="falta_coletiva_estudante">Nova Falta Disciplinar Coletiva (Estudante)</option>
+							</select>
+						</div>
+						<div class="disciplinar-field col-6">
+							<label for="registroData">Data</label>
+							<input type="date" id="registroData" required>
+						</div>
+						<div class="disciplinar-field">
+							<label for="registroTitulo">Título</label>
+							<input type="text" id="registroTitulo" maxlength="180" required>
+						</div>
+						<div class="disciplinar-field col-4">
+							<label for="registroNatureza">Natureza</label>
+							<select id="registroNatureza">
+								<option value="negativo">Negativa</option>
+								<option value="positivo">Positiva</option>
+								<option value="neutro">Neutra</option>
+							</select>
+						</div>
+						<div class="disciplinar-field col-4">
+							<label for="registroNormaId">Norma / Base NGA</label>
+							<select id="registroNormaId"></select>
+						</div>
+						<div class="disciplinar-field col-4">
+							<label for="registroPontos">Variação de Pontos</label>
+							<input type="number" id="registroPontos" step="0.01" value="0">
+						</div>
+						<div class="disciplinar-field col-6">
+							<label for="registroAlunoIds">Estudantes</label>
+							<select id="registroAlunoIds" class="disciplinar-listbox" multiple></select>
+						</div>
+						<div class="disciplinar-field col-6">
+							<label for="registroTurmaIds">Turmas</label>
+							<select id="registroTurmaIds" class="disciplinar-listbox" multiple></select>
+						</div>
+						<div class="disciplinar-field col-6">
+							<label for="registroDocumento">Anexo</label>
+							<input type="file" id="registroDocumento" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx">
+						</div>
+						<div class="disciplinar-field col-6">
+							<label for="registroRemoverDocumento">Remover anexo atual</label>
+							<select id="registroRemoverDocumento">
+								<option value="0">Não</option>
+								<option value="1">Sim</option>
+							</select>
+						</div>
+						<div class="disciplinar-field">
+							<label for="registroDescricao">Descrição</label>
+							<textarea id="registroDescricao"></textarea>
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="submit" class="disciplinar-btn-primary" id="registroSubmitBtn">Salvar lançamento</button>
+					<button type="button" class="disciplinar-btn-secondary" id="registroResetBtn">Limpar</button>
+					<button type="button" class="disciplinar-btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
 <script>
 	(function () {
+		var AUTO_REFRESH_INTERVAL = 30000;
 		var state = {
 			data: {
 				faixas: [],
@@ -711,13 +857,18 @@
 				conceitos: [],
 				alunos: [],
 				turmas: []
-			}
+			},
+			lastFingerprint: ''
 		};
+		var autoRefreshTimer = null;
 
 		var statusEl = document.getElementById('disciplinarStatus');
-		var backBtn = document.getElementById('disciplinarBackBtn');
-		var refreshBtn = document.getElementById('disciplinarRefreshBtn');
 		var tabsRoot = document.getElementById('disciplinarTabs');
+		var cursoModalEl = document.getElementById('cursoModal');
+		var criterioModalEl = document.getElementById('criterioModal');
+		var matriculaModalEl = document.getElementById('matriculaModal');
+		var notaModalEl = document.getElementById('notaModal');
+		var registroModalEl = document.getElementById('registroModal');
 
 		var cursoForm = document.getElementById('disciplinarCursoForm');
 		var criterioForm = document.getElementById('disciplinarCriterioForm');
@@ -768,6 +919,72 @@
 		var registroDocumentoInput = document.getElementById('registroDocumento');
 		var registroRemoverDocumentoInput = document.getElementById('registroRemoverDocumento');
 		var registroDescricaoInput = document.getElementById('registroDescricao');
+		var cursoModalTitle = document.getElementById('cursoModalTitle');
+		var criterioModalTitle = document.getElementById('criterioModalTitle');
+		var matriculaModalTitle = document.getElementById('matriculaModalTitle');
+		var notaModalTitle = document.getElementById('notaModalTitle');
+		var registroModalTitle = document.getElementById('registroModalTitle');
+		var cursoSubmitBtn = document.getElementById('cursoSubmitBtn');
+		var criterioSubmitBtn = document.getElementById('criterioSubmitBtn');
+		var matriculaSubmitBtn = document.getElementById('matriculaSubmitBtn');
+		var notaSubmitBtn = document.getElementById('notaSubmitBtn');
+		var registroSubmitBtn = document.getElementById('registroSubmitBtn');
+		var btnNovoCurso = document.getElementById('btnNovoCurso');
+		var btnNovoCriterio = document.getElementById('btnNovoCriterio');
+		var btnNovaMatricula = document.getElementById('btnNovaMatricula');
+		var btnNovaNota = document.getElementById('btnNovaNota');
+		var btnNovoRegistro = document.getElementById('btnNovoRegistro');
+
+		function getModalInstance(modalEl) {
+			if (!modalEl || typeof bootstrap === 'undefined' || !bootstrap.Modal) {
+				return null;
+			}
+			return bootstrap.Modal.getOrCreateInstance(modalEl);
+		}
+
+		function showModal(modalEl) {
+			var modal = getModalInstance(modalEl);
+			if (modal) {
+				modal.show();
+			}
+		}
+
+		function hideModal(modalEl) {
+			var modal = getModalInstance(modalEl);
+			if (modal) {
+				modal.hide();
+			}
+		}
+
+		function openCursoModal(editing) {
+			cursoModalTitle.textContent = editing ? 'Editar Curso' : 'Novo Curso';
+			cursoSubmitBtn.textContent = editing ? 'Atualizar curso' : 'Salvar curso';
+			showModal(cursoModalEl);
+		}
+
+		function openCriterioModal(editing) {
+			criterioModalTitle.textContent = editing ? 'Editar Critério' : 'Novo Critério';
+			criterioSubmitBtn.textContent = editing ? 'Atualizar critério' : 'Salvar critério';
+			showModal(criterioModalEl);
+		}
+
+		function openMatriculaModal(editing) {
+			matriculaModalTitle.textContent = editing ? 'Editar Matrícula' : 'Nova Matrícula';
+			matriculaSubmitBtn.textContent = editing ? 'Atualizar matrícula' : 'Salvar matrícula';
+			showModal(matriculaModalEl);
+		}
+
+		function openNotaModal(editing) {
+			notaModalTitle.textContent = editing ? 'Editar Nota' : 'Nova Nota';
+			notaSubmitBtn.textContent = editing ? 'Atualizar nota' : 'Salvar nota';
+			showModal(notaModalEl);
+		}
+
+		function openRegistroModal(editing) {
+			registroModalTitle.textContent = editing ? 'Editar Lançamento Disciplinar' : 'Novo Lançamento Disciplinar';
+			registroSubmitBtn.textContent = editing ? 'Atualizar lançamento' : 'Salvar lançamento';
+			showModal(registroModalEl);
+		}
 
 		function resolveBasePath() {
 			var pathname = String(window.location.pathname || '');
@@ -828,6 +1045,18 @@
 			statusEl.className = 'disciplinar-status';
 		}
 
+		function hasOpenDisciplinarModal() {
+			return Boolean(document.querySelector('.disciplinar-modal.show'));
+		}
+
+		function buildDataFingerprint(data) {
+			try {
+				return JSON.stringify(data || {});
+			} catch (error) {
+				return String(Date.now());
+			}
+		}
+
 		function setTab(panelId) {
 			Array.prototype.forEach.call(document.querySelectorAll('.disciplinar-tab-btn'), function (button) {
 				button.classList.toggle('is-active', button.getAttribute('data-panel') === panelId);
@@ -885,31 +1114,60 @@
 			cursoInicioInput.value = '';
 			cursoFimInput.value = '';
 			cursoDescricaoInput.value = '';
+			if (cursoModalTitle) {
+				cursoModalTitle.textContent = 'Novo Curso';
+			}
+			if (cursoSubmitBtn) {
+				cursoSubmitBtn.textContent = 'Salvar curso';
+			}
 		}
 
 		function resetCriterioForm() {
 			criterioIdInput.value = '0';
+			criterioCursoIdInput.value = '';
 			criterioNomeInput.value = '';
 			criterioValorInput.value = '10';
 			criterioPesoInput.value = '1';
 			criterioOrdemInput.value = '0';
 			criterioAtivoInput.value = '1';
 			criterioDescricaoInput.value = '';
+			if (criterioModalTitle) {
+				criterioModalTitle.textContent = 'Novo Critério';
+			}
+			if (criterioSubmitBtn) {
+				criterioSubmitBtn.textContent = 'Salvar critério';
+			}
 		}
 
 		function resetMatriculaForm() {
 			matriculaIdInput.value = '0';
+			matriculaCursoIdInput.value = '';
+			matriculaAlunoIdInput.value = '';
 			matriculaInicioInput.value = '';
 			matriculaFimInput.value = '';
 			matriculaStatusInput.value = 'ativo';
 			matriculaObservacoesInput.value = '';
+			if (matriculaModalTitle) {
+				matriculaModalTitle.textContent = 'Nova Matrícula';
+			}
+			if (matriculaSubmitBtn) {
+				matriculaSubmitBtn.textContent = 'Salvar matrícula';
+			}
 		}
 
 		function resetNotaForm() {
 			notaIdInput.value = '0';
+			notaMatriculaIdInput.value = '';
+			notaCriterioIdInput.value = '';
 			notaValorInput.value = '';
 			notaDataInput.value = '';
 			notaObservacoesInput.value = '';
+			if (notaModalTitle) {
+				notaModalTitle.textContent = 'Nova Nota';
+			}
+			if (notaSubmitBtn) {
+				notaSubmitBtn.textContent = 'Salvar nota';
+			}
 		}
 
 		function resetRegistroForm() {
@@ -925,6 +1183,12 @@
 			registroDocumentoInput.value = '';
 			registroRemoverDocumentoInput.value = '0';
 			registroDescricaoInput.value = '';
+			if (registroModalTitle) {
+				registroModalTitle.textContent = 'Novo Lançamento Disciplinar';
+			}
+			if (registroSubmitBtn) {
+				registroSubmitBtn.textContent = 'Salvar lançamento';
+			}
 		}
 
 		function renderKpis() {
@@ -1227,16 +1491,54 @@
 			});
 		}
 
-		function loadData() {
-			clearStatus();
+		function loadData(options) {
+			options = options || {};
+			var silent = options.silent === true;
+			var preserveStatus = options.preserveStatus === true;
+			var forceRender = options.forceRender === true;
+
+			if (!silent && !preserveStatus) {
+				clearStatus();
+			}
+
 			return requestJson(buildEndpoint('/institucional/disciplinar/dados'), {
 				headers: { 'X-Requested-With': 'XMLHttpRequest' }
 			}).then(function (payload) {
-				state.data = payload.data || state.data;
-				renderAll();
+				var nextData = payload.data || state.data;
+				var nextFingerprint = buildDataFingerprint(nextData);
+				var hasChanges = state.lastFingerprint !== nextFingerprint;
+
+				if (silent && hasOpenDisciplinarModal()) {
+					return;
+				}
+
+				if (forceRender || hasChanges) {
+					state.data = nextData;
+					state.lastFingerprint = nextFingerprint;
+					renderAll();
+				}
 			}).catch(function (error) {
-				showStatus(error && error.message ? error.message : 'Erro ao carregar o módulo disciplinar.', true);
+				if (!silent) {
+					showStatus(error && error.message ? error.message : 'Erro ao carregar o módulo disciplinar.', true);
+				}
 			});
+		}
+
+		function stopAutoRefresh() {
+			if (autoRefreshTimer) {
+				window.clearInterval(autoRefreshTimer);
+				autoRefreshTimer = null;
+			}
+		}
+
+		function startAutoRefresh() {
+			stopAutoRefresh();
+			autoRefreshTimer = window.setInterval(function () {
+				if (document.hidden || hasOpenDisciplinarModal()) {
+					return;
+				}
+				loadData({ silent: true, preserveStatus: true });
+			}, AUTO_REFRESH_INTERVAL);
 		}
 
 		function postFormData(url, formData) {
@@ -1256,7 +1558,7 @@
 			cursoInicioInput.value = item.data_inicio || '';
 			cursoFimInput.value = item.data_fim || '';
 			cursoDescricaoInput.value = item.descricao || '';
-			setTab('painelCursos');
+			openCursoModal(true);
 		}
 
 		function fillCriterioForm(id) {
@@ -1270,7 +1572,7 @@
 			criterioOrdemInput.value = String(item.ordem_exibicao || '0');
 			criterioAtivoInput.value = Number(item.ativo || 0) === 1 ? '1' : '0';
 			criterioDescricaoInput.value = item.descricao || '';
-			setTab('painelCursos');
+			openCriterioModal(true);
 		}
 
 		function fillNotaForm(id) {
@@ -1282,7 +1584,7 @@
 			notaValorInput.value = String(item.nota || '');
 			notaDataInput.value = item.data_lancamento || '';
 			notaObservacoesInput.value = item.observacoes || '';
-			setTab('painelMatriculas');
+			openNotaModal(true);
 		}
 
 		function fillRegistroForm(id) {
@@ -1309,7 +1611,7 @@
 			Array.prototype.forEach.call(registroTurmaIdsInput.options, function (option) {
 				option.selected = turmaIds.indexOf(Number(option.value || 0)) !== -1;
 			});
-			setTab('painelRegistros');
+			openRegistroModal(true);
 		}
 
 		if (tabsRoot) {
@@ -1322,15 +1624,44 @@
 			});
 		}
 
-		if (backBtn) {
-			backBtn.href = buildEndpoint('/institucional');
+		document.addEventListener('visibilitychange', function () {
+			if (!document.hidden) {
+				loadData({ silent: true, preserveStatus: true });
+			}
+		});
+
+		if (btnNovoCurso) {
+			btnNovoCurso.addEventListener('click', function () {
+				resetCursoForm();
+				openCursoModal(false);
+			});
 		}
 
-		if (refreshBtn) {
-			refreshBtn.addEventListener('click', function () {
-				loadData().then(function () {
-					showStatus('Dados atualizados.', false);
-				});
+		if (btnNovoCriterio) {
+			btnNovoCriterio.addEventListener('click', function () {
+				resetCriterioForm();
+				openCriterioModal(false);
+			});
+		}
+
+		if (btnNovaMatricula) {
+			btnNovaMatricula.addEventListener('click', function () {
+				resetMatriculaForm();
+				openMatriculaModal(false);
+			});
+		}
+
+		if (btnNovaNota) {
+			btnNovaNota.addEventListener('click', function () {
+				resetNotaForm();
+				openNotaModal(false);
+			});
+		}
+
+		if (btnNovoRegistro) {
+			btnNovoRegistro.addEventListener('click', function () {
+				resetRegistroForm();
+				openRegistroModal(false);
 			});
 		}
 
@@ -1352,8 +1683,9 @@
 			postFormData('/institucional/disciplinar/cursos/salvar', payload)
 				.then(function (result) {
 					showStatus(result.message || 'Curso salvo com sucesso.', false);
+					hideModal(cursoModalEl);
 					resetCursoForm();
-					return loadData();
+					return loadData({ preserveStatus: true, forceRender: true });
 				})
 				.catch(function (error) {
 					showStatus(error && error.message ? error.message : 'Erro ao salvar o curso.', true);
@@ -1374,8 +1706,9 @@
 			postFormData('/institucional/disciplinar/criterios/salvar', payload)
 				.then(function (result) {
 					showStatus(result.message || 'Critério salvo com sucesso.', false);
+					hideModal(criterioModalEl);
 					resetCriterioForm();
-					return loadData();
+					return loadData({ preserveStatus: true, forceRender: true });
 				})
 				.catch(function (error) {
 					showStatus(error && error.message ? error.message : 'Erro ao salvar o critério.', true);
@@ -1395,8 +1728,9 @@
 			postFormData('/institucional/disciplinar/matriculas/salvar', payload)
 				.then(function (result) {
 					showStatus(result.message || 'Matrícula salva com sucesso.', false);
+					hideModal(matriculaModalEl);
 					resetMatriculaForm();
-					return loadData();
+					return loadData({ preserveStatus: true, forceRender: true });
 				})
 				.catch(function (error) {
 					showStatus(error && error.message ? error.message : 'Erro ao salvar a matrícula.', true);
@@ -1415,8 +1749,9 @@
 			postFormData('/institucional/disciplinar/notas/salvar', payload)
 				.then(function (result) {
 					showStatus(result.message || 'Nota salva com sucesso.', false);
+					hideModal(notaModalEl);
 					resetNotaForm();
-					return loadData();
+					return loadData({ preserveStatus: true, forceRender: true });
 				})
 				.catch(function (error) {
 					showStatus(error && error.message ? error.message : 'Erro ao salvar a nota.', true);
@@ -1448,8 +1783,9 @@
 			postFormData('/institucional/disciplinar/registros/salvar', payload)
 				.then(function (result) {
 					showStatus(result.message || 'Registro salvo com sucesso.', false);
+					hideModal(registroModalEl);
 					resetRegistroForm();
-					return loadData();
+					return loadData({ preserveStatus: true, forceRender: true });
 				})
 				.catch(function (error) {
 					showStatus(error && error.message ? error.message : 'Erro ao salvar o registro.', true);
@@ -1475,7 +1811,7 @@
 				var payloadCurso = new FormData();
 				payloadCurso.append('id', String(cursoDelete.getAttribute('data-delete-curso') || '0'));
 				postFormData('/institucional/disciplinar/cursos/excluir', payloadCurso)
-					.then(function (result) { showStatus(result.message || 'Curso excluído.', false); return loadData(); })
+					.then(function (result) { showStatus(result.message || 'Curso excluído.', false); return loadData({ preserveStatus: true, forceRender: true }); })
 					.catch(function (error) { showStatus(error && error.message ? error.message : 'Erro ao excluir o curso.', true); });
 				return;
 			}
@@ -1488,7 +1824,7 @@
 				var payloadCriterio = new FormData();
 				payloadCriterio.append('id', String(criterioDelete.getAttribute('data-delete-criterio') || '0'));
 				postFormData('/institucional/disciplinar/criterios/excluir', payloadCriterio)
-					.then(function (result) { showStatus(result.message || 'Critério excluído.', false); return loadData(); })
+					.then(function (result) { showStatus(result.message || 'Critério excluído.', false); return loadData({ preserveStatus: true, forceRender: true }); })
 					.catch(function (error) { showStatus(error && error.message ? error.message : 'Erro ao excluir o critério.', true); });
 				return;
 			}
@@ -1501,7 +1837,7 @@
 				var payloadNota = new FormData();
 				payloadNota.append('id', String(notaDelete.getAttribute('data-delete-nota') || '0'));
 				postFormData('/institucional/disciplinar/notas/excluir', payloadNota)
-					.then(function (result) { showStatus(result.message || 'Nota excluída.', false); return loadData(); })
+					.then(function (result) { showStatus(result.message || 'Nota excluída.', false); return loadData({ preserveStatus: true, forceRender: true }); })
 					.catch(function (error) { showStatus(error && error.message ? error.message : 'Erro ao excluir a nota.', true); });
 				return;
 			}
@@ -1514,12 +1850,13 @@
 				var payloadRegistro = new FormData();
 				payloadRegistro.append('id', String(registroDelete.getAttribute('data-delete-registro') || '0'));
 				postFormData('/institucional/disciplinar/registros/excluir', payloadRegistro)
-					.then(function (result) { showStatus(result.message || 'Registro excluído.', false); return loadData(); })
+					.then(function (result) { showStatus(result.message || 'Registro excluído.', false); return loadData({ preserveStatus: true, forceRender: true }); })
 					.catch(function (error) { showStatus(error && error.message ? error.message : 'Erro ao excluir o registro.', true); });
 			}
 		});
 
 		resetRegistroForm();
-		loadData();
+		loadData({ forceRender: true });
+		startAutoRefresh();
 	})();
 </script>

@@ -868,7 +868,7 @@ class DisciplinarModel
 
         $statement = $pdo->prepare('INSERT INTO disciplinar_conceito_faixas (codigo, nome, nota_min, nota_max, ordem_exibicao, ativo) VALUES (:codigo, :nome, :nota_min, :nota_max, :ordem_exibicao, 1)');
         foreach ([
-            ['codigo' => 'excepcional', 'nome' => 'Excepcional', 'nota_min' => 10.00, 'nota_max' => 999.99, 'ordem_exibicao' => 1],
+            ['codigo' => 'excepcional', 'nome' => 'Excepcional', 'nota_min' => 10.00, 'nota_max' => 10.00, 'ordem_exibicao' => 1],
             ['codigo' => 'otimo', 'nome' => 'Ótimo', 'nota_min' => 9.00, 'nota_max' => 9.99, 'ordem_exibicao' => 2],
             ['codigo' => 'bom', 'nome' => 'Bom', 'nota_min' => 8.00, 'nota_max' => 8.99, 'ordem_exibicao' => 3],
             ['codigo' => 'regular', 'nome' => 'Regular', 'nota_min' => 6.00, 'nota_max' => 7.99, 'ordem_exibicao' => 4],

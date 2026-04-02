@@ -249,6 +249,17 @@
     var lastDashboardSignature = '';
     var pendingDashboardData = null;
     var pendingDashboardSignature = '';
+    var formCategoriaOptionsSnapshot = [];
+
+    if (formCategoriaSelect) {
+      formCategoriaOptionsSnapshot = Array.prototype.slice.call(formCategoriaSelect.options || []).map(function (option) {
+        return {
+          value: String(option.value || ''),
+          label: String(option.textContent || option.label || ''),
+          selected: !!option.selected
+        };
+      });
+    }
 
     function syncBoletimXScroll() {
       if (!boletimContainer || !boletimTable || !boletimXScroll || !boletimXScrollTrack) return;
@@ -498,6 +509,46 @@
       var currentDisc = String(formDisciplinaInput.value || '').trim();
       if (currentDisc && !isDisciplinaAllowedForTurma(turmaId, currentDisc)) {
         formDisciplinaInput.value = '';
+      }
+
+      syncFormCategoriaOptions();
+    }
+
+    function isCategoriaProducaoTextual(value, label) {
+      var valueNorm = normalizeText(value || '');
+      var labelNorm = normalizeText(label || '');
+      return valueNorm === 'producao_textual'
+        || labelNorm.indexOf('producao textual') >= 0
+        || labelNorm.indexOf('produção textual') >= 0;
+    }
+
+    function syncFormCategoriaOptions() {
+      if (!formCategoriaSelect || !formCategoriaOptionsSnapshot.length) {
+        return;
+      }
+
+      var currentValue = String(formCategoriaSelect.value || '').trim();
+      var disciplinaAtual = String(formDisciplinaInput && formDisciplinaInput.value ? formDisciplinaInput.value : '').trim();
+      var permiteProdTextual = isDisciplinaLinguaPortuguesa(disciplinaAtual);
+      var html = '';
+      var hasCurrentValue = false;
+
+      formCategoriaOptionsSnapshot.forEach(function (item) {
+        if (!permiteProdTextual && isCategoriaProducaoTextual(item.value, item.label)) {
+          return;
+        }
+
+        var selected = currentValue !== '' ? currentValue === item.value : item.selected;
+        if (selected) {
+          hasCurrentValue = true;
+        }
+
+        html += '<option value="' + esc(item.value) + '"' + (selected ? ' selected' : '') + '>' + esc(item.label) + '</option>';
+      });
+
+      formCategoriaSelect.innerHTML = html;
+      if (!hasCurrentValue) {
+        formCategoriaSelect.value = '';
       }
     }
 
@@ -2834,6 +2885,7 @@
       if (formCicloSelect) {
         formCicloSelect.value = '';
       }
+      syncFormCategoriaOptions();
       setFormError('');
       if (formTitle) formTitle.textContent = 'Novo lançamento';
       if (formSubmitBtn) formSubmitBtn.innerHTML = '<i class="las la-save me-1"></i>Salvar lançamento';
@@ -2876,6 +2928,7 @@
       }
 
       renderFormAlunoOptions(turmaField ? turmaField.value : '', '');
+      syncFormCategoriaOptions();
       applyManualNotaInputLimits();
     }
 
@@ -2912,6 +2965,7 @@
       setField('nota_maxima', entry.nota_maxima || '');
       setField('data_referencia', entry.data_referencia || '');
       setField('habilidades_avaliadas', Array.isArray(entry.habilidades_avaliadas) ? entry.habilidades_avaliadas.join(', ') : '');
+      syncFormCategoriaOptions();
       notasHbAvaliadasSelected = notasHbParseList(Array.isArray(entry.habilidades_avaliadas) ? entry.habilidades_avaliadas.join(', ') : String(entry.habilidades_avaliadas || ''));
       notasHbRenderTags('avaliadas');
       setField('observacoes', entry.observacoes || '');
@@ -3276,9 +3330,11 @@
 
     if (formDisciplinaInput) {
       formDisciplinaInput.addEventListener('input', function () {
+        syncFormCategoriaOptions();
         applyManualNotaInputLimits();
       });
       formDisciplinaInput.addEventListener('change', function () {
+        syncFormCategoriaOptions();
         applyManualNotaInputLimits();
       });
     }
