@@ -395,6 +395,28 @@
     gap: .55rem;
   }
 
+  .meal-config-box {
+    border: 1px solid #efdfd9;
+    border-radius: .95rem;
+    background: #fff8f5;
+    padding: .8rem;
+  }
+
+  .meal-config-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    flex-wrap: wrap;
+    margin-bottom: .6rem;
+  }
+
+  .meal-config-count {
+    font-size: .76rem;
+    color: #7d6660;
+    font-weight: 700;
+  }
+
   .item-tile {
     padding: .55rem;
     display: flex;
@@ -739,6 +761,25 @@
       </div>
     </div>
   </div>
+
+  <div class="modal fade" id="modalSelecionarItensRefeicao" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title fs-5" id="tituloModalSelecionarItensRefeicao">Selecionar itens da refeição</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="section-subtitle mb-3" id="subtituloModalSelecionarItensRefeicao">Escolha os itens permitidos para esta refeição.</div>
+          <div id="gridItensModalRefeicao" class="item-selection-grid"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger btn-sm" id="btnAplicarItensRefeicao"><i class="las la-check me-1"></i>Aplicar itens</button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -772,15 +813,22 @@
       var formCadastro = document.getElementById('formCadastroCardapio');
       var formItem = document.getElementById('formItemCardapio');
       var itemTiposRefeicao = document.getElementById('itemCardapioTiposRefeicao');
+      var tituloModalSelecionarItensRefeicao = document.getElementById('tituloModalSelecionarItensRefeicao');
+      var subtituloModalSelecionarItensRefeicao = document.getElementById('subtituloModalSelecionarItensRefeicao');
+      var gridItensModalRefeicao = document.getElementById('gridItensModalRefeicao');
+      var btnAplicarItensRefeicao = document.getElementById('btnAplicarItensRefeicao');
 
       var modalCadastro = new bootstrap.Modal(document.getElementById('modalCadastroCardapio'));
       var modalItem = new bootstrap.Modal(document.getElementById('modalItemCardapio'));
+      var modalSelecionarItensRefeicao = new bootstrap.Modal(document.getElementById('modalSelecionarItensRefeicao'));
 
       var state = {
         selectedDate: todayIso(),
         monthKey: monthKeyFromDate(todayIso()),
         modalMonthKey: monthKeyFromDate(todayIso()),
         modalSelectedDates: [],
+        cardapioDraft: {},
+        mealPickerTipoId: 0,
         tiposRefeicao: [],
         itens: [],
         cardapios: [],
@@ -1263,7 +1311,6 @@
       }
 
       function buildMealFormSections() {
-        var cardapiosTipo = cardapioIndexByTipo();
         var activeItems = state.itens.filter(function (item) {
           return Number(item.ativo || 0) === 1;
         });
@@ -1275,19 +1322,14 @@
 
         blocosRefeicoes.innerHTML = state.tiposRefeicao.map(function (tipo) {
           var tipoId = Number(tipo.id || 0);
-          var cardapio = cardapiosTipo[tipoId] || null;
+          var draft = state.cardapioDraft[tipoId] || { item_ids: [], observacao: '' };
           var availableItems = activeItems.filter(function (item) {
             return Array.isArray(item.tipo_refeicao_ids) && item.tipo_refeicao_ids.indexOf(tipoId) >= 0;
           });
-          var selecionados = {};
-          if (cardapio && Array.isArray(cardapio.itens)) {
-            cardapio.itens.forEach(function (item) {
-              var itemId = Number(item && item.id || 0);
-              if (itemId > 0) {
-                selecionados[itemId] = true;
-              }
-            });
-          }
+          var selectedIds = Array.isArray(draft.item_ids) ? draft.item_ids : [];
+          var selectedItems = availableItems.filter(function (item) {
+            return selectedIds.indexOf(Number(item.id || 0)) >= 0;
+          });
 
           return '<section class="meal-form-section" data-tipo-refeicao-id="' + tipoId + '">'
             + '<div class="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">'
@@ -1295,28 +1337,96 @@
             + '<div class="d-flex align-items-center gap-2"><span class="meal-color" style="background:' + escapeHtml(tipo.cor || '#842029') + '"></span><span class="meal-summary-name">' + escapeHtml(tipo.nome || 'Refeição') + '</span></div>'
             + '<div class="section-subtitle">' + escapeHtml(tipo.descricao || 'Selecione os itens desta refeição.') + '</div>'
             + '</div>'
-            + '<div class="selected-count js-selected-count">' + Object.keys(selecionados).length + ' item(ns) selecionado(s)</div>'
             + '</div>'
-            + '<div class="item-selection-grid">'
-            + (availableItems.length ? availableItems.map(function (item) {
-              var imageUrl = absoluteAssetUrl(item.imagem_path || '');
-              var media = imageUrl !== ''
-                ? '<img class="item-thumb" src="' + escapeHtml(imageUrl) + '" alt="Imagem do item">'
-                : '<div class="item-thumb d-flex align-items-center justify-content-center"><i class="las la-image text-secondary"></i></div>';
-              var checked = selecionados[Number(item.id || 0)] ? ' checked' : '';
-              return '<label class="item-tile">'
-                + '<input type="checkbox" class="form-check-input js-item-checkbox" data-item-id="' + Number(item.id || 0) + '"' + checked + '>'
-                + media
-                + '<span class="item-tile-body"><span class="item-tile-name">' + escapeHtml(item.nome || '-') + '</span><span class="item-tile-desc d-block">' + escapeHtml(item.descricao || 'Sem descrição.') + '</span></span>'
-                + '</label>';
-            }).join('') : '<div class="empty-state" style="grid-column:1/-1;">Nenhum item ativo está liberado para esta refeição. Edite os itens na aba Itens do cardápio para definir onde podem ser servidos.</div>')
+            + '<div class="meal-config-box">'
+            + '<div class="meal-config-actions">'
+            + '<div class="meal-config-count js-selected-count">' + String(selectedItems.length) + ' item(ns) selecionado(s)</div>'
+            + '<button type="button" class="btn btn-outline-danger btn-sm js-abrir-seletor-itens-refeicao" data-tipo-refeicao-id="' + tipoId + '"><i class="las la-list me-1"></i>Selecionar itens</button>'
+            + '</div>'
+            + (selectedItems.length
+              ? '<div class="meal-items-list">' + selectedItems.map(function (item) { return '<span class="chip">' + escapeHtml(item.nome || '-') + '</span>'; }).join('') + '</div>'
+              : '<div class="empty-state">Nenhum item selecionado para esta refeição.</div>')
             + '</div>'
             + '<div class="mt-3">'
             + '<label class="form-label" for="observacaoRefeicao' + tipoId + '">Observação da refeição</label>'
-            + '<textarea class="form-control js-observacao-refeicao" id="observacaoRefeicao' + tipoId + '" rows="2" placeholder="Opcional">' + escapeHtml(cardapio && cardapio.observacao ? cardapio.observacao : '') + '</textarea>'
+            + '<textarea class="form-control js-observacao-refeicao" id="observacaoRefeicao' + tipoId + '" rows="2" placeholder="Opcional">' + escapeHtml(draft.observacao || '') + '</textarea>'
             + '</div>'
             + '</section>';
         }).join('');
+      }
+
+      function hydrateCardapioDraft() {
+        var cardapiosTipo = cardapioIndexByTipo();
+        var draft = {};
+        state.tiposRefeicao.forEach(function (tipo) {
+          var tipoId = Number(tipo.id || 0);
+          var cardapio = cardapiosTipo[tipoId] || null;
+          draft[tipoId] = {
+            item_ids: cardapio && Array.isArray(cardapio.itens)
+              ? cardapio.itens.map(function (item) { return Number(item && item.id || 0); }).filter(function (itemId) { return itemId > 0; })
+              : [],
+            observacao: cardapio ? String(cardapio.observacao || '') : ''
+          };
+        });
+        state.cardapioDraft = draft;
+      }
+
+      function openMealItemsModal(tipoRefeicaoId) {
+        var tipoId = Number(tipoRefeicaoId || 0);
+        var tipo = state.tiposRefeicao.find(function (entry) {
+          return Number(entry && entry.id || 0) === tipoId;
+        }) || null;
+        if (!tipo) {
+          return;
+        }
+
+        var draft = state.cardapioDraft[tipoId] || { item_ids: [] };
+        var availableItems = state.itens.filter(function (item) {
+          return Number(item.ativo || 0) === 1
+            && Array.isArray(item.tipo_refeicao_ids)
+            && item.tipo_refeicao_ids.indexOf(tipoId) >= 0;
+        });
+
+        state.mealPickerTipoId = tipoId;
+        tituloModalSelecionarItensRefeicao.textContent = 'Selecionar itens de ' + String(tipo.nome || 'Refeição');
+        subtituloModalSelecionarItensRefeicao.textContent = tipo.descricao || 'Escolha os itens permitidos para esta refeição.';
+
+        gridItensModalRefeicao.innerHTML = availableItems.length ? availableItems.map(function (item) {
+          var imageUrl = absoluteAssetUrl(item.imagem_path || '');
+          var media = imageUrl !== ''
+            ? '<img class="item-thumb" src="' + escapeHtml(imageUrl) + '" alt="Imagem do item">'
+            : '<div class="item-thumb d-flex align-items-center justify-content-center"><i class="las la-image text-secondary"></i></div>';
+          var itemId = Number(item.id || 0);
+          var checked = Array.isArray(draft.item_ids) && draft.item_ids.indexOf(itemId) >= 0 ? ' checked' : '';
+          return '<label class="item-tile">'
+            + '<input type="checkbox" class="form-check-input js-item-checkbox-modal" data-item-id="' + itemId + '"' + checked + '>'
+            + media
+            + '<span class="item-tile-body"><span class="item-tile-name">' + escapeHtml(item.nome || '-') + '</span><span class="item-tile-desc d-block">' + escapeHtml(item.descricao || 'Sem descrição.') + '</span></span>'
+            + '</label>';
+        }).join('') : '<div class="empty-state" style="grid-column:1/-1;">Nenhum item ativo está liberado para esta refeição. Edite os itens na aba Itens do cardápio para definir onde podem ser servidos.</div>';
+
+        modalSelecionarItensRefeicao.show();
+      }
+
+      function applyMealItemsSelection() {
+        var tipoId = Number(state.mealPickerTipoId || 0);
+        if (tipoId <= 0) {
+          modalSelecionarItensRefeicao.hide();
+          return;
+        }
+
+        var selectedIds = Array.prototype.slice.call(gridItensModalRefeicao.querySelectorAll('.js-item-checkbox-modal:checked')).map(function (checkbox) {
+          return Number(checkbox.getAttribute('data-item-id') || 0);
+        }).filter(function (itemId) {
+          return itemId > 0;
+        });
+
+        if (!state.cardapioDraft[tipoId]) {
+          state.cardapioDraft[tipoId] = { item_ids: [], observacao: '' };
+        }
+        state.cardapioDraft[tipoId].item_ids = selectedIds;
+        buildMealFormSections();
+        modalSelecionarItensRefeicao.hide();
       }
 
       function renderItemMealTypeOptions(selectedIds) {
@@ -1391,6 +1501,7 @@
         var initialDate = maxDateKey(state.selectedDate, todayKey());
         state.modalMonthKey = monthKeyFromDate(initialDate);
         state.modalSelectedDates = ensureUniqueDates([initialDate]);
+        hydrateCardapioDraft();
         renderModalSelectedDates();
         buildMealFormSections();
         modalCadastro.show();
@@ -1427,7 +1538,10 @@
         if (!(section instanceof HTMLElement)) {
           return;
         }
-        var selectedCount = section.querySelectorAll('.js-item-checkbox:checked').length;
+        var tipoId = Number(section.getAttribute('data-tipo-refeicao-id') || 0);
+        var selectedCount = tipoId > 0 && state.cardapioDraft[tipoId] && Array.isArray(state.cardapioDraft[tipoId].item_ids)
+          ? state.cardapioDraft[tipoId].item_ids.length
+          : 0;
         var counter = section.querySelector('.js-selected-count');
         if (counter) {
           counter.textContent = String(selectedCount) + ' item(ns) selecionado(s)';
@@ -1445,16 +1559,16 @@
         var mealSections = Array.prototype.slice.call(blocosRefeicoes.querySelectorAll('[data-tipo-refeicao-id]'));
         var payload = mealSections.map(function (section) {
           var tipoId = Number(section.getAttribute('data-tipo-refeicao-id') || 0);
-          var itemIds = Array.prototype.slice.call(section.querySelectorAll('.js-item-checkbox:checked')).map(function (checkbox) {
-            return Number(checkbox.getAttribute('data-item-id') || 0);
-          }).filter(function (itemId) {
-            return itemId > 0;
-          });
+          var draft = state.cardapioDraft[tipoId] || { item_ids: [], observacao: '' };
           var observacaoEl = section.querySelector('.js-observacao-refeicao');
+          state.cardapioDraft[tipoId] = {
+            item_ids: Array.isArray(draft.item_ids) ? draft.item_ids.slice() : [],
+            observacao: observacaoEl ? String(observacaoEl.value || '').trim() : String(draft.observacao || '').trim()
+          };
           return {
             tipo_refeicao_id: tipoId,
-            item_ids: itemIds,
-            observacao: observacaoEl ? String(observacaoEl.value || '').trim() : ''
+            item_ids: state.cardapioDraft[tipoId].item_ids,
+            observacao: state.cardapioDraft[tipoId].observacao
           };
         });
 
@@ -1543,6 +1657,7 @@
       btnVoltar.href = endpoint('/institucional');
       btnAbrirCadastroSecundario.addEventListener('click', openCadastroModal);
       btnImprimirResumo.addEventListener('click', printResumoCardapio);
+      btnAplicarItensRefeicao.addEventListener('click', applyMealItemsSelection);
       btnMesAnteriorModal.addEventListener('click', function () {
         var previousMonth = shiftMonth(state.modalMonthKey, -1);
         var currentMonth = monthKeyFromDate(todayKey());
@@ -1563,15 +1678,36 @@
       });
       formCadastro.addEventListener('submit', saveCardapio);
       formItem.addEventListener('submit', saveItem);
-      blocosRefeicoes.addEventListener('change', function (event) {
+      blocosRefeicoes.addEventListener('input', function (event) {
         var target = event.target;
         if (!(target instanceof HTMLElement)) {
           return;
         }
-        var section = target.closest('[data-tipo-refeicao-id]');
-        if (section) {
-          handleMealSelectionChange(section);
+
+        if (target.classList.contains('js-observacao-refeicao')) {
+          var section = target.closest('[data-tipo-refeicao-id]');
+          var tipoId = Number(section && section.getAttribute('data-tipo-refeicao-id') || 0);
+          if (tipoId > 0) {
+            if (!state.cardapioDraft[tipoId]) {
+              state.cardapioDraft[tipoId] = { item_ids: [], observacao: '' };
+            }
+            state.cardapioDraft[tipoId].observacao = String(target.value || '').trim();
+            handleMealSelectionChange(section);
+          }
         }
+      });
+      blocosRefeicoes.addEventListener('click', function (event) {
+        var target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+
+        var button = target.closest('.js-abrir-seletor-itens-refeicao');
+        if (!button) {
+          return;
+        }
+
+        openMealItemsModal(button.getAttribute('data-tipo-refeicao-id') || '0');
       });
       listaDatasModal.addEventListener('click', function (event) {
         var target = event.target;
