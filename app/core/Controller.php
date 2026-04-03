@@ -142,6 +142,8 @@ class Controller
             '/institucional/corretor-gabaritos',
             '/institucional/avaliacoes',
             '/institucional/notas-desempenho',
+            '/institucional/gerenciamento-cardapio',
+            '/institucional/cardapio',
             '/institucional/agendamento',
             '/institucional/meus-agendamentos',
             '/institucional/refeitorio',
@@ -227,6 +229,39 @@ class Controller
             $path === '/institucional/notas-desempenho/correcao-disciplina/dados' => [
                 'ok' => false,
                 'message' => 'Modo Tester: nenhuma correção real está disponível.',
+            ],
+            $path === '/institucional/gerenciamento-cardapio/dados' => [
+                'ok' => true,
+                'data' => [
+                    'data' => $today,
+                    'tipos_refeicao' => [],
+                    'itens' => [],
+                    'cardapios' => [],
+                    'reservas' => [],
+                ],
+            ],
+            $path === '/institucional/gerenciamento-cardapio/resumo-mensal',
+            $path === '/institucional/cardapio/resumo-mensal' => [
+                'ok' => true,
+                'data' => [
+                    'mes' => $month,
+                    'resumo' => [],
+                ],
+            ],
+            $path === '/institucional/cardapio/dados' => [
+                'ok' => true,
+                'data' => [
+                    'data' => $today,
+                    'tipos_refeicao' => [],
+                    'cardapios' => [],
+                    'minhas_reservas' => [],
+                ],
+            ],
+            $path === '/institucional/cardapio/minhas-reservas' => [
+                'ok' => true,
+                'data' => [
+                    'reservas' => [],
+                ],
             ],
             $path === '/institucional/agendamento/listar',
             $path === '/institucional/meus-agendamentos/listar' => [
@@ -350,6 +385,8 @@ class Controller
     {
         return match (true) {
             str_starts_with($path, '/paineladministrativo/') => '/paineladministrativo',
+            str_starts_with($path, '/institucional/gerenciamento-cardapio/') => '/institucional/gerenciamento-cardapio',
+            str_starts_with($path, '/institucional/cardapio/') => '/institucional/cardapio',
             str_starts_with($path, '/institucional/refeitorio/') => '/institucional/refeitorio',
             str_starts_with($path, '/institucional/entrada-saida/') => '/institucional/entrada-saida',
             str_starts_with($path, '/institucional/meus-agendamentos/') => '/institucional/meus-agendamentos',

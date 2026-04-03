@@ -639,26 +639,6 @@ class EntradaSaidaModel
                 'horario' => '23:59:59',
                 'obs' => 'Saída automática gerada às 23:59 por ausência de registro de saída.',
             ]);
-            $registroId = (int) $pdo->lastInsertId();
-            $aluno = $this->buscarAlunoPorId((int) $pendente['aluno_id']);
-            $this->registrarAuditoria(
-                'registro',
-                'automacao',
-                null,
-                'Saída automática gerada para ' . trim((string) ($aluno['nome'] ?? ('Aluno #' . (int) $pendente['aluno_id']))),
-                [
-                    'registro_id' => $registroId,
-                    'aluno' => $aluno,
-                    'tipo' => $tipoSaida,
-                    'data' => (string) $pendente['data'],
-                    'horario' => '23:59:59',
-                    'obs' => 'Saída automática gerada às 23:59 por ausência de registro de saída.',
-                    'saida_automatica' => 1,
-                ],
-                $registroId,
-                (int) $pendente['aluno_id'],
-                $pdo
-            );
             $totalGerado += 1;
         }
 
@@ -905,7 +885,10 @@ class EntradaSaidaModel
         $stmt = $pdo->prepare(
             'SELECT l.id, l.aluno_id, l.data, l.obs, l.status, l.created_at, l.usado_em, l.registro_saida_id,
                 l.usuario_id, a.nome AS aluno_nome, a.matricula, a.turma,
-                COALESCE(u.nome, u.usuario, "") AS usuario_nome
+                CASE
+                    WHEN l.usuario_id IS NULL THEN "Sistema"
+                    ELSE COALESCE(NULLIF(u.nome, ""), NULLIF(u.usuario, ""), "Sistema")
+                END AS usuario_nome
                FROM entrada_saida_liberacoes l
                JOIN alunos a ON a.id = l.aluno_id
                LEFT JOIN usuarios u ON u.id = l.usuario_id
@@ -1016,7 +999,10 @@ class EntradaSaidaModel
                 t.natureza,
                 r.tipo_movimentacao_id AS tipo_refeicao_id,
                 r.usuario_id,
-                COALESCE(u.nome, u.usuario, "") AS usuario_nome,
+                CASE
+                    WHEN r.usuario_id IS NULL THEN "Sistema"
+                    ELSE COALESCE(NULLIF(u.nome, ""), NULLIF(u.usuario, ""), "Sistema")
+                END AS usuario_nome,
                                         CASE
                                                 WHEN t.natureza = "entrada" AND EXISTS (
                                                         SELECT 1
@@ -1112,7 +1098,10 @@ class EntradaSaidaModel
                     a.nome AS aluno_nome, a.turma,
                     t.nome AS tipo_nome, t.cor AS tipo_cor, t.natureza,
                     r.usuario_id,
-                    COALESCE(u.nome, u.usuario, "") AS usuario_nome,
+                    CASE
+                        WHEN r.usuario_id IS NULL THEN "Sistema"
+                        ELSE COALESCE(NULLIF(u.nome, ""), NULLIF(u.usuario, ""), "Sistema")
+                    END AS usuario_nome,
                     r.saida_automatica,
                     CASE
                         WHEN t.natureza = "entrada" AND EXISTS (
@@ -1170,7 +1159,10 @@ class EntradaSaidaModel
             'SELECT r.id, r.data, r.horario, r.obs,
                 r.tipo_movimentacao_id AS tipo_refeicao_id,
                 r.usuario_id,
-                COALESCE(u.nome, u.usuario, "") AS usuario_nome,
+                CASE
+                    WHEN r.usuario_id IS NULL THEN "Sistema"
+                    ELSE COALESCE(NULLIF(u.nome, ""), NULLIF(u.usuario, ""), "Sistema")
+                END AS usuario_nome,
                 r.saida_automatica,
                 a.nome AS aluno_nome
                FROM entrada_saida_registros r
@@ -1261,13 +1253,16 @@ class EntradaSaidaModel
 
         if ($busca !== '') {
             $params['busca'] = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $busca) . '%';
-            $wheres[] = '(a.resumo LIKE :busca OR COALESCE(u.nome, u.usuario, "") LIKE :busca OR COALESCE(al.nome, "") LIKE :busca)';
+            $wheres[] = '(a.resumo LIKE :busca OR CASE WHEN a.usuario_id IS NULL THEN "Sistema" ELSE COALESCE(NULLIF(u.nome, ""), NULLIF(u.usuario, ""), "Sistema") END LIKE :busca OR COALESCE(al.nome, "") LIKE :busca)';
         }
 
         $stmt = $pdo->prepare(
             'SELECT a.id, a.entidade, a.acao, a.referencia_id, a.aluno_id, a.usuario_id,
                     a.resumo, a.detalhes_json, a.created_at,
-                    COALESCE(u.nome, u.usuario, "") AS usuario_nome,
+                    CASE
+                        WHEN a.usuario_id IS NULL THEN "Sistema"
+                        ELSE COALESCE(NULLIF(u.nome, ""), NULLIF(u.usuario, ""), "Sistema")
+                    END AS usuario_nome,
                     COALESCE(al.nome, "") AS aluno_nome
                FROM auditoria_entrada_saida a
                LEFT JOIN usuarios u ON u.id = a.usuario_id

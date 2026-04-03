@@ -1,0 +1,1698 @@
+<style>
+  .cardapio-admin-root {
+    min-height: 100vh;
+    background: linear-gradient(180deg, #fffaf7 0%, #ffffff 28%, #ffffff 100%);
+    color: #212529;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+
+  .cardapio-admin-shell {
+    width: min(1380px, 96%);
+    margin: 0 auto;
+    padding: 1rem .8rem 1.3rem;
+  }
+
+  .status-banner {
+    position: fixed;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2200;
+    min-width: 300px;
+    max-width: min(92vw, 760px);
+    padding: .7rem .95rem;
+    border-radius: .8rem;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, .16);
+    font-size: .92rem;
+    font-weight: 700;
+  }
+
+  .status-banner.is-success {
+    background: #d1e7dd;
+    border: 1px solid #badbcc;
+    color: #0f5132;
+  }
+
+  .status-banner.is-error {
+    background: #f8d7da;
+    border: 1px solid #f5c2c7;
+    color: #842029;
+  }
+
+  .page-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .75rem;
+    flex-wrap: wrap;
+    margin-bottom: .9rem;
+  }
+
+  .page-head h1 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 800;
+  }
+
+  .page-head-actions {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+  }
+
+  .hero-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: .7rem;
+    margin-bottom: .9rem;
+  }
+
+  .hero-stat {
+    border: 1px solid #f1dfd7;
+    border-radius: .95rem;
+    background: linear-gradient(180deg, #ffffff 0%, #fff7f3 100%);
+    padding: .85rem .9rem;
+    box-shadow: 0 8px 20px rgba(139, 46, 35, .05);
+  }
+
+  .hero-stat-label {
+    display: block;
+    font-size: .72rem;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: #7b5850;
+    margin-bottom: .25rem;
+    font-weight: 800;
+  }
+
+  .hero-stat-value {
+    display: block;
+    font-size: 1.28rem;
+    line-height: 1;
+    font-weight: 800;
+    color: #842029;
+  }
+
+  .page-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: .9rem;
+    align-items: start;
+  }
+
+  .surface-card {
+    border: 1px solid #ece2de;
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, .98);
+    box-shadow: 0 10px 26px rgba(122, 31, 39, .05);
+  }
+
+  .surface-card-body {
+    padding: .95rem;
+  }
+
+  .section-title {
+    margin: 0;
+    font-size: .96rem;
+    font-weight: 800;
+    color: #563836;
+  }
+
+  .section-subtitle {
+    font-size: .82rem;
+    color: #7d6661;
+  }
+
+  .day-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .7rem;
+  }
+
+  .meal-summary-card,
+  .calendar-day,
+  .item-tile {
+    border: 1px solid #efdfd9;
+    border-radius: .9rem;
+    background: #fff;
+  }
+
+  .meal-summary-card {
+    padding: .8rem;
+  }
+
+  .meal-summary-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .65rem;
+    margin-bottom: .55rem;
+  }
+
+  .meal-summary-name {
+    font-weight: 800;
+    color: #352321;
+  }
+
+  .meal-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    flex: 0 0 12px;
+  }
+
+  .meal-meta {
+    font-size: .78rem;
+    color: #7a6661;
+  }
+
+  .meal-items-highlight {
+    margin-top: .8rem;
+    border: 1px solid #efd9d2;
+    border-radius: 1rem;
+    background: linear-gradient(180deg, #fff7f3 0%, #fff 100%);
+    padding: .8rem;
+  }
+
+  .meal-items-title {
+    font-size: .72rem;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #842029;
+    font-weight: 800;
+    margin-bottom: .55rem;
+  }
+
+  .meal-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .45rem;
+    margin-top: .6rem;
+  }
+
+  .meal-stat-box {
+    border: 1px dashed #ead8d1;
+    border-radius: .8rem;
+    background: #fffdfc;
+    padding: .45rem .55rem;
+  }
+
+  .meal-stat-label {
+    display: block;
+    font-size: .62rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #8d6d68;
+    font-weight: 800;
+  }
+
+  .meal-stat-value {
+    display: block;
+    font-size: .92rem;
+    line-height: 1.1;
+    color: #6a3b37;
+    font-weight: 800;
+    margin-top: .2rem;
+  }
+
+  .meal-items-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .45rem;
+  }
+
+  .chip {
+    padding: .42rem .72rem;
+    border-radius: .8rem;
+    background: #fff;
+    border: 1px solid #e5c8bf;
+    font-size: .8rem;
+    font-weight: 700;
+    color: #5f3833;
+    box-shadow: 0 4px 12px rgba(139, 46, 35, .06);
+  }
+
+  .empty-state {
+    border: 1px dashed #d9c4bd;
+    border-radius: .9rem;
+    background: #fffdfc;
+    color: #8b6b66;
+    padding: 1rem;
+    text-align: center;
+  }
+
+  .table-scroll-only {
+    max-height: 480px;
+    overflow: auto;
+  }
+
+  .item-thumb {
+    width: 42px;
+    height: 42px;
+    border-radius: .7rem;
+    object-fit: cover;
+    border: 1px solid #ead8d1;
+    background: #fff8f5;
+  }
+
+  .reservation-row {
+    border: 1px solid #f1e3de;
+    border-radius: .85rem;
+    padding: .75rem;
+    background: #fff;
+  }
+
+  .month-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+    margin-bottom: .65rem;
+  }
+
+  .month-label {
+    text-transform: capitalize;
+    font-weight: 800;
+    color: #6a3b37;
+    text-align: center;
+    flex: 1 1 auto;
+  }
+
+  .weekday-grid,
+  .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: .35rem;
+  }
+
+  .weekday-grid {
+    margin-bottom: .35rem;
+  }
+
+  .weekday-label {
+    text-align: center;
+    font-size: .68rem;
+    text-transform: uppercase;
+    color: #8d6d68;
+    font-weight: 800;
+  }
+
+  .calendar-day {
+    min-height: 74px;
+    padding: .35rem;
+    display: flex;
+    flex-direction: column;
+    gap: .2rem;
+    cursor: pointer;
+  }
+
+  .calendar-day:hover {
+    background: #fff7f4;
+    border-color: #d4a098;
+  }
+
+  .calendar-day.is-selected {
+    background: #fff0ea;
+    border-color: #842029;
+  }
+
+  .calendar-day.is-outside {
+    opacity: .35;
+    cursor: default;
+  }
+
+  .calendar-day-number {
+    font-size: .78rem;
+    font-weight: 800;
+    color: #382522;
+  }
+
+  .calendar-badges {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: .2rem;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .mini-badge {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 999px;
+    padding: .18rem .35rem;
+    line-height: 1.15;
+    font-size: .62rem;
+    font-weight: 800;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .mini-badge.is-meals {
+    background: rgba(25, 135, 84, .12);
+    color: #0f5132;
+  }
+
+  .mini-badge.is-reservations {
+    background: rgba(132, 32, 41, .1);
+    color: #842029;
+  }
+
+  .meal-form-section {
+    border: 1px solid #efdfd9;
+    border-radius: .95rem;
+    padding: .9rem;
+    background: #fffdfc;
+  }
+
+  .tipo-refeicao-check-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .55rem;
+  }
+
+  .tipo-refeicao-check {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+    border: 1px solid #efdfd9;
+    border-radius: .85rem;
+    background: #fff8f5;
+    padding: .55rem .65rem;
+  }
+
+  .tipo-refeicao-check-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    flex: 0 0 12px;
+  }
+
+  .item-selection-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .55rem;
+  }
+
+  .item-tile {
+    padding: .55rem;
+    display: flex;
+    gap: .55rem;
+    align-items: flex-start;
+  }
+
+  .item-tile input {
+    margin-top: .2rem;
+  }
+
+  .item-tile-body {
+    min-width: 0;
+  }
+
+  .item-tile-name {
+    font-size: .84rem;
+    font-weight: 800;
+    color: #382623;
+  }
+
+  .item-tile-desc {
+    font-size: .75rem;
+    color: #7b6661;
+  }
+
+  .selected-count {
+    font-size: .76rem;
+    color: #7d6660;
+    font-weight: 700;
+  }
+
+  .date-chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .45rem;
+  }
+
+  .date-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .35rem .6rem;
+    border-radius: 999px;
+    border: 1px solid #efd9d2;
+    background: #fff5f0;
+    color: #6a3b37;
+    font-size: .78rem;
+    font-weight: 700;
+  }
+
+  .date-chip-remove {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    padding: 0;
+    line-height: 1;
+  }
+
+  .modal-date-picker {
+    border: 1px solid #efdfd9;
+    border-radius: .95rem;
+    background: #fffdfc;
+    padding: .85rem;
+  }
+
+  .modal-date-picker-grid,
+  .modal-date-picker-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: .35rem;
+  }
+
+  .modal-date-picker-weekdays {
+    margin-bottom: .35rem;
+  }
+
+  .modal-date-day {
+    min-height: 54px;
+    border: 1px solid #efdfd9;
+    border-radius: .85rem;
+    background: #fff;
+    color: #382522;
+    font-size: .84rem;
+    font-weight: 700;
+  }
+
+  .modal-date-day:hover {
+    background: #fff5f0;
+    border-color: #d4a098;
+  }
+
+  .modal-date-day.is-selected {
+    background: #842029;
+    border-color: #842029;
+    color: #fff;
+  }
+
+  .modal-date-day.is-disabled,
+  .modal-date-day.is-outside {
+    background: #f8f1ee;
+    border-color: #f1e3de;
+    color: #b49a95;
+    cursor: not-allowed;
+  }
+
+  #modalCadastroCardapio .modal-content {
+    max-height: calc(100vh - 2rem);
+  }
+
+  #modalCadastroCardapio .modal-body {
+    max-height: calc(100vh - 210px);
+    overflow-y: auto;
+  }
+
+  @media (max-width: 1180px) {
+    .page-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .hero-strip,
+    .day-summary-grid,
+    .item-selection-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<div class="cardapio-admin-root">
+  <div id="statusGerenciamentoCardapio" class="status-banner d-none" role="alert" aria-live="polite"></div>
+
+  <div class="cardapio-admin-shell">
+    <div class="page-head">
+      <div>
+        <h1>Gerenciamento de Cardápio</h1>
+        <div class="section-subtitle">Cadastre o cardápio em modal, mantenha os itens e acompanhe as reservas por refeição.</div>
+      </div>
+      <div class="page-head-actions">
+        <a id="btnVoltarGerenciamentoCardapio" href="#" class="btn btn-outline-secondary btn-sm"><i class="las la-arrow-left me-1"></i>Voltar</a>
+      </div>
+    </div>
+
+    <div class="hero-strip">
+      <div class="hero-stat">
+        <span class="hero-stat-label">Data selecionada</span>
+        <span class="hero-stat-value" id="heroDataGerenciamento">-</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-label">Refeições com cardápio</span>
+        <span class="hero-stat-value" id="heroRefeicoesGerenciamento">0</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-label">Itens somados</span>
+        <span class="hero-stat-value" id="heroItensGerenciamento">0</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-label">Reservas do dia</span>
+        <span class="hero-stat-value" id="heroReservasGerenciamento">0</span>
+      </div>
+    </div>
+
+    <div class="page-layout">
+      <div class="surface-card">
+        <div class="surface-card-body">
+          <ul class="nav nav-tabs mb-3" id="tabsGerenciamentoCardapio" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabCadastroCardapio" type="button" role="tab">Cadastrar cardápio</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabItensCardapio" type="button" role="tab">Itens do cardápio</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabReservasCardapio" type="button" role="tab">Gerenciamento de reservas</button>
+            </li>
+          </ul>
+
+          <div class="tab-content">
+            <div class="tab-pane fade show active" id="tabCadastroCardapio" role="tabpanel">
+              <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
+                <div>
+                  <div class="section-title">Resumo do cardápio do dia</div>
+                  <div class="section-subtitle" id="subtituloCadastroCardapio">Selecione a data para consultar ou editar as refeições cadastradas.</div>
+                </div>
+                <div class="d-flex gap-2 flex-wrap align-items-center">
+                  <input type="date" class="form-control form-control-sm" id="inputDataGerenciamentoCardapio" style="width: 170px;">
+                  <button type="button" class="btn btn-outline-secondary btn-sm" id="btnImprimirResumoCardapio"><i class="las la-print me-1"></i>Imprimir</button>
+                  <button type="button" class="btn btn-danger btn-sm" id="btnAbrirCadastroCardapioSecundario"><i class="las la-pen me-1"></i>Editar Cardápio</button>
+                </div>
+              </div>
+              <div id="gradeResumoRefeicoesCardapio" class="day-summary-grid"></div>
+            </div>
+
+            <div class="tab-pane fade" id="tabItensCardapio" role="tabpanel">
+              <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
+                <div>
+                  <div class="section-title">Itens disponíveis</div>
+                  <div class="section-subtitle">Cadastre os alimentos que podem compor qualquer uma das refeições.</div>
+                </div>
+                <button type="button" class="btn btn-danger btn-sm" id="btnNovoItemCardapio"><i class="las la-plus me-1"></i>Novo item</button>
+              </div>
+              <div class="table-scroll-only border rounded">
+                <table class="table table-sm mb-0 align-middle">
+                  <thead>
+                    <tr>
+                      <th style="width:60px;">Imagem</th>
+                      <th>Item</th>
+                      <th>Descrição</th>
+                      <th>Refeições permitidas</th>
+                      <th>Status</th>
+                      <th class="text-end">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tabelaItensCardapioBody">
+                    <tr><td colspan="6" class="text-center text-secondary py-3">Carregando itens...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="tab-pane fade" id="tabReservasCardapio" role="tabpanel">
+              <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
+                <div>
+                  <div class="section-title">Reservas da data selecionada</div>
+                  <div class="section-subtitle">Acompanhe quem reservou cada refeição e exclua reservas indevidas.</div>
+                </div>
+                <input type="date" class="form-control form-control-sm" id="inputDataReservasCardapio" style="width: 170px;">
+              </div>
+              <div id="listaReservasGerenciamentoCardapio" class="d-flex flex-column gap-2"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="surface-card">
+        <div class="surface-card-body">
+          <div class="month-nav">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnMesAnteriorGerenciamento"><i class="las la-angle-left"></i></button>
+            <div id="labelMesGerenciamento" class="month-label">-</div>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnMesSeguinteGerenciamento"><i class="las la-angle-right"></i></button>
+          </div>
+
+          <div class="weekday-grid">
+            <div class="weekday-label">Dom</div>
+            <div class="weekday-label">Seg</div>
+            <div class="weekday-label">Ter</div>
+            <div class="weekday-label">Qua</div>
+            <div class="weekday-label">Qui</div>
+            <div class="weekday-label">Sex</div>
+            <div class="weekday-label">Sáb</div>
+          </div>
+
+          <div id="gridCalendarioGerenciamentoCardapio" class="calendar-grid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modalCadastroCardapio" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title fs-5" id="tituloModalCadastroCardapio">Editar cardápio</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <form id="formCadastroCardapio" novalidate>
+          <div class="modal-body">
+            <div class="row g-3 mb-3">
+              <div class="col-lg-6">
+                <label class="form-label d-block">Selecionar datas</label>
+                <div class="modal-date-picker">
+                  <div class="month-nav">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnMesAnteriorModalCardapio"><i class="las la-angle-left"></i></button>
+                    <div id="labelMesModalCardapio" class="month-label">-</div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnMesSeguinteModalCardapio"><i class="las la-angle-right"></i></button>
+                  </div>
+                  <div class="modal-date-picker-weekdays">
+                    <div class="weekday-label">Dom</div>
+                    <div class="weekday-label">Seg</div>
+                    <div class="weekday-label">Ter</div>
+                    <div class="weekday-label">Qua</div>
+                    <div class="weekday-label">Qui</div>
+                    <div class="weekday-label">Sex</div>
+                    <div class="weekday-label">Sáb</div>
+                  </div>
+                  <div id="gridDatasModalCardapio" class="modal-date-picker-grid"></div>
+                </div>
+              </div>
+              <div class="col-lg-6">
+                <div class="section-subtitle mb-2">Datas selecionadas para receber o mesmo cardápio.</div>
+                <div id="listaDatasModalCardapio" class="date-chip-list"></div>
+              </div>
+            </div>
+            <div id="blocosRefeicoesCardapio" class="d-flex flex-column gap-3"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-danger btn-sm" id="btnSalvarCardapioModal"><i class="las la-save me-1"></i>Salvar cardápio</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modalItemCardapio" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title fs-5" id="tituloModalItemCardapio">Item do cardápio</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <form id="formItemCardapio" novalidate>
+          <div class="modal-body">
+            <input type="hidden" id="itemCardapioId" value="0">
+            <div class="mb-3">
+              <label class="form-label" for="itemCardapioNome">Nome</label>
+              <input type="text" class="form-control" id="itemCardapioNome" maxlength="120" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="itemCardapioDescricao">Descrição</label>
+              <textarea class="form-control" id="itemCardapioDescricao" rows="3" maxlength="255"></textarea>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="itemCardapioImagem">Imagem</label>
+              <input type="file" class="form-control" id="itemCardapioImagem" accept="image/jpeg,image/png,image/webp,image/gif">
+            </div>
+            <div class="mb-3">
+              <label class="form-label d-block">Refeições permitidas</label>
+              <div id="itemCardapioTiposRefeicao" class="tipo-refeicao-check-grid"></div>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="itemCardapioAtivo" checked>
+              <label class="form-check-label" for="itemCardapioAtivo">Item ativo</label>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-danger btn-sm" id="btnSalvarItemCardapio"><i class="las la-save me-1"></i>Salvar item</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    function startPage() {
+      var statusEl = document.getElementById('statusGerenciamentoCardapio');
+      var heroData = document.getElementById('heroDataGerenciamento');
+      var heroRefeicoes = document.getElementById('heroRefeicoesGerenciamento');
+      var heroItens = document.getElementById('heroItensGerenciamento');
+      var heroReservas = document.getElementById('heroReservasGerenciamento');
+      var inputDataPrincipal = document.getElementById('inputDataGerenciamentoCardapio');
+      var inputDataReservas = document.getElementById('inputDataReservasCardapio');
+      var gridDatasModal = document.getElementById('gridDatasModalCardapio');
+      var labelMesModal = document.getElementById('labelMesModalCardapio');
+      var btnMesAnteriorModal = document.getElementById('btnMesAnteriorModalCardapio');
+      var btnMesSeguinteModal = document.getElementById('btnMesSeguinteModalCardapio');
+      var listaDatasModal = document.getElementById('listaDatasModalCardapio');
+      var subtituloCadastro = document.getElementById('subtituloCadastroCardapio');
+      var gradeResumo = document.getElementById('gradeResumoRefeicoesCardapio');
+      var reservasLista = document.getElementById('listaReservasGerenciamentoCardapio');
+      var itensBody = document.getElementById('tabelaItensCardapioBody');
+      var blocosRefeicoes = document.getElementById('blocosRefeicoesCardapio');
+      var btnImprimirResumo = document.getElementById('btnImprimirResumoCardapio');
+      var gridCalendario = document.getElementById('gridCalendarioGerenciamentoCardapio');
+      var labelMes = document.getElementById('labelMesGerenciamento');
+      var btnVoltar = document.getElementById('btnVoltarGerenciamentoCardapio');
+      var btnAbrirCadastroSecundario = document.getElementById('btnAbrirCadastroCardapioSecundario');
+      var btnNovoItem = document.getElementById('btnNovoItemCardapio');
+      var btnMesAnterior = document.getElementById('btnMesAnteriorGerenciamento');
+      var btnMesSeguinte = document.getElementById('btnMesSeguinteGerenciamento');
+      var formCadastro = document.getElementById('formCadastroCardapio');
+      var formItem = document.getElementById('formItemCardapio');
+      var itemTiposRefeicao = document.getElementById('itemCardapioTiposRefeicao');
+
+      var modalCadastro = new bootstrap.Modal(document.getElementById('modalCadastroCardapio'));
+      var modalItem = new bootstrap.Modal(document.getElementById('modalItemCardapio'));
+
+      var state = {
+        selectedDate: todayIso(),
+        monthKey: monthKeyFromDate(todayIso()),
+        modalMonthKey: monthKeyFromDate(todayIso()),
+        modalSelectedDates: [],
+        tiposRefeicao: [],
+        itens: [],
+        cardapios: [],
+        reservas: [],
+        estudantesComEntrada: 0,
+        resumoMensal: {}
+      };
+
+      function resolveBasePath() {
+        var pathname = String(window.location.pathname || '');
+        var indexPos = pathname.indexOf('/index.php/');
+        if (indexPos >= 0) {
+          return pathname.slice(0, indexPos) + '/index.php';
+        }
+        return '';
+      }
+
+      function endpoint(path) {
+        return resolveBasePath() + String(path || '');
+      }
+
+      function todayIso() {
+        var now = new Date();
+        return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+      }
+
+      function parseIsoDate(value) {
+        var normalized = String(value || '').trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+          return null;
+        }
+        var date = new Date(normalized + 'T00:00:00');
+        return Number.isNaN(date.getTime()) ? null : date;
+      }
+
+      function monthKeyFromDate(value) {
+        var date = parseIsoDate(value);
+        if (!(date instanceof Date)) {
+          date = new Date();
+        }
+        return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
+      }
+
+      function shiftMonth(monthKey, delta) {
+        if (!/^\d{4}-\d{2}$/.test(String(monthKey || ''))) {
+          return monthKeyFromDate(todayIso());
+        }
+        var date = new Date(Number(monthKey.slice(0, 4)), Number(monthKey.slice(5, 7)) - 1 + Number(delta || 0), 1);
+        return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
+      }
+
+      function formatDate(value) {
+        var date = parseIsoDate(value);
+        if (!(date instanceof Date)) {
+          return '-';
+        }
+        return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      }
+
+      function formatMonth(value) {
+        if (!/^\d{4}-\d{2}$/.test(String(value || ''))) {
+          return '-';
+        }
+        var date = new Date(Number(value.slice(0, 4)), Number(value.slice(5, 7)) - 1, 1);
+        return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+      }
+
+      function ensureUniqueDates(values) {
+        var index = {};
+        (Array.isArray(values) ? values : []).forEach(function (value) {
+          var normalized = String(value || '').trim();
+          if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+            index[normalized] = normalized;
+          }
+        });
+        return Object.keys(index).sort();
+      }
+
+      function todayKey() {
+        return todayIso();
+      }
+
+      function maxDateKey(left, right) {
+        return String(left || '') > String(right || '') ? String(left || '') : String(right || '');
+      }
+
+      function escapeHtml(value) {
+        return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+      }
+
+      function absoluteAssetUrl(relativePath) {
+        var normalized = String(relativePath || '').trim().replace(/\\/g, '/').replace(/^\/+/, '');
+        if (normalized === '') {
+          return '';
+        }
+
+        var base = resolveBasePath();
+        if (base === '') {
+          return '/' + normalized;
+        }
+
+        var indexPos = base.lastIndexOf('/index.php');
+        if (indexPos >= 0) {
+          return base.slice(0, indexPos + 1) + normalized;
+        }
+
+        return base.replace(/\/$/, '') + '/' + normalized;
+      }
+
+      function showStatus(message, isError) {
+        var text = String(message || '').trim();
+        if (text === '') {
+          return;
+        }
+
+        statusEl.textContent = text;
+        statusEl.classList.remove('d-none', 'is-success', 'is-error');
+        statusEl.classList.add(isError ? 'is-error' : 'is-success');
+        window.clearTimeout(showStatus._timer);
+        showStatus._timer = window.setTimeout(function () {
+          statusEl.classList.add('d-none');
+          statusEl.classList.remove('is-success', 'is-error');
+          statusEl.textContent = '';
+        }, 2800);
+      }
+
+      function updateCadastroModalTitle() {
+        var title = document.getElementById('tituloModalCadastroCardapio');
+        if (!title) {
+          return;
+        }
+
+        if (state.modalSelectedDates.length === 0) {
+          title.textContent = 'Cadastrar cardápio';
+          return;
+        }
+
+        if (state.modalSelectedDates.length === 1) {
+          title.textContent = 'Editar cardápio de ' + formatDate(state.modalSelectedDates[0]);
+          return;
+        }
+
+        title.textContent = 'Editar cardápio para ' + String(state.modalSelectedDates.length) + ' datas';
+      }
+
+      function renderModalDateCalendar() {
+        if (!labelMesModal || !gridDatasModal) {
+          return;
+        }
+
+        labelMesModal.textContent = formatMonth(state.modalMonthKey);
+        if (!/^\d{4}-\d{2}$/.test(String(state.modalMonthKey || ''))) {
+          gridDatasModal.innerHTML = '';
+          return;
+        }
+
+        var year = Number(state.modalMonthKey.slice(0, 4));
+        var month = Number(state.modalMonthKey.slice(5, 7));
+        var firstDay = new Date(year, month - 1, 1);
+        var daysInMonth = new Date(year, month, 0).getDate();
+        var startWeekday = firstDay.getDay();
+        var minDate = todayKey();
+        var cells = [];
+        var day;
+
+        for (day = 0; day < startWeekday; day += 1) {
+          cells.push('<div class="modal-date-day is-outside"></div>');
+        }
+
+        for (day = 1; day <= daysInMonth; day += 1) {
+          var isoDate = year + '-' + String(month).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+          var isPast = isoDate < minDate;
+          var isSelected = state.modalSelectedDates.indexOf(isoDate) >= 0;
+          cells.push('<button type="button" class="modal-date-day' + (isSelected ? ' is-selected' : '') + (isPast ? ' is-disabled' : '') + '" data-date="' + isoDate + '"' + (isPast ? ' disabled' : '') + '>' + String(day) + '</button>');
+        }
+
+        gridDatasModal.innerHTML = cells.join('');
+      }
+
+      function renderModalSelectedDates() {
+        updateCadastroModalTitle();
+        renderModalDateCalendar();
+        if (!listaDatasModal) {
+          return;
+        }
+
+        if (state.modalSelectedDates.length === 0) {
+          listaDatasModal.innerHTML = '<div class="empty-state w-100">Selecione ao menos uma data para aplicar o cardápio.</div>';
+          return;
+        }
+
+        listaDatasModal.innerHTML = state.modalSelectedDates.map(function (dateValue) {
+          return '<span class="date-chip">'
+            + '<span>' + escapeHtml(formatDate(dateValue)) + '</span>'
+            + '<button type="button" class="date-chip-remove js-remover-data-modal" data-date="' + escapeHtml(dateValue) + '" aria-label="Remover data">'
+            + '<i class="las la-times"></i>'
+            + '</button>'
+            + '</span>';
+        }).join('');
+      }
+
+      function addModalDate(dateValue) {
+        var normalized = String(dateValue || '').trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized) || normalized < todayKey()) {
+          return false;
+        }
+
+        state.modalSelectedDates = ensureUniqueDates(state.modalSelectedDates.concat([normalized]));
+        renderModalSelectedDates();
+        return true;
+      }
+
+      function removeModalDate(dateValue) {
+        state.modalSelectedDates = state.modalSelectedDates.filter(function (entry) {
+          return entry !== String(dateValue || '').trim();
+        });
+        renderModalSelectedDates();
+      }
+
+      function toggleModalDate(dateValue) {
+        var normalized = String(dateValue || '').trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized) || normalized < todayKey()) {
+          return;
+        }
+
+        if (state.modalSelectedDates.indexOf(normalized) >= 0) {
+          removeModalDate(normalized);
+          return;
+        }
+
+        addModalDate(normalized);
+      }
+
+      function fetchJson(url, options) {
+        return fetch(url, options || {}).then(function (response) {
+          return response.json().catch(function () {
+            return { ok: false, message: 'Resposta inválida do servidor.' };
+          }).then(function (payload) {
+            if (!response.ok || !payload.ok) {
+              throw new Error(payload.message || 'Erro na solicitação.');
+            }
+            return payload;
+          });
+        });
+      }
+
+      function cardapioIndexByTipo() {
+        var index = {};
+        state.cardapios.forEach(function (cardapio) {
+          var tipoId = Number(cardapio && cardapio.tipo_refeicao_id || 0);
+          if (tipoId > 0) {
+            index[tipoId] = cardapio;
+          }
+        });
+        return index;
+      }
+
+      function reservasPorTipo() {
+        var index = {};
+        state.reservas.forEach(function (reserva) {
+          var tipoId = Number(reserva && reserva.tipo_refeicao_id || 0);
+          if (!index[tipoId]) {
+            index[tipoId] = [];
+          }
+          index[tipoId].push(reserva);
+        });
+        return index;
+      }
+
+      function renderHero() {
+        var totalItens = 0;
+        state.cardapios.forEach(function (cardapio) {
+          totalItens += Array.isArray(cardapio.itens) ? cardapio.itens.length : 0;
+        });
+
+        heroData.textContent = formatDate(state.selectedDate);
+        heroRefeicoes.textContent = String(state.cardapios.length);
+        heroItens.textContent = String(totalItens);
+        heroReservas.textContent = String(state.reservas.length);
+      }
+
+      function renderResumoCadastro() {
+        var cardapiosTipo = cardapioIndexByTipo();
+        subtituloCadastro.textContent = 'Data em foco: ' + formatDate(state.selectedDate) + '. Base do preparo: ' + String(Number(state.estudantesComEntrada || 0)) + ' estudante(s) com entrada registrada. O botão de salvar fica dentro do modal de cadastro.';
+
+        if (!state.tiposRefeicao.length) {
+          gradeResumo.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">Nenhum tipo de refeição ativo foi encontrado no controle de Refeitório.</div>';
+          return;
+        }
+
+        gradeResumo.innerHTML = state.tiposRefeicao.map(function (tipo) {
+          var tipoId = Number(tipo.id || 0);
+          var cardapio = cardapiosTipo[tipoId] || null;
+          var itens = cardapio && Array.isArray(cardapio.itens) ? cardapio.itens : [];
+          var observacao = cardapio ? String(cardapio.observacao || '').trim() : '';
+          var totalReservas = Number(cardapio && cardapio.total_reservas || 0);
+          var metaHorario = [];
+          if (tipo.horario_ini) {
+            metaHorario.push(String(tipo.horario_ini).slice(0, 5));
+          }
+          if (tipo.horario_fim) {
+            metaHorario.push(String(tipo.horario_fim).slice(0, 5));
+          }
+          return '<div class="meal-summary-card">'
+            + '<div class="meal-summary-header">'
+            + '<div class="d-flex align-items-center gap-2"><span class="meal-color" style="background:' + escapeHtml(tipo.cor || '#842029') + '"></span><div class="meal-summary-name">' + escapeHtml(tipo.nome || 'Refeição') + '</div></div>'
+            + '<span class="badge text-bg-light">' + (itens.length ? String(itens.length) + ' item(ns)' : 'Sem cadastro') + '</span>'
+            + '</div>'
+            + '<div class="meal-meta">' + escapeHtml(metaHorario.join(' às ') || (tipo.descricao || 'Sem horário definido')) + '</div>'
+            + (observacao !== '' ? '<div class="meal-meta mt-1">' + escapeHtml(observacao) + '</div>' : '')
+            + (itens.length
+              ? '<div class="meal-items-highlight"><div class="meal-items-title">Itens do cardápio</div><div class="meal-items-list">' + itens.map(function (item) { return '<span class="chip">' + escapeHtml(item.nome || '-') + '</span>'; }).join('') + '</div></div>'
+              : '<div class="empty-state mt-2">Nenhum item selecionado para esta refeição.</div>')
+            + '<div class="meal-stats">'
+            + '<div class="meal-stat-box"><span class="meal-stat-label">Estudantes com entrada</span><span class="meal-stat-value">' + String(Number(state.estudantesComEntrada || 0)) + '</span></div>'
+            + '<div class="meal-stat-box"><span class="meal-stat-label">Reservas de servidores</span><span class="meal-stat-value">' + String(totalReservas) + '</span></div>'
+            + '</div>'
+            + '</div>';
+        }).join('');
+      }
+
+      function printResumoCardapio() {
+        var cardapiosTipo = cardapioIndexByTipo();
+        var totalEstudantes = Number(state.estudantesComEntrada || 0);
+        var blocos = state.tiposRefeicao.map(function (tipo) {
+          var tipoId = Number(tipo.id || 0);
+          var cardapio = cardapiosTipo[tipoId] || null;
+          var itens = cardapio && Array.isArray(cardapio.itens) ? cardapio.itens : [];
+          var observacao = cardapio ? String(cardapio.observacao || '').trim() : '';
+          var horario = [];
+          if (tipo.horario_ini) {
+            horario.push(String(tipo.horario_ini).slice(0, 5));
+          }
+          if (tipo.horario_fim) {
+            horario.push(String(tipo.horario_fim).slice(0, 5));
+          }
+
+          return '<section class="print-card">'
+            + '<div class="print-card-head">'
+            + '<h2>' + escapeHtml(tipo.nome || 'Refeição') + '</h2>'
+            + '<div class="print-card-meta">' + escapeHtml(horario.join(' às ') || (tipo.descricao || 'Sem horário definido')) + '</div>'
+            + '</div>'
+            + (observacao !== '' ? '<p class="print-note">' + escapeHtml(observacao) + '</p>' : '')
+            + (itens.length
+              ? '<ul class="print-list">' + itens.map(function (item) { return '<li>' + escapeHtml(item.nome || '-') + '</li>'; }).join('') + '</ul>'
+              : '<div class="print-empty">Nenhum item cadastrado para esta refeição.</div>')
+            + '<div class="print-badges">'
+            + '<span class="print-badge">Estudantes com entrada: ' + String(totalEstudantes) + '</span>'
+            + '<span class="print-badge">Reservas de servidores: ' + String(Number(cardapio && cardapio.total_reservas || 0)) + '</span>'
+            + '</div>'
+            + '</section>';
+        }).join('');
+
+        var htmlContent = ''
+          + '<!DOCTYPE html><html><head><meta charset="UTF-8">'
+          + '<meta name="viewport" content="width=device-width, initial-scale=1">'
+          + '<title>Cardápio do dia</title>'
+          + '<style>'
+          + '@page{size:auto;margin:12mm;}'
+          + '*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+          + 'body{margin:0;padding:20px;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:#fffaf7;color:#2f1e1b;}'
+          + '.print-head{margin-bottom:18px;padding-bottom:12px;border-bottom:2px solid #efdfd9;}'
+          + '.print-head h1{margin:0 0 4px;font-size:24px;color:#842029;}'
+          + '.print-head p{margin:0;font-size:13px;color:#7a6661;}'
+          + '.print-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:18px;}'
+          + '.print-card{border:1px solid #efdfd9;border-radius:16px;background:#fff;padding:14px;break-inside:avoid;page-break-inside:avoid;}'
+          + '.print-card-head h2{margin:0;font-size:18px;color:#352321;}'
+          + '.print-card-meta{margin-top:4px;font-size:12px;color:#7a6661;}'
+          + '.print-badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}'
+          + '.print-badge{display:inline-flex;padding:5px 9px;border-radius:999px;background:#fffdfc;border:1px dashed #e5c8bf;font-size:11px;font-weight:700;color:#8d6d68;}'
+          + '.print-note{margin:12px 0 0;font-size:13px;color:#6b4b47;}'
+          + '.print-list{margin:14px 0 0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}'
+          + '.print-list li{margin:0;font-size:13px;font-weight:700;color:#5f3833;border:1px solid #e5c8bf;border-radius:10px;background:linear-gradient(180deg,#fff7f3 0%,#fff 100%);padding:9px 10px;}'
+          + '.print-empty{margin-top:14px;font-size:13px;color:#8b6b66;}'
+          + '@media print{body{padding:0;background:#fff;} .print-grid{grid-template-columns:1fr;}}'
+          + '</style></head><body>'
+          + '<div class="print-head"><h1>Cardápio do dia</h1><p>Data: ' + escapeHtml(formatDate(state.selectedDate)) + ' | Gerado em ' + escapeHtml(new Date().toLocaleString('pt-BR')) + '</p>'
+          + '<p style="margin:10px 0 0;font-size:12px;color:#8d6d68;">Base geral do dia: ' + String(totalEstudantes) + ' estudante(s) com entrada e ' + String(state.reservas.length) + ' reserva(s) de servidores.</p></div>'
+          + '<div class="print-grid">' + blocos + '</div>'
+          + '<script>window.addEventListener("load",function(){window.print();window.addEventListener("afterprint",function(){window.close();});});<\/script>'
+          + '</body></html>';
+
+        if (window.parent && window.parent !== window) {
+          try {
+            window.parent.postMessage({ type: 'cemil:print-blob', html: htmlContent }, '*');
+            return;
+          } catch (error) {}
+        }
+
+        var blob = new Blob([htmlContent], { type: 'text/html; charset=utf-8' });
+        var blobUrl = URL.createObjectURL(blob);
+        var printTab = window.open(blobUrl, '_blank');
+        if (!printTab) {
+          URL.revokeObjectURL(blobUrl);
+          showStatus('A aba de impressão foi bloqueada. Permita popups para este site.', true);
+          return;
+        }
+
+        printTab.addEventListener('unload', function () {
+          URL.revokeObjectURL(blobUrl);
+        });
+      }
+
+      function renderItens() {
+        if (!state.itens.length) {
+          itensBody.innerHTML = '<tr><td colspan="6" class="text-center text-secondary py-3">Nenhum item cadastrado.</td></tr>';
+          return;
+        }
+
+        itensBody.innerHTML = state.itens.map(function (item) {
+          var imageUrl = absoluteAssetUrl(item.imagem_path || '');
+          var thumb = imageUrl !== ''
+            ? '<img class="item-thumb" src="' + escapeHtml(imageUrl) + '" alt="Imagem do item">'
+            : '<div class="item-thumb d-flex align-items-center justify-content-center"><i class="las la-image text-secondary"></i></div>';
+          return '<tr>'
+            + '<td>' + thumb + '</td>'
+            + '<td><div class="fw-semibold">' + escapeHtml(item.nome || '-') + '</div></td>'
+            + '<td class="text-secondary small">' + escapeHtml(item.descricao || '') + '</td>'
+            + '<td class="text-secondary small">' + escapeHtml(Array.isArray(item.tipo_refeicao_nomes) && item.tipo_refeicao_nomes.length ? item.tipo_refeicao_nomes.join(', ') : 'Sem refeições') + '</td>'
+            + '<td>' + ((Number(item.ativo || 0) === 1) ? '<span class="badge bg-success">Ativo</span>' : '<span class="badge bg-secondary">Inativo</span>') + '</td>'
+            + '<td class="text-end">'
+            + '<button type="button" class="btn btn-outline-secondary btn-sm me-1 js-editar-item" data-id="' + Number(item.id || 0) + '"><i class="las la-edit"></i></button>'
+            + '<button type="button" class="btn btn-outline-danger btn-sm js-excluir-item" data-id="' + Number(item.id || 0) + '"><i class="las la-trash"></i></button>'
+            + '</td>'
+            + '</tr>';
+        }).join('');
+      }
+
+      function renderReservas() {
+        if (!state.reservas.length) {
+          reservasLista.innerHTML = '<div class="empty-state">Nenhuma reserva encontrada para a data selecionada.</div>';
+          return;
+        }
+
+        reservasLista.innerHTML = state.reservas.map(function (reserva) {
+          return '<div class="reservation-row d-flex align-items-start justify-content-between gap-3 flex-wrap">'
+            + '<div>'
+            + '<div class="fw-semibold">' + escapeHtml(reserva.responsavel_nome || 'Usuário') + '</div>'
+            + '<div class="small text-secondary">' + escapeHtml(reserva.tipo_refeicao_nome || 'Refeição') + ' em ' + escapeHtml(formatDate(reserva.data_cardapio || '')) + '</div>'
+            + '</div>'
+            + '<button type="button" class="btn btn-outline-danger btn-sm js-excluir-reserva" data-id="' + Number(reserva.id || 0) + '"><i class="las la-trash me-1"></i>Excluir</button>'
+            + '</div>';
+        }).join('');
+      }
+
+      function renderCalendar() {
+        labelMes.textContent = formatMonth(state.monthKey);
+        if (!/^\d{4}-\d{2}$/.test(state.monthKey)) {
+          gridCalendario.innerHTML = '';
+          return;
+        }
+
+        var year = Number(state.monthKey.slice(0, 4));
+        var month = Number(state.monthKey.slice(5, 7));
+        var firstDay = new Date(year, month - 1, 1);
+        var daysInMonth = new Date(year, month, 0).getDate();
+        var startWeekday = firstDay.getDay();
+        var cells = [];
+        var summary = state.resumoMensal || {};
+        var day;
+
+        for (day = 0; day < startWeekday; day += 1) {
+          cells.push('<div class="calendar-day is-outside"></div>');
+        }
+
+        for (day = 1; day <= daysInMonth; day += 1) {
+          var isoDate = year + '-' + String(month).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+          var info = summary[isoDate] || null;
+          var badges = [];
+          if (info && Number(info.total_refeicoes || 0) > 0) {
+            badges.push('<span class="mini-badge is-meals">' + String(Number(info.total_refeicoes || 0)) + '</span>');
+          }
+          if (info && Number(info.total_reservas || 0) > 0) {
+            badges.push('<span class="mini-badge is-reservations">' + String(Number(info.total_reservas || 0)) + '</span>');
+          }
+          cells.push('<button type="button" class="calendar-day' + (isoDate === state.selectedDate ? ' is-selected' : '') + '" data-date="' + isoDate + '"><span class="calendar-day-number">' + String(day) + '</span><div class="calendar-badges">' + badges.join('') + '</div></button>');
+        }
+
+        gridCalendario.innerHTML = cells.join('');
+      }
+
+      function buildMealFormSections() {
+        var cardapiosTipo = cardapioIndexByTipo();
+        var activeItems = state.itens.filter(function (item) {
+          return Number(item.ativo || 0) === 1;
+        });
+
+        if (!state.tiposRefeicao.length) {
+          blocosRefeicoes.innerHTML = '<div class="empty-state">Nenhum tipo de refeição ativo está disponível.</div>';
+          return;
+        }
+
+        blocosRefeicoes.innerHTML = state.tiposRefeicao.map(function (tipo) {
+          var tipoId = Number(tipo.id || 0);
+          var cardapio = cardapiosTipo[tipoId] || null;
+          var availableItems = activeItems.filter(function (item) {
+            return Array.isArray(item.tipo_refeicao_ids) && item.tipo_refeicao_ids.indexOf(tipoId) >= 0;
+          });
+          var selecionados = {};
+          if (cardapio && Array.isArray(cardapio.itens)) {
+            cardapio.itens.forEach(function (item) {
+              var itemId = Number(item && item.id || 0);
+              if (itemId > 0) {
+                selecionados[itemId] = true;
+              }
+            });
+          }
+
+          return '<section class="meal-form-section" data-tipo-refeicao-id="' + tipoId + '">'
+            + '<div class="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">'
+            + '<div>'
+            + '<div class="d-flex align-items-center gap-2"><span class="meal-color" style="background:' + escapeHtml(tipo.cor || '#842029') + '"></span><span class="meal-summary-name">' + escapeHtml(tipo.nome || 'Refeição') + '</span></div>'
+            + '<div class="section-subtitle">' + escapeHtml(tipo.descricao || 'Selecione os itens desta refeição.') + '</div>'
+            + '</div>'
+            + '<div class="selected-count js-selected-count">' + Object.keys(selecionados).length + ' item(ns) selecionado(s)</div>'
+            + '</div>'
+            + '<div class="item-selection-grid">'
+            + (availableItems.length ? availableItems.map(function (item) {
+              var imageUrl = absoluteAssetUrl(item.imagem_path || '');
+              var media = imageUrl !== ''
+                ? '<img class="item-thumb" src="' + escapeHtml(imageUrl) + '" alt="Imagem do item">'
+                : '<div class="item-thumb d-flex align-items-center justify-content-center"><i class="las la-image text-secondary"></i></div>';
+              var checked = selecionados[Number(item.id || 0)] ? ' checked' : '';
+              return '<label class="item-tile">'
+                + '<input type="checkbox" class="form-check-input js-item-checkbox" data-item-id="' + Number(item.id || 0) + '"' + checked + '>'
+                + media
+                + '<span class="item-tile-body"><span class="item-tile-name">' + escapeHtml(item.nome || '-') + '</span><span class="item-tile-desc d-block">' + escapeHtml(item.descricao || 'Sem descrição.') + '</span></span>'
+                + '</label>';
+            }).join('') : '<div class="empty-state" style="grid-column:1/-1;">Nenhum item ativo está liberado para esta refeição. Edite os itens na aba Itens do cardápio para definir onde podem ser servidos.</div>')
+            + '</div>'
+            + '<div class="mt-3">'
+            + '<label class="form-label" for="observacaoRefeicao' + tipoId + '">Observação da refeição</label>'
+            + '<textarea class="form-control js-observacao-refeicao" id="observacaoRefeicao' + tipoId + '" rows="2" placeholder="Opcional">' + escapeHtml(cardapio && cardapio.observacao ? cardapio.observacao : '') + '</textarea>'
+            + '</div>'
+            + '</section>';
+        }).join('');
+      }
+
+      function renderItemMealTypeOptions(selectedIds) {
+        var selectedIndex = {};
+        (Array.isArray(selectedIds) ? selectedIds : []).forEach(function (tipoId) {
+          var normalizedId = Number(tipoId || 0);
+          if (normalizedId > 0) {
+            selectedIndex[normalizedId] = true;
+          }
+        });
+
+        itemTiposRefeicao.innerHTML = state.tiposRefeicao.length ? state.tiposRefeicao.map(function (tipo) {
+          var tipoId = Number(tipo.id || 0);
+          return '<label class="tipo-refeicao-check">'
+            + '<input class="form-check-input js-item-tipo-refeicao" type="checkbox" value="' + tipoId + '"' + (selectedIndex[tipoId] ? ' checked' : '') + '>'
+            + '<span class="tipo-refeicao-check-color" style="background:' + escapeHtml(tipo.cor || '#842029') + '"></span>'
+            + '<span>' + escapeHtml(tipo.nome || 'Refeição') + '</span>'
+            + '</label>';
+        }).join('') : '<div class="empty-state" style="grid-column:1/-1;">Nenhum tipo de refeição ativo disponível.</div>';
+      }
+
+      function renderAll() {
+        inputDataPrincipal.value = state.selectedDate;
+        inputDataReservas.value = state.selectedDate;
+        renderHero();
+        renderResumoCadastro();
+        renderItens();
+        renderReservas();
+        renderCalendar();
+      }
+
+      function loadSummary() {
+        return fetchJson(endpoint('/institucional/gerenciamento-cardapio/resumo-mensal?mes=' + encodeURIComponent(state.monthKey)), {
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(function (payload) {
+          state.resumoMensal = payload.data && payload.data.resumo ? payload.data.resumo : {};
+          renderCalendar();
+        }).catch(function (error) {
+          state.resumoMensal = {};
+          renderCalendar();
+          showStatus(error && error.message ? error.message : 'Erro ao carregar resumo mensal.', true);
+        });
+      }
+
+      function loadData() {
+        return fetchJson(endpoint('/institucional/gerenciamento-cardapio/dados?data=' + encodeURIComponent(state.selectedDate)), {
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(function (payload) {
+          var data = payload.data || {};
+          state.tiposRefeicao = Array.isArray(data.tipos_refeicao) ? data.tipos_refeicao : [];
+          state.itens = Array.isArray(data.itens) ? data.itens : [];
+          state.cardapios = Array.isArray(data.cardapios) ? data.cardapios : [];
+          state.reservas = Array.isArray(data.reservas) ? data.reservas : [];
+          state.estudantesComEntrada = Number(data.estudantes_com_entrada || 0);
+          renderAll();
+        }).catch(function (error) {
+          state.tiposRefeicao = [];
+          state.itens = [];
+          state.cardapios = [];
+          state.reservas = [];
+          state.estudantesComEntrada = 0;
+          renderAll();
+          showStatus(error && error.message ? error.message : 'Erro ao carregar dados do cardápio.', true);
+        });
+      }
+
+      function refreshAll() {
+        return Promise.all([loadSummary(), loadData()]);
+      }
+
+      function openCadastroModal() {
+        var initialDate = maxDateKey(state.selectedDate, todayKey());
+        state.modalMonthKey = monthKeyFromDate(initialDate);
+        state.modalSelectedDates = ensureUniqueDates([initialDate]);
+        renderModalSelectedDates();
+        buildMealFormSections();
+        modalCadastro.show();
+      }
+
+      function resetItemForm() {
+        document.getElementById('itemCardapioId').value = '0';
+        document.getElementById('itemCardapioNome').value = '';
+        document.getElementById('itemCardapioDescricao').value = '';
+        document.getElementById('itemCardapioImagem').value = '';
+        document.getElementById('itemCardapioAtivo').checked = true;
+        renderItemMealTypeOptions(state.tiposRefeicao.map(function (tipo) { return Number(tipo.id || 0); }));
+        document.getElementById('tituloModalItemCardapio').textContent = 'Novo item do cardápio';
+      }
+
+      function fillItemForm(itemId) {
+        var item = state.itens.find(function (entry) {
+          return Number(entry && entry.id || 0) === Number(itemId || 0);
+        }) || null;
+        if (!item) {
+          return;
+        }
+
+        document.getElementById('itemCardapioId').value = String(Number(item.id || 0));
+        document.getElementById('itemCardapioNome').value = String(item.nome || '');
+        document.getElementById('itemCardapioDescricao').value = String(item.descricao || '');
+        document.getElementById('itemCardapioImagem').value = '';
+        document.getElementById('itemCardapioAtivo').checked = Number(item.ativo || 0) === 1;
+        renderItemMealTypeOptions(Array.isArray(item.tipo_refeicao_ids) ? item.tipo_refeicao_ids : []);
+        document.getElementById('tituloModalItemCardapio').textContent = 'Editar item do cardápio';
+      }
+
+      function handleMealSelectionChange(section) {
+        if (!(section instanceof HTMLElement)) {
+          return;
+        }
+        var selectedCount = section.querySelectorAll('.js-item-checkbox:checked').length;
+        var counter = section.querySelector('.js-selected-count');
+        if (counter) {
+          counter.textContent = String(selectedCount) + ' item(ns) selecionado(s)';
+        }
+      }
+
+      function saveCardapio(event) {
+        event.preventDefault();
+
+        if (state.modalSelectedDates.length === 0) {
+          showStatus('Selecione ao menos uma data para salvar o cardápio.', true);
+          return;
+        }
+
+        var mealSections = Array.prototype.slice.call(blocosRefeicoes.querySelectorAll('[data-tipo-refeicao-id]'));
+        var payload = mealSections.map(function (section) {
+          var tipoId = Number(section.getAttribute('data-tipo-refeicao-id') || 0);
+          var itemIds = Array.prototype.slice.call(section.querySelectorAll('.js-item-checkbox:checked')).map(function (checkbox) {
+            return Number(checkbox.getAttribute('data-item-id') || 0);
+          }).filter(function (itemId) {
+            return itemId > 0;
+          });
+          var observacaoEl = section.querySelector('.js-observacao-refeicao');
+          return {
+            tipo_refeicao_id: tipoId,
+            item_ids: itemIds,
+            observacao: observacaoEl ? String(observacaoEl.value || '').trim() : ''
+          };
+        });
+
+        var formData = new FormData();
+  formData.append('data_cardapio', state.modalSelectedDates[0]);
+  formData.append('datas_cardapio_json', JSON.stringify(state.modalSelectedDates));
+        formData.append('cardapios_json', JSON.stringify(payload));
+
+        fetchJson(endpoint('/institucional/gerenciamento-cardapio/cardapio/salvar'), {
+          method: 'POST',
+          body: formData,
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(function (payloadResponse) {
+          state.selectedDate = state.modalSelectedDates[0] || state.selectedDate;
+          state.monthKey = monthKeyFromDate(state.selectedDate);
+          modalCadastro.hide();
+          showStatus(payloadResponse.message || 'Cardápio salvo com sucesso.', false);
+          return refreshAll();
+        }).catch(function (error) {
+          showStatus(error && error.message ? error.message : 'Erro ao salvar cardápio.', true);
+        });
+      }
+
+      function saveItem(event) {
+        event.preventDefault();
+
+        var formData = new FormData();
+        formData.append('id', String(Number(document.getElementById('itemCardapioId').value || 0)));
+        formData.append('nome', String(document.getElementById('itemCardapioNome').value || '').trim());
+        formData.append('descricao', String(document.getElementById('itemCardapioDescricao').value || '').trim());
+        formData.append('ativo', document.getElementById('itemCardapioAtivo').checked ? '1' : '0');
+        Array.prototype.slice.call(itemTiposRefeicao.querySelectorAll('.js-item-tipo-refeicao:checked')).forEach(function (checkbox) {
+          formData.append('tipo_refeicao_ids[]', String(Number(checkbox.value || 0)));
+        });
+
+        var inputImagem = document.getElementById('itemCardapioImagem');
+        if (inputImagem.files && inputImagem.files.length > 0) {
+          formData.append('imagem', inputImagem.files[0]);
+        }
+
+        fetchJson(endpoint('/institucional/gerenciamento-cardapio/item/salvar'), {
+          method: 'POST',
+          body: formData,
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(function (payload) {
+          modalItem.hide();
+          showStatus(payload.message || 'Item salvo com sucesso.', false);
+          return loadData();
+        }).catch(function (error) {
+          showStatus(error && error.message ? error.message : 'Erro ao salvar item.', true);
+        });
+      }
+
+      function deleteItem(itemId) {
+        var formData = new FormData();
+        formData.append('id', String(Number(itemId || 0)));
+
+        fetchJson(endpoint('/institucional/gerenciamento-cardapio/item/excluir'), {
+          method: 'POST',
+          body: formData,
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(function (payload) {
+          showStatus(payload.message || 'Item excluído com sucesso.', false);
+          return loadData();
+        }).catch(function (error) {
+          showStatus(error && error.message ? error.message : 'Erro ao excluir item.', true);
+        });
+      }
+
+      function deleteReserva(reservaId) {
+        var formData = new FormData();
+        formData.append('id', String(Number(reservaId || 0)));
+
+        fetchJson(endpoint('/institucional/gerenciamento-cardapio/reserva/excluir'), {
+          method: 'POST',
+          body: formData,
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(function (payload) {
+          showStatus(payload.message || 'Reserva excluída com sucesso.', false);
+          return loadData();
+        }).catch(function (error) {
+          showStatus(error && error.message ? error.message : 'Erro ao excluir reserva.', true);
+        });
+      }
+
+      btnVoltar.href = endpoint('/institucional');
+      btnAbrirCadastroSecundario.addEventListener('click', openCadastroModal);
+      btnImprimirResumo.addEventListener('click', printResumoCardapio);
+      btnMesAnteriorModal.addEventListener('click', function () {
+        var previousMonth = shiftMonth(state.modalMonthKey, -1);
+        var currentMonth = monthKeyFromDate(todayKey());
+        if (previousMonth < currentMonth) {
+          state.modalMonthKey = currentMonth;
+        } else {
+          state.modalMonthKey = previousMonth;
+        }
+        renderModalDateCalendar();
+      });
+      btnMesSeguinteModal.addEventListener('click', function () {
+        state.modalMonthKey = shiftMonth(state.modalMonthKey, 1);
+        renderModalDateCalendar();
+      });
+      btnNovoItem.addEventListener('click', function () {
+        resetItemForm();
+        modalItem.show();
+      });
+      formCadastro.addEventListener('submit', saveCardapio);
+      formItem.addEventListener('submit', saveItem);
+      blocosRefeicoes.addEventListener('change', function (event) {
+        var target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+        var section = target.closest('[data-tipo-refeicao-id]');
+        if (section) {
+          handleMealSelectionChange(section);
+        }
+      });
+      listaDatasModal.addEventListener('click', function (event) {
+        var target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+
+        var button = target.closest('.js-remover-data-modal');
+        if (!button) {
+          return;
+        }
+
+        removeModalDate(button.getAttribute('data-date') || '');
+      });
+      gridDatasModal.addEventListener('click', function (event) {
+        var target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+
+        var button = target.closest('.modal-date-day[data-date]');
+        if (!button || button.classList.contains('is-disabled')) {
+          return;
+        }
+
+        toggleModalDate(button.getAttribute('data-date') || '');
+      });
+      inputDataPrincipal.addEventListener('change', function () {
+        var nextDate = String(inputDataPrincipal.value || '').trim();
+        if (nextDate !== '') {
+          state.selectedDate = nextDate;
+          state.monthKey = monthKeyFromDate(nextDate);
+          refreshAll();
+        }
+      });
+      inputDataReservas.addEventListener('change', function () {
+        var nextDate = String(inputDataReservas.value || '').trim();
+        if (nextDate !== '') {
+          state.selectedDate = nextDate;
+          state.monthKey = monthKeyFromDate(nextDate);
+          refreshAll();
+        }
+      });
+      btnMesAnterior.addEventListener('click', function () {
+        state.monthKey = shiftMonth(state.monthKey, -1);
+        loadSummary();
+        renderCalendar();
+      });
+      btnMesSeguinte.addEventListener('click', function () {
+        state.monthKey = shiftMonth(state.monthKey, 1);
+        loadSummary();
+        renderCalendar();
+      });
+      gridCalendario.addEventListener('click', function (event) {
+        var target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+        var button = target.closest('[data-date]');
+        if (!button) {
+          return;
+        }
+        var nextDate = String(button.getAttribute('data-date') || '').trim();
+        if (nextDate === '') {
+          return;
+        }
+        state.selectedDate = nextDate;
+        state.monthKey = monthKeyFromDate(nextDate);
+        refreshAll();
+      });
+      itensBody.addEventListener('click', function (event) {
+        var target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+        var editButton = target.closest('.js-editar-item');
+        if (editButton) {
+          fillItemForm(Number(editButton.getAttribute('data-id') || 0));
+          modalItem.show();
+          return;
+        }
+
+        var deleteButton = target.closest('.js-excluir-item');
+        if (deleteButton) {
+          deleteItem(Number(deleteButton.getAttribute('data-id') || 0));
+        }
+      });
+      reservasLista.addEventListener('click', function (event) {
+        var target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+        var button = target.closest('.js-excluir-reserva');
+        if (!button) {
+          return;
+        }
+        deleteReserva(Number(button.getAttribute('data-id') || 0));
+      });
+
+      inputDataPrincipal.value = state.selectedDate;
+      inputDataReservas.value = state.selectedDate;
+      refreshAll();
+    }
+
+    if (window.bootstrap && window.bootstrap.Modal) {
+      startPage();
+      return;
+    }
+
+    var attempts = 0;
+    var timer = window.setInterval(function () {
+      attempts += 1;
+      if (window.bootstrap && window.bootstrap.Modal) {
+        window.clearInterval(timer);
+        startPage();
+        return;
+      }
+      if (attempts >= 200) {
+        window.clearInterval(timer);
+        console.error('Bootstrap nao ficou disponivel para inicializar o Gerenciamento de Cardapio.');
+      }
+    }, 25);
+  })();
+</script>

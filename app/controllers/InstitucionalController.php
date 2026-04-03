@@ -4380,6 +4380,501 @@ class InstitucionalController extends HomeController
 		]);
 	}
 
+	public function gerenciamentoCardapio(): void
+	{
+		if (!$this->canAccessCardapioManagementSubservice()) {
+			$this->redirect('/404');
+		}
+
+		$this->render('home/Institucional/Gerenciamento de Cardápio', [
+			'schoolName' => SCHOOL_NAME,
+		]);
+	}
+
+	public function cardapio(): void
+	{
+		if (!$this->canAccessCardapioSubservice()) {
+			$this->redirect('/404');
+		}
+
+		$this->render('home/Institucional/Cardápio', [
+			'schoolName' => SCHOOL_NAME,
+		]);
+	}
+
+	public function gerenciamentoCardapioDados(): void
+	{
+		if (!$this->canAccessCardapioManagementSubservice()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		$dataSelecionada = $this->normalizeCardapioDateInput((string) ($_GET['data'] ?? ''));
+		$model = new CardapioModel();
+		$estudantesComEntrada = 0;
+
+		try {
+			$model->ensureTableStructure();
+			$tiposRefeicao = $this->getCardapioTiposRefeicao();
+			$itens = $model->getItems(true);
+			$cardapios = $model->getCardapiosByDate($dataSelecionada);
+			$reservas = $model->getReservasByDate($dataSelecionada);
+			if (class_exists('EntradaSaidaModel')) {
+				$entradaSaidaModel = new EntradaSaidaModel();
+				$entradaSaidaModel->ensureTableStructure();
+				$metaEntrada = $entradaSaidaModel->resumoPresencaHoje($dataSelecionada);
+				$estudantesComEntrada = (int) ($metaEntrada['alunos_com_entrada'] ?? 0);
+			}
+		} catch (Throwable) {
+			$this->respondJson(['ok' => false, 'message' => 'Não foi possível carregar o gerenciamento de cardápio.'], 500);
+		}
+
+		$this->respondJson([
+			'ok' => true,
+			'data' => [
+				'data' => $dataSelecionada,
+				'tipos_refeicao' => $tiposRefeicao,
+				'itens' => $itens,
+				'cardapios' => $cardapios,
+				'reservas' => $reservas,
+				'estudantes_com_entrada' => $estudantesComEntrada,
+			],
+		]);
+	}
+
+	public function gerenciamentoCardapioResumoMensal(): void
+	{
+		if (!$this->canAccessCardapioManagementSubservice()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		$mes = $this->normalizeCardapioMonth((string) ($_GET['mes'] ?? ''));
+		$model = new CardapioModel();
+
+		try {
+			$model->ensureTableStructure();
+			$rows = $model->getMonthlySummary($mes . '-01', date('Y-m-t', strtotime($mes . '-01')));
+			$resumo = [];
+			foreach ($rows as $row) {
+				$dia = trim((string) ($row['dia'] ?? ''));
+				if ($dia === '') {
+					continue;
+				}
+
+				$resumo[$dia] = [
+					'total_refeicoes' => (int) ($row['total_refeicoes'] ?? 0),
+					'total_itens' => (int) ($row['total_itens'] ?? 0),
+					'total_reservas' => (int) ($row['total_reservas'] ?? 0),
+				];
+			}
+		} catch (Throwable) {
+			$this->respondJson(['ok' => false, 'message' => 'Não foi possível carregar o resumo mensal do cardápio.'], 500);
+		}
+
+		$this->respondJson([
+			'ok' => true,
+			'data' => [
+				'mes' => $mes,
+				'resumo' => $resumo,
+			],
+		]);
+	}
+
+	public function gerenciamentoCardapioItemSalvar(): void
+	{
+		if (!$this->canAccessCardapioManagementSubservice()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+			$this->respondJson(['ok' => false, 'message' => 'Método não permitido.'], 405);
+		}
+
+		$id = (int) ($_POST['id'] ?? 0);
+		$nome = trim((string) ($_POST['nome'] ?? ''));
+		$descricao = trim((string) ($_POST['descricao'] ?? ''));
+		$ativo = (string) ($_POST['ativo'] ?? '1') !== '0';
+		$tipoRefeicaoIds = $this->extractCardapioItemIds($_POST['tipo_refeicao_ids'] ?? []);
+
+		if ($nome === '') {
+			$this->respondJson(['ok' => false, 'message' => 'Informe o nome do item.'], 422);
+		}
+
+		$model = new CardapioModel();
+		$removeImagem = (string) ($_POST['remover_imagem'] ?? '0') === '1';
+		$currentImagePath = null;
+		$newUploadedImagePath = null;
+
+		try {
+			if ($id > 0) {
+				$existing = $model->findItemById($id);
+				$currentImagePath = is_array($existing) ? trim((string) ($existing['imagem_path'] ?? '')) : null;
+				if ($currentImagePath === '') {
+					$currentImagePath = null;
+				}
+			}
+
+			$itemId = $model->saveItem($id, $nome, $descricao !== '' ? $descricao : null, $ativo, $tipoRefeicaoIds);
+			$newUploadedImagePath = $this->handleCardapioItemImageUpload($_FILES['imagem'] ?? null, $itemId);
+
+			$nextImagePath = $currentImagePath;
+			if ($newUploadedImagePath !== null) {
+				$nextImagePath = $newUploadedImagePath;
+			} elseif ($removeImagem) {
+				$nextImagePath = null;
+			}
+
+			if ($nextImagePath !== $currentImagePath) {
+				$model->updateItemImagePath($itemId, $nextImagePath);
+				if ($currentImagePath !== null && trim($currentImagePath) !== '') {
+					$this->deleteCardapioItemImageByPath($currentImagePath);
+				}
+			}
+		} catch (RuntimeException $exception) {
+			if ($newUploadedImagePath !== null) {
+				$this->deleteCardapioItemImageByPath($newUploadedImagePath);
+			}
+
+			$this->respondJson(['ok' => false, 'message' => $exception->getMessage()], 409);
+		} catch (Throwable $exception) {
+			if ($newUploadedImagePath !== null) {
+				$this->deleteCardapioItemImageByPath($newUploadedImagePath);
+			}
+
+			$message = $exception->getMessage();
+			if (stripos($message, 'duplicate') !== false) {
+				$this->respondJson(['ok' => false, 'message' => 'Já existe item com este nome.'], 409);
+			}
+
+			$this->respondJson(['ok' => false, 'message' => 'Não foi possível salvar o item agora.'], 500);
+		}
+
+		$this->respondJson([
+			'ok' => true,
+			'message' => $id > 0 ? 'Item atualizado com sucesso.' : 'Item criado com sucesso.',
+			'data' => ['id' => $itemId],
+		]);
+	}
+
+	public function gerenciamentoCardapioItemExcluir(): void
+	{
+		if (!$this->canAccessCardapioManagementSubservice()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+			$this->respondJson(['ok' => false, 'message' => 'Método não permitido.'], 405);
+		}
+
+		$id = (int) ($_POST['id'] ?? 0);
+		if ($id <= 0) {
+			$this->respondJson(['ok' => false, 'message' => 'Item inválido para exclusão.'], 422);
+		}
+
+		$model = new CardapioModel();
+		$imagePath = null;
+
+		try {
+			$existing = $model->findItemById($id);
+			$imagePath = is_array($existing) ? trim((string) ($existing['imagem_path'] ?? '')) : null;
+			if ($imagePath === '') {
+				$imagePath = null;
+			}
+			$model->deleteItem($id);
+
+			if ($imagePath !== null && $imagePath !== '') {
+				$this->deleteCardapioItemImageByPath($imagePath);
+			}
+		} catch (RuntimeException $exception) {
+			$this->respondJson(['ok' => false, 'message' => $exception->getMessage()], 409);
+		} catch (Throwable) {
+			$this->respondJson(['ok' => false, 'message' => 'Não foi possível excluir o item agora.'], 500);
+		}
+
+		$this->respondJson(['ok' => true, 'message' => 'Item excluído com sucesso.']);
+	}
+
+	public function gerenciamentoCardapioSalvar(): void
+	{
+		if (!$this->canAccessCardapioManagementSubservice()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+			$this->respondJson(['ok' => false, 'message' => 'Método não permitido.'], 405);
+		}
+
+		$datasCardapio = $this->normalizeCardapioDateList($_POST['datas_cardapio'] ?? ($_POST['datas_cardapio_json'] ?? []), (string) ($_POST['data_cardapio'] ?? ''));
+		$cardapiosPayload = $this->extractCardapioMealEntries($_POST['cardapios'] ?? ($_POST['cardapios_json'] ?? []));
+		$hoje = (new DateTimeImmutable('today'))->format('Y-m-d');
+
+		if ($datasCardapio === []) {
+			$this->respondJson(['ok' => false, 'message' => 'Informe ao menos uma data para o cardápio.'], 422);
+		}
+
+		foreach ($datasCardapio as $dataCardapio) {
+			if ($dataCardapio < $hoje) {
+				$this->respondJson(['ok' => false, 'message' => 'O cardápio só pode ser cadastrado para hoje ou datas futuras.'], 422);
+			}
+		}
+
+		$model = new CardapioModel();
+
+		try {
+			$model->ensureTableStructure();
+			$tiposRefeicao = $this->getCardapioTiposRefeicao();
+			$cardapiosNormalizados = $this->normalizeCardapioMealEntries($cardapiosPayload, $tiposRefeicao);
+			$cardapioIds = [];
+			foreach ($datasCardapio as $dataCardapio) {
+				$cardapioIds[$dataCardapio] = $model->saveCardapios($dataCardapio, $cardapiosNormalizados, (int) ($_SESSION['auth']['id'] ?? 0) ?: null);
+			}
+		} catch (InvalidArgumentException $exception) {
+			$this->respondJson(['ok' => false, 'message' => $exception->getMessage()], 422);
+		} catch (Throwable) {
+			$this->respondJson(['ok' => false, 'message' => 'Não foi possível salvar o cardápio agora.'], 500);
+		}
+
+		$hasSavedEntries = false;
+		foreach ($cardapioIds as $idsPorData) {
+			if (is_array($idsPorData) && $idsPorData !== []) {
+				$hasSavedEntries = true;
+				break;
+			}
+		}
+
+		$this->respondJson([
+			'ok' => true,
+			'message' => !$hasSavedEntries
+				? (count($datasCardapio) > 1 ? 'Os cardápios das datas selecionadas foram removidos com sucesso.' : 'O cardápio da data selecionada foi removido com sucesso.')
+				: (count($datasCardapio) > 1 ? 'Cardápio salvo com sucesso para as datas selecionadas.' : 'Cardápio salvo com sucesso.'),
+			'data' => ['ids' => $cardapioIds],
+		]);
+	}
+
+	public function gerenciamentoCardapioReservaExcluir(): void
+	{
+		if (!$this->canAccessCardapioManagementSubservice()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+			$this->respondJson(['ok' => false, 'message' => 'Método não permitido.'], 405);
+		}
+
+		$id = (int) ($_POST['id'] ?? 0);
+		if ($id <= 0) {
+			$this->respondJson(['ok' => false, 'message' => 'Reserva inválida para exclusão.'], 422);
+		}
+
+		$model = new CardapioModel();
+		try {
+			$model->deleteReserva($id);
+		} catch (Throwable) {
+			$this->respondJson(['ok' => false, 'message' => 'Não foi possível excluir a reserva agora.'], 500);
+		}
+
+		$this->respondJson(['ok' => true, 'message' => 'Reserva excluída com sucesso.']);
+	}
+
+	public function cardapioDados(): void
+	{
+		if (!$this->canAccessCardapioSubservice()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		$usuarioId = (int) ($_SESSION['auth']['id'] ?? 0);
+		if ($usuarioId <= 0) {
+			$this->respondJson(['ok' => false, 'message' => 'Usuário não autenticado.'], 401);
+		}
+
+		$dataSelecionada = $this->normalizeCardapioDateInput((string) ($_GET['data'] ?? ''));
+		$model = new CardapioModel();
+
+		try {
+			$model->ensureTableStructure();
+			$tiposRefeicao = $this->getCardapioTiposRefeicao();
+			$cardapios = $model->getCardapiosByDate($dataSelecionada);
+			$minhasReservas = $model->getReservasByUsuarioAndDate($usuarioId, $dataSelecionada);
+		} catch (Throwable) {
+			$this->respondJson(['ok' => false, 'message' => 'Não foi possível carregar o cardápio.'], 500);
+		}
+
+		$this->respondJson([
+			'ok' => true,
+			'data' => [
+				'data' => $dataSelecionada,
+				'tipos_refeicao' => $tiposRefeicao,
+				'cardapios' => $cardapios,
+				'minhas_reservas' => $minhasReservas,
+			],
+		]);
+	}
+
+	public function cardapioResumoMensal(): void
+	{
+		if (!$this->canAccessCardapioSubservice()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		$mes = $this->normalizeCardapioMonth((string) ($_GET['mes'] ?? ''));
+		$model = new CardapioModel();
+
+		try {
+			$model->ensureTableStructure();
+			$rows = $model->getMonthlySummary($mes . '-01', date('Y-m-t', strtotime($mes . '-01')));
+			$resumo = [];
+			foreach ($rows as $row) {
+				$dia = trim((string) ($row['dia'] ?? ''));
+				if ($dia === '') {
+					continue;
+				}
+
+				$resumo[$dia] = [
+					'total_refeicoes' => (int) ($row['total_refeicoes'] ?? 0),
+					'total_itens' => (int) ($row['total_itens'] ?? 0),
+					'total_reservas' => (int) ($row['total_reservas'] ?? 0),
+				];
+			}
+		} catch (Throwable) {
+			$this->respondJson(['ok' => false, 'message' => 'Não foi possível carregar o resumo do cardápio.'], 500);
+		}
+
+		$this->respondJson([
+			'ok' => true,
+			'data' => [
+				'mes' => $mes,
+				'resumo' => $resumo,
+			],
+		]);
+	}
+
+	public function cardapioMinhasReservas(): void
+	{
+		if (!$this->canAccessCardapioSubservice()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		$usuarioId = (int) ($_SESSION['auth']['id'] ?? 0);
+		if ($usuarioId <= 0) {
+			$this->respondJson(['ok' => false, 'message' => 'Usuário não autenticado.'], 401);
+		}
+
+		$escopo = trim((string) ($_GET['escopo'] ?? ''));
+		$hoje = (new DateTimeImmutable('today'))->format('Y-m-d');
+		$inicio = $escopo === 'historico' ? '1970-01-01' : $hoje;
+		$fim = $escopo === 'historico' ? $hoje : '9999-12-31';
+		$model = new CardapioModel();
+
+		try {
+			$model->ensureTableStructure();
+			$reservas = $model->getReservasByUsuarioPeriod($usuarioId, $inicio, $fim);
+		} catch (Throwable) {
+			$this->respondJson(['ok' => false, 'message' => 'Não foi possível carregar suas reservas de cardápio.'], 500);
+		}
+
+		$this->respondJson([
+			'ok' => true,
+			'data' => [
+				'reservas' => $reservas,
+			],
+		]);
+	}
+
+	public function cardapioReservaSalvar(): void
+	{
+		if (!$this->canAccessCardapioSubservice()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+			$this->respondJson(['ok' => false, 'message' => 'Método não permitido.'], 405);
+		}
+
+		$usuarioId = (int) ($_SESSION['auth']['id'] ?? 0);
+		if ($usuarioId <= 0) {
+			$this->respondJson(['ok' => false, 'message' => 'Sessão inválida. Faça login novamente.'], 401);
+		}
+
+		$dataCardapio = $this->normalizeCardapioDateInput((string) ($_POST['data_cardapio'] ?? ''));
+		$tipoRefeicaoId = (int) ($_POST['tipo_refeicao_id'] ?? 0);
+		$observacao = trim((string) ($_POST['observacao'] ?? ''));
+		$hoje = (new DateTimeImmutable('today'))->format('Y-m-d');
+
+		if ($dataCardapio < $hoje) {
+			$this->respondJson(['ok' => false, 'message' => 'Não é possível reservar cardápios de datas passadas.'], 422);
+		}
+
+		if ($tipoRefeicaoId <= 0) {
+			$this->respondJson(['ok' => false, 'message' => 'Selecione a refeição para reservar.'], 422);
+		}
+
+		$model = new CardapioModel();
+
+		try {
+			$model->ensureTableStructure();
+			$cardapio = $model->getCardapioByDateAndTipo($dataCardapio, $tipoRefeicaoId);
+			if (!is_array($cardapio) || (int) ($cardapio['id'] ?? 0) <= 0) {
+				$this->respondJson(['ok' => false, 'message' => 'Não existe cardápio cadastrado para a refeição selecionada nesta data.'], 422);
+			}
+
+			$responsavel = $this->resolveAgendamentoResponsavelNome($usuarioId);
+			if ($responsavel === '') {
+				$responsavel = 'Usuário';
+			}
+
+			$reservaId = $model->saveReserva(
+				(int) $cardapio['id'],
+				$dataCardapio,
+				$tipoRefeicaoId,
+				$usuarioId,
+				$responsavel,
+				$observacao !== '' ? $observacao : null
+			);
+		} catch (Throwable) {
+			$this->respondJson(['ok' => false, 'message' => 'Não foi possível salvar a reserva do cardápio agora.'], 500);
+		}
+
+		$this->respondJson([
+			'ok' => true,
+			'message' => 'Reserva do cardápio salva com sucesso.',
+			'data' => ['id' => $reservaId],
+		]);
+	}
+
+	public function cardapioReservaExcluir(): void
+	{
+		if (!$this->canAccessCardapioSubservice()) {
+			$this->respondJson(['ok' => false, 'message' => 'Acesso negado.'], 403);
+		}
+
+		if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+			$this->respondJson(['ok' => false, 'message' => 'Método não permitido.'], 405);
+		}
+
+		$usuarioId = (int) ($_SESSION['auth']['id'] ?? 0);
+		$id = (int) ($_POST['id'] ?? 0);
+		if ($usuarioId <= 0 || $id <= 0) {
+			$this->respondJson(['ok' => false, 'message' => 'Reserva inválida para exclusão.'], 422);
+		}
+
+		$model = new CardapioModel();
+		try {
+			$reserva = $model->findReservaById($id);
+			if (!is_array($reserva)) {
+				$this->respondJson(['ok' => false, 'message' => 'Reserva não encontrada.'], 404);
+			}
+
+			if ((int) ($reserva['usuario_id'] ?? 0) !== $usuarioId && !$this->canAccessCardapioManagementSubservice()) {
+				$this->respondJson(['ok' => false, 'message' => 'Você só pode excluir sua própria reserva.'], 403);
+			}
+
+			$model->deleteReserva($id);
+		} catch (Throwable) {
+			$this->respondJson(['ok' => false, 'message' => 'Não foi possível excluir a reserva agora.'], 500);
+		}
+
+		$this->respondJson(['ok' => true, 'message' => 'Reserva excluída com sucesso.']);
+	}
+
 	public function agendamento(): void
 	{
 		if (!$this->canAccessAgendamentoSubservice()) {
@@ -7016,11 +7511,177 @@ class InstitucionalController extends HomeController
 			|| $this->canAccessSubservice('agendamento_de_recursos');
 	}
 
+	private function canAccessCardapioManagementSubservice(): bool
+	{
+		return $this->canAccessSubservice('gerenciamento_de_cardapio')
+			|| $this->canAccessSubservice('gerenciamento_cardapio')
+			|| $this->canAccessSubservice('cardapio_gerenciamento')
+			|| $this->canAccessSubservice('gerenciar_cardapio');
+	}
+
+	private function canAccessCardapioSubservice(): bool
+	{
+		return $this->canAccessCardapioManagementSubservice()
+			|| $this->canAccessSubservice('cardapio');
+	}
+
 	private function canAccessMeusAgendamentos(): bool
 	{
 		return $this->canAccessAgendamentoSubservice()
 			|| $this->canAccessSubservice('meus_agendamentos')
 			|| $this->canAccessSubservice('meus_agendamento');
+	}
+
+	private function normalizeCardapioDateInput(string $value): string
+	{
+		$value = trim($value);
+		if ($value === '') {
+			return (new DateTimeImmutable('today'))->format('Y-m-d');
+		}
+
+		$date = date_create($value);
+		if ($date === false) {
+			return (new DateTimeImmutable('today'))->format('Y-m-d');
+		}
+
+		return $date->format('Y-m-d');
+	}
+
+	private function normalizeCardapioDateList($value, string $fallback = ''): array
+	{
+		$items = [];
+		if (is_array($value)) {
+			$items = $value;
+		} elseif (is_string($value)) {
+			$trimmed = trim($value);
+			if ($trimmed !== '') {
+				$decoded = json_decode($trimmed, true);
+				if (is_array($decoded)) {
+					$items = $decoded;
+				} else {
+					$items = preg_split('/\s*,\s*/', $trimmed) ?: [];
+				}
+			}
+		}
+
+		if ($items === [] && trim($fallback) !== '') {
+			$items = [$fallback];
+		}
+
+		$dates = [];
+		foreach ($items as $item) {
+			$date = date_create(trim((string) $item));
+			if ($date === false) {
+				continue;
+			}
+
+			$normalized = $date->format('Y-m-d');
+			$dates[$normalized] = $normalized;
+		}
+
+		return array_values($dates);
+	}
+
+	private function normalizeCardapioMonth(string $value): string
+	{
+		$value = trim($value);
+		if ($value !== '' && preg_match('/^\d{4}-\d{2}$/', $value)) {
+			return $value;
+		}
+
+		return (new DateTimeImmutable('first day of this month'))->format('Y-m');
+	}
+
+	private function getCardapioTiposRefeicao(): array
+	{
+		$model = new RefeitorioModel();
+		$model->ensureTableStructure();
+
+		$tipos = $model->getTiposAtivos();
+		if (!is_array($tipos) || $tipos === []) {
+			throw new RuntimeException('Nenhum tipo de refeição ativo foi encontrado no controle de Refeitório.');
+		}
+
+		return $tipos;
+	}
+
+	private function extractCardapioMealEntries($value): array
+	{
+		if (is_array($value)) {
+			return $value;
+		}
+
+		if (!is_string($value)) {
+			return [];
+		}
+
+		$trimmed = trim($value);
+		if ($trimmed === '') {
+			return [];
+		}
+
+		$decoded = json_decode($trimmed, true);
+		return is_array($decoded) ? $decoded : [];
+	}
+
+	private function normalizeCardapioMealEntries(array $entries, array $tiposRefeicao): array
+	{
+		$tiposIndexados = [];
+		foreach ($tiposRefeicao as $tipo) {
+			$tipoId = (int) ($tipo['id'] ?? 0);
+			if ($tipoId > 0) {
+				$tiposIndexados[$tipoId] = $tipo;
+			}
+		}
+
+		$resultado = [];
+		foreach ($entries as $entry) {
+			if (!is_array($entry)) {
+				continue;
+			}
+
+			$tipoId = (int) ($entry['tipo_refeicao_id'] ?? 0);
+			if ($tipoId <= 0 || !isset($tiposIndexados[$tipoId])) {
+				continue;
+			}
+
+			$resultado[$tipoId] = [
+				'tipo_refeicao_id' => $tipoId,
+				'observacao' => trim((string) ($entry['observacao'] ?? '')),
+				'item_ids' => $this->extractCardapioItemIds($entry['item_ids'] ?? []),
+			];
+		}
+
+		return array_values($resultado);
+	}
+
+	private function extractCardapioItemIds($value): array
+	{
+		$items = [];
+
+		if (is_array($value)) {
+			$items = $value;
+		} elseif (is_string($value)) {
+			$trimmed = trim($value);
+			if ($trimmed !== '') {
+				$decoded = json_decode($trimmed, true);
+				if (is_array($decoded)) {
+					$items = $decoded;
+				} else {
+					$items = preg_split('/[\s,;|]+/', $trimmed) ?: [];
+				}
+			}
+		}
+
+		$result = [];
+		foreach ($items as $item) {
+			$itemId = (int) $item;
+			if ($itemId > 0) {
+				$result[$itemId] = $itemId;
+			}
+		}
+
+		return array_values($result);
 	}
 
 	private function sanitizeAgendamentoTempOwnerToken(string $value): string
@@ -7036,6 +7697,74 @@ class InstitucionalController extends HomeController
 		}
 
 		return substr($value, 0, 96);
+	}
+
+	private function handleCardapioItemImageUpload(?array $file, int $itemId): ?string
+	{
+		if (!is_array($file)) {
+			return null;
+		}
+
+		$errorCode = (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE);
+		if ($errorCode === UPLOAD_ERR_NO_FILE) {
+			return null;
+		}
+
+		if ($errorCode !== UPLOAD_ERR_OK) {
+			throw new RuntimeException('Falha no upload da imagem do item.');
+		}
+
+		$tmpName = trim((string) ($file['tmp_name'] ?? ''));
+		if ($tmpName === '' || !is_uploaded_file($tmpName)) {
+			throw new RuntimeException('Arquivo de imagem inválido.');
+		}
+
+		$fileSize = (int) ($file['size'] ?? 0);
+		if ($fileSize <= 0 || $fileSize > (5 * 1024 * 1024)) {
+			throw new RuntimeException('A imagem deve ter até 5MB.');
+		}
+
+		$mimeType = (string) (mime_content_type($tmpName) ?: '');
+		$allowedMimes = [
+			'image/jpeg' => 'jpg',
+			'image/png' => 'png',
+			'image/webp' => 'webp',
+			'image/gif' => 'gif',
+		];
+
+		$extension = $allowedMimes[$mimeType] ?? null;
+		if ($extension === null) {
+			throw new RuntimeException('Formato de imagem não suportado. Use JPG, PNG, WEBP ou GIF.');
+		}
+
+		$relativeDir = 'uploads/imagens/cardapio-itens';
+		$absoluteDir = dirname(__DIR__, 2) . '/' . $relativeDir;
+		if (!is_dir($absoluteDir) && !mkdir($absoluteDir, 0775, true) && !is_dir($absoluteDir)) {
+			throw new RuntimeException('Não foi possível preparar o diretório de imagens.');
+		}
+
+		$filename = 'item-' . $itemId . '-' . bin2hex(random_bytes(6)) . '.' . $extension;
+		$relativePath = $relativeDir . '/' . $filename;
+		$absolutePath = dirname(__DIR__, 2) . '/' . $relativePath;
+
+		if (!move_uploaded_file($tmpName, $absolutePath)) {
+			throw new RuntimeException('Não foi possível salvar a imagem enviada.');
+		}
+
+		return str_replace('\\', '/', $relativePath);
+	}
+
+	private function deleteCardapioItemImageByPath(?string $relativePath): void
+	{
+		$normalized = str_replace('\\', '/', trim((string) $relativePath));
+		if ($normalized === '' || !str_starts_with($normalized, 'uploads/imagens/')) {
+			return;
+		}
+
+		$absolutePath = dirname(__DIR__, 2) . '/' . $normalized;
+		if (is_file($absolutePath)) {
+			@unlink($absolutePath);
+		}
 	}
 
 	private function handleAgendamentoItemImageUpload(?array $file, int $itemId): ?string

@@ -1,0 +1,854 @@
+<style>
+  .cardapio-user-root {
+    min-height: 100vh;
+    background: linear-gradient(180deg, #fffaf7 0%, #ffffff 28%, #ffffff 100%);
+    color: #212529;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+
+  .cardapio-user-shell {
+    width: min(1360px, 96%);
+    margin: 0 auto;
+    padding: 1rem .8rem 1.3rem;
+  }
+
+  .status-banner {
+    position: fixed;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2200;
+    min-width: 300px;
+    max-width: min(92vw, 760px);
+    padding: .7rem .95rem;
+    border-radius: .8rem;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, .16);
+    font-size: .92rem;
+    font-weight: 700;
+  }
+
+  .status-banner.is-success {
+    background: #d1e7dd;
+    color: #0f5132;
+    border: 1px solid #badbcc;
+  }
+
+  .status-banner.is-error {
+    background: #f8d7da;
+    color: #842029;
+    border: 1px solid #f5c2c7;
+  }
+
+  .page-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .75rem;
+    flex-wrap: wrap;
+    margin-bottom: .95rem;
+  }
+
+  .page-head h1 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 800;
+  }
+
+  .hero-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .7rem;
+    margin-bottom: .95rem;
+  }
+
+  .hero-stat {
+    border: 1px solid #f1dfd7;
+    border-radius: .95rem;
+    background: linear-gradient(180deg, #ffffff 0%, #fff7f3 100%);
+    padding: .85rem .9rem;
+  }
+
+  .hero-stat-label {
+    display: block;
+    font-size: .72rem;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: #7b5850;
+    margin-bottom: .25rem;
+    font-weight: 800;
+  }
+
+  .hero-stat-value {
+    display: block;
+    font-size: 1.28rem;
+    line-height: 1;
+    font-weight: 800;
+    color: #842029;
+  }
+
+  .page-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: .9rem;
+    align-items: start;
+  }
+
+  .surface-card {
+    border: 1px solid #ece2de;
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, .98);
+    box-shadow: 0 10px 26px rgba(122, 31, 39, .05);
+  }
+
+  .surface-card-body {
+    padding: .95rem;
+  }
+
+  .section-title {
+    margin: 0;
+    font-size: .96rem;
+    font-weight: 800;
+    color: #563836;
+  }
+
+  .section-subtitle {
+    font-size: .82rem;
+    color: #7d6661;
+  }
+
+  .meal-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .7rem;
+  }
+
+  .meal-card,
+  .reservation-card,
+  .calendar-day {
+    border: 1px solid #efdfd9;
+    border-radius: .95rem;
+    background: #fff;
+  }
+
+  .meal-card {
+    padding: .8rem;
+  }
+
+  .meal-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .65rem;
+    margin-bottom: .6rem;
+  }
+
+  .meal-card-name {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    font-weight: 800;
+    color: #352321;
+  }
+
+  .meal-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    flex: 0 0 12px;
+  }
+
+  .meal-meta {
+    font-size: .78rem;
+    color: #7a6661;
+  }
+
+  .meal-items-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem;
+    margin-top: .55rem;
+    margin-bottom: .7rem;
+  }
+
+  .chip {
+    padding: .25rem .5rem;
+    border-radius: 999px;
+    background: #fff5f0;
+    border: 1px solid #efd9d2;
+    font-size: .72rem;
+    font-weight: 700;
+    color: #704642;
+  }
+
+  .empty-state {
+    border: 1px dashed #d9c4bd;
+    border-radius: .9rem;
+    padding: 1rem;
+    text-align: center;
+    color: #8b6b66;
+    background: #fffdfc;
+  }
+
+  .reservation-card {
+    padding: .75rem .8rem;
+  }
+
+  .month-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+    margin-bottom: .65rem;
+  }
+
+  .month-label {
+    text-transform: capitalize;
+    font-weight: 800;
+    color: #6a3b37;
+    text-align: center;
+    flex: 1 1 auto;
+  }
+
+  .weekday-grid,
+  .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: .35rem;
+  }
+
+  .weekday-grid {
+    margin-bottom: .35rem;
+  }
+
+  .weekday-label {
+    text-align: center;
+    font-size: .68rem;
+    text-transform: uppercase;
+    color: #8d6d68;
+    font-weight: 800;
+  }
+
+  .calendar-day {
+    min-height: 74px;
+    padding: .35rem;
+    display: flex;
+    flex-direction: column;
+    gap: .2rem;
+    cursor: pointer;
+  }
+
+  .calendar-day:hover {
+    background: #fff7f4;
+    border-color: #d4a098;
+  }
+
+  .calendar-day.is-selected {
+    background: #fff0ea;
+    border-color: #842029;
+  }
+
+  .calendar-day.is-outside {
+    opacity: .35;
+    cursor: default;
+  }
+
+  .calendar-day-number {
+    font-size: .78rem;
+    font-weight: 800;
+    color: #382522;
+  }
+
+  .calendar-badges {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: .2rem;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .mini-badge {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 999px;
+    padding: .18rem .35rem;
+    line-height: 1.15;
+    font-size: .62rem;
+    font-weight: 800;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .mini-badge.is-meals {
+    background: rgba(25, 135, 84, .12);
+    color: #0f5132;
+  }
+
+  .mini-badge.is-reservations {
+    background: rgba(132, 32, 41, .1);
+    color: #842029;
+  }
+
+  .reservation-tabs {
+    border: 0;
+    gap: .45rem;
+    flex-wrap: wrap;
+  }
+
+  .reservation-tabs .nav-link {
+    border-radius: .7rem;
+    border: 1px solid #ebd8d3;
+    color: #6f4341;
+    font-weight: 700;
+    font-size: .88rem;
+    padding: .45rem .8rem;
+  }
+
+  .reservation-tabs .nav-link.active {
+    color: #842029;
+    background: rgba(132, 32, 41, .08);
+    border-color: #cfb3ac;
+  }
+
+  @media (max-width: 1180px) {
+    .page-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .hero-strip,
+    .meal-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<div class="cardapio-user-root">
+  <div id="statusCardapioUsuario" class="status-banner d-none" role="alert" aria-live="polite"></div>
+
+  <div class="cardapio-user-shell">
+    <div class="page-head">
+      <div>
+        <h1>Cardápio</h1>
+        <div class="section-subtitle">Consulte as refeições do dia e reserve separadamente cada cardápio disponível.</div>
+      </div>
+      <div>
+        <a id="btnVoltarCardapio" href="#" class="btn btn-outline-secondary btn-sm"><i class="las la-arrow-left me-1"></i>Voltar</a>
+      </div>
+    </div>
+
+    <div class="hero-strip">
+      <div class="hero-stat">
+        <span class="hero-stat-label">Data selecionada</span>
+        <span class="hero-stat-value" id="heroDataSelecionada">-</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-label">Refeições com cardápio</span>
+        <span class="hero-stat-value" id="heroRefeicoesDisponiveis">0</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-label">Minhas reservas no dia</span>
+        <span class="hero-stat-value" id="heroMinhasReservasDia">0</span>
+      </div>
+    </div>
+
+    <div class="page-layout">
+      <div class="surface-card">
+        <div class="surface-card-body">
+          <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
+            <div>
+              <div class="section-title">Refeições do dia</div>
+              <div class="section-subtitle" id="textoDataCardapioSelecionada">Selecione uma data no calendário.</div>
+            </div>
+            <input type="date" class="form-control form-control-sm" id="inputDataCardapioUsuario" style="width: 170px;">
+          </div>
+
+          <div id="gradeRefeicoesCardapio" class="meal-grid"></div>
+
+          <div class="mt-4">
+            <ul class="nav nav-tabs reservation-tabs mb-3" id="tabsMinhasReservasCardapio" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active" type="button" data-scope="ativas">Vigentes e futuras</button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" type="button" data-scope="historico">Histórico</button>
+              </li>
+            </ul>
+            <div id="listaMinhasReservasCardapio" class="d-flex flex-column gap-2"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="surface-card">
+        <div class="surface-card-body">
+          <div class="month-nav">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnMesAnteriorUsuario"><i class="las la-angle-left"></i></button>
+            <div id="labelMesUsuario" class="month-label">-</div>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnMesSeguinteUsuario"><i class="las la-angle-right"></i></button>
+          </div>
+
+          <div class="weekday-grid">
+            <div class="weekday-label">Dom</div>
+            <div class="weekday-label">Seg</div>
+            <div class="weekday-label">Ter</div>
+            <div class="weekday-label">Qua</div>
+            <div class="weekday-label">Qui</div>
+            <div class="weekday-label">Sex</div>
+            <div class="weekday-label">Sáb</div>
+          </div>
+
+          <div id="gridCalendarioUsuario" class="calendar-grid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    function startPage() {
+      var statusEl = document.getElementById('statusCardapioUsuario');
+      var heroData = document.getElementById('heroDataSelecionada');
+      var heroRefeicoes = document.getElementById('heroRefeicoesDisponiveis');
+      var heroReservasDia = document.getElementById('heroMinhasReservasDia');
+      var textoDataSelecionada = document.getElementById('textoDataCardapioSelecionada');
+      var inputData = document.getElementById('inputDataCardapioUsuario');
+      var gradeRefeicoes = document.getElementById('gradeRefeicoesCardapio');
+      var listaMinhasReservas = document.getElementById('listaMinhasReservasCardapio');
+      var tabsMinhasReservas = document.getElementById('tabsMinhasReservasCardapio');
+      var gridCalendario = document.getElementById('gridCalendarioUsuario');
+      var labelMes = document.getElementById('labelMesUsuario');
+      var btnMesAnterior = document.getElementById('btnMesAnteriorUsuario');
+      var btnMesSeguinte = document.getElementById('btnMesSeguinteUsuario');
+      var btnVoltar = document.getElementById('btnVoltarCardapio');
+
+      var state = {
+        selectedDate: todayIso(),
+        monthKey: monthKeyFromDate(todayIso()),
+        tiposRefeicao: [],
+        cardapios: [],
+        minhasReservasDia: [],
+        minhasReservasLista: [],
+        resumoMensal: {},
+        scope: 'ativas'
+      };
+
+      function resolveBasePath() {
+        var pathname = String(window.location.pathname || '');
+        var indexPos = pathname.indexOf('/index.php/');
+        if (indexPos >= 0) {
+          return pathname.slice(0, indexPos) + '/index.php';
+        }
+        return '';
+      }
+
+      function endpoint(path) {
+        return resolveBasePath() + String(path || '');
+      }
+
+      function todayIso() {
+        var now = new Date();
+        return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+      }
+
+      function parseIsoDate(value) {
+        var normalized = String(value || '').trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+          return null;
+        }
+        var date = new Date(normalized + 'T00:00:00');
+        return Number.isNaN(date.getTime()) ? null : date;
+      }
+
+      function monthKeyFromDate(value) {
+        var date = parseIsoDate(value);
+        if (!(date instanceof Date)) {
+          date = new Date();
+        }
+        return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
+      }
+
+      function shiftMonth(monthKey, delta) {
+        if (!/^\d{4}-\d{2}$/.test(String(monthKey || ''))) {
+          return monthKeyFromDate(todayIso());
+        }
+        var date = new Date(Number(monthKey.slice(0, 4)), Number(monthKey.slice(5, 7)) - 1 + Number(delta || 0), 1);
+        return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
+      }
+
+      function formatDate(value) {
+        var date = parseIsoDate(value);
+        if (!(date instanceof Date)) {
+          return '-';
+        }
+        return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      }
+
+      function formatMonth(value) {
+        if (!/^\d{4}-\d{2}$/.test(String(value || ''))) {
+          return '-';
+        }
+        var date = new Date(Number(value.slice(0, 4)), Number(value.slice(5, 7)) - 1, 1);
+        return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+      }
+
+      function escapeHtml(value) {
+        return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+      }
+
+      function showStatus(message, isError) {
+        var text = String(message || '').trim();
+        if (text === '') {
+          return;
+        }
+        statusEl.textContent = text;
+        statusEl.classList.remove('d-none', 'is-success', 'is-error');
+        statusEl.classList.add(isError ? 'is-error' : 'is-success');
+        window.clearTimeout(showStatus._timer);
+        showStatus._timer = window.setTimeout(function () {
+          statusEl.classList.add('d-none');
+          statusEl.classList.remove('is-success', 'is-error');
+          statusEl.textContent = '';
+        }, 2800);
+      }
+
+      function fetchJson(url, options) {
+        return fetch(url, options || {}).then(function (response) {
+          return response.json().catch(function () {
+            return { ok: false, message: 'Resposta inválida do servidor.' };
+          }).then(function (payload) {
+            if (!response.ok || !payload.ok) {
+              throw new Error(payload.message || 'Erro na solicitação.');
+            }
+            return payload;
+          });
+        });
+      }
+
+      function cardapiosPorTipo() {
+        var index = {};
+        state.cardapios.forEach(function (cardapio) {
+          var tipoId = Number(cardapio && cardapio.tipo_refeicao_id || 0);
+          if (tipoId > 0) {
+            index[tipoId] = cardapio;
+          }
+        });
+        return index;
+      }
+
+      function reservasPorTipoDia() {
+        var index = {};
+        state.minhasReservasDia.forEach(function (reserva) {
+          var tipoId = Number(reserva && reserva.tipo_refeicao_id || 0);
+          if (tipoId > 0) {
+            index[tipoId] = reserva;
+          }
+        });
+        return index;
+      }
+
+      function renderHero() {
+        heroData.textContent = formatDate(state.selectedDate);
+        heroRefeicoes.textContent = String(state.cardapios.length);
+        heroReservasDia.textContent = String(state.minhasReservasDia.length);
+      }
+
+      function renderRefeicoes() {
+        var cardapiosTipo = cardapiosPorTipo();
+        var reservasTipo = reservasPorTipoDia();
+
+        textoDataSelecionada.textContent = 'Data em foco: ' + formatDate(state.selectedDate);
+        inputData.value = state.selectedDate;
+
+        if (!state.tiposRefeicao.length) {
+          gradeRefeicoes.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">Nenhum tipo de refeição ativo foi encontrado.</div>';
+          renderHero();
+          return;
+        }
+
+        gradeRefeicoes.innerHTML = state.tiposRefeicao.map(function (tipo) {
+          var tipoId = Number(tipo.id || 0);
+          var cardapio = cardapiosTipo[tipoId] || null;
+          var reserva = reservasTipo[tipoId] || null;
+          var itens = cardapio && Array.isArray(cardapio.itens) ? cardapio.itens : [];
+          var horario = [];
+          if (tipo.horario_ini) {
+            horario.push(String(tipo.horario_ini).slice(0, 5));
+          }
+          if (tipo.horario_fim) {
+            horario.push(String(tipo.horario_fim).slice(0, 5));
+          }
+
+          return '<article class="meal-card">'
+            + '<div class="meal-card-header">'
+            + '<div class="meal-card-name"><span class="meal-color" style="background:' + escapeHtml(tipo.cor || '#842029') + '"></span>' + escapeHtml(tipo.nome || 'Refeição') + '</div>'
+            + '<span class="badge text-bg-light">' + (reserva ? 'Reservada' : 'Disponível') + '</span>'
+            + '</div>'
+            + '<div class="meal-meta">' + escapeHtml(horario.join(' às ') || (tipo.descricao || 'Sem horário definido')) + '</div>'
+            + (cardapio && String(cardapio.observacao || '').trim() !== '' ? '<div class="meal-meta mt-1">' + escapeHtml(cardapio.observacao) + '</div>' : '')
+            + (itens.length
+              ? '<div class="meal-items-list">' + itens.map(function (item) { return '<span class="chip">' + escapeHtml(item.nome || '-') + '</span>'; }).join('') + '</div>'
+              : '<div class="empty-state mt-3">Sem cardápio cadastrado para esta refeição.</div>')
+            + '<div class="d-flex gap-2 flex-wrap mt-3">'
+            + '<button type="button" class="btn btn-danger btn-sm js-reservar-refeicao" data-tipo-refeicao-id="' + tipoId + '"' + (itens.length && !reserva ? '' : ' disabled') + '><i class="las la-utensils me-1"></i>Reservar</button>'
+            + '<button type="button" class="btn btn-outline-danger btn-sm js-cancelar-reserva" data-reserva-id="' + Number(reserva && reserva.id || 0) + '"' + (reserva ? '' : ' disabled') + '><i class="las la-trash me-1"></i>Cancelar</button>'
+            + '</div>'
+            + '</article>';
+        }).join('');
+
+        renderHero();
+      }
+
+      function renderMinhasReservas() {
+        if (!state.minhasReservasLista.length) {
+          listaMinhasReservas.innerHTML = '<div class="empty-state">Nenhuma reserva encontrada neste filtro.</div>';
+          return;
+        }
+
+        listaMinhasReservas.innerHTML = state.minhasReservasLista.map(function (reserva) {
+          return '<div class="reservation-card d-flex align-items-start justify-content-between gap-3 flex-wrap">'
+            + '<div>'
+            + '<div class="fw-semibold">' + escapeHtml(reserva.tipo_refeicao_nome || 'Refeição') + '</div>'
+            + '<div class="small text-secondary">' + escapeHtml(formatDate(reserva.data_cardapio || '')) + '</div>'
+            + '<div class="small mt-1">' + escapeHtml(reserva.cardapio_observacao || 'Sem observação do cardápio.') + '</div>'
+            + '</div>'
+            + '<button type="button" class="btn btn-outline-danger btn-sm js-excluir-minha-reserva" data-id="' + Number(reserva.id || 0) + '"><i class="las la-trash me-1"></i>Cancelar</button>'
+            + '</div>';
+        }).join('');
+      }
+
+      function renderCalendar() {
+        labelMes.textContent = formatMonth(state.monthKey);
+        if (!/^\d{4}-\d{2}$/.test(state.monthKey)) {
+          gridCalendario.innerHTML = '';
+          return;
+        }
+
+        var year = Number(state.monthKey.slice(0, 4));
+        var month = Number(state.monthKey.slice(5, 7));
+        var firstDay = new Date(year, month - 1, 1);
+        var daysInMonth = new Date(year, month, 0).getDate();
+        var startWeekday = firstDay.getDay();
+        var cells = [];
+        var summary = state.resumoMensal || {};
+        var day;
+
+        for (day = 0; day < startWeekday; day += 1) {
+          cells.push('<div class="calendar-day is-outside"></div>');
+        }
+
+        for (day = 1; day <= daysInMonth; day += 1) {
+          var isoDate = year + '-' + String(month).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+          var info = summary[isoDate] || null;
+          var badges = [];
+          if (info && Number(info.total_refeicoes || 0) > 0) {
+            badges.push('<span class="mini-badge is-meals">' + String(Number(info.total_refeicoes || 0)) + '</span>');
+          }
+          if (info && Number(info.total_reservas || 0) > 0) {
+            badges.push('<span class="mini-badge is-reservations">' + String(Number(info.total_reservas || 0)) + '</span>');
+          }
+          cells.push('<button type="button" class="calendar-day' + (isoDate === state.selectedDate ? ' is-selected' : '') + '" data-date="' + isoDate + '"><span class="calendar-day-number">' + String(day) + '</span><div class="calendar-badges">' + badges.join('') + '</div></button>');
+        }
+
+        gridCalendario.innerHTML = cells.join('');
+      }
+
+      function renderAll() {
+        renderHero();
+        renderRefeicoes();
+        renderMinhasReservas();
+        renderCalendar();
+      }
+
+      function loadSummary() {
+        return fetchJson(endpoint('/institucional/cardapio/resumo-mensal?mes=' + encodeURIComponent(state.monthKey)), {
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(function (payload) {
+          state.resumoMensal = payload.data && payload.data.resumo ? payload.data.resumo : {};
+          renderCalendar();
+        }).catch(function (error) {
+          state.resumoMensal = {};
+          renderCalendar();
+          showStatus(error && error.message ? error.message : 'Erro ao carregar resumo mensal.', true);
+        });
+      }
+
+      function loadSelectedDate() {
+        return fetchJson(endpoint('/institucional/cardapio/dados?data=' + encodeURIComponent(state.selectedDate)), {
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(function (payload) {
+          var data = payload.data || {};
+          state.tiposRefeicao = Array.isArray(data.tipos_refeicao) ? data.tipos_refeicao : [];
+          state.cardapios = Array.isArray(data.cardapios) ? data.cardapios : [];
+          state.minhasReservasDia = Array.isArray(data.minhas_reservas) ? data.minhas_reservas : [];
+          renderRefeicoes();
+        }).catch(function (error) {
+          state.tiposRefeicao = [];
+          state.cardapios = [];
+          state.minhasReservasDia = [];
+          renderRefeicoes();
+          showStatus(error && error.message ? error.message : 'Erro ao carregar cardápio da data.', true);
+        });
+      }
+
+      function loadMinhasReservas() {
+        return fetchJson(endpoint('/institucional/cardapio/minhas-reservas?escopo=' + encodeURIComponent(state.scope)), {
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(function (payload) {
+          state.minhasReservasLista = Array.isArray(payload.data && payload.data.reservas) ? payload.data.reservas : [];
+          renderMinhasReservas();
+        }).catch(function (error) {
+          state.minhasReservasLista = [];
+          renderMinhasReservas();
+          showStatus(error && error.message ? error.message : 'Erro ao carregar suas reservas.', true);
+        });
+      }
+
+      function refreshAll() {
+        return Promise.all([loadSummary(), loadSelectedDate(), loadMinhasReservas()]).then(function () {
+          renderAll();
+        });
+      }
+
+      function saveReserva(tipoRefeicaoId) {
+        var formData = new FormData();
+        formData.append('data_cardapio', state.selectedDate);
+        formData.append('tipo_refeicao_id', String(Number(tipoRefeicaoId || 0)));
+        formData.append('observacao', '');
+
+        fetchJson(endpoint('/institucional/cardapio/reserva/salvar'), {
+          method: 'POST',
+          body: formData,
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(function (payload) {
+          showStatus(payload.message || 'Reserva salva com sucesso.', false);
+          return refreshAll();
+        }).catch(function (error) {
+          showStatus(error && error.message ? error.message : 'Erro ao salvar reserva.', true);
+        });
+      }
+
+      function deleteReserva(reservaId) {
+        var formData = new FormData();
+        formData.append('id', String(Number(reservaId || 0)));
+
+        fetchJson(endpoint('/institucional/cardapio/reserva/excluir'), {
+          method: 'POST',
+          body: formData,
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(function (payload) {
+          showStatus(payload.message || 'Reserva excluída com sucesso.', false);
+          return refreshAll();
+        }).catch(function (error) {
+          showStatus(error && error.message ? error.message : 'Erro ao excluir reserva.', true);
+        });
+      }
+
+      btnVoltar.href = endpoint('/institucional');
+      inputData.addEventListener('change', function () {
+        var nextDate = String(inputData.value || '').trim();
+        if (nextDate !== '') {
+          state.selectedDate = nextDate;
+          state.monthKey = monthKeyFromDate(nextDate);
+          refreshAll();
+        }
+      });
+      btnMesAnterior.addEventListener('click', function () {
+        state.monthKey = shiftMonth(state.monthKey, -1);
+        loadSummary();
+        renderCalendar();
+      });
+      btnMesSeguinte.addEventListener('click', function () {
+        state.monthKey = shiftMonth(state.monthKey, 1);
+        loadSummary();
+        renderCalendar();
+      });
+      gridCalendario.addEventListener('click', function (event) {
+        var target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+        var button = target.closest('[data-date]');
+        if (!button) {
+          return;
+        }
+        var nextDate = String(button.getAttribute('data-date') || '').trim();
+        if (nextDate === '') {
+          return;
+        }
+        state.selectedDate = nextDate;
+        state.monthKey = monthKeyFromDate(nextDate);
+        refreshAll();
+      });
+      tabsMinhasReservas.addEventListener('click', function (event) {
+        var target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+        var button = target.closest('[data-scope]');
+        if (!button) {
+          return;
+        }
+        state.scope = String(button.getAttribute('data-scope') || 'ativas');
+        Array.prototype.forEach.call(tabsMinhasReservas.querySelectorAll('[data-scope]'), function (entry) {
+          entry.classList.toggle('active', entry === button);
+        });
+        loadMinhasReservas();
+      });
+      gradeRefeicoes.addEventListener('click', function (event) {
+        var target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+        var reserveButton = target.closest('.js-reservar-refeicao');
+        if (reserveButton) {
+          saveReserva(Number(reserveButton.getAttribute('data-tipo-refeicao-id') || 0));
+          return;
+        }
+
+        var cancelButton = target.closest('.js-cancelar-reserva');
+        if (cancelButton) {
+          var reservaId = Number(cancelButton.getAttribute('data-reserva-id') || 0);
+          if (reservaId > 0) {
+            deleteReserva(reservaId);
+          }
+        }
+      });
+      listaMinhasReservas.addEventListener('click', function (event) {
+        var target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+        var button = target.closest('.js-excluir-minha-reserva');
+        if (!button) {
+          return;
+        }
+        deleteReserva(Number(button.getAttribute('data-id') || 0));
+      });
+
+      inputData.value = state.selectedDate;
+      refreshAll();
+    }
+
+    if (window.bootstrap && window.bootstrap.Modal) {
+      startPage();
+      return;
+    }
+
+    var attempts = 0;
+    var timer = window.setInterval(function () {
+      attempts += 1;
+      if (window.bootstrap && window.bootstrap.Modal) {
+        window.clearInterval(timer);
+        startPage();
+        return;
+      }
+      if (attempts >= 200) {
+        window.clearInterval(timer);
+        console.error('Bootstrap nao ficou disponivel para inicializar Cardapio.');
+      }
+    }, 25);
+  })();
+</script>
